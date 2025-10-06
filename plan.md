@@ -9,11 +9,10 @@ The project will be structured to keep the code organized and the data separate.
 ├── app.py                     # Main Streamlit application
 ├── requirements.txt           # Python dependencies
 ├── .env                       # Environment variables (API keys)
-├── /data
-│   ├── /tracker_sheets          # Contains all the .xlsx and .csv tracker files
-│   │   ├── tracker_sheet_1.xlsx
-│   │   ├── tracker_sheet_2.csv
-│   │   └── ...
+├── /data        # Contains all the .xlsx and .csv tracker files
+│   │── tracker_sheet_1.xlsx
+│   │── tracker_sheet_2.csv
+│   │── ...
 │   ├── /triaging_templates      # Contains the triaging template files
 │   │   ├── Rule#280.xlsx
 │   │   ├── Rule#002.csv

@@ -1,173 +1,220 @@
 import os
 from crewai import Task
 from textwrap import dedent
-import json
 
 class TriagingTasks:
     def __init__(self):
         pass
 
     def search_alerts_task(self, agent, search_query):
-        """
-        Task for the Data Analyst to search and find relevant alerts based on a query.
-        """
+        """Task to search for relevant alerts based on user query."""
         return Task(
             description=dedent(f"""
-                Read all data from the '/data/tracker_sheets' directory.
-                Analyze the data to find the top 5 alerts that are most relevant
-                to the user's search query: '{search_query}'.
-                The relevance should be based on keywords in the 'Description' and 'Rule#' columns.
+                Search for security alerts related to: '{search_query}'
                 
-                Your final output must be a concise Python list of strings, where each string is the
-                title of a relevant alert, in the format 'Rule#<number> - <description>'.
+                Use the Alert Search Tool to find the top 5 most relevant alerts.
+                Focus on matching:
+                - Rule numbers
+                - Alert descriptions
+                - Incident types
+                - Data connectors
+                
+                Return a simple list of alert titles in the format:
+                Rule#XXX - Incident XXXXXX
             """),
             expected_output=dedent("""
-                A Python list of strings, where each string is the title of a relevant alert.
-                Example: ['Rule#280 - Sophos services missing', 'Rule#002 - Conditional access bypass']
+                A numbered list of 5 relevant alerts, each on a new line.
+                Example:
+                1. Rule#280 - Incident 208308
+                2. Rule#286 - Incident 208303
+                3. Rule#002 - Incident 208307
             """),
             agent=agent
         )
 
     def consolidate_data_task(self, agent, incident_id):
-        """
-        Task for the Data Consolidation Agent to gather all data for a specific incident.
-        """
+        """Task to consolidate all data for a specific incident."""
         return Task(
             description=dedent(f"""
-                You have been provided with an incident ID: {incident_id}.
-                Your task is to locate the corresponding tracker sheet row(s) for this incident.
-                Consolidate all the information from those rows into a single, comprehensive
-                data structure (e.g., a dictionary or pandas DataFrame).
+                Consolidate all data for incident: {incident_id}
+                
+                Use the Incident Consolidation Tool to gather:
+                - All incident metadata
+                - Timeline information (reported, responded, resolution times)
+                - Engineer details
+                - Resolver comments
+                - Classification and justification
+                
+                Return the complete incident data in a structured format.
             """),
             expected_output=dedent(f"""
-                A consolidated JSON object containing all the details from the tracker sheet
-                for incident {incident_id}. This should include all columns and their values.
+                A comprehensive data summary for incident {incident_id} including:
+                - Incident number
+                - Rule information
+                - Priority and status
+                - Timeline metrics
+                - Investigation findings
+                - Historical classification
             """),
             agent=agent
         )
 
     def retrieve_template_task(self, agent, rule_number):
-        """
-        Task for the Template Search Agent to find the correct triaging template.
-        """
+        """Task to retrieve the triaging template for a rule."""
         return Task(
             description=dedent(f"""
-                Given the rule number '{rule_number}', search the '/data/triaging_templates' folder
-                to find the corresponding triaging template file.
+                Retrieve the triaging template for: {rule_number}
                 
-                Once found, read the entire content of the file and return it as a string.
+                Use the Template Retrieval Tool to find the correct template.
+                If no specific template exists, a generic one will be provided.
+                
+                Return the complete template content.
             """),
             expected_output=dedent(f"""
-                The complete textual content of the triaging template for rule {rule_number}.
-            """),
-            agent=agent
-        )
-    
-    def combine_results_task(self, agent, consolidated_data, template_content):
-        """
-        Task for a utility agent to combine the outputs of two other tasks into a single object.
-        """
-        return Task(
-            description=dedent(f"""
-                You are a data utility expert. Your task is to take the following two pieces of information
-                and combine them into a single JSON object.
-                
-                - Consolidated Data: {consolidated_data}
-                - Template Content: {template_content}
-                
-                Ensure the output is a single, valid JSON object.
-            """),
-            expected_output=dedent("""
-                A single JSON object with two keys: 'consolidated_data' and 'template_content'.
-                Example:
-                {
-                    "consolidated_data": {"incident": "INC_001", ...},
-                    "template_content": "Rule Name: ... Step 1: ..."
-                }
+                The full triaging template for {rule_number} including:
+                - Investigation steps
+                - Required checks
+                - Data points to collect
+                - Decision criteria
             """),
             agent=agent
         )
 
-    def synthesize_knowledge_task(self, agent, consolidated_data, template_content):
-        """
-        Task for the Knowledge Synthesis Agent to combine all available info.
-        """
+    def synthesize_knowledge_task(self, agent, consolidated_data, template_content, rule_number):
+        """Task to synthesize all available information about the incident."""
         return Task(
             description=dedent(f"""
-                You are a knowledge synthesis expert. Your task is to analyze the following
-                information and create a comprehensive summary:
+                Analyze and synthesize information for: {rule_number}
                 
-                - **Consolidated Incident Data:** {consolidated_data}
-                - **Triaging Template:** {template_content}
+                You have access to:
+                1. Incident Data: {consolidated_data}
+                2. Template: {template_content[:300]}...
                 
-                Based on this, and using your web search tool if necessary for additional context,
-                provide a clear and concise summary of the incident and the required triaging steps.
+                Create a comprehensive summary that includes:
+                - What type of security alert this is
+                - Key indicators from the incident data
+                - Historical patterns from resolver comments
+                - Critical data points (IP, user, location, MFA, device)
+                - Common outcomes for this rule type
+                
+                Focus on actionable insights that will help guide the investigation.
             """),
             expected_output=dedent("""
-                A JSON object containing a summary of the incident and a list of key triaging steps with brief
-                explanations.
+                A clear summary with:
+                1. Incident Overview (2-3 sentences)
+                2. Key Data Points (bullet list)
+                3. Historical Context (what typically happens with this rule)
+                4. Investigation Focus Areas (what to check carefully)
             """),
             agent=agent
         )
 
-    def generate_content_task(self, agent, synthesized_knowledge):
-        """
-        Task for the Content Generation Agent to create the output for the UI.
-        """
+    def generate_triaging_plan_task(self, agent, synthesis_output, rule_number):
+        """Task to generate the step-by-step triaging plan."""
         return Task(
             description=dedent(f"""
-                Based on the following synthesized knowledge: {synthesized_knowledge},
-                your task is to generate:
-                1. An empty triaging template with placeholders.
-                2. A detailed, step-by-step plan for the user. Each step must have a clear, easy-to-understand explanation and any required KQL queries.
+                Generate a detailed triaging plan for: {rule_number}
+                
+                Based on the synthesis: {synthesis_output}
+                
+                Create a step-by-step investigation plan. Each step should include:
+                1. Step Name: Brief, clear title
+                2. Explanation: What to check and why (2-3 sentences)
+                3. KQL Query: If applicable, provide the KQL query
+                4. User Input Required: Yes/No
+                
+                Typical steps for security incidents:
+                - Initial Assessment
+                - IP Reputation Check
+                - User Sign-in History
+                - MFA Verification
+                - Device/Application Analysis
+                - Historical Pattern Review
+                - Final Classification
+                
+                For Rule#280 (Sophos), add: Service Status Check, Escalation Decision
+                For Rule#286 (Atypical Travel), add: Geographic Analysis, Travel Pattern Check
+                For Rule#002 (Conditional Access), add: Policy Review, Access Pattern Analysis
             """),
             expected_output=dedent("""
-                A JSON object with two keys:
-                - 'empty_template': A string of the formatted empty template.
-                - 'triaging_plan': A list of dictionaries, where each dictionary represents a step and contains keys for 'step_name', 'explanation', 'kql_query' (if applicable), and 'user_input_required'.
+                A structured plan with 5-8 investigation steps.
+                
+                Each step formatted as:
+                STEP: [Step Name]
+                EXPLANATION: [What to check and why]
+                KQL: [Query if applicable, or "N/A"]
+                INPUT_REQUIRED: [Yes/No]
+                ---
+            """),
+            agent=agent,
+            context=[synthesis_output] if synthesis_output else []
+        )
+
+    def predict_outcome_task(self, agent, consolidated_data, rule_number):
+        """Task to predict True Positive vs False Positive likelihood."""
+        return Task(
+            description=dedent(f"""
+                Predict the outcome for: {rule_number}
+                
+                Analyze this incident data: {consolidated_data}
+                
+                Look for these patterns:
+                
+                FALSE POSITIVE indicators:
+                - "clean IP" or "IP reputation: clean"
+                - "known device" or "registered device"
+                - "known apps" or "legitimate applications"
+                - "MFA satisfied" or "MFA enabled"
+                - "legitimate user"
+                - "Nord VPN" or "VPN usage"
+                - "BAS testing"
+                - "nothing suspicious"
+                
+                TRUE POSITIVE indicators:
+                - "services not running"
+                - "unauthorized access"
+                - "malicious IP"
+                - "suspicious activity"
+                - "unknown device"
+                - "failed MFA"
+                - "escalated"
+                
+                Also check historical classification:
+                - Previous Classification: {consolidated_data.get('false_true_positive', 'N/A')}
+                - Reason: {consolidated_data.get('why_false_positive', 'N/A')}
+                
+                Provide prediction with confidence level and clear reasoning.
+            """),
+            expected_output=dedent("""
+                A prediction summary:
+                
+                PREDICTION: [Likely True Positive / Likely False Positive / Uncertain]
+                CONFIDENCE: [High / Medium / Low]
+                REASONING: [2-3 sentences explaining why based on the data patterns]
+                KEY_INDICATORS: [List of specific data points that support this prediction]
             """),
             agent=agent
         )
 
-    def predict_outcome_task(self, agent, consolidated_data):
-        """
-        Task for the Prediction & Analysis Agent to predict the TP/FP outcome.
-        """
+    def combine_results_task(self, agent, triaging_plan, predictions):
+        """Task to combine the triaging plan and predictions into final output."""
         return Task(
             description=dedent(f"""
-                Analyze the following consolidated incident data: {consolidated_data}.
-                Based on historical data and common resolver comments, predict the likelihood of this incident
-                being a True Positive (TP) or False Positive (FP) at each stage of the triaging process.
+                Combine the triaging plan and predictions into a cohesive output.
                 
-                Your analysis should focus on how key data points (e.g., 'IP Reputation - clean', 'Known device')
-                affect the final outcome.
+                Triaging Plan:
+                {triaging_plan}
+                
+                Predictions:
+                {predictions}
+                
+                Create a structured output that analysts can use during investigation.
             """),
             expected_output=dedent("""
-                A JSON object containing an array of predictions for each step. Each item in the array should have
-                keys for 'step_name', 'prediction', and 'confidence_score'.
-            """),
-            agent=agent
-        )
-
-    def combine_final_results_task(self, agent, triaging_plan, predictions):
-        """
-        Task to combine the final triaging plan and predictions into a single object.
-        """
-        return Task(
-            description=dedent(f"""
-                You are a data utility expert. Your task is to combine the generated triaging plan
-                and the predictive analysis into a single JSON object.
-                
-                - Triaging Plan: {triaging_plan}
-                - Predictions: {predictions}
-            """),
-            expected_output=dedent("""
-                A single JSON object with two keys: 'triaging_plan' and 'predictions'.
-                Example:
-                {
-                    "triaging_plan": [{"step_name": "Check IP", ...}],
-                    "predictions": [{"step_name": "Check IP", "prediction": "Likely TP", ...}]
-                }
+                A combined output with:
+                1. Investigation Steps (from triaging plan)
+                2. AI Predictions (overall prediction with reasoning)
+                3. Key Focus Areas (what to watch for)
             """),
             agent=agent
         )
