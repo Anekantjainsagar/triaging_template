@@ -1,0 +1,31 @@
+Sr.No.,Inputs Required,INPUT details,Instructions,Reviwer comments
+,Rule #016 - User added to Azure Active Directory Privileged Groups,,"A user has been added to a privileged AAD group, which may indicate unauthorized privilege elevation.", 
+1,Incident Number,208310,, 
+2,How many users are impacted ?,1,Gather details of all users - (By adding sheet to this excel), 
+3,Check Alert Details,Yes,"Username, Group Name, Added By, Time of Addition, IP Address, Location", 
+4,Validate Group Sensitivity,Yes,"Confirm if the group is high-risk (e.g., Global Admin, Conditional Access Admin)", 
+5,Check Sign-in Logs of added user,"Observed the Events and checked user(Jgreenwood) was added into MS-PIM, nothing Suspicious activities found, closing as FP","Check recent login patterns, location, and app access",Also  initiator around time activity like before adding in to group verify user precompromise actvity Like  user acccsesing  any link or  emails or files and also is  logging  from any new IP or loctaion or user agent
+6,Check Initiator’s Identity,Yes,Validate the identity and permissions of the user who added the member, 
+7,Check IP Reputation (if public IP),Clean,"Use VirusTotal, document result with screenshot if malicious",Prevalence of IP & alerts on IP and Initiator
+8,Escalate if Suspicious,Not Required,"Reset account, revoke sessions, notify IT and IAM", 
+9,Inform to IT Team,NA,"Contact IT/IAM to verify change, reset user credentials if needed", 
+10,Track for the closer/closer confirmation,Closed,"After all the investigation document the steps taken, findings, and any remediation actions required", 
+,True Positive (TP) Scenarios,"These indicate unauthorized or malicious activity:
+Attacker adds a compromised account to a privileged group (e.g., Global Admin, Privileged Role Admin).
+Privileged group membership change from an unusual IP or geolocation (e.g., foreign country, TOR node).
+Role assignment follows a risky sign-in or suspicious behavior (e.g., impossible travel, unfamiliar device).
+Multiple users added to privileged groups in a short time, suggesting lateral movement.
+Assignment made by a non-admin user or unknown service principal.
+Privileged group assignment to a dormant or disabled account that was just reactivated.",,
+,Benign Positive (BP) Scenarios,"These are unusual but legitimate actions:
+Temporary elevation via PIM (Privileged Identity Management) for a valid task or project.
+Security team adds a user to a privileged group during an incident response or audit.
+Admin assigns a role during off-hours due to time zone differences or urgent needs.
+Privileged group assignment from a new IP due to remote work or travel.",,
+,False Positive (FP) Scenarios,"These are routine operations that trigger alerts unnecessarily:
+
+Admin adds a user to a privileged group as part of onboarding or access management.
+Assignment from a known corporate IP or trusted device, but not yet whitelisted.
+Bulk role assignments during a migration or reorganization.
+Assignment by a known automation account or service principal (e.g., MS Graph API).
+Temporary PIM activations that aren’t filtered out in the rule logic.",,

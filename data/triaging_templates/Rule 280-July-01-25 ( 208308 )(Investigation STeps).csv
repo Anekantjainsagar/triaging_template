@@ -1,0 +1,13 @@
+S.No,Inputs Required,INPUT details,Instructions
+,Rule#280-Detect when One or more Sophos services are missing or not running.,,"Description:The rule will detect when one or more sophos services are missing or not running properly
+"
+1,Incident,208308,
+2,Reported Time,"07/01/25, 04:10 AM",
+3,Observe the events,Yes,"Check the device, name of service (missing or not running) , source IP, source name, time"
+4,Check Sophos Console for the user health agent status,Triaging Steps performed: Check ip reputation - clean. Check hostname .. ARQ-00463 Check history – for 90 day s/ 30 days.. etc – NA Check signin logs -- NA Escalating (Yes/ No) Yes Closure comments for TP / FP / Benign Positive: TP (As checked All sophos services are not running) INC0095255,Check in the sophos console >> My products >>  Endpoint >> computer (check with a bad status) update the user details if any service is missing.
+5,Check if the status all the services are running or not,"Yes, verified all the details no suspicious found. All services are running with the user.","If all services are running ok, no need to take action. 
+If any service is missing raise a ticket or Incident to SSIT Team."
+6,Make a word document to list the details of user if any of the sophos services missing,Not required.,"Attached the details as an Artificats to next sheet based on the details available in the events, update accordingly in the word document."
+7,Raise a Incident ticket in SNOW,Yes ( INC0095255),Steps to create incident (Ref: Incident Screeshot) 
+8,"Upload the same word document (Step no. 6) and also upload the ""Sophos perm Fix"" video which is shared in the soc group ",Not required.,"Attach word document with all the details and upload the video, For video link refer next sheet (Video Link tab)"
+9,Follow up with the IT Team for raising the ticket,Not required.Because all services are running.,Regularly Check for the updates from the SSIT team for status of the ticket. 

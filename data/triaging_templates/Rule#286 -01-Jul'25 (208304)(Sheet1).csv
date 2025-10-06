@@ -1,0 +1,29 @@
+Sr.No.,Inputs Required,INPUT details,Instructions
+,Rule #286 - Atypical Travel,,
+1,Incident,208304,
+2,Reported Time,7/19/2025 8:03,
+3,Provide the username which are involved in the incident,,
+4,Run the KQL query ,"Triaging Steps performed : Check ip reputation - clean. Check history - user using clean IP Sign in logs / -- User using known apps with MFA Satisfied Closure comments = Observed the events, Checked sign in logs for the user chorton@arcutis.com , IPs are clean, detected user using known apps and device, MFA satisfied, US location, nothing suspicious found Closing as False positive (yes/ No) No","TimeGenerated
+• Username
+• IP Address
+• Geolocation"
+5,VIP Users,No,Cross verify if the user is VIP or not - with the list (Shared by Arcutis) 
+6,Analyze Login Patterns,"change the location (US to US) with in short time period, but the device is known one, and mfa sent to user's mobile, and used applicaitons are known applications only","Check the user’s recent login history:
+• Identify login attempts from different cities/countries within a short time frame.
+• Look for logins from locations not associated with the user’s normal activity."
+7,IP Reputation Check,IP is clean,"Verify the reputation of the IP addresses using VirusTotal, GreyNoise, or other tools.
+• Malicious IP: Immediately inform IT to blacklist.
+• Clean IP: Document findings with screenshots."
+8,Verify User Behavior,nothing suspicious,"Confirm if the login activity matches known user behavior:
+• Check the device details and OS.
+• Verify if the device matches the user’s previous logins."
+9,Identify Concurrent Logins,us,"Look for simultaneous logins from different geolocations.
+• Example: Logins from India and USA within minutes."
+10,Contact the User for Verification,,"If the activity appears suspicious, contact the user directly:
+• Confirm whether they traveled to a new location, they are using any virutal machines/VPN
+• Verify if they recognize the device and IP address"
+11,Inform to IT Team ,no need,"If the user confirms it is a True Positive or fails to respond:
+• Inform the IT team.
+• Disable the user account.
+• Reset the password."
+12,Track for the closer/closer confirmation from IT team,closed,Update security policies and conduct user awareness training to prevent future incidents.

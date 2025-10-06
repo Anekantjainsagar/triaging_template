@@ -1,0 +1,28 @@
+Sr.No.,Inputs Required,INPUT details,Instructions,Reviewer comments
+1,Rule#014-User Assigned Privileged Role,,"A user has been assigned a privileged role, which may indicate unauthorized privilege escalation or administrative misuse.",
+2,Incident Number,208309,,
+3,How many users are impacted ?,1,Gather details of all users - (By adding sheet to this excel),
+4,Check Alert Details,Yes,"Username, Role Assigned, Time of Assignment, Initiator, Source IP, Location",Check Ip prevalence & Repuation 
+5,Verify Role Sensitivity,Yes,"Determine if the assigned role is high-risk (e.g., Global Admin)",
+6,Review Sign-In Logs,Yes,Look for unusual sign-in patterns by the assigned user for last 7 days,
+7,Check Activity of Initiator ,"Observed the Events and checked user(Adminchintala) was accessed into MS-PIM, nothing Suspicious activities found, closing as FP.",Validate if the assigning user had legitimate access and permissions,Check the Historical data of initiator  & alerts on initiator 
+8,Escalate if Unauthorized,Not Required,"if suspicious, escalate to L3/IT for investigation",If  initiator  found compromise then Escalte to L3 
+9,"if True Positive - Inform to IT Team to Reset the account, Revoke the MFA tokens, Temporary disable the account",NA,"Reach out to the Network/EDR teams to block the detected suspicious IP, Inform user to reset password, maintain complex password and enable MFA.",Also Reset the all actvie user sessions  & Need to perform user precompromise & post compromise  actvity 
+10,Track for the closer/closer confirmation,Closed,"After all the investigation document the steps taken, findings, and any remediation actions required",
+,True Positive (TP) Scenarios,"These indicate malicious or unauthorized role assignments:
+Attacker assigns themselves or another compromised account to a privileged role (e.g., Global Admin).
+Privileged role assigned outside business hours from an unusual IP or geolocation.
+Role assignment follows a successful risky sign-in (e.g., impossible travel or TOR exit node).
+Assignment made by an unknown or suspicious app/service principal.
+Multiple privileged roles assigned in quick succession—suggesting lateral movement.
+Assignment to a dormant or deactivated account suddenly re-enabled.",,
+,Benign Positive (BP) Scenarios,"These are unusual but legitimate actions:
+Privileged role assigned temporarily via PIM (Privileged Identity Management) for a valid task.
+Security team grants temporary access for an urgent incident response.
+Admin assigns a role to a new hire during onboarding, but outside normal hours.
+Role assignment from a new IP due to remote work or travel.",,
+,False Positive (FP) Scenarios,"These are normal operations that trigger alerts unnecessarily:
+Admin assigns a role to a user as part of routine access management.
+Assignment from a known corporate IP or trusted device, but not yet whitelisted.
+Bulk role assignments during a migration or reorganization.
+Temporary elevation via PIM that’s not filtered out in the rule logic.",,
