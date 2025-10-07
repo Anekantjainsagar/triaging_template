@@ -41,30 +41,24 @@ class CSVTemplateGenerator:
             writer.writerow(row)
             sr_no += 1
 
-        # Add historical reference section
-        writer.writerow([])  # Blank row separator
-        reference_rows = self._create_reference_rows(rule_history)
-        for row in reference_rows:
-            writer.writerow(row)
-
         return output.getvalue()
 
     def _create_step_row(self, sr_no: int, step: dict, rule_history: dict) -> list:
         """Create a CONCISE, CLEAR step row"""
         step_name = step.get("step_name", f"Step {sr_no}")
-        explanation = step.get("explanation", "")
+        explanation = step.get("explanation", "")  # ⭐ Instructions
+        input_required = step.get("input_required", "")
         expected_output = step.get("expected_output", "")
         kql_query = step.get("kql_query", "")
 
-        # Clean and simplify step name (max 50 chars)
         clean_name = self._clean_text(step_name)
 
-        # Build CONCISE instructions (key info only)
+        # Build instructions (what to DO, not data)
         instructions = self._build_concise_instructions(
             explanation, expected_output, kql_query, rule_history
         )
 
-        return [sr_no, clean_name, "", instructions]
+        return [sr_no, clean_name, "", instructions]  # ⭐ INPUT details EMPTY
 
     def _build_concise_instructions(
         self, explanation: str, expected_output: str, kql_query: str, rule_history: dict
@@ -134,48 +128,6 @@ class CSVTemplateGenerator:
         text = " ".join(text.split())
 
         return text.strip()
-
-    def _build_instructions(
-        self, explanation: str, expected_output: str, kql_query: str, rule_history: dict
-    ) -> str:
-        """Build comprehensive instructions combining all information"""
-        instructions_parts = []
-
-        # 1. Main explanation
-        if explanation:
-            clean_explanation = self._clean_text(explanation)
-            if clean_explanation:
-                instructions_parts.append(clean_explanation)
-
-        # 2. Expected output with historical context
-        if expected_output:
-            clean_expected = self._clean_text(expected_output)
-            if clean_expected:
-                instructions_parts.append(f"[EXPECTED FINDING] {clean_expected}")
-
-        # 3. KQL Query if available
-        if kql_query and kql_query.strip():
-            clean_kql = self._clean_kql_for_csv(kql_query)
-            if clean_kql:
-                instructions_parts.append(f"[KQL QUERY] {clean_kql}")
-
-        # 4. Guidance based on historical data
-        fp_rate = rule_history.get("fp_rate", 50)
-        if fp_rate > 70:
-            instructions_parts.append(
-                f"[HISTORICAL NOTE] High FP rate ({fp_rate}%) - typically legitimate activity"
-            )
-        elif fp_rate < 30:
-            instructions_parts.append(
-                f"[HISTORICAL NOTE] Low FP rate ({fp_rate}%) - investigate thoroughly for threats"
-            )
-
-        # Join all parts with separator
-        return (
-            " | ".join(instructions_parts)
-            if instructions_parts
-            else "Investigate and document findings"
-        )
 
     def _clean_kql_for_csv(self, kql: str) -> str:
         """Clean and format KQL query for CSV (single line)"""
@@ -258,86 +210,6 @@ class CSVTemplateGenerator:
                 "Yes/No - If yes, specify escalation path: L3 SOC (confirmed threats), IT Team (system issues), Security Manager (VIP/critical assets), Incident Response Team (active compromise)",
             ]
         )
-
-        return rows
-
-    def _create_reference_rows(self, rule_history: dict) -> list:
-        """Create historical reference data rows"""
-        rows = []
-
-        # Section header
-        rows.append(
-            [
-                "",
-                "HISTORICAL REFERENCE DATA",
-                "",
-                "Statistical analysis from past incidents - use to inform investigation approach",
-            ]
-        )
-
-        # Total incidents
-        rows.append(
-            [
-                "",
-                "Total Past Incidents",
-                rule_history.get("total_incidents", 0),
-                f"Complete dataset of {rule_history.get('total_incidents', 0)} historical incidents for pattern analysis",
-            ]
-        )
-
-        # False Positive Rate
-        fp_count = rule_history.get("false_positives", 0)
-        total = rule_history.get("total_incidents", 1)
-        fp_rate = rule_history.get("fp_rate", 0)
-        rows.append(
-            [
-                "",
-                "False Positive Rate",
-                f"{fp_rate}%",
-                f"{fp_count} of {total} incidents were False Positives. If similar patterns found, likelihood of FP is {fp_rate}%",
-            ]
-        )
-
-        # True Positive Rate
-        tp_count = rule_history.get("true_positives", 0)
-        tp_rate = rule_history.get("tp_rate", 0)
-        rows.append(
-            [
-                "",
-                "True Positive Rate",
-                f"{tp_rate}%",
-                f"{tp_count} of {total} incidents were True Positives. If threat indicators found, likelihood of TP is {tp_rate}%",
-            ]
-        )
-
-        # Common FP Justifications
-        justifications = rule_history.get("common_justifications", "")
-        if justifications and justifications != "N/A" and len(justifications) > 5:
-            clean_just = self._clean_text(justifications)
-            rows.append(["", "Common FP Justifications", "", clean_just])
-
-        # Typical FP Indicators
-        fp_indicators = rule_history.get("fp_indicators", "")
-        if fp_indicators and fp_indicators != "N/A" and len(fp_indicators) > 10:
-            clean_indicators = fp_indicators.replace("\n", " | ")
-            clean_indicators = self._clean_text(clean_indicators)
-            rows.append(
-                [
-                    "",
-                    "Typical FP Indicators",
-                    "",
-                    f"Look for these patterns in your investigation: {clean_indicators}",
-                ]
-            )
-
-        # Typical TP Indicators
-        tp_indicators = rule_history.get("tp_indicators", "")
-        if tp_indicators and tp_indicators != "N/A" and len(tp_indicators) > 10:
-            clean_tp = tp_indicators.replace("\n", " | ")
-            clean_tp = self._clean_text(clean_tp)
-            rows.append(
-                ["", "Typical TP Indicators", "", f"Red flags to watch for: {clean_tp}"]
-            )
 
         return rows
 

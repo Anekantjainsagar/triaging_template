@@ -8,92 +8,6 @@ class TriagingTasks:
     def __init__(self):
         pass
 
-    def search_alerts_task(self, agent, search_query):
-        """Task to search for relevant alerts based on user query."""
-        return Task(
-            description=dedent(
-                f"""
-                Search for security alerts related to: '{search_query}'
-                
-                Use the Alert Search Tool to find the top 5 most relevant alerts.
-                Focus on matching:
-                - Rule numbers
-                - Alert descriptions
-                - Incident types
-                - Data connectors
-                
-                Return a simple list of alert titles in the format:
-                Rule#XXX - Incident XXXXXX
-            """
-            ),
-            expected_output=dedent(
-                """
-                A numbered list of 5 relevant alerts, each on a new line.
-                Example:
-                1. Rule#280 - Incident 208308
-                2. Rule#286 - Incident 208303
-                3. Rule#002 - Incident 208307
-            """
-            ),
-            agent=agent,
-        )
-
-    def consolidate_data_task(self, agent, incident_id):
-        """Task to consolidate all data for a specific incident."""
-        return Task(
-            description=dedent(
-                f"""
-                Consolidate all data for incident: {incident_id}
-                
-                Use the Incident Consolidation Tool to gather:
-                - All incident metadata
-                - Timeline information (reported, responded, resolution times)
-                - Engineer details
-                - Resolver comments
-                - Classification and justification
-                
-                Return the complete incident data in a structured format.
-            """
-            ),
-            expected_output=dedent(
-                f"""
-                A comprehensive data summary for incident {incident_id} including:
-                - Incident number
-                - Rule information
-                - Priority and status
-                - Timeline metrics
-                - Investigation findings
-                - Historical classification
-            """
-            ),
-            agent=agent,
-        )
-
-    def retrieve_template_task(self, agent, rule_number):
-        """Task to retrieve the triaging template for a rule."""
-        return Task(
-            description=dedent(
-                f"""
-                Retrieve the triaging template for: {rule_number}
-                
-                Use the Template Retrieval Tool to find the correct template.
-                If no specific template exists, a generic one will be provided.
-                
-                Return the complete template content.
-            """
-            ),
-            expected_output=dedent(
-                f"""
-                The full triaging template for {rule_number} including:
-                - Investigation steps
-                - Required checks
-                - Data points to collect
-                - Decision criteria
-            """
-            ),
-            agent=agent,
-        )
-
     def synthesize_knowledge_task(
         self, agent, consolidated_data, template_content, rule_number, rule_history=None
     ):
@@ -257,8 +171,8 @@ class TriagingTasks:
                 - For [step name]: [Additional FP/TP indicators found online]
                 
                 Sources Used:
-                - https://www.youtube.com/watch?v=KsZ6tROaVOQ
-                - https://www.youtube.com/watch?v=-s7TCuCpB5c
+                - [https://www.youtube.com/watch?v=KsZ6tROaVOQ](https://www.youtube.com/watch?v=KsZ6tROaVOQ)
+                - [https://www.youtube.com/watch?v=-s7TCuCpB5c](https://www.youtube.com/watch?v=-s7TCuCpB5c)
                 ```
                 
                 ===========================================================================
@@ -293,8 +207,6 @@ class TriagingTasks:
                 - Run: [KQL query with actual incident data]
                 - Look for: [Expected finding from template/history]
                 - Decide: [IF finding = X THEN Y, from template logic]
-                
-                2. [Next step...]
                 
                 CRITICAL: Make it so clear that the next agent can generate steps
                 that are IDENTICAL to template structure but ENHANCED with:
@@ -406,32 +318,29 @@ class TriagingTasks:
                 
                 For each template step, output:
                 
-                ---
-                STEP: [Exact name from template]
+                ***
+                ### [STEP NUMBER]. [STEP NAME] 🔍
                 
-                EXPLANATION: [2-3 sentences: what to check, FP/TP indicators, escalation]
-                
-                KQL: 
+                * **Explanation:** [2-3 sentences: what to check, FP/TP indicators, escalation]
+                * **Input Required:** [Required data for this step]
+                * **KQL Query:** ```
                 [Complete query from web research with actual incident data]
-                [Or empty if N/A]
+                ```
+                * **Expected Output:** [Based on historical data]
+                * **Decision Point:** [IF/THEN OR empty]
                 
-                EXPECTED_OUTPUT: Based on [X] incidents ([Y]% FP): Typically shows '[finding]'. If found → [indicates FP/TP].
-                
-                DECISION_POINT: [IF/THEN OR empty]
-                
-                INPUT_REQUIRED: Yes
-                ---
+                ***
                 
                 ===========================================================================
                 COMPLETE EXAMPLE (Template: Rule#286 Atypical Travel)
                 ===========================================================================
                 
-                ---
-                STEP: Check Alert Details
+                ***
+                ### 1. Check Alert Details 🔍
                 
-                EXPLANATION: Gather incident details including username, IP address, geolocation, and timestamp. Review if locations are geographically impossible within the timeframe. Atypical travel between distant locations in short time indicates TP.
-                
-                KQL:
+                * **Explanation:** Gather incident details including user, IP, and timestamp. Review if locations are geographically impossible within the timeframe. Atypical travel between distant locations in short time indicates TP.
+                * **Input Required:** Incident details and security context.
+                * **KQL Query:**
                 ```
                 SigninLogs
                 | where UserPrincipalName == "chorton@arcutis.com"
@@ -439,20 +348,17 @@ class TriagingTasks:
                 | project TimeGenerated, IPAddress, Location, DeviceDetail, AppDisplayName
                 | order by TimeGenerated desc
                 ```
+                * **Expected Output:** Based on 58 past incidents (78% FP): Typically shows 'Same country travel (US to US), Known device, MFA satisfied'. If found -> False Positive (78% likelihood).
+                * **Decision Point:** If impossible travel detected (e.g., India to USA in 10 minutes) AND unknown device → Escalate immediately. Else proceed to IP check.
                 
-                EXPECTED_OUTPUT: Based on 58 past incidents (78% FP): Typically shows 'Same country travel (US to US), Known device, MFA satisfied'. If found → False Positive (78% likelihood).
+                ***
                 
-                DECISION_POINT: If impossible travel detected (e.g., India to USA in 10 minutes) AND unknown device → Escalate immediately. Else proceed to IP check.
+                ***
+                ### 2. IP Reputation Check 📊
                 
-                INPUT_REQUIRED: Yes
-                ---
-                
-                ---
-                STEP: IP Reputation Check
-                
-                EXPLANATION: Verify IP reputation using VirusTotal, GreyNoise, or threat intelligence feeds. Clean IP with no malicious history indicates legitimate activity (FP). Malicious IP requires immediate escalation and blocking.
-                
-                KQL:
+                * **Explanation:** Verify IP reputation using VirusTotal or threat intelligence feeds. Clean IP with no malicious history indicates legitimate activity (FP). Malicious IP requires immediate escalation and blocking.
+                * **Input Required:** Source IP address.
+                * **KQL Query:**
                 ```
                 SigninLogs
                 | where UserPrincipalName == "chorton@arcutis.com"
@@ -460,27 +366,21 @@ class TriagingTasks:
                 | distinct IPAddress
                 | project IPAddress
                 ```
+                * **Expected Output:** Based on 58 past incidents (78% FP): Typically shows 'Clean IP, No threats, Corporate IP range'. If found -> False Positive (78% likelihood).
+                * **Decision Point:** If IP is malicious OR flagged as VPN/TOR → Escalate to IT for blocking. Else proceed to user behavior check.
                 
-                EXPECTED_OUTPUT: Based on 58 past incidents (78% FP): Typically shows 'Clean IP, No threats, Corporate IP range'. If found → False Positive (78% likelihood).
+                ***
                 
-                DECISION_POINT: If IP is malicious OR flagged as VPN/TOR → Escalate to IT for blocking. Else proceed to user behavior check.
+                ***
+                ### 3. Contact User for Verification ✅
                 
-                INPUT_REQUIRED: Yes
-                ---
+                * **Explanation:** Reach out to user to confirm if they traveled to the detected location and recognize the device/IP. User confirmation of legitimate activity closes as FP. User denial or no response requires escalation.
+                * **Input Required:** User principal name.
+                * **KQL Query:** N/A
+                * **Expected Output:** Based on 58 past incidents (78% FP): Typically shows 'User confirmed travel, Using VPN, Business trip'. If found -> False Positive (78% likelihood).
+                * **Decision Point:** If user confirms activity → Close as FP. If user denies OR no response within 2 hours → Escalate to IT and disable account.
                 
-                ---
-                STEP: Contact User for Verification
-                
-                EXPLANATION: Reach out to user to confirm if they traveled to the detected location and recognize the device/IP. User confirmation of legitimate activity closes as FP. User denial or no response requires escalation.
-                
-                KQL:
-                
-                EXPECTED_OUTPUT: Based on 58 past incidents (78% FP): Typically shows 'User confirmed travel, Using VPN, Business trip'. If found → False Positive (78% likelihood).
-                
-                DECISION_POINT: If user confirms activity → Close as FP. If user denies OR no response within 2 hours → Escalate to IT and disable account.
-                
-                INPUT_REQUIRED: Yes
-                ---
+                ***
                 
                 ===========================================================================
                 FINAL DECISION STEP (ADD THIS AT THE END)
@@ -488,19 +388,16 @@ class TriagingTasks:
                 
                 After all template steps, add:
                 
-                ---
-                STEP: Final Classification & Documentation
+                ***
+                ### Final Classification & Documentation 📂
                 
-                EXPLANATION: Based on all findings from previous steps, classify as True Positive, False Positive, or Benign Positive. Document detailed justification referencing specific step numbers and findings. Determine escalation path based on classification.
+                * **Explanation:** Based on all findings from previous steps, classify as True Positive, False Positive, or Benign Positive. Document detailed justification referencing specific step numbers and findings. Determine escalation path based on classification.
+                * **Input Required:** Classification decision and supporting evidence.
+                * **KQL Query:** N/A
+                * **Expected Output:** Classification with comprehensive justification citing evidence from Steps 1-[N]. Clear documentation of all actions taken and next steps.
+                * **Decision Point:** If TP confirmed → Escalate per template (IT Team/L3 SOC). If FP confirmed → Close with justification. If uncertain → Escalate to L3 for review.
                 
-                KQL:
-                
-                EXPECTED_OUTPUT: Classification with comprehensive justification citing evidence from Steps 1-[N]. Clear documentation of all actions taken and next steps.
-                
-                DECISION_POINT: If TP confirmed → Escalate per template (IT Team/L3 SOC). If FP confirmed → Close with justification. If uncertain → Escalate to L3 for review.
-                
-                INPUT_REQUIRED: Yes
-                ---
+                ***
                 
                 ===========================================================================
                 QUALITY REQUIREMENTS
@@ -520,14 +417,18 @@ class TriagingTasks:
                 """
                 Steps formatted EXACTLY as shown:
                 
-                ---
-                STEP: [Name from template]
-                EXPLANATION: [2-3 sentences]
-                KQL: [Query with actual data OR empty]
-                EXPECTED_OUTPUT: Based on X incidents (Y% FP): [finding]. If found → [indicates FP/TP].
-                DECISION_POINT: [IF/THEN OR empty]
-                INPUT_REQUIRED: Yes
-                ---
+                ***
+                ### [STEP NUMBER]. [STEP NAME] 🔍
+                
+                * **Explanation:** [2-3 sentences]
+                * **Input Required:** [Required data for this step]
+                * **KQL Query:** ```
+                [Query with actual data OR empty]
+                ```
+                * **Expected Output:** [Based on historical data]
+                * **Decision Point:** [IF/THEN OR empty]
+                
+                ***
                 
                 Output one block per template step + final decision step.
                 Must include ALL steps from template in original order.
@@ -715,7 +616,7 @@ class TriagingTasks:
         )
 
     def predict_outcome_task(self, agent, consolidated_data, rule_number):
-        """Task to predict True Positive vs False Positive with detailed analysis."""
+        """Task to predict incident outcomes based on historical data."""
         return Task(
             description=dedent(
                 f"""
@@ -798,29 +699,3 @@ class TriagingTasks:
             agent=agent,
         )
 
-    def combine_results_task(self, agent, triaging_plan, predictions):
-        """Task to combine the triaging plan and predictions into final output."""
-        return Task(
-            description=dedent(
-                f"""
-                Combine the triaging plan and predictions into a cohesive output.
-                
-                Triaging Plan:
-                {triaging_plan}
-                
-                Predictions:
-                {predictions}
-                
-                Create a structured output that analysts can use during investigation.
-            """
-            ),
-            expected_output=dedent(
-                """
-                A combined output with:
-                1. Investigation Steps (from triaging plan)
-                2. AI Predictions (overall prediction with reasoning)
-                3. Key Focus Areas (what to watch for)
-            """
-            ),
-            agent=agent,
-        )

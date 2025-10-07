@@ -32,13 +32,13 @@ class TriagingTemplateGenerator:
         # Add rule header row
         header_row = {
             "Step": "",
-            "Name": f"Rule Analysis: {rule_number}",
-            "Explanation": f"Comprehensive triaging plan based on {rule_history.get('total_incidents', 0)} historical incidents",
-            "Input": f"Historical Context: {rule_history.get('fp_rate', 0)}% FP, {rule_history.get('tp_rate', 0)}% TP",
+            "Name": rule_number,
+            "Explanation": "",
+            "Input": f"",
             "KQL Query": "",
             "Execute": "",
             "Output": "",
-            "Remarks/Comments": f"Total incidents analyzed: {rule_history.get('total_incidents', 0)}",
+            "Remarks/Comments": f"",
         }
         template_rows.append(header_row)
 
@@ -53,16 +53,13 @@ class TriagingTemplateGenerator:
         )
         template_rows.extend(final_steps)
 
-        # Add historical reference section
-        reference_rows = self._create_reference_section(rule_history)
-        template_rows.extend(reference_rows)
-
         return pd.DataFrame(template_rows)
 
     def _create_step_row(self, step_num: int, step: dict, rule_history: dict) -> dict:
         """Create a single step row with clean formatting and complete data"""
         step_name = step.get("step_name", f"Investigation Step {step_num}")
-        explanation = step.get("explanation", "")
+        explanation = step.get("explanation", "")  # ⭐ Use this, don't hardcode data
+        input_required = step.get("input_required", "")
         expected_output = step.get("expected_output", "")
         kql_query = step.get("kql_query", "")
 
@@ -71,27 +68,26 @@ class TriagingTemplateGenerator:
 
         # Clean up explanation (remove markdown formatting)
         clean_explanation = self._clean_text(explanation)
-
-        # Extract input requirements from explanation and expected output
-        input_required = self._extract_input_requirements(
-            clean_explanation, expected_output
-        )
+        
+        # ⭐ IMPORTANT: Don't put data here, only instructions
+        if not clean_explanation or clean_explanation == step_name:
+            clean_explanation = f"Complete {clean_name} and document findings"
 
         # Clean and format KQL query
         clean_kql = self._clean_kql_query(kql_query)
 
         # Create comprehensive remarks with expected output
-        remarks = self._create_remarks(expected_output, rule_history, clean_explanation)
+        remarks = ""
 
         return {
             "Step": step_num,
             "Name": clean_name,
-            "Explanation": clean_explanation,
-            "Input": input_required,
+            "Explanation": clean_explanation,  # ⭐ Instructions, NOT data
+            "Input": "",  # ⭐ Empty - user fills during investigation
             "KQL Query": clean_kql,
-            "Execute": "",  # Empty for manual filling
-            "Output": "",  # Empty for manual filling
-            "Remarks/Comments": remarks,
+            "Execute": "",  # ⭐ Empty for manual filling
+            "Output": "",  # ⭐ Empty for manual filling
+            "Remarks/Comments": remarks,  # ⭐ Expected findings
         }
 
     def _clean_step_name(self, step_name: str) -> str:
@@ -157,71 +153,6 @@ class TriagingTemplateGenerator:
         clean_text = clean_text.strip()
 
         return clean_text
-
-    def _create_remarks(
-        self, expected_output: str, rule_history: dict, explanation: str
-    ) -> str:
-        """Create CONCISE remarks with key info only"""
-        remarks = []
-
-        # Add expected output (simplified)
-        if expected_output:
-            clean_expected = self._clean_text(expected_output)
-            if clean_expected and len(clean_expected) > 10:
-                remarks.append(clean_expected)
-
-        # Add ONE historical insight (most relevant)
-        fp_rate = rule_history.get("fp_rate", 0)
-        tp_rate = rule_history.get("tp_rate", 0)
-
-        if fp_rate > 70:
-            remarks.append(f"High FP rate ({fp_rate}%) - typically legitimate")
-        elif tp_rate > 60:
-            remarks.append(f"High TP rate ({tp_rate}%) - investigate thoroughly")
-
-        # Add escalation note if mentioned
-        if "escalat" in explanation.lower() or "vip" in explanation.lower():
-            remarks.append("Handle with priority")
-
-        # Join with separator, max 2 remarks
-        return " | ".join(remarks) if remarks else "Document findings"
-
-    def _extract_input_requirements(
-        self, explanation: str, expected_output: str
-    ) -> str:
-        """Extract what inputs/data are required for this step"""
-        inputs = []
-        combined_text = f"{explanation} {expected_output}".lower()
-
-        # Define input patterns with priority
-        input_patterns = [
-            ("incident number", ["incident", "incident id"]),
-            ("user principal name", ["user", "username", "upn", "email"]),
-            ("source ip address", ["ip", "ip address", "source ip"]),
-            ("application name", ["application", "app", "service"]),
-            ("device information", ["device", "endpoint", "machine"]),
-            ("authentication logs", ["signin", "sign-in", "login", "authentication"]),
-            ("mfa details", ["mfa", "multi-factor", "2fa"]),
-            ("timestamp range", ["time", "timestamp", "date range"]),
-            ("geolocation data", ["location", "geo", "country", "city"]),
-            ("reputation score", ["reputation", "threat intelligence"]),
-        ]
-
-        for input_name, keywords in input_patterns:
-            if any(keyword in combined_text for keyword in keywords):
-                if input_name not in inputs:
-                    inputs.append(input_name)
-
-        # If no specific inputs identified, provide context-based input
-        if not inputs:
-            if "consolidat" in combined_text or "gather" in combined_text:
-                inputs.append("Incident data and relevant logs")
-            elif "verify" in combined_text or "check" in combined_text:
-                inputs.append("Investigation findings from previous steps")
-            else:
-                inputs.append("Incident details and security context")
-
-        return ", ".join(inputs)
 
     def _clean_kql_query(self, kql: str) -> str:
         """Clean and format KQL query for Excel display"""
@@ -330,106 +261,6 @@ class TriagingTemplateGenerator:
         )
 
         return steps
-
-    def _create_reference_section(self, rule_history: dict) -> list:
-        """Create historical reference section with detailed statistics"""
-        reference_rows = []
-
-        # Add separator
-        reference_rows.append(
-            {
-                "Step": "",
-                "Name": "HISTORICAL REFERENCE DATA",
-                "Explanation": "Statistical analysis from all past incidents for this rule - use this data to inform your investigation approach and set expectations",
-                "Input": "",
-                "KQL Query": "",
-                "Execute": "",
-                "Output": "",
-                "Remarks/Comments": "This section provides baseline metrics for comparison",
-            }
-        )
-
-        # Total incidents
-        reference_rows.append(
-            {
-                "Step": "",
-                "Name": "Total Historical Incidents",
-                "Explanation": f"{rule_history.get('total_incidents', 0)} incidents",
-                "Input": "",
-                "KQL Query": "",
-                "Execute": "",
-                "Output": "",
-                "Remarks/Comments": "Complete historical dataset analyzed for pattern recognition",
-            }
-        )
-
-        # False Positive Rate
-        fp_count = rule_history.get("false_positives", 0)
-        total = rule_history.get("total_incidents", 1)
-        reference_rows.append(
-            {
-                "Step": "",
-                "Name": "False Positive Rate",
-                "Explanation": f"{rule_history.get('fp_rate', 0)}% ({fp_count} of {total} incidents)",
-                "Input": "",
-                "KQL Query": "",
-                "Execute": "",
-                "Output": "",
-                "Remarks/Comments": f"If similar patterns observed, likelihood of FP is {rule_history.get('fp_rate', 0)}%",
-            }
-        )
-
-        # True Positive Rate
-        tp_count = rule_history.get("true_positives", 0)
-        reference_rows.append(
-            {
-                "Step": "",
-                "Name": "True Positive Rate",
-                "Explanation": f"{rule_history.get('tp_rate', 0)}% ({tp_count} of {total} incidents)",
-                "Input": "",
-                "KQL Query": "",
-                "Execute": "",
-                "Output": "",
-                "Remarks/Comments": f"If threat indicators found, likelihood of TP is {rule_history.get('tp_rate', 0)}%",
-            }
-        )
-
-        # Common FP Justifications
-        justifications = rule_history.get("common_justifications", "")
-        if justifications and justifications != "N/A" and len(justifications) > 5:
-            # Truncate if too long
-            reference_rows.append(
-                {
-                    "Step": "",
-                    "Name": "Common FP Justifications",
-                    "Explanation": justifications,
-                    "Input": "",
-                    "KQL Query": "",
-                    "Execute": "",
-                    "Output": "",
-                    "Remarks/Comments": "Typical reasons for false positive classifications",
-                }
-            )
-
-        # FP Indicators
-        fp_indicators = rule_history.get("fp_indicators", "")
-        if fp_indicators and fp_indicators != "N/A" and len(fp_indicators) > 10:
-            # Clean and truncate
-            fp_indicators = fp_indicators.replace("\n", " | ")
-            reference_rows.append(
-                {
-                    "Step": "",
-                    "Name": "Typical FP Indicators",
-                    "Explanation": fp_indicators,
-                    "Input": "",
-                    "KQL Query": "",
-                    "Execute": "",
-                    "Output": "",
-                    "Remarks/Comments": "Look for these patterns in your investigation",
-                }
-            )
-
-        return reference_rows
 
     def export_to_excel(self, df: pd.DataFrame, rule_number: str) -> BytesIO:
         """Export DataFrame to Excel with professional formatting"""

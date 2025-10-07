@@ -14,68 +14,90 @@ class TriagingCrew:
         self.agents = TriagingAgents()
         self.tasks = TriagingTasks()
 
-    # (Other methods like generate_excel_template, run_analysis_phase, etc. remain the same)
 
-    def _parse_triaging_plan_robust(self, output, rule_history) -> list:
+    def _parse_generated_plan(self, text: str) -> list:
         """
-        Parses triaging plan from LLM output with a focus on quality and clarity.
-        This version is more robust to different output formats and dynamically
-        extracts the logical steps, KQL queries, and expected outputs.
+        Parses the new, requested structured format.
+        
+        Example:
+        ***
+        ### 1. Initial Triage 🔍
+        
+        * **Explanation:** The first step is to...
+        * **Input Required:** Incident Number...
+        * **KQL Query:** ```
+        ...
+        ```
+        * **Expected Output:** A comprehensive...
+        * **Decision Point:** N/A
+        
+        ***
         """
-        output_str = str(output)
         steps = []
-        
-        print("\n" + "=" * 80)
-        print("PARSING TRIAGING PLAN")
-        print("=" * 80)
-        
-        # Strategy 1: Look for structured format with markers
-        pattern = r"---\s*STEP:\s*(.+?)\s+EXPLANATION:\s*(.+?)\s+(?:KQL:\s*(.+?)\s+)?(?:EXPECTED_OUTPUT:\s*(.+?)\s+)?INPUT_REQUIRED:\s*(.+?)\s*---"
-        matches = re.findall(pattern, output_str, re.DOTALL | re.IGNORECASE)
+        # Regex to find each step block
+        step_blocks = re.split(r'\n\s*\*\*\*\s*\n', text.strip())
 
-        if matches:
-            print(f"✓ Found {len(matches)} structured steps")
-            for match in matches:
-                # Extract and clean data
-                step_name = self._clean_step_name_parsing(match[0].strip())
-                explanation = self._clean_explanation_parsing(match[1].strip())
-                kql = self._extract_kql_from_text(match[2].strip() if len(match) > 2 else "")
-                expected = self._clean_expected_output(match[3].strip() if len(match) > 3 else "")
-                
-                step = {
-                    "step_name": step_name,
-                    "explanation": explanation,
-                    "kql_query": kql,
-                    "expected_output": expected or self._generate_expected_output(step_name, rule_history),
-                    "user_input_required": ("yes" in match[4].lower() if len(match) > 4 else True),
-                }
-                steps.append(step)
+        for block in step_blocks:
+            if not block.strip():
+                continue
+
+            step = {}
+            lines = block.strip().split('\n')
             
+            # Step Name
+            name_match = re.match(r'###\s*\d+\.\s*(.+?)\s*[🔍✅📊📂]*', lines[0])
+            if name_match:
+                step_name_full = name_match.group(1).strip()
+                # Clean up the step name to make it concise
+                clean_name = self._clean_step_name_parsing(step_name_full)
+                step['step_name'] = clean_name
+            else:
+                continue
+
+            # Parse remaining lines
+            content = '\n'.join(lines[1:])
             
-            return steps
+            # Explanation
+            exp_match = re.search(r'\*\*\s*Explanation:\s*\*\*\s*(.+?)\n\s*\*\*', content, re.DOTALL | re.IGNORECASE)
+            step['explanation'] = exp_match.group(1).strip() if exp_match else ""
 
-        # Strategy 2: Line-by-line parsing
-        print("⚠ Structured format not found, using line-by-line parsing...")
-        steps = self._parse_line_by_line(output_str, rule_history)
+            # Input Required
+            input_match = re.search(r'\*\*\s*Input Required:\s*\*\*\s*(.+?)\n\s*\*\*', content, re.DOTALL | re.IGNORECASE)
+            step['input_required'] = input_match.group(1).strip() if input_match else ""
 
-        return steps if steps else self._create_fallback_steps()
+            # KQL Query
+            kql_match = re.search(r'\*\*\s*KQL Query:\s*\*\*\s*```(?:\s*kql)?(.+?)```', content, re.DOTALL | re.IGNORECASE)
+            step['kql_query'] = kql_match.group(1).strip() if kql_match else "N/A"
+
+            # Expected Output
+            expected_match = re.search(r'\*\*\s*Expected Output:\s*\*\*\s*(.+?)\n\s*\*\*', content, re.DOTALL | re.IGNORECASE)
+            step['expected_output'] = expected_match.group(1).strip() if expected_match else ""
+
+            # Decision Point
+            decision_match = re.search(r'\*\*\s*Decision Point:\s*\*\*\s*(.+?)$', content, re.DOTALL | re.IGNORECASE)
+            step['decision_point'] = decision_match.group(1).strip() if decision_match else ""
+            
+            steps.append(step)
+
+        return steps if len(steps) > 1 else []
+
 
     def _parse_line_by_line(self, text: str, rule_history: dict) -> list:
         """
         Parses a plan from unstructured text by identifying numbered steps and their content.
         """
         steps = []
-        
+
         # This regex looks for lines starting with a number and optionally a period,
         # followed by the step name. It then captures the content until the next step.
         step_pattern = re.compile(r"^\s*(\d+)\.\s*(.+?)(?=\n\s*\d+\.|\Z)", re.DOTALL | re.MULTILINE)
-        
+
         matches = step_pattern.finditer(text)
-        
+
         for match in matches:
             step_number = int(match.group(1))
             step_content = match.group(2).strip()
-            
+
             # The first line of the content is the step name
             lines = step_content.split('\n', 1)
             step_name_raw = lines[0]
@@ -88,7 +110,7 @@ class TriagingCrew:
 
             if not expected:
                 expected = self._generate_expected_output(step_name, rule_history)
-            
+
             steps.append({
                 "step_name": step_name,
                 "explanation": explanation,
@@ -96,10 +118,10 @@ class TriagingCrew:
                 "expected_output": expected,
                 "user_input_required": "yes" in explanation.lower() or "input" in explanation.lower()
             })
-            
+
             if len(steps) >= 8:
                 break
-                
+
         return steps
 
     def _extract_kql_from_text(self, text: str) -> str:
@@ -109,14 +131,14 @@ class TriagingCrew:
         match = re.search(kql_pattern, text, re.DOTALL | re.IGNORECASE)
         if match:
             return match.group(1).strip()
-            
+
         # Fallback to look for inline queries
         lines = text.split('\n')
         query_lines = []
         for line in lines:
             if " | " in line or line.strip().startswith("let") or "SigninLogs" in line:
                 query_lines.append(line.strip())
-        
+
         if query_lines:
             # Join and clean up, ensuring pipes are on new lines for readability
             full_query = " ".join(query_lines)
@@ -234,47 +256,6 @@ class TriagingCrew:
             },
         ]
 
-    def generate_excel_template(
-        self, rule_number: str, consolidated_data: dict, template_content: str
-    ):
-        """Generate clean Excel template using the structured format"""
-        try:
-            # Run AI analysis to get triaging steps
-            analysis_result = self.run_analysis_phase(
-                consolidated_data, template_content, rule_number
-            )
-
-            triaging_steps = analysis_result.get("triaging_plan", [])
-            rule_history = analysis_result.get("rule_history", {})
-
-            # Initialize template generator
-            from src.template_generator import TriagingTemplateGenerator
-
-            template_gen = TriagingTemplateGenerator()
-
-            # Generate structured DataFrame
-            template_df = template_gen.generate_structured_template(
-                rule_number, triaging_steps, rule_history
-            )
-
-            # Export to Excel
-            excel_file = template_gen.export_to_excel(template_df, rule_number)
-
-            return {
-                "excel_file": excel_file,
-                "template_df": template_df,
-                "triaging_steps": triaging_steps,
-                "rule_history": rule_history,
-                "analysis_result": analysis_result,
-            }
-
-        except Exception as e:
-            print(f"Error generating Excel template: {str(e)}")
-            import traceback
-
-            traceback.print_exc()
-            return None
-
     def run_analysis_phase(self, consolidated_data: dict, template_content: str, rule_number: str):
         """Run analysis with DETERMINISTIC parsing + AI enhancement"""
         try:
@@ -290,15 +271,15 @@ class TriagingCrew:
             # ========== DETERMINISTIC PARSING ==========
             from src.template_parser import TemplateParser
             import os
-            
+
             parser = TemplateParser()
-            
+
             # Find template file with better error handling
             template_dir = "data/triaging_templates"
-            
+
             print(f"\n🔍 Looking for template for: {rule_number}")
             print(f"📁 Template directory: {template_dir}")
-            
+
             if not os.path.exists(template_dir):
                 print(f"❌ Template directory does not exist!")
                 triaging_plan = self._create_fallback_steps()
@@ -306,36 +287,36 @@ class TriagingCrew:
                 # Extract rule number
                 rule_num_match = re.search(r'#?(\d+)', rule_number)
                 rule_num = rule_num_match.group(1) if rule_num_match else rule_number.replace('#', '').strip()
-                
+
                 print(f"🔢 Extracted rule number: {rule_num}")
-                
+
                 # List all files in directory
                 all_files = os.listdir(template_dir)
                 print(f"📄 Files in template directory: {all_files}")
-                
+
                 # Find matching template
                 template_files = [f for f in all_files if rule_num in f and (f.endswith('.csv') or f.endswith('.xlsx'))]
-                
+
                 print(f"✅ Matching templates found: {template_files}")
-                
+
                 if template_files:
                     template_path = os.path.join(template_dir, template_files[0])
                     print(f"📖 Using template: {template_path}")
-                    
+
                     try:
                         if template_path.endswith('.csv'):
                             triaging_plan = parser.parse_csv_template(template_path)
                         else:  # Excel
                             triaging_plan = parser.parse_excel_template(template_path)
-                        
+
                         print(f"✅ Successfully parsed {len(triaging_plan)} steps from template")
-                        
+
                         # Print first step as verification
                         if triaging_plan:
                             print(f"\n📋 First step preview:")
                             print(f"   Name: {triaging_plan[0].get('step_name', 'N/A')}")
                             print(f"   Has KQL: {'Yes' if triaging_plan[0].get('kql_query') else 'No'}")
-                        
+
                     except Exception as parse_error:
                         print(f"❌ Template parsing failed: {str(parse_error)}")
                         import traceback
@@ -344,26 +325,26 @@ class TriagingCrew:
                 else:
                     print(f"⚠️ No template found for rule {rule_num}, using fallback")
                     triaging_plan = self._create_fallback_steps()
-            
+
             # ========== AI PREDICTION (OPTIONAL) ==========
             prediction_agent = self.agents.prediction_analysis_agent()
-            
+
             data_summary = self._create_data_summary(consolidated_data)
             data_summary += f"\n\nHistorical: {rule_history.get('total_incidents', 0)} incidents, {rule_history.get('fp_rate', 0)}% FP"
-            
+
             prediction_task = self.tasks.predict_outcome_task(
                 agent=prediction_agent,
                 consolidated_data=consolidated_data,
                 rule_number=rule_number,
             )
-            
+
             crew = Crew(
                 agents=[prediction_agent],
                 tasks=[prediction_task],
                 process=Process.sequential,
                 verbose=False,  # Disable verbose to reduce noise
             )
-            
+
             result = crew.kickoff()
             predictions = self._parse_predictions(prediction_task.output)
             progressive_predictions = self._calculate_progressive_predictions(triaging_plan, rule_history)
@@ -506,43 +487,6 @@ Justification: {data.get('justification', 'N/A')}
         # Fallback: keyword detection
         return self._extract_prediction_from_text(output_str)
 
-    def _extract_steps_from_text(self, text: str) -> list:
-        """Extract steps from unstructured text"""
-        steps = []
-
-        # Split by numbered points or headers
-        sections = re.split(r"\n(?=\d+\.|#{2,3}\s|Step \d+:|\*\*Step)", text)
-
-        for section in sections:
-            section = section.strip()
-            if len(section) < 30:
-                continue
-
-            lines = section.split("\n")
-            step_name = re.sub(
-                r"^\d+\.\s*|\*\*|#{2,3}\s*|Step \d+:\s*", "", lines[0]
-            ).strip()
-
-            if not step_name or len(step_name) > 200:
-                continue
-
-            explanation = "\n".join(lines[1:]).strip() if len(lines) > 1 else section
-
-            steps.append(
-                {
-                    "step_name": step_name,
-                    "explanation": explanation,
-                    "kql_query": self._extract_kql_from_text(explanation),
-                    "expected_output": "",
-                    "user_input_required": True,
-                }
-            )
-
-            if len(steps) >= 10:
-                break
-
-        return steps
-
     def _extract_prediction_from_text(self, text: str) -> list:
         """Extract prediction from any text"""
         text_lower = text.lower()
@@ -563,58 +507,10 @@ Justification: {data.get('justification', 'N/A')}
             }
         ]
 
-    def _parse_triaging_plan_robust(self, output, rule_history) -> list:
-        """Parse triaging plan with focus on QUALITY and CLARITY"""
-        output_str = str(output)
-        steps = []
-
-        print("\n" + "=" * 80)
-        print("PARSING TRIAGING PLAN")
-        print("=" * 80)
-
-        # Strategy 1: Structured format with markers
-        pattern = r"---\s*STEP:\s*(.+?)\s+EXPLANATION:\s*(.+?)\s+(?:KQL:\s*(.+?)\s+)?(?:EXPECTED_OUTPUT:\s*(.+?)\s+)?INPUT_REQUIRED:\s*(.+?)\s*---"
-        matches = re.findall(pattern, output_str, re.DOTALL | re.IGNORECASE)
-
-        if matches:
-            print(f"✓ Found {len(matches)} structured steps")
-            for match in matches:
-                # Extract and clean data
-                step_name = self._clean_step_name_parsing(match[0].strip())
-                explanation = self._clean_explanation_parsing(match[1].strip())
-                kql = self._extract_kql(match[2].strip() if len(match) > 2 else "")
-                expected = self._clean_expected_output(
-                    match[3].strip() if len(match) > 3 else ""
-                )
-
-                step = {
-                    "step_name": step_name,
-                    "explanation": explanation,
-                    "kql_query": kql,
-                    "expected_output": expected
-                    or self._generate_expected_output(step_name, rule_history),
-                    "user_input_required": (
-                        "yes" in match[4].lower() if len(match) > 4 else True
-                    ),
-                }
-                steps.append(step)
-
-            return steps
-
-        # Strategy 2: Line-by-line parsing
-        print("⚠ Using line-by-line parsing...")
-        steps = self._parse_line_by_line(output_str, rule_history)
-
-        return steps if steps else self._create_fallback_steps()
-
-    def _create_minimal_plan(self, incident_data: dict, template: str) -> list:
-        """Create minimal viable plan if AI fails"""
-        return self._create_fallback_steps()
-
     def run_real_time_prediction(
-        self, 
-        triaging_comments: dict, 
-        rule_number: str, 
+        self,
+        triaging_comments: dict,
+        rule_number: str,
         template_content: str,
         consolidated_data: dict
     ) -> dict:
@@ -623,16 +519,16 @@ Justification: {data.get('justification', 'N/A')}
             print("\n" + "=" * 80)
             print("RUNNING REAL-TIME PREDICTION...")
             print("=" * 80)
-            
+
             # Get historical data
             from src.utils import read_all_tracker_sheets, consolidate_rule_data
-            
+
             all_data = read_all_tracker_sheets("data")
             rule_history = consolidate_rule_data(all_data, rule_number)
-            
+
             # Create prediction agent
             prediction_agent = self.agents.real_time_prediction_agent()
-            
+
             # Create prediction task
             prediction_task = self.tasks.real_time_prediction_task(
                 agent=prediction_agent,
@@ -641,7 +537,7 @@ Justification: {data.get('justification', 'N/A')}
                 rule_history=rule_history,
                 template_content=template_content
             )
-            
+
             # Create and run crew
             crew = Crew(
                 agents=[prediction_agent],
@@ -649,35 +545,35 @@ Justification: {data.get('justification', 'N/A')}
                 process=Process.sequential,
                 verbose=True,
             )
-            
+
             result = crew.kickoff()
-            
+
             # Parse the prediction
             parsed_prediction = self._parse_real_time_prediction(str(result))
-            
+
             # If parsing failed or returned None, use fallback
             if parsed_prediction is None:
                 print("⚠️ AI prediction parsing failed. Using keyword-based fallback.")
                 return self._create_fallback_prediction(triaging_comments, rule_history)
-            
+
             print("\n" + "=" * 80)
             print("REAL-TIME PREDICTION COMPLETE!")
             print("=" * 80)
-            
+
             return parsed_prediction
-            
+
         except Exception as e:
             print(f"\n⚠️ Error in AI prediction: {str(e)}")
             print("Using keyword-based fallback prediction...")
             import traceback
             traceback.print_exc()
-            
+
             # Return fallback prediction
             from src.utils import read_all_tracker_sheets, consolidate_rule_data
             all_data = read_all_tracker_sheets("data")
             rule_history = consolidate_rule_data(all_data, rule_number)
             return self._create_fallback_prediction(triaging_comments, rule_history)
-    
+
     def _parse_real_time_prediction(self, output: str) -> dict:
         """Parse real-time prediction output - FIXED VERSION."""
         import re

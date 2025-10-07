@@ -871,18 +871,22 @@ elif st.session_state.step == 3:
     if current_step_index < total_steps:
         current_step = st.session_state.triaging_plan[current_step_index]
 
-        st.markdown('<div class="step-container">', unsafe_allow_html=True)
-        st.markdown(f"## 🔍 {current_step.get('step_name', 'Investigation Step')}")
-        st.markdown(current_step.get("explanation", "No explanation available."))
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        # Display Expected Output
-        expected_output = current_step.get("expected_output", "")
-        if expected_output:
-            st.markdown('<div class="expected-output">', unsafe_allow_html=True)
-            st.markdown("### 💡 Expected Output (Based on Historical Data)")
-            st.markdown(expected_output)
-            st.markdown("</div>", unsafe_allow_html=True)
+        # Display the formatted step
+        st.markdown(f"***")
+        st.markdown(f"### {current_step_index + 1}. {current_step.get('step_name')} 🔍")
+        st.markdown(f"* **Explanation:** {current_step.get('explanation')}")
+        st.markdown(f"* **Input Required:** {current_step.get('input_required')}")
+        
+        kql_query = current_step.get('kql_query')
+        if kql_query and kql_query.strip() != 'N/A':
+            st.markdown(f"* **KQL Query:**")
+            st.code(kql_query, language='kql')
+        else:
+            st.markdown(f"* **KQL Query:** N/A")
+            
+        st.markdown(f"* **Expected Output:** {current_step.get('expected_output')}")
+        st.markdown(f"* **Decision Point:** {current_step.get('decision_point', 'N/A')}")
+        st.markdown(f"***")
 
         # Progressive Prediction Display
         if st.session_state.progressive_predictions:
@@ -950,30 +954,7 @@ elif st.session_state.step == 3:
                     st.markdown("**AI Reasoning:**")
                     st.info(prediction["reasoning"])
 
-        # KQL Query display
-        kql_query = current_step.get("kql_query", "")
-        if kql_query and kql_query.strip():
-            st.markdown("### 📊 KQL Query")
-            st.code(kql_query, language="sql")
-
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.caption(
-                    "Copy this query to run in your SIEM (e.g., Microsoft Sentinel, Azure Log Analytics)"
-                )
-            with col2:
-                if st.button("📋 Copy Query", key=f"copy_kql_{current_step_index}"):
-                    st.info(
-                        "Query copied to clipboard! (Use Ctrl+C manually if needed)"
-                    )
-
         st.markdown("---")
-
-        # Check if input is required
-        requires_input = current_step.get("user_input_required", True)
-
-        if not requires_input:
-            st.info("✅ This step does not require manual input. Review and proceed.")
 
         # User input section
         st.markdown("### ✏️ Your Findings")
@@ -983,7 +964,6 @@ elif st.session_state.step == 3:
             height=150,
             key=f"input_{current_step_index}",
             placeholder="Enter your investigation findings, observations, and any relevant details...",
-            disabled=not requires_input,
         )
 
         col1, col2, col3 = st.columns([1, 1, 3])
@@ -995,23 +975,15 @@ elif st.session_state.step == 3:
                     st.rerun()
 
         with col2:
-            if requires_input:
-                if st.button("Next Step →", type="primary"):
-                    if user_input.strip():
-                        st.session_state.triaging_output[
-                            current_step.get("step_name")
-                        ] = user_input
-                        st.session_state.current_step_index += 1
-                        st.rerun()
-                    else:
-                        st.warning("⚠️ Please enter your findings before proceeding.")
-            else:
-                if st.button("Next Step →", type="primary"):
-                    st.session_state.triaging_output[current_step.get("step_name")] = (
-                        "Auto-completed (no manual input required)"
-                    )
+            if st.button("Next Step →", type="primary"):
+                if user_input.strip():
+                    st.session_state.triaging_output[
+                        current_step.get("step_name")
+                    ] = user_input
                     st.session_state.current_step_index += 1
                     st.rerun()
+                else:
+                    st.warning("⚠️ Please enter your findings before proceeding.")
 
         with col3:
             if st.button(
