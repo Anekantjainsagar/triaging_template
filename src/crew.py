@@ -190,7 +190,7 @@ class TriagingCrew:
         elif "user" in step_lower and "confirm" in step_lower:
             return f"Typical outcome ({fp_rate}% FP rate): 'User confirmed activity', 'Legitimate action', 'Authorized by user'. Supports False Positive classification."
         elif "application" in step_lower or "app" in step_lower:
-            return f"Expected result ({fp_rate}% FP rate): 'Known applications', 'Approved apps', 'Whitelisted applications'. Indicates normal activity."
+            return f"Expected result ({fp_rate}% FP rate): 'Known applications', 'Approved apps'. If found → False Positive."
         else:
             return f"Based on {rule_history.get('total_incidents', 0)} historical incidents: {fp_rate}% were False Positive, {tp_rate}% were True Positive. Investigate thoroughly."
 
@@ -558,8 +558,8 @@ Justification: {data.get('justification', 'N/A')}
             {
                 "step_name": "Overall Assessment",
                 "prediction": prediction,
-                "confidence_score": "Medium",
-                "reasoning": text,
+                "confidence_score": "Low",
+                "reasoning": "Automated pattern detection from resolver comments.",
             }
         ]
 
@@ -984,4 +984,3 @@ Justification: {data.get('justification', 'N/A')}
                 "reasoning": "Automated pattern detection from resolver comments.",
             }
         ]
-    

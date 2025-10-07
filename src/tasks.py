@@ -257,8 +257,8 @@ class TriagingTasks:
                 - For [step name]: [Additional FP/TP indicators found online]
                 
                 Sources Used:
-                - [URL 1]
-                - [URL 2]
+                - https://www.youtube.com/watch?v=KsZ6tROaVOQ
+                - https://www.youtube.com/watch?v=-s7TCuCpB5c
                 ```
                 
                 ===========================================================================
@@ -383,19 +383,22 @@ class TriagingTasks:
                 | where UserPrincipalName == "john.doe@company.com"
                 | where TimeGenerated > ago(7d)
                 | project TimeGenerated, IPAddress, Location, DeviceDetail
+                | order by TimeGenerated desc
                 ```
                 
                 4. **EXPECTED_OUTPUT**:
                 Format: "Based on [X] past incidents ([Y]% FP): Typically shows '[specific finding from template/history]'. If found → [FP/TP]."
                 
                 Example:
-                "Based on 45 past incidents (82% FP): Typically shows 'Clean IP, No malicious reputation, Known device'. If found → False Positive (82% likelihood)."
+                "Based on 45 past incidents (82% FP): Typically shows 'Same country travel (US to US), Known device, MFA satisfied'. If found → False Positive (82% likelihood)."
                 
                 5. **DECISION_POINT** (if template had IF/THEN):
                 Extract from template's decision logic
                 
                 Example:
-                "If IP is malicious OR user denies activity → Escalate to L3 SOC. Else proceed to next step."
+                "If impossible travel detected (e.g., India to USA in 10 minutes) AND unknown device → Escalate immediately. Else proceed to IP check."
+                
+                INPUT_REQUIRED: Yes
                 
                 ===========================================================================
                 OUTPUT FORMAT (MANDATORY - EXACT FORMAT)
@@ -406,7 +409,7 @@ class TriagingTasks:
                 ---
                 STEP: [Exact name from template]
                 
-                EXPLANATION: [3 sentences: what to check, FP/TP indicators, escalation]
+                EXPLANATION: [2-3 sentences: what to check, FP/TP indicators, escalation]
                 
                 KQL: 
                 [Complete query from web research with actual incident data]
@@ -414,7 +417,7 @@ class TriagingTasks:
                 
                 EXPECTED_OUTPUT: Based on [X] incidents ([Y]% FP): Typically shows '[finding]'. If found → [indicates FP/TP].
                 
-                DECISION_POINT: [IF/THEN logic from template, if exists]
+                DECISION_POINT: [IF/THEN OR empty]
                 
                 INPUT_REQUIRED: Yes
                 ---
@@ -429,11 +432,13 @@ class TriagingTasks:
                 EXPLANATION: Gather incident details including username, IP address, geolocation, and timestamp. Review if locations are geographically impossible within the timeframe. Atypical travel between distant locations in short time indicates TP.
                 
                 KQL:
+                ```
                 SigninLogs
                 | where UserPrincipalName == "chorton@arcutis.com"
                 | where TimeGenerated > ago(1d)
                 | project TimeGenerated, IPAddress, Location, DeviceDetail, AppDisplayName
                 | order by TimeGenerated desc
+                ```
                 
                 EXPECTED_OUTPUT: Based on 58 past incidents (78% FP): Typically shows 'Same country travel (US to US), Known device, MFA satisfied'. If found → False Positive (78% likelihood).
                 
@@ -448,11 +453,13 @@ class TriagingTasks:
                 EXPLANATION: Verify IP reputation using VirusTotal, GreyNoise, or threat intelligence feeds. Clean IP with no malicious history indicates legitimate activity (FP). Malicious IP requires immediate escalation and blocking.
                 
                 KQL:
+                ```
                 SigninLogs
                 | where UserPrincipalName == "chorton@arcutis.com"
                 | where TimeGenerated > ago(7d)
                 | distinct IPAddress
                 | project IPAddress
+                ```
                 
                 EXPECTED_OUTPUT: Based on 58 past incidents (78% FP): Typically shows 'Clean IP, No threats, Corporate IP range'. If found → False Positive (78% likelihood).
                 
@@ -517,7 +524,7 @@ class TriagingTasks:
                 STEP: [Name from template]
                 EXPLANATION: [2-3 sentences]
                 KQL: [Query with actual data OR empty]
-                EXPECTED_OUTPUT: Based on X incidents (Y% FP): [finding]. If found → [FP/TP].
+                EXPECTED_OUTPUT: Based on X incidents (Y% FP): [finding]. If found → [indicates FP/TP].
                 DECISION_POINT: [IF/THEN OR empty]
                 INPUT_REQUIRED: Yes
                 ---
