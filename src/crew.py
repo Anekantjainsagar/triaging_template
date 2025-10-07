@@ -1,15 +1,248 @@
-import os
+import pandas as pd
+import re
+from io import BytesIO
+import json
+import traceback
+from textwrap import dedent
 from crewai import Crew, Process
 from src.agents import TriagingAgents
 from src.tasks import TriagingTasks
-import json
-import re
-
 
 class TriagingCrew:
     def __init__(self):
         self.agents = TriagingAgents()
         self.tasks = TriagingTasks()
+
+    # (Other methods like generate_excel_template, run_analysis_phase, etc. remain the same)
+
+    def _parse_triaging_plan_robust(self, output, rule_history) -> list:
+        """
+        Parses triaging plan from LLM output with a focus on quality and clarity.
+        This version is more robust to different output formats and dynamically
+        extracts the logical steps, KQL queries, and expected outputs.
+        """
+        output_str = str(output)
+        steps = []
+        
+        print("\n" + "=" * 80)
+        print("PARSING TRIAGING PLAN")
+        print("=" * 80)
+        
+        # Strategy 1: Look for structured format with markers
+        pattern = r"---\s*STEP:\s*(.+?)\s+EXPLANATION:\s*(.+?)\s+(?:KQL:\s*(.+?)\s+)?(?:EXPECTED_OUTPUT:\s*(.+?)\s+)?INPUT_REQUIRED:\s*(.+?)\s*---"
+        matches = re.findall(pattern, output_str, re.DOTALL | re.IGNORECASE)
+
+        if matches:
+            print(f"✓ Found {len(matches)} structured steps")
+            for match in matches:
+                # Extract and clean data
+                step_name = self._clean_step_name_parsing(match[0].strip())
+                explanation = self._clean_explanation_parsing(match[1].strip())
+                kql = self._extract_kql_from_text(match[2].strip() if len(match) > 2 else "")
+                expected = self._clean_expected_output(match[3].strip() if len(match) > 3 else "")
+                
+                step = {
+                    "step_name": step_name,
+                    "explanation": explanation,
+                    "kql_query": kql,
+                    "expected_output": expected or self._generate_expected_output(step_name, rule_history),
+                    "user_input_required": ("yes" in match[4].lower() if len(match) > 4 else True),
+                }
+                steps.append(step)
+            
+            # Quality check: limit to a reasonable number of steps
+            if len(steps) > 8:
+                print(f"⚠ Trimming from {len(steps)} to 8 steps (quality over quantity)")
+                steps = steps[:8]
+            
+            return steps
+
+        # Strategy 2: Line-by-line parsing
+        print("⚠ Structured format not found, using line-by-line parsing...")
+        steps = self._parse_line_by_line(output_str, rule_history)
+        
+        if len(steps) > 8:
+            steps = steps[:8]
+
+        return steps if steps else self._create_fallback_steps()
+
+    def _parse_line_by_line(self, text: str, rule_history: dict) -> list:
+        """
+        Parses a plan from unstructured text by identifying numbered steps and their content.
+        """
+        steps = []
+        
+        # This regex looks for lines starting with a number and optionally a period,
+        # followed by the step name. It then captures the content until the next step.
+        step_pattern = re.compile(r"^\s*(\d+)\.\s*(.+?)(?=\n\s*\d+\.|\Z)", re.DOTALL | re.MULTILINE)
+        
+        matches = step_pattern.finditer(text)
+        
+        for match in matches:
+            step_number = int(match.group(1))
+            step_content = match.group(2).strip()
+            
+            # The first line of the content is the step name
+            lines = step_content.split('\n', 1)
+            step_name_raw = lines[0]
+            step_details = lines[1] if len(lines) > 1 else ""
+
+            step_name = self._clean_step_name_parsing(step_name_raw)
+            explanation = self._clean_explanation_parsing(step_details)
+            kql = self._extract_kql_from_text(step_details)
+            expected = self._extract_expected_output_from_text(step_details)
+
+            if not expected:
+                expected = self._generate_expected_output(step_name, rule_history)
+            
+            steps.append({
+                "step_name": step_name,
+                "explanation": explanation,
+                "kql_query": kql,
+                "expected_output": expected,
+                "user_input_required": "yes" in explanation.lower() or "input" in explanation.lower()
+            })
+            
+            if len(steps) >= 8:
+                break
+                
+        return steps
+
+    def _extract_kql_from_text(self, text: str) -> str:
+        """Extracts KQL query from text, handling code blocks and inline queries."""
+        # Check for markdown code blocks first
+        kql_pattern = r"```(?:kql|kusto|sql)?\s*\n(.+?)\n```"
+        match = re.search(kql_pattern, text, re.DOTALL | re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+            
+        # Fallback to look for inline queries
+        lines = text.split('\n')
+        query_lines = []
+        for line in lines:
+            if " | " in line or line.strip().startswith("let") or "SigninLogs" in line:
+                query_lines.append(line.strip())
+        
+        if query_lines:
+            # Join and clean up, ensuring pipes are on new lines for readability
+            full_query = " ".join(query_lines)
+            return re.sub(r"\s*\|\s*", " |\n    ", full_query).strip()
+
+        return ""
+
+    def _extract_expected_output_from_text(self, text: str) -> str:
+        """Extracts expected output from a step's explanation."""
+        expected_pattern = r"(?:Expected Output|EXPECTED_OUTPUT|Typically shows):\s*(.+?)(?:\.|\n|\Z)"
+        match = re.search(expected_pattern, text, re.DOTALL | re.IGNORECASE)
+        if match:
+            clean = self._clean_expected_output(match.group(1))
+            return clean.strip()
+        return ""
+
+    # (Helper methods like _clean_step_name_parsing, _clean_explanation_parsing,
+    # _clean_expected_output, _generate_expected_output, etc. remain the same)
+    def _clean_step_name_parsing(self, name: str) -> str:
+        """Clean step name during parsing - make it ACTION-FOCUSED"""
+        clean = re.sub(r"\*+", "", name)
+        clean = re.sub(r"#+", "", clean)
+        clean = re.sub(r"^Step\s*\d+:?\s*", "", clean, flags=re.IGNORECASE)
+        clean = re.sub(r"^\d+\.\s*", "", clean)
+        clean = re.sub(r"^(Please\s+)?(Perform\s+)?(Complete\s+)?(Verify\s+and\s+)?", "", clean, flags=re.IGNORECASE)
+        words = clean.split()
+        if len(words) > 8:
+            clean = " ".join(words[:8])
+        clean = " ".join(clean.split())
+        return clean if clean and len(clean) > 3 else "Investigation Step"
+
+    def _clean_explanation_parsing(self, text: str) -> str:
+        """Clean explanation - keep it CONCISE (2-3 sentences max)"""
+        text = re.sub(r"\*+", "", text)
+        text = re.sub(r"#+", "", text)
+        text = re.sub(r"`", "", text)
+        sentences = text.split(". ")
+        if len(sentences) > 3:
+            text = ". ".join(sentences[:3])
+            if not text.endswith("."):
+                text += "."
+        text = re.sub(r"^(Explanation:|EXPLANATION:|Instructions:)\s*", "", text, flags=re.IGNORECASE)
+        if len(text) > 300:
+            text = text[:297] + "..."
+        text = " ".join(text.split())
+        return text.strip()
+
+    def _clean_expected_output(self, text: str) -> str:
+        """Clean expected output - ONE clear sentence"""
+        if not text or text.upper() in ["N/A", "NA", ""]:
+            return ""
+        text = re.sub(r"\*+", "", text)
+        text = re.sub(r"^(Expected Output:|EXPECTED_OUTPUT:|Expected:)\s*", "", text, flags=re.IGNORECASE)
+        sentences = text.split(". ")
+        text = sentences[0]
+        if not text.endswith("."):
+            text += "."
+        if len(text) > 150:
+            text = text[:147] + "..."
+        text = " ".join(text.split())
+        return text.strip()
+
+    def _generate_expected_output(self, step_name: str, rule_history: dict) -> str:
+        """Generate expected output based on step name and historical patterns"""
+        step_lower = step_name.lower()
+        fp_rate = rule_history.get("fp_rate", 50)
+        tp_rate = rule_history.get("tp_rate", 50)
+
+        if "ip" in step_lower or "reputation" in step_lower:
+            return f"Based on {rule_history.get('total_incidents', 0)} past incidents ({fp_rate}% FP rate): Typically find 'Clean IP', 'No malicious reputation', 'Known IP range'. If found, indicates False Positive."
+        elif "device" in step_lower or "registered" in step_lower:
+            return f"Expected ({fp_rate}% FP historical rate): 'Known device', 'Registered device', 'Corporate device'. Finding these suggests False Positive."
+        elif "mfa" in step_lower or "authentication" in step_lower:
+            return f"Common finding ({fp_rate}% FP rate): 'MFA successful', 'MFA enabled', 'Multi-factor authentication completed'. Indicates legitimate access."
+        elif "user" in step_lower and "confirm" in step_lower:
+            return f"Typical outcome ({fp_rate}% FP rate): 'User confirmed activity', 'Legitimate action', 'Authorized by user'. Supports False Positive classification."
+        elif "application" in step_lower or "app" in step_lower:
+            return f"Expected result ({fp_rate}% FP rate): 'Known applications', 'Approved apps', 'Whitelisted applications'. Indicates normal activity."
+        else:
+            return f"Based on {rule_history.get('total_incidents', 0)} historical incidents: {fp_rate}% were False Positive, {tp_rate}% were True Positive. Investigate thoroughly."
+
+    def _create_fallback_steps(self) -> list:
+        """Create CONCISE fallback steps"""
+        return [
+            {
+                "step_name": "Review Incident Details",
+                "explanation": "Review incident metadata including user, IP, and timestamp. Identify any obvious anomalies or patterns.",
+                "kql_query": "",
+                "expected_output": "Complete incident overview with key entities identified.",
+                "user_input_required": True,
+            },
+            {
+                "step_name": "Check Threat Intelligence",
+                "explanation": "Query threat intelligence sources for IP reputation and known malicious indicators. Clean reputation indicates FP.",
+                "kql_query": "",
+                "expected_output": "Typically shows: Clean IP, No threats. If found → False Positive.",
+                "user_input_required": True,
+            },
+            {
+                "step_name": "Review User Activity",
+                "explanation": "Check user sign-in history and behavior patterns. Consistent with normal activity indicates FP.",
+                "kql_query": "",
+                "expected_output": "Typically shows: Known devices, Normal patterns. If found → False Positive.",
+                "user_input_required": True,
+            },
+            {
+                "step_name": "Verify MFA Status",
+                "explanation": "Confirm multi-factor authentication completion. Successful MFA indicates legitimate access.",
+                "kql_query": "",
+                "expected_output": "Typically shows: MFA successful. If found → False Positive.",
+                "user_input_required": True,
+            },
+            {
+                "step_name": "Final Classification",
+                "explanation": "Classify as True Positive, False Positive, or Benign Positive based on all evidence. Document justification.",
+                "kql_query": "",
+                "expected_output": "Final determination with supporting evidence.",
+                "user_input_required": True,
+            },
+        ]
 
     def generate_excel_template(
         self, rule_number: str, consolidated_data: dict, template_content: str
@@ -170,129 +403,6 @@ COMMON PATTERNS FROM RESOLVER COMMENTS:
                 "rule_history": {},
             }
 
-    def _parse_triaging_plan_robust(self, output, rule_history) -> list:
-        """Robust parsing with multiple strategies to ensure ALL data is captured"""
-        output_str = str(output)
-        steps = []
-
-        print("\n" + "=" * 80)
-        print("PARSING TRIAGING PLAN")
-        print("=" * 80)
-
-        # Strategy 1: Look for structured format with markers
-        pattern = r"---\s*STEP:\s*(.+?)\s+EXPLANATION:\s*(.+?)\s+(?:KQL:\s*(.+?)\s+)?(?:EXPECTED_OUTPUT:\s*(.+?)\s+)?INPUT_REQUIRED:\s*(.+?)\s*---"
-        matches = re.findall(pattern, output_str, re.DOTALL | re.IGNORECASE)
-
-        if matches:
-            print(f"✓ Found {len(matches)} steps using structured format")
-            for match in matches:
-                kql = (
-                    match[2].strip()
-                    if len(match) > 2
-                    and match[2].strip()
-                    and match[2].strip().upper() != "N/A"
-                    else ""
-                )
-                expected = (
-                    match[3].strip()
-                    if len(match) > 3
-                    and match[3].strip()
-                    and match[3].strip().upper() != "N/A"
-                    else ""
-                )
-
-                step = {
-                    "step_name": match[0].strip(),
-                    "explanation": match[1].strip(),
-                    "kql_query": kql,
-                    "expected_output": expected,
-                    "user_input_required": (
-                        "yes" in match[4].lower() if len(match) > 4 else True
-                    ),
-                }
-                steps.append(step)
-            return steps
-
-        # Strategy 2: Parse line by line for steps
-        print("⚠ Structured format not found, using line-by-line parsing...")
-
-        lines = output_str.split("\n")
-        current_step = None
-        current_field = None
-
-        for line in lines:
-            line = line.strip()
-
-            # Detect step start
-            if re.match(r"^(STEP|Step)\s*\d*:?\s*", line, re.IGNORECASE):
-                if current_step:
-                    steps.append(current_step)
-
-                step_name = re.sub(
-                    r"^(STEP|Step)\s*\d*:?\s*", "", line, flags=re.IGNORECASE
-                ).strip()
-                current_step = {
-                    "step_name": step_name,
-                    "explanation": "",
-                    "kql_query": "",
-                    "expected_output": "",
-                    "user_input_required": True,
-                }
-                current_field = None
-
-            elif current_step:
-                # Detect field markers
-                if line.upper().startswith("EXPLANATION:"):
-                    current_field = "explanation"
-                    current_step["explanation"] = (
-                        line.replace("EXPLANATION:", "")
-                        .replace("Explanation:", "")
-                        .strip()
-                    )
-                elif line.upper().startswith("KQL:"):
-                    current_field = "kql_query"
-                    current_step["kql_query"] = (
-                        line.replace("KQL:", "").replace("kql:", "").strip()
-                    )
-                elif line.upper().startswith("EXPECTED"):
-                    current_field = "expected_output"
-                    current_step["expected_output"] = (
-                        line.replace("EXPECTED_OUTPUT:", "")
-                        .replace("Expected Output:", "")
-                        .strip()
-                    )
-                elif line.upper().startswith("INPUT_REQUIRED"):
-                    current_field = None
-                    current_step["user_input_required"] = "yes" in line.lower()
-                elif current_field and line:
-                    # Continue adding to current field
-                    current_step[current_field] += " " + line
-
-        # Add last step
-        if current_step and current_step.get("step_name"):
-            steps.append(current_step)
-
-        # Strategy 3: If still no steps, extract from numbered/bulleted lists
-        if not steps:
-            print("⚠ Line parsing failed, trying numbered list extraction...")
-            steps = self._extract_steps_from_text(output_str)
-
-        # Enhance steps with expected outputs if missing
-        for step in steps:
-            if not step.get("expected_output") and step.get("step_name"):
-                step["expected_output"] = self._generate_expected_output(
-                    step["step_name"], rule_history
-                )
-
-            # Clean up text
-            if step.get("explanation"):
-                step["explanation"] = self._clean_text_for_display(step["explanation"])
-            if step.get("kql_query"):
-                step["kql_query"] = self._clean_kql(step["kql_query"])
-
-        print(f"✓ Extracted {len(steps)} total steps")
-        return steps if steps else self._create_fallback_steps()
-
     def _clean_text_for_display(self, text: str) -> str:
         """Clean text by removing markdown and extra whitespace"""
         if not text:
@@ -319,31 +429,6 @@ COMMON PATTERNS FROM RESOLVER COMMENTS:
         kql = kql.strip()
 
         return kql if len(kql) > 10 else ""
-
-    def _generate_expected_output(self, step_name: str, rule_history: dict) -> str:
-        """Generate expected output based on step name and historical patterns"""
-        step_lower = step_name.lower()
-        fp_rate = rule_history.get("fp_rate", 50)
-        tp_rate = rule_history.get("tp_rate", 50)
-
-        # Pattern-based expected outputs
-        if "ip" in step_lower or "reputation" in step_lower:
-            return f"Based on {rule_history.get('total_incidents', 0)} past incidents ({fp_rate}% FP rate): Typically find 'Clean IP', 'No malicious reputation', 'Known IP range'. If found, indicates False Positive."
-
-        elif "device" in step_lower or "registered" in step_lower:
-            return f"Expected ({fp_rate}% FP historical rate): 'Known device', 'Registered device', 'Corporate device'. Finding these suggests False Positive."
-
-        elif "mfa" in step_lower or "authentication" in step_lower:
-            return f"Common finding ({fp_rate}% FP rate): 'MFA successful', 'MFA enabled', 'Multi-factor authentication completed'. Indicates legitimate access."
-
-        elif "user" in step_lower and "confirm" in step_lower:
-            return f"Typical outcome ({fp_rate}% FP rate): 'User confirmed activity', 'Legitimate action', 'Authorized by user'. Supports False Positive classification."
-
-        elif "application" in step_lower or "app" in step_lower:
-            return f"Expected result ({fp_rate}% FP rate): 'Known applications', 'Approved apps', 'Whitelisted applications'. Indicates normal activity."
-
-        else:
-            return f"Based on {rule_history.get('total_incidents', 0)} historical incidents: {fp_rate}% were False Positive, {tp_rate}% were True Positive. Investigate thoroughly."
 
     def _calculate_progressive_predictions(
         self, triaging_plan: list, rule_history: dict
@@ -475,31 +560,6 @@ Justification: {data.get('justification', 'N/A')}
 
         return steps
 
-    def _extract_kql_from_text(self, text: str) -> str:
-        """Extract KQL query from text"""
-        # Look for code blocks
-        kql_pattern = r"```(?:kql|kusto|sql)?\s*\n(.+?)\n```"
-        match = re.search(kql_pattern, text, re.DOTALL | re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-
-        # Look for SigninLogs queries
-        if "SigninLogs" in text or "| where" in text:
-            lines = text.split("\n")
-            query_lines = []
-            in_query = False
-            for line in lines:
-                if "SigninLogs" in line or "| where" in line:
-                    in_query = True
-                if in_query:
-                    query_lines.append(line)
-                    if not line.strip().startswith("|") and len(query_lines) > 1:
-                        break
-            if query_lines:
-                return "\n".join(query_lines).strip()
-
-        return ""
-
     def _extract_prediction_from_text(self, text: str) -> list:
         """Extract prediction from any text"""
         text_lower = text.lower()
@@ -573,128 +633,6 @@ Justification: {data.get('justification', 'N/A')}
             steps = steps[:8]
 
         return steps if steps else self._create_fallback_steps()
-
-    def _clean_step_name_parsing(self, name: str) -> str:
-        """Clean step name during parsing - make it ACTION-FOCUSED"""
-        # Remove markdown
-        clean = re.sub(r"\*+", "", name)
-        clean = re.sub(r"#+", "", clean)
-        clean = re.sub(r"^Step\s*\d+:?\s*", "", clean, flags=re.IGNORECASE)
-        clean = re.sub(r"^\d+\.\s*", "", clean)
-
-        # Remove verbose phrases
-        clean = re.sub(
-            r"^(Please\s+)?(Perform\s+)?(Complete\s+)?(Verify\s+and\s+)?",
-            "",
-            clean,
-            flags=re.IGNORECASE,
-        )
-
-        # Limit length (max 8 words)
-        words = clean.split()
-        if len(words) > 8:
-            clean = " ".join(words[:8])
-
-        clean = " ".join(clean.split())
-        return clean if clean and len(clean) > 3 else "Investigation Step"
-
-    def _clean_explanation_parsing(self, text: str) -> str:
-        """Clean explanation - keep it CONCISE (2-3 sentences max)"""
-        # Remove markdown
-        text = re.sub(r"\*+", "", text)
-        text = re.sub(r"#+", "", text)
-        text = re.sub(r"`", "", text)
-
-        # Split into sentences
-        sentences = text.split(". ")
-
-        # Keep only first 2-3 sentences
-        if len(sentences) > 3:
-            text = ". ".join(sentences[:3])
-            if not text.endswith("."):
-                text += "."
-
-        # Remove common prefixes
-        text = re.sub(
-            r"^(Explanation:|EXPLANATION:|Instructions:)\s*",
-            "",
-            text,
-            flags=re.IGNORECASE,
-        )
-
-        # Limit total length
-        if len(text) > 300:
-            text = text[:297] + "..."
-
-        text = " ".join(text.split())
-        return text.strip()
-
-    def _clean_expected_output(self, text: str) -> str:
-        """Clean expected output - ONE clear sentence"""
-        if not text or text.upper() in ["N/A", "NA", ""]:
-            return ""
-
-        # Remove markdown
-        text = re.sub(r"\*+", "", text)
-        text = re.sub(
-            r"^(Expected Output:|EXPECTED_OUTPUT:|Expected:)\s*",
-            "",
-            text,
-            flags=re.IGNORECASE,
-        )
-
-        # Get first sentence only
-        sentences = text.split(". ")
-        text = sentences[0]
-        if not text.endswith("."):
-            text += "."
-
-        # Limit length
-        if len(text) > 150:
-            text = text[:147] + "..."
-
-        text = " ".join(text.split())
-        return text.strip()
-
-    def _create_fallback_steps(self) -> list:
-        """Create CONCISE fallback steps"""
-        return [
-            {
-                "step_name": "Review Incident Details",
-                "explanation": "Review incident metadata including user, IP, and timestamp. Identify any obvious anomalies or patterns.",
-                "kql_query": "",
-                "expected_output": "Complete incident overview with key entities identified.",
-                "user_input_required": True,
-            },
-            {
-                "step_name": "Check Threat Intelligence",
-                "explanation": "Query threat intelligence sources for IP reputation and known malicious indicators. Clean reputation indicates FP.",
-                "kql_query": "",
-                "expected_output": "Typically shows: Clean IP, No threats. If found → False Positive.",
-                "user_input_required": True,
-            },
-            {
-                "step_name": "Review User Activity",
-                "explanation": "Check user sign-in history and behavior patterns. Consistent with normal activity indicates FP.",
-                "kql_query": "",
-                "expected_output": "Typically shows: Known devices, Normal patterns. If found → False Positive.",
-                "user_input_required": True,
-            },
-            {
-                "step_name": "Verify MFA Status",
-                "explanation": "Confirm multi-factor authentication completion. Successful MFA indicates legitimate access.",
-                "kql_query": "",
-                "expected_output": "Typically shows: MFA successful. If found → False Positive.",
-                "user_input_required": True,
-            },
-            {
-                "step_name": "Final Classification",
-                "explanation": "Classify as True Positive, False Positive, or Benign Positive based on all evidence. Document justification.",
-                "kql_query": "",
-                "expected_output": "Final determination with supporting evidence.",
-                "user_input_required": True,
-            },
-        ]
 
     def _create_minimal_plan(self, incident_data: dict, template: str) -> list:
         """Create minimal viable plan if AI fails"""
@@ -1073,3 +1011,4 @@ Justification: {data.get('justification', 'N/A')}
                 "reasoning": "Automated pattern detection from resolver comments.",
             }
         ]
+    
