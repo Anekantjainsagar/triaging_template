@@ -1,5 +1,0 @@
-Now what I wanted is that when I select a alert
-1. it should fetch all the alerts related to that name from all the consolidated tracker sheets and create a excel out of that
-2. It should fetch the relevent triaging template
-3. Now it should create a stepwise frontend in which at each step it'll guide like in teh triaging template how it's guiding but in this in very much detail using web data, llm, triaging templates data that what to investigate then if possible add buttons for moving ahead inputis not necessary everytime
-4. It should create the same  structure triaging templates and export it blank details like incident no, time andall that but steps, kql queriesand all other should be  there
