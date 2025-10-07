@@ -2,29 +2,33 @@ import pandas as pd
 import re
 from io import BytesIO
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+
 
 class TriagingTemplateGenerator:
     """
-    Generates clean, structured triaging templates in Excel format
-    No asterisks, proper formatting, comprehensive details
+    Generates clean, structured triaging templates in Excel format.
+    No asterisks, proper formatting, comprehensive details with KQL queries.
     """
-    
+
     def __init__(self):
         self.template_columns = [
-            "Step", 
-            "Name", 
-            "Explanation", 
-            "Input", 
-            "KQL Query", 
-            "Execute", 
-            "Output", 
-            "Remarks/Comments"
+            "Step",
+            "Name",
+            "Explanation",
+            "Input",
+            "KQL Query",
+            "Execute",
+            "Output",
+            "Remarks/Comments",
         ]
-    
-    def generate_structured_template(self, rule_number: str, triaging_steps: list, rule_history: dict) -> pd.DataFrame:
+
+    def generate_structured_template(
+        self, rule_number: str, triaging_steps: list, rule_history: dict
+    ) -> pd.DataFrame:
         """Generate structured template as DataFrame for Excel export"""
         template_rows = []
-        
+
         # Add rule header row
         header_row = {
             "Step": "",
@@ -34,49 +38,51 @@ class TriagingTemplateGenerator:
             "KQL Query": "",
             "Execute": "",
             "Output": "",
-            "Remarks/Comments": f"Total incidents analyzed: {rule_history.get('total_incidents', 0)}"
+            "Remarks/Comments": f"Total incidents analyzed: {rule_history.get('total_incidents', 0)}",
         }
         template_rows.append(header_row)
-        
+
         # Add investigation steps
         for i, step in enumerate(triaging_steps, 1):
             step_row = self._create_step_row(i, step, rule_history)
             template_rows.append(step_row)
-        
+
         # Add final assessment steps
-        final_steps = self._create_final_assessment_steps(len(triaging_steps) + 1, rule_history)
+        final_steps = self._create_final_assessment_steps(
+            len(triaging_steps) + 1, rule_history
+        )
         template_rows.extend(final_steps)
-        
+
         # Add historical reference section
         reference_rows = self._create_reference_section(rule_history)
         template_rows.extend(reference_rows)
-        
+
         return pd.DataFrame(template_rows)
-    
+
     def _create_step_row(self, step_num: int, step: dict, rule_history: dict) -> dict:
-        """Create a single step row with clean formatting"""
+        """Create a single step row with clean formatting and complete data"""
         step_name = step.get("step_name", f"Investigation Step {step_num}")
         explanation = step.get("explanation", "")
         expected_output = step.get("expected_output", "")
         kql_query = step.get("kql_query", "")
-        
-        # Clean up the step name (remove markdown and asterisks)
-        clean_name = re.sub(r'\*+|#+|Step \d+:?', '', step_name).strip()
-        if clean_name.startswith(":"):
-            clean_name = clean_name[1:].strip()
-        
+
+        # Clean up the step name (remove markdown, asterisks, numbering)
+        clean_name = self._clean_step_name(step_name)
+
         # Clean up explanation (remove markdown formatting)
         clean_explanation = self._clean_text(explanation)
-        
-        # Extract input requirements
-        input_required = self._extract_input_requirements(explanation, expected_output)
-        
-        # Clean KQL query
+
+        # Extract input requirements from explanation and expected output
+        input_required = self._extract_input_requirements(
+            clean_explanation, expected_output
+        )
+
+        # Clean and format KQL query
         clean_kql = self._clean_kql_query(kql_query)
-        
-        # Create remarks with expected output
-        remarks = self._create_remarks(expected_output, rule_history)
-        
+
+        # Create comprehensive remarks with expected output
+        remarks = self._create_remarks(expected_output, rule_history, clean_explanation)
+
         return {
             "Step": step_num,
             "Name": clean_name,
@@ -84,278 +90,442 @@ class TriagingTemplateGenerator:
             "Input": input_required,
             "KQL Query": clean_kql,
             "Execute": "",  # Empty for manual filling
-            "Output": "",   # Empty for manual filling
-            "Remarks/Comments": remarks
+            "Output": "",  # Empty for manual filling
+            "Remarks/Comments": remarks,
         }
-    
+
+    def _clean_step_name(self, step_name: str) -> str:
+        """Clean and SIMPLIFY step name - make it action-focused and concise"""
+        if not step_name:
+            return "Investigation Step"
+
+        # Remove all markdown formatting
+        clean = re.sub(r"\*+", "", step_name)
+        clean = re.sub(r"#+", "", clean)
+        clean = re.sub(r"^Step\s*\d+:?\s*", "", clean, flags=re.IGNORECASE)
+        clean = re.sub(r"^\d+\.\s*", "", clean)
+        clean = re.sub(r"^[\-\*]\s*", "", clean)
+
+        # Remove common verbose phrases
+        clean = re.sub(
+            r"^(Please\s+)?(Perform\s+)?(Complete\s+)?", "", clean, flags=re.IGNORECASE
+        )
+        clean = re.sub(r"\s+(step|phase|task)$", "", clean, flags=re.IGNORECASE)
+
+        # Simplify overly long names (keep first 6-7 words max)
+        words = clean.split()
+        if len(words) > 7:
+            clean = " ".join(words[:7])
+
+        # Clean whitespace
+        clean = " ".join(clean.strip().split())
+
+        return clean if clean else "Investigation Step"
+
     def _clean_text(self, text: str) -> str:
-        """Clean text by removing markdown formatting and asterisks"""
+        """Clean explanation text - remove markdown and keep CONCISE"""
         if not text:
             return ""
-        
-        # Remove markdown formatting
-        clean_text = re.sub(r'\*+', '', text)  # Remove asterisks
-        clean_text = re.sub(r'#+', '', clean_text)  # Remove hash symbols
-        clean_text = re.sub(r'``````', '', clean_text)  # Remove code blocks
-        clean_text = re.sub(r'`[^`]*`', '', clean_text)  # Remove inline code
-        clean_text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', clean_text)  # Remove links
-        
-        # Clean up extra whitespace
-        clean_text = ' '.join(clean_text.split())
-        
-        # Remove "Explanation:" prefix if present
-        clean_text = re.sub(r'^Explanation:\s*', '', clean_text, flags=re.IGNORECASE)
-        
-        return clean_text.strip()
-    
-    def _extract_input_requirements(self, explanation: str, expected_output: str) -> str:
-        """Extract what inputs/data are required for this step"""
-        inputs = []
-        
-        # Common input patterns
-        if "incident" in explanation.lower() or "consolidation" in explanation.lower():
-            inputs.append("Incident ID/Number")
-        
-        if "ip" in explanation.lower() or "address" in explanation.lower():
-            inputs.append("Source IP Address")
-        
-        if "user" in explanation.lower():
-            inputs.append("Username/User Details")
-        
-        if "application" in explanation.lower() or "app" in explanation.lower():
-            inputs.append("Application/Service Names")
-        
-        if "device" in explanation.lower():
-            inputs.append("Device Information")
-        
-        if "logs" in explanation.lower():
-            inputs.append("Log Files/Events")
-        
-        if "mfa" in explanation.lower() or "authentication" in explanation.lower():
-            inputs.append("Authentication Details")
-        
-        # If no specific inputs identified, provide general guidance
-        if not inputs:
-            inputs.append("Incident details and relevant security data")
-        
-        return ", ".join(inputs)
-    
-    def _clean_kql_query(self, kql: str) -> str:
-        """Clean and format KQL query for Excel display"""
-        if not kql or kql.strip() == "":
-            return ""
-        
-        # Remove markdown code block formatting
-        clean_kql = re.sub(r'```', '', clean_kql)
-        
-        # Clean up whitespace but preserve query structure
-        lines = [line.strip() for line in clean_kql.split('\n') if line.strip()]
-        clean_kql = ' | '.join(lines) if len(lines) > 1 else clean_kql.strip()
-        
-        return clean_kql
-    
-    def _create_remarks(self, expected_output: str, rule_history: dict) -> str:
-        """Create comprehensive remarks based on expected output and historical data"""
+
+        # Remove markdown
+        clean_text = re.sub(r"\*\*\*+", "", text)
+        clean_text = re.sub(r"\*\*", "", clean_text)
+        clean_text = re.sub(r"\*", "", clean_text)
+        clean_text = re.sub(r"#+\s*", "", clean_text)
+        clean_text = re.sub(r"```[a-z]*\n", "", clean_text)
+        clean_text = re.sub(r"\n```", "", clean_text)
+        clean_text = re.sub(r"`([^`]+)`", r"\1", clean_text)
+
+        # Remove common verbose prefixes
+        clean_text = re.sub(
+            r"^(Explanation:|EXPLANATION:|Description:|DESCRIPTION:|Instructions:|INSTRUCTIONS:)\s*",
+            "",
+            clean_text,
+            flags=re.IGNORECASE,
+        )
+
+        # Limit explanation length (max 200 chars for conciseness)
+        if len(clean_text) > 200:
+            # Try to cut at sentence boundary
+            sentences = clean_text.split(". ")
+            clean_text = sentences[0]
+            if len(sentences) > 1 and len(clean_text) < 150:
+                clean_text += ". " + sentences[1]
+            if not clean_text.endswith("."):
+                clean_text += "."
+
+        # Clean whitespace
+        clean_text = re.sub(r"\s+", " ", clean_text)
+        clean_text = clean_text.strip()
+
+        return clean_text
+
+    def _create_remarks(
+        self, expected_output: str, rule_history: dict, explanation: str
+    ) -> str:
+        """Create CONCISE remarks with key info only"""
         remarks = []
-        
+
+        # Add expected output (simplified)
         if expected_output:
             clean_expected = self._clean_text(expected_output)
-            if clean_expected:
-                remarks.append(f"Expected: {clean_expected}")
-        
-        # Add historical context
-        fp_rate = rule_history.get('fp_rate', 0)
-        tp_rate = rule_history.get('tp_rate', 0)
-        
-        if fp_rate > 80:
-            remarks.append(f"High FP rate ({fp_rate}%) - likely legitimate activity")
-        elif tp_rate > 50:
-            remarks.append(f"Moderate TP rate ({tp_rate}%) - investigate thoroughly")
-        
-        return " | ".join(remarks) if remarks else "Document findings and analysis"
-    
-    def _create_final_assessment_steps(self, start_num: int, rule_history: dict) -> list:
+            if clean_expected and len(clean_expected) > 10:
+                # Truncate to 120 chars max
+                if len(clean_expected) > 120:
+                    clean_expected = clean_expected[:117] + "..."
+                remarks.append(clean_expected)
+
+        # Add ONE historical insight (most relevant)
+        fp_rate = rule_history.get("fp_rate", 0)
+        tp_rate = rule_history.get("tp_rate", 0)
+
+        if fp_rate > 70:
+            remarks.append(f"High FP rate ({fp_rate}%) - typically legitimate")
+        elif tp_rate > 60:
+            remarks.append(f"High TP rate ({tp_rate}%) - investigate thoroughly")
+
+        # Add escalation note if mentioned
+        if "escalat" in explanation.lower() or "vip" in explanation.lower():
+            remarks.append("Handle with priority")
+
+        # Join with separator, max 2 remarks
+        return " | ".join(remarks[:2]) if remarks else "Document findings"
+
+    def _extract_input_requirements(
+        self, explanation: str, expected_output: str
+    ) -> str:
+        """Extract what inputs/data are required for this step"""
+        inputs = []
+        combined_text = f"{explanation} {expected_output}".lower()
+
+        # Define input patterns with priority
+        input_patterns = [
+            ("incident number", ["incident", "incident id"]),
+            ("user principal name", ["user", "username", "upn", "email"]),
+            ("source ip address", ["ip", "ip address", "source ip"]),
+            ("application name", ["application", "app", "service"]),
+            ("device information", ["device", "endpoint", "machine"]),
+            ("authentication logs", ["signin", "sign-in", "login", "authentication"]),
+            ("mfa details", ["mfa", "multi-factor", "2fa"]),
+            ("timestamp range", ["time", "timestamp", "date range"]),
+            ("geolocation data", ["location", "geo", "country", "city"]),
+            ("reputation score", ["reputation", "threat intelligence"]),
+        ]
+
+        for input_name, keywords in input_patterns:
+            if any(keyword in combined_text for keyword in keywords):
+                if input_name not in inputs:
+                    inputs.append(input_name)
+
+        # If no specific inputs identified, provide context-based input
+        if not inputs:
+            if "consolidat" in combined_text or "gather" in combined_text:
+                inputs.append("Incident data and relevant logs")
+            elif "verify" in combined_text or "check" in combined_text:
+                inputs.append("Investigation findings from previous steps")
+            else:
+                inputs.append("Incident details and security context")
+
+        return ", ".join(inputs)
+
+    def _clean_kql_query(self, kql: str) -> str:
+        """Clean and format KQL query for Excel display"""
+        if not kql or kql.strip() == "" or kql.strip().upper() == "N/A":
+            return ""
+
+        # Remove markdown code block formatting
+        clean_kql = re.sub(r"```[a-z]*\s*\n?", "", kql)
+        clean_kql = re.sub(r"\n?```", "", clean_kql)
+
+        # Clean up excessive whitespace but preserve line structure
+        lines = [line.strip() for line in clean_kql.split("\n") if line.strip()]
+
+        # Format KQL query properly
+        formatted_lines = []
+        for line in lines:
+            # Add proper spacing for pipe operators
+            if line.startswith("|"):
+                formatted_lines.append(line)
+            else:
+                formatted_lines.append(line)
+
+        clean_kql = "\n".join(formatted_lines)
+
+        return clean_kql.strip()
+
+    def _create_final_assessment_steps(
+        self, start_num: int, rule_history: dict
+    ) -> list:
         """Create standardized final assessment steps"""
         steps = []
         current_num = start_num
-        
+
         # Final Classification
-        steps.append({
-            "Step": current_num,
-            "Name": "Final Classification",
-            "Explanation": "Classify the incident based on investigation findings and evidence collected",
-            "Input": "All investigation findings from previous steps",
-            "KQL Query": "",
-            "Execute": "",
-            "Output": "",
-            "Remarks/Comments": f"Options: True Positive, False Positive, Benign Positive (Historical: {rule_history.get('fp_rate', 0)}% FP, {rule_history.get('tp_rate', 0)}% TP)"
-        })
+        steps.append(
+            {
+                "Step": current_num,
+                "Name": "Final Classification",
+                "Explanation": "Classify the incident based on all investigation findings and evidence collected from previous steps. Consider the overall context, user behavior patterns, and threat indicators.",
+                "Input": "All investigation findings from previous steps",
+                "KQL Query": "",
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": f"Options: True Positive, False Positive, Benign Positive. Historical baseline: {rule_history.get('fp_rate', 0)}% FP, {rule_history.get('tp_rate', 0)}% TP",
+            }
+        )
         current_num += 1
-        
+
         # Confidence Assessment
-        steps.append({
-            "Step": current_num,
-            "Name": "Confidence Assessment",
-            "Explanation": "Assess confidence level based on strength and quality of evidence from investigation",
-            "Input": "Evidence quality and completeness",
-            "KQL Query": "",
-            "Execute": "",
-            "Output": "",
-            "Remarks/Comments": "Scale: High (strong evidence), Medium (moderate evidence), Low (limited evidence)"
-        })
+        steps.append(
+            {
+                "Step": current_num,
+                "Name": "Confidence Level Assessment",
+                "Explanation": "Assess your confidence level in the classification based on the quality and completeness of evidence gathered. High confidence requires strong, corroborating evidence from multiple sources.",
+                "Input": "Evidence quality, completeness, and consistency",
+                "KQL Query": "",
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": "Scale: High (strong evidence from multiple sources), Medium (moderate evidence with some gaps), Low (limited or conflicting evidence)",
+            }
+        )
         current_num += 1
-        
-        # Justification
-        steps.append({
-            "Step": current_num,
-            "Name": "Detailed Justification",
-            "Explanation": "Provide comprehensive reasoning for classification decision with specific evidence references",
-            "Input": "Classification decision and supporting evidence",
-            "KQL Query": "",
-            "Execute": "",
-            "Output": "",
-            "Remarks/Comments": "Reference specific findings from investigation steps above"
-        })
+
+        # Detailed Justification
+        steps.append(
+            {
+                "Step": current_num,
+                "Name": "Detailed Justification",
+                "Explanation": "Provide comprehensive reasoning for the classification decision. Reference specific findings from investigation steps, including IP reputation, user behavior, MFA status, and any anomalies detected.",
+                "Input": "Classification decision and supporting evidence",
+                "KQL Query": "",
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": "Be specific - reference step numbers and exact findings that support your conclusion",
+            }
+        )
         current_num += 1
-        
+
         # Actions Taken
-        steps.append({
-            "Step": current_num,
-            "Name": "Actions Taken",
-            "Explanation": "Document all investigative actions performed during triage process",
-            "Input": "Investigation activities log",
-            "KQL Query": "",
-            "Execute": "",
-            "Output": "",
-            "Remarks/Comments": "Include: queries executed, logs reviewed, contacts made, tools used"
-        })
+        steps.append(
+            {
+                "Step": current_num,
+                "Name": "Actions Taken",
+                "Explanation": "Document all investigative actions performed during the triage process. Include queries executed, logs reviewed, external tools used, users or teams contacted, and timeline of investigation activities.",
+                "Input": "Investigation activities log",
+                "KQL Query": "",
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": "Include: KQL queries run, threat intelligence checks, user confirmations, system checks performed",
+            }
+        )
         current_num += 1
-        
+
         # Escalation Decision
-        steps.append({
-            "Step": current_num,
-            "Name": "Escalation Decision",
-            "Explanation": "Determine if incident requires escalation based on classification and organizational policy",
-            "Input": "Final classification and escalation criteria",
-            "KQL Query": "",
-            "Execute": "",
-            "Output": "",
-            "Remarks/Comments": "Escalate to: L3 SOC / IT Team / Security Manager / Incident Response Team (if Yes)"
-        })
-        
+        steps.append(
+            {
+                "Step": current_num,
+                "Name": "Escalation Decision",
+                "Explanation": "Determine if the incident requires escalation based on classification, severity, and organizational escalation policy. Consider factors such as confirmed malicious activity, VIP user involvement, or data exposure.",
+                "Input": "Final classification, severity assessment, escalation criteria",
+                "KQL Query": "",
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": "Escalate to: L3 SOC (confirmed threats), IT Team (system issues), Security Manager (VIP/critical), Incident Response Team (active compromise)",
+            }
+        )
+
         return steps
-    
+
     def _create_reference_section(self, rule_history: dict) -> list:
-        """Create historical reference section"""
+        """Create historical reference section with detailed statistics"""
         reference_rows = []
-        
+
         # Add separator
-        reference_rows.append({
-            "Step": "",
-            "Name": "HISTORICAL REFERENCE DATA",
-            "Explanation": "Statistical analysis from past incidents for this rule",
-            "Input": "",
-            "KQL Query": "",
-            "Execute": "",
-            "Output": "",
-            "Remarks/Comments": "Use this data to inform investigation approach"
-        })
-        
+        reference_rows.append(
+            {
+                "Step": "",
+                "Name": "HISTORICAL REFERENCE DATA",
+                "Explanation": "Statistical analysis from all past incidents for this rule - use this data to inform your investigation approach and set expectations",
+                "Input": "",
+                "KQL Query": "",
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": "This section provides baseline metrics for comparison",
+            }
+        )
+
         # Total incidents
-        reference_rows.append({
-            "Step": "",
-            "Name": "Total Historical Incidents",
-            "Explanation": f"{rule_history.get('total_incidents', 0)}",
-            "Input": "",
-            "KQL Query": "",
-            "Execute": "",
-            "Output": "",
-            "Remarks/Comments": "Complete historical dataset for pattern analysis"
-        })
-        
+        reference_rows.append(
+            {
+                "Step": "",
+                "Name": "Total Historical Incidents",
+                "Explanation": f"{rule_history.get('total_incidents', 0)} incidents",
+                "Input": "",
+                "KQL Query": "",
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": "Complete historical dataset analyzed for pattern recognition",
+            }
+        )
+
         # False Positive Rate
-        reference_rows.append({
-            "Step": "",
-            "Name": "False Positive Rate",
-            "Explanation": f"{rule_history.get('fp_rate', 0)}%",
-            "Input": "",
-            "KQL Query": "",
-            "Execute": "",
-            "Output": "",
-            "Remarks/Comments": f"{rule_history.get('false_positives', 0)} of {rule_history.get('total_incidents', 0)} incidents were False Positives"
-        })
-        
+        fp_count = rule_history.get("false_positives", 0)
+        total = rule_history.get("total_incidents", 1)
+        reference_rows.append(
+            {
+                "Step": "",
+                "Name": "False Positive Rate",
+                "Explanation": f"{rule_history.get('fp_rate', 0)}% ({fp_count} of {total} incidents)",
+                "Input": "",
+                "KQL Query": "",
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": f"If similar patterns observed, likelihood of FP is {rule_history.get('fp_rate', 0)}%",
+            }
+        )
+
         # True Positive Rate
-        reference_rows.append({
-            "Step": "",
-            "Name": "True Positive Rate", 
-            "Explanation": f"{rule_history.get('tp_rate', 0)}%",
-            "Input": "",
-            "KQL Query": "",
-            "Execute": "",
-            "Output": "",
-            "Remarks/Comments": f"{rule_history.get('true_positives', 0)} of {rule_history.get('total_incidents', 0)} incidents were True Positives"
-        })
-        
+        tp_count = rule_history.get("true_positives", 0)
+        reference_rows.append(
+            {
+                "Step": "",
+                "Name": "True Positive Rate",
+                "Explanation": f"{rule_history.get('tp_rate', 0)}% ({tp_count} of {total} incidents)",
+                "Input": "",
+                "KQL Query": "",
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": f"If threat indicators found, likelihood of TP is {rule_history.get('tp_rate', 0)}%",
+            }
+        )
+
+        # Common FP Justifications
+        justifications = rule_history.get("common_justifications", "")
+        if justifications and justifications != "N/A" and len(justifications) > 5:
+            # Truncate if too long
+            if len(justifications) > 300:
+                justifications = justifications[:297] + "..."
+            reference_rows.append(
+                {
+                    "Step": "",
+                    "Name": "Common FP Justifications",
+                    "Explanation": justifications,
+                    "Input": "",
+                    "KQL Query": "",
+                    "Execute": "",
+                    "Output": "",
+                    "Remarks/Comments": "Typical reasons for false positive classifications",
+                }
+            )
+
+        # FP Indicators
+        fp_indicators = rule_history.get("fp_indicators", "")
+        if fp_indicators and fp_indicators != "N/A" and len(fp_indicators) > 10:
+            # Clean and truncate
+            fp_indicators = fp_indicators.replace("\n", " | ")
+            if len(fp_indicators) > 300:
+                fp_indicators = fp_indicators[:297] + "..."
+            reference_rows.append(
+                {
+                    "Step": "",
+                    "Name": "Typical FP Indicators",
+                    "Explanation": fp_indicators,
+                    "Input": "",
+                    "KQL Query": "",
+                    "Execute": "",
+                    "Output": "",
+                    "Remarks/Comments": "Look for these patterns in your investigation",
+                }
+            )
+
         return reference_rows
-    
+
     def export_to_excel(self, df: pd.DataFrame, rule_number: str) -> BytesIO:
-        """Export DataFrame to Excel format for download"""
+        """Export DataFrame to Excel with professional formatting"""
         output = BytesIO()
-        
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='Triaging_Template', index=False)
-            
+
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, sheet_name="Triaging_Template", index=False)
+
             # Get the workbook and worksheet
             workbook = writer.book
-            worksheet = writer.sheets['Triaging_Template']
-            
-            # Format the worksheet
+            worksheet = writer.sheets["Triaging_Template"]
+
+            # Apply comprehensive formatting
             self._format_excel_worksheet(worksheet, df)
-        
+
         output.seek(0)
         return output
-    
+
     def _format_excel_worksheet(self, worksheet, df):
-        """Format the Excel worksheet for better readability"""
+        """Format Excel worksheet for maximum readability"""
         # Header formatting
-        header_font = Font(bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-        
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        header_fill = PatternFill(
+            start_color="366092", end_color="366092", fill_type="solid"
+        )
+        header_alignment = Alignment(
+            horizontal="center", vertical="center", wrap_text=True
+        )
+
         # Apply header formatting
         for col_num, column_title in enumerate(df.columns, 1):
             cell = worksheet.cell(row=1, column=col_num)
             cell.font = header_font
             cell.fill = header_fill
-            cell.alignment = Alignment(horizontal='center', vertical='center')
-        
-        # Adjust column widths
+            cell.alignment = header_alignment
+
+        # Adjust column widths for better visibility
         column_widths = {
-            'A': 8,   # Step
-            'B': 25,  # Name  
-            'C': 50,  # Explanation
-            'D': 30,  # Input
-            'E': 40,  # KQL Query
-            'F': 12,  # Execute
-            'G': 12,  # Output
-            'H': 35   # Remarks/Comments
+            "A": 10,  # Step
+            "B": 30,  # Name
+            "C": 60,  # Explanation (wider for full text)
+            "D": 35,  # Input
+            "E": 50,  # KQL Query (wider for queries)
+            "F": 15,  # Execute
+            "G": 15,  # Output
+            "H": 40,  # Remarks/Comments
         }
-        
+
         for col_letter, width in column_widths.items():
             worksheet.column_dimensions[col_letter].width = width
-        
-        # Add borders and alignment
+
+        # Cell formatting
         thin_border = Border(
-            left=Side(style='thin'),
-            right=Side(style='thin'), 
-            top=Side(style='thin'),
-            bottom=Side(style='thin')
+            left=Side(style="thin", color="CCCCCC"),
+            right=Side(style="thin", color="CCCCCC"),
+            top=Side(style="thin", color="CCCCCC"),
+            bottom=Side(style="thin", color="CCCCCC"),
         )
-        
-        for row in worksheet.iter_rows():
+
+        cell_alignment = Alignment(vertical="top", wrap_text=True, horizontal="left")
+
+        # Apply to all cells
+        for row_idx, row in enumerate(worksheet.iter_rows(min_row=2), start=2):
             for cell in row:
                 cell.border = thin_border
-                cell.alignment = Alignment(vertical='top', wrap_text=True)
-        
+                cell.alignment = cell_alignment
+
+                # Alternate row colors for better readability
+                if row_idx % 2 == 0:
+                    cell.fill = PatternFill(
+                        start_color="F9F9F9", end_color="F9F9F9", fill_type="solid"
+                    )
+
+        # Highlight header rows (rule description, historical reference)
+        for row_idx in range(1, worksheet.max_row + 1):
+            cell_value = str(worksheet.cell(row=row_idx, column=2).value or "")
+            if "Rule Analysis:" in cell_value or "HISTORICAL REFERENCE" in cell_value:
+                for col_idx in range(1, len(df.columns) + 1):
+                    cell = worksheet.cell(row=row_idx, column=col_idx)
+                    cell.fill = PatternFill(
+                        start_color="E8F4F8", end_color="E8F4F8", fill_type="solid"
+                    )
+                    cell.font = Font(bold=True, size=11)
+
+        # Set row heights for better readability
+        for row in worksheet.iter_rows():
+            worksheet.row_dimensions[row[0].row].height = None  # Auto-adjust
+
         # Freeze the header row
-        worksheet.freeze_panes = 'A2'
+        worksheet.freeze_panes = "A2"

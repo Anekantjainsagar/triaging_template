@@ -11,54 +11,57 @@ class TriagingCrew:
         self.agents = TriagingAgents()
         self.tasks = TriagingTasks()
 
-    def generate_excel_template(self, rule_number: str, consolidated_data: dict, template_content: str):
-        """Generate clean Excel template using the new structured format"""
+    def generate_excel_template(
+        self, rule_number: str, consolidated_data: dict, template_content: str
+    ):
+        """Generate clean Excel template using the structured format"""
         try:
             # Run AI analysis to get triaging steps
-            analysis_result = self.run_analysis_phase(consolidated_data, template_content, rule_number)
-            
-            triaging_steps = analysis_result.get('triaging_plan', [])
-            rule_history = analysis_result.get('rule_history', {})
-            
+            analysis_result = self.run_analysis_phase(
+                consolidated_data, template_content, rule_number
+            )
+
+            triaging_steps = analysis_result.get("triaging_plan", [])
+            rule_history = analysis_result.get("rule_history", {})
+
             # Initialize template generator
             from src.template_generator import TriagingTemplateGenerator
+
             template_gen = TriagingTemplateGenerator()
-            
+
             # Generate structured DataFrame
             template_df = template_gen.generate_structured_template(
                 rule_number, triaging_steps, rule_history
             )
-            
+
             # Export to Excel
             excel_file = template_gen.export_to_excel(template_df, rule_number)
-            
+
             return {
-                'excel_file': excel_file,
-                'template_df': template_df,
-                'triaging_steps': triaging_steps,
-                'rule_history': rule_history,
-                'analysis_result': analysis_result
+                "excel_file": excel_file,
+                "template_df": template_df,
+                "triaging_steps": triaging_steps,
+                "rule_history": rule_history,
+                "analysis_result": analysis_result,
             }
-            
+
         except Exception as e:
             print(f"Error generating Excel template: {str(e)}")
             import traceback
+
             traceback.print_exc()
             return None
 
     def run_analysis_phase(
         self, consolidated_data: dict, template_content: str, rule_number: str
     ):
-        """
-        Run the complete analysis phase using LLM to generate dynamic triaging plan.
-        No hardcoded rules - learns from data and templates.
-        """
+        """Run complete analysis phase with improved parsing"""
         try:
             print("\n" + "=" * 80)
-            print("Starting AI-Powered Dynamic Analysis...")
+            print("Starting AI-Powered Analysis...")
             print("=" * 80)
 
-            # Get historical data for this rule (ALL INCIDENTS)
+            # Get historical data
             from src.utils import read_all_tracker_sheets, consolidate_rule_data
 
             all_data = read_all_tracker_sheets("data")
@@ -75,49 +78,43 @@ class TriagingCrew:
             content_agent = self.agents.content_generation_agent()
             prediction_agent = self.agents.prediction_analysis_agent()
 
-            # Convert consolidated data to string with FULL historical context
+            # Convert consolidated data to string
             data_summary = self._create_data_summary(consolidated_data)
 
-            # Add COMPLETE historical analysis
+            # Add historical context
             data_summary += f"""
 
-    COMPLETE HISTORICAL PATTERN ANALYSIS FOR {rule_number}:
-    Total Past Incidents: {rule_history.get('total_incidents', 0)}
-    True Positive Count: {rule_history.get('true_positives', 0)}
-    False Positive Count: {rule_history.get('false_positives', 0)}
-    True Positive Rate: {rule_history.get('tp_rate', 0)}%
-    False Positive Rate: {rule_history.get('fp_rate', 0)}%
+COMPLETE HISTORICAL PATTERN ANALYSIS FOR {rule_number}:
+Total Past Incidents: {rule_history.get('total_incidents', 0)}
+True Positive Count: {rule_history.get('true_positives', 0)}
+False Positive Count: {rule_history.get('false_positives', 0)}
+True Positive Rate: {rule_history.get('tp_rate', 0)}%
+False Positive Rate: {rule_history.get('fp_rate', 0)}%
 
-    COMMON PATTERNS FROM ALL RESOLVER COMMENTS:
-    {rule_history.get('all_resolver_comments', 'N/A')}
+COMMON PATTERNS FROM RESOLVER COMMENTS:
+{rule_history.get('all_resolver_comments', 'N/A')[:500]}
+"""
 
-    COMMON JUSTIFICATIONS USED:
-    {rule_history.get('common_justifications', 'N/A')}
-
-    EXPECTED OUTPUTS BASED ON HISTORY:
-    - For False Positives: {rule_history.get('fp_indicators', 'Clean IP, known devices, legitimate apps')}
-    - For True Positives: {rule_history.get('tp_indicators', 'Malicious activity, unauthorized access')}
-    """
-
-            # Task 1: Learn from ALL historical data
-            print("\n[1/3] Learning from ALL historical patterns...")
+            # Task 1: Synthesize knowledge
+            print("\n[1/3] Synthesizing knowledge from historical data...")
             synthesis_task = self.tasks.synthesize_knowledge_task(
                 agent=knowledge_agent,
                 consolidated_data=data_summary,
                 template_content=template_content,
                 rule_number=rule_number,
+                rule_history=rule_history,
             )
 
-            # Task 2: Generate dynamic plan with expected outputs
-            print("\n[2/3] Generating plan with expected outputs...")
+            # Task 2: Generate triaging plan
+            print("\n[2/3] Generating triaging plan...")
             plan_task = self.tasks.generate_triaging_plan_task(
                 agent=content_agent,
                 synthesis_output=synthesis_task,
                 rule_number=rule_number,
             )
 
-            # Task 3: Progressive prediction with cumulative analysis
-            print("\n[3/3] Creating progressive prediction model...")
+            # Task 3: Predict outcome
+            print("\n[3/3] Predicting outcome...")
             prediction_task = self.tasks.predict_outcome_task(
                 agent=prediction_agent,
                 consolidated_data=consolidated_data,
@@ -142,13 +139,11 @@ class TriagingCrew:
             print("AI Analysis Complete!")
             print("=" * 80 + "\n")
 
-            # Parse results with expected outputs
-            triaging_plan = self._parse_triaging_plan_with_expectations(
+            # Parse results with improved logic
+            triaging_plan = self._parse_triaging_plan_robust(
                 plan_task.output, rule_history
             )
-            predictions = self._parse_predictions_dynamic(prediction_task.output)
-
-            # Calculate progressive predictions for each step
+            predictions = self._parse_predictions(prediction_task.output)
             progressive_predictions = self._calculate_progressive_predictions(
                 triaging_plan, rule_history
             )
@@ -175,77 +170,185 @@ class TriagingCrew:
                 "rule_history": {},
             }
 
-    def _parse_triaging_plan_with_expectations(self, output, rule_history) -> list:
-        """Parse plan and add expected outputs from historical data."""
+    def _parse_triaging_plan_robust(self, output, rule_history) -> list:
+        """Robust parsing with multiple strategies to ensure ALL data is captured"""
         output_str = str(output)
         steps = []
 
-        # Strategy 1: Structured format with EXPECTED_OUTPUT
-        step_pattern = r"STEP:\s*(.+?)\s*EXPLANATION:\s*(.+?)\s*(?:KQL:\s*(.+?)\s*)?EXPECTED_OUTPUT:\s*(.+?)\s*INPUT_REQUIRED:\s*(.+?)(?=STEP:|---|\Z)"
-        matches = re.findall(step_pattern, output_str, re.DOTALL | re.IGNORECASE)
+        print("\n" + "=" * 80)
+        print("PARSING TRIAGING PLAN")
+        print("=" * 80)
+
+        # Strategy 1: Look for structured format with markers
+        pattern = r"---\s*STEP:\s*(.+?)\s+EXPLANATION:\s*(.+?)\s+(?:KQL:\s*(.+?)\s+)?(?:EXPECTED_OUTPUT:\s*(.+?)\s+)?INPUT_REQUIRED:\s*(.+?)\s*---"
+        matches = re.findall(pattern, output_str, re.DOTALL | re.IGNORECASE)
 
         if matches:
+            print(f"✓ Found {len(matches)} steps using structured format")
             for match in matches:
-                steps.append(
-                    {
-                        "step_name": match[0].strip(),
-                        "explanation": match[1].strip(),
-                        "kql_query": (
-                            match[2].strip()
-                            if len(match) > 2 and match[2].strip()
-                            else ""
-                        ),
-                        "expected_output": (
-                            match[3].strip()
-                            if len(match) > 3
-                            else self._generate_expected_output(match[0], rule_history)
-                        ),
-                        "user_input_required": (
-                            "yes" in match[4].lower() if len(match) > 4 else True
-                        ),
-                    }
+                kql = (
+                    match[2].strip()
+                    if len(match) > 2
+                    and match[2].strip()
+                    and match[2].strip().upper() != "N/A"
+                    else ""
+                )
+                expected = (
+                    match[3].strip()
+                    if len(match) > 3
+                    and match[3].strip()
+                    and match[3].strip().upper() != "N/A"
+                    else ""
                 )
 
-        # Fallback: Add expected outputs from history
+                step = {
+                    "step_name": match[0].strip(),
+                    "explanation": match[1].strip(),
+                    "kql_query": kql,
+                    "expected_output": expected,
+                    "user_input_required": (
+                        "yes" in match[4].lower() if len(match) > 4 else True
+                    ),
+                }
+                steps.append(step)
+            return steps
+
+        # Strategy 2: Parse line by line for steps
+        print("⚠ Structured format not found, using line-by-line parsing...")
+
+        lines = output_str.split("\n")
+        current_step = None
+        current_field = None
+
+        for line in lines:
+            line = line.strip()
+
+            # Detect step start
+            if re.match(r"^(STEP|Step)\s*\d*:?\s*", line, re.IGNORECASE):
+                if current_step:
+                    steps.append(current_step)
+
+                step_name = re.sub(
+                    r"^(STEP|Step)\s*\d*:?\s*", "", line, flags=re.IGNORECASE
+                ).strip()
+                current_step = {
+                    "step_name": step_name,
+                    "explanation": "",
+                    "kql_query": "",
+                    "expected_output": "",
+                    "user_input_required": True,
+                }
+                current_field = None
+
+            elif current_step:
+                # Detect field markers
+                if line.upper().startswith("EXPLANATION:"):
+                    current_field = "explanation"
+                    current_step["explanation"] = (
+                        line.replace("EXPLANATION:", "")
+                        .replace("Explanation:", "")
+                        .strip()
+                    )
+                elif line.upper().startswith("KQL:"):
+                    current_field = "kql_query"
+                    current_step["kql_query"] = (
+                        line.replace("KQL:", "").replace("kql:", "").strip()
+                    )
+                elif line.upper().startswith("EXPECTED"):
+                    current_field = "expected_output"
+                    current_step["expected_output"] = (
+                        line.replace("EXPECTED_OUTPUT:", "")
+                        .replace("Expected Output:", "")
+                        .strip()
+                    )
+                elif line.upper().startswith("INPUT_REQUIRED"):
+                    current_field = None
+                    current_step["user_input_required"] = "yes" in line.lower()
+                elif current_field and line:
+                    # Continue adding to current field
+                    current_step[current_field] += " " + line
+
+        # Add last step
+        if current_step and current_step.get("step_name"):
+            steps.append(current_step)
+
+        # Strategy 3: If still no steps, extract from numbered/bulleted lists
         if not steps:
+            print("⚠ Line parsing failed, trying numbered list extraction...")
             steps = self._extract_steps_from_text(output_str)
-            for step in steps:
+
+        # Enhance steps with expected outputs if missing
+        for step in steps:
+            if not step.get("expected_output") and step.get("step_name"):
                 step["expected_output"] = self._generate_expected_output(
                     step["step_name"], rule_history
                 )
 
-        return steps if steps else []
+            # Clean up text
+            if step.get("explanation"):
+                step["explanation"] = self._clean_text_for_display(step["explanation"])
+            if step.get("kql_query"):
+                step["kql_query"] = self._clean_kql(step["kql_query"])
+
+        print(f"✓ Extracted {len(steps)} total steps")
+        return steps if steps else self._create_fallback_steps()
+
+    def _clean_text_for_display(self, text: str) -> str:
+        """Clean text by removing markdown and extra whitespace"""
+        if not text:
+            return ""
+
+        # Remove markdown
+        text = re.sub(r"\*\*\*+", "", text)
+        text = re.sub(r"\*\*", "", text)
+        text = re.sub(r"\*", "", text)
+        text = re.sub(r"#+\s*", "", text)
+
+        # Clean whitespace
+        text = " ".join(text.split())
+
+        return text.strip()
+
+    def _clean_kql(self, kql: str) -> str:
+        """Clean KQL query"""
+        if not kql or kql.strip().upper() in ["N/A", "NA", ""]:
+            return ""
+
+        # Remove code block markers
+        kql = re.sub(r"```[a-z]*\s*", "", kql)
+        kql = kql.strip()
+
+        return kql if len(kql) > 10 else ""
 
     def _generate_expected_output(self, step_name: str, rule_history: dict) -> str:
-        """Generate expected output based on step name and historical patterns."""
+        """Generate expected output based on step name and historical patterns"""
         step_lower = step_name.lower()
-
         fp_rate = rule_history.get("fp_rate", 50)
         tp_rate = rule_history.get("tp_rate", 50)
 
         # Pattern-based expected outputs
         if "ip" in step_lower or "reputation" in step_lower:
-            return f"Expected: ~{fp_rate}% chance IP is clean (False Positive). Look for: 'Clean IP', 'No malicious reputation', 'Known IP range'"
+            return f"Based on {rule_history.get('total_incidents', 0)} past incidents ({fp_rate}% FP rate): Typically find 'Clean IP', 'No malicious reputation', 'Known IP range'. If found, indicates False Positive."
 
         elif "device" in step_lower or "registered" in step_lower:
-            return f"Expected: ~{fp_rate}% chance device is registered. Look for: 'Known device', 'Registered device', 'Corporate device'"
+            return f"Expected ({fp_rate}% FP historical rate): 'Known device', 'Registered device', 'Corporate device'. Finding these suggests False Positive."
 
         elif "mfa" in step_lower or "authentication" in step_lower:
-            return f"Expected: ~{fp_rate}% chance MFA is satisfied. Look for: 'MFA successful', 'MFA enabled', 'Multi-factor authentication completed'"
+            return f"Common finding ({fp_rate}% FP rate): 'MFA successful', 'MFA enabled', 'Multi-factor authentication completed'. Indicates legitimate access."
 
-        elif "user" in step_lower and "confirmation" in step_lower:
-            return f"Expected: ~{fp_rate}% chance user confirms legitimate activity. Look for: 'User confirmed', 'Legitimate activity', 'Authorized by user'"
+        elif "user" in step_lower and "confirm" in step_lower:
+            return f"Typical outcome ({fp_rate}% FP rate): 'User confirmed activity', 'Legitimate action', 'Authorized by user'. Supports False Positive classification."
 
         elif "application" in step_lower or "app" in step_lower:
-            return f"Expected: ~{fp_rate}% chance apps are known/legitimate. Look for: 'Known applications', 'Approved apps', 'Whitelisted applications'"
+            return f"Expected result ({fp_rate}% FP rate): 'Known applications', 'Approved apps', 'Whitelisted applications'. Indicates normal activity."
 
         else:
-            return f"Based on {rule_history.get('total_incidents', 0)} past incidents: {fp_rate}% False Positive, {tp_rate}% True Positive"
+            return f"Based on {rule_history.get('total_incidents', 0)} historical incidents: {fp_rate}% were False Positive, {tp_rate}% were True Positive. Investigate thoroughly."
 
     def _calculate_progressive_predictions(
         self, triaging_plan: list, rule_history: dict
     ) -> dict:
-        """Calculate cumulative prediction percentages as steps are completed."""
+        """Calculate cumulative prediction percentages as steps are completed"""
         progressive = {}
 
         base_fp = rule_history.get("fp_rate", 50)
@@ -254,11 +357,8 @@ class TriagingCrew:
         for i, step in enumerate(triaging_plan):
             step_name = step.get("step_name", f"Step {i+1}")
 
-            # Adjust probabilities based on step completion
-            # This is a simplified model - actual implementation would use historical correlations
-            confidence_boost = (
-                (i + 1) / len(triaging_plan) * 20
-            )  # Max 20% confidence increase
+            # Confidence grows as more steps are completed
+            confidence_boost = (i + 1) / len(triaging_plan) * 15
 
             progressive[step_name] = {
                 "false_positive_probability": min(
@@ -267,13 +367,13 @@ class TriagingCrew:
                 "true_positive_probability": min(
                     100, base_tp + confidence_boost if base_tp > base_fp else base_tp
                 ),
-                "confidence_level": f"{40 + (i + 1) / len(triaging_plan) * 60:.0f}%",  # Grows from 40% to 100%
+                "confidence_level": f"{40 + (i + 1) / len(triaging_plan) * 60:.0f}%",
             }
 
         return progressive
 
     def _create_data_summary(self, data: dict) -> str:
-        """Create a structured summary for LLM processing."""
+        """Create structured summary for LLM processing"""
         summary = f"""
 INCIDENT DATA:
 Incident Number: {data.get('incident_no', 'N/A')}
@@ -289,165 +389,24 @@ TIMELINE METRICS:
 Reported Time: {data.get('reported_time_stamp', 'N/A')}
 Responded Time: {data.get('responded_time_stamp', 'N/A')}
 Resolution Time: {data.get('resolution_time_stamp', 'N/A')}
-MTTD (Mean Time To Detect): {data.get('mttd_mins', 'N/A')} minutes
-MTTR (Mean Time To Resolve): {data.get('mttr_mins', 'N/A')} minutes
+MTTD: {data.get('mttd_mins', 'N/A')} minutes
+MTTR: {data.get('mttr_mins', 'N/A')} minutes
 
-INVESTIGATION FINDINGS (RESOLVER COMMENTS):
+INVESTIGATION FINDINGS:
 {data.get('resolver_comments', 'N/A')}
 
 HISTORICAL OUTCOME:
 Classification: {data.get('false_true_positive', 'N/A')}
 Why False Positive: {data.get('why_false_positive', 'N/A')}
 Justification: {data.get('justification', 'N/A')}
-Quality Audit: {data.get('quality_audit', 'N/A')}
-
-ADDITIONAL CONTEXT:
-Status: {data.get('status', 'N/A')}
-VIP Users Involved: {data.get('vip_users', 'N/A')}
-Service Owner: {data.get('service_owner', 'N/A')}
-Remarks: {data.get('remarks_comments', 'N/A')}
 """
         return summary
 
-    def _parse_triaging_plan_dynamic(self, output) -> list:
-        """Parse triaging plan ensuring ALL details are captured."""
-        output_str = str(output)
-        steps = []
-
-        print("\n" + "=" * 80)
-        print("PARSING AI-GENERATED TRIAGING PLAN")
-        print("=" * 80)
-
-        # Strategy 1: Look for structured format with all fields
-        step_pattern = r"---\s*STEP:\s*(.+?)\s*EXPLANATION:\s*(.+?)\s*(?:KQL:\s*(.+?)\s*)?(?:EXPECTED_OUTPUT:\s*(.+?)\s*)?INPUT_REQUIRED:\s*(.+?)\s*---"
-        matches = re.findall(step_pattern, output_str, re.DOTALL | re.IGNORECASE)
-
-        if matches:
-            print(f"✅ Found {len(matches)} steps using structured format")
-            for i, match in enumerate(matches, 1):
-                kql = (
-                    match[2].strip()
-                    if len(match) > 2
-                    and match[2].strip()
-                    and match[2].strip().lower() != "n/a"
-                    else ""
-                )
-                expected = (
-                    match[3].strip()
-                    if len(match) > 3
-                    and match[3].strip()
-                    and match[3].strip().lower() != "n/a"
-                    else ""
-                )
-
-                step = {
-                    "step_name": match[0].strip(),
-                    "explanation": match[1].strip(),
-                    "kql_query": kql,
-                    "expected_output": expected,
-                    "user_input_required": (
-                        "yes" in match[4].lower() if len(match) > 4 else True
-                    ),
-                }
-                steps.append(step)
-
-                print(f"\n  Step {i}: {step['step_name']}")
-                print(f"    - Explanation: {len(step['explanation'])} characters")
-                print(f"    - KQL Query: {'Yes' if step['kql_query'] else 'No'}")
-                print(
-                    f"    - Expected Output: {'Yes' if step['expected_output'] else 'No'}"
-                )
-
-            print(f"\n{'='*80}\n")
-            return steps
-
-        # Strategy 2: Look for numbered/bulleted format with context
-        print("⚠️  Structured format not found, trying numbered list parsing...")
-
-        # Split by common delimiters
-        sections = re.split(r"\n(?=\d+\.|#{2,3}\s|Step \d+:|\*\*Step)", output_str)
-
-        for section in sections:
-            section = section.strip()
-            if len(section) < 30:  # Skip very short sections
-                continue
-
-            # Extract step name (first line)
-            lines = section.split("\n")
-            step_name = re.sub(
-                r"^\d+\.\s*|\*\*|#{2,3}\s*|Step \d+:\s*", "", lines[0]
-            ).strip()
-
-            if not step_name or len(step_name) > 200:
-                continue
-
-            # Get full explanation (rest of the text)
-            explanation = "\n".join(lines[1:]).strip() if len(lines) > 1 else section
-
-            # Extract KQL if present
-            kql = self._extract_kql_from_text(explanation)
-
-            # Extract expected output if mentioned
-            expected_match = re.search(
-                r"(?:expected|look for|typically|should see):\s*(.{50,300})",
-                explanation,
-                re.IGNORECASE | re.DOTALL,
-            )
-            expected = expected_match.group(1).strip() if expected_match else ""
-
-            steps.append(
-                {
-                    "step_name": step_name,
-                    "explanation": explanation,
-                    "kql_query": kql,
-                    "expected_output": expected,
-                    "user_input_required": True,
-                }
-            )
-
-            if len(steps) >= 10:  # Safety limit
-                break
-
-        if steps:
-            print(f"✅ Extracted {len(steps)} steps from unstructured format")
-            for i, step in enumerate(steps, 1):
-                print(f"\n  Step {i}: {step['step_name'][:60]}...")
-        else:
-            print("❌ Could not parse any steps from output")
-
-        print(f"\n{'='*80}\n")
-        return steps
-
-    def _extract_kql_from_text(self, text: str) -> str:
-        """Extract KQL query from text if present."""
-        # Look for code blocks
-        kql_pattern = r"```(?:kql|kusto|sql)?\s*\n(.+?)\n```"
-        match = re.search(kql_pattern, text, re.DOTALL | re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-
-        # Look for SigninLogs queries
-        if "SigninLogs" in text or "where" in text.lower():
-            lines = text.split("\n")
-            query_lines = []
-            in_query = False
-            for line in lines:
-                if "SigninLogs" in line or "| where" in line:
-                    in_query = True
-                if in_query:
-                    query_lines.append(line)
-                    if not line.strip().startswith("|") and len(query_lines) > 1:
-                        break
-            if query_lines:
-                return "\n".join(query_lines).strip()
-
-        return ""
-
-    def _parse_predictions_dynamic(self, output) -> list:
-        """Dynamically parse predictions from LLM output."""
+    def _parse_predictions(self, output) -> list:
+        """Parse predictions from LLM output"""
         output_str = str(output)
 
-        # Try structured format first
+        # Try structured format
         prediction_match = re.search(
             r"PREDICTION:\s*(.+?)(?:\n|$)", output_str, re.IGNORECASE
         )
@@ -476,37 +435,73 @@ Remarks: {data.get('remarks_comments', 'N/A')}
                 }
             ]
 
-        return []
+        # Fallback: keyword detection
+        return self._extract_prediction_from_text(output_str)
 
     def _extract_steps_from_text(self, text: str) -> list:
-        """Emergency extraction of any step-like structure from text."""
+        """Extract steps from unstructured text"""
         steps = []
 
-        # Split by double newlines or numbered points
-        sections = re.split(r"\n\n+|\n(?=\d+\.)", text)
+        # Split by numbered points or headers
+        sections = re.split(r"\n(?=\d+\.|#{2,3}\s|Step \d+:|\*\*Step)", text)
 
         for section in sections:
             section = section.strip()
-            if len(section) > 20:  # Meaningful content
-                # First line as name, rest as explanation
-                lines = section.split("\n", 1)
-                steps.append(
-                    {
-                        "step_name": lines[0].strip()[:150],
-                        "explanation": lines[1].strip() if len(lines) > 1 else section,
-                        "kql_query": "",
-                        "user_input_required": True,
-                    }
-                )
+            if len(section) < 30:
+                continue
 
-                if len(steps) >= 8:  # Cap at reasonable number
-                    break
+            lines = section.split("\n")
+            step_name = re.sub(
+                r"^\d+\.\s*|\*\*|#{2,3}\s*|Step \d+:\s*", "", lines[0]
+            ).strip()
+
+            if not step_name or len(step_name) > 200:
+                continue
+
+            explanation = "\n".join(lines[1:]).strip() if len(lines) > 1 else section
+
+            steps.append(
+                {
+                    "step_name": step_name,
+                    "explanation": explanation,
+                    "kql_query": self._extract_kql_from_text(explanation),
+                    "expected_output": "",
+                    "user_input_required": True,
+                }
+            )
+
+            if len(steps) >= 10:
+                break
 
         return steps
 
+    def _extract_kql_from_text(self, text: str) -> str:
+        """Extract KQL query from text"""
+        # Look for code blocks
+        kql_pattern = r"```(?:kql|kusto|sql)?\s*\n(.+?)\n```"
+        match = re.search(kql_pattern, text, re.DOTALL | re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+
+        # Look for SigninLogs queries
+        if "SigninLogs" in text or "| where" in text:
+            lines = text.split("\n")
+            query_lines = []
+            in_query = False
+            for line in lines:
+                if "SigninLogs" in line or "| where" in line:
+                    in_query = True
+                if in_query:
+                    query_lines.append(line)
+                    if not line.strip().startswith("|") and len(query_lines) > 1:
+                        break
+            if query_lines:
+                return "\n".join(query_lines).strip()
+
+        return ""
+
     def _extract_prediction_from_text(self, text: str) -> list:
-        """Emergency extraction of prediction from any text."""
-        # Look for positive/negative keywords
+        """Extract prediction from any text"""
         text_lower = text.lower()
 
         if "true positive" in text_lower:
@@ -525,58 +520,542 @@ Remarks: {data.get('remarks_comments', 'N/A')}
             }
         ]
 
-    def _create_minimal_plan(self, incident_data: dict, template: str) -> list:
-        """Create minimal viable plan from template if LLM completely fails."""
-        # Extract any structure from template
-        if template and len(template) > 100:
-            lines = template.split("\n")
-            steps = []
-            for line in lines:
-                line = line.strip()
-                if (
-                    line.startswith("#")
-                    or line.startswith("Step")
-                    or line.endswith(":")
-                ):
-                    if len(steps) < 6:
-                        steps.append(
-                            {
-                                "step_name": line.replace("#", "").strip(),
-                                "explanation": "Please review this step based on the incident details.",
-                                "kql_query": "",
-                                "user_input_required": True,
-                            }
-                        )
-            if steps:
-                return steps
+    def _parse_triaging_plan_robust(self, output, rule_history) -> list:
+        """Parse triaging plan with focus on QUALITY and CLARITY"""
+        output_str = str(output)
+        steps = []
 
-        # Absolute minimum fallback
+        print("\n" + "=" * 80)
+        print("PARSING TRIAGING PLAN")
+        print("=" * 80)
+
+        # Strategy 1: Structured format with markers
+        pattern = r"---\s*STEP:\s*(.+?)\s+EXPLANATION:\s*(.+?)\s+(?:KQL:\s*(.+?)\s+)?(?:EXPECTED_OUTPUT:\s*(.+?)\s+)?INPUT_REQUIRED:\s*(.+?)\s*---"
+        matches = re.findall(pattern, output_str, re.DOTALL | re.IGNORECASE)
+
+        if matches:
+            print(f"✓ Found {len(matches)} structured steps")
+            for match in matches:
+                # Extract and clean data
+                step_name = self._clean_step_name_parsing(match[0].strip())
+                explanation = self._clean_explanation_parsing(match[1].strip())
+                kql = self._extract_kql(match[2].strip() if len(match) > 2 else "")
+                expected = self._clean_expected_output(
+                    match[3].strip() if len(match) > 3 else ""
+                )
+
+                step = {
+                    "step_name": step_name,
+                    "explanation": explanation,
+                    "kql_query": kql,
+                    "expected_output": expected
+                    or self._generate_expected_output(step_name, rule_history),
+                    "user_input_required": (
+                        "yes" in match[4].lower() if len(match) > 4 else True
+                    ),
+                }
+                steps.append(step)
+
+            # Quality check: limit to 8 steps max
+            if len(steps) > 8:
+                print(
+                    f"⚠ Trimming from {len(steps)} to 8 steps (quality over quantity)"
+                )
+                steps = steps[:8]
+
+            return steps
+
+        # Strategy 2: Line-by-line parsing
+        print("⚠ Using line-by-line parsing...")
+        steps = self._parse_line_by_line(output_str, rule_history)
+
+        if len(steps) > 8:
+            steps = steps[:8]
+
+        return steps if steps else self._create_fallback_steps()
+
+    def _clean_step_name_parsing(self, name: str) -> str:
+        """Clean step name during parsing - make it ACTION-FOCUSED"""
+        # Remove markdown
+        clean = re.sub(r"\*+", "", name)
+        clean = re.sub(r"#+", "", clean)
+        clean = re.sub(r"^Step\s*\d+:?\s*", "", clean, flags=re.IGNORECASE)
+        clean = re.sub(r"^\d+\.\s*", "", clean)
+
+        # Remove verbose phrases
+        clean = re.sub(
+            r"^(Please\s+)?(Perform\s+)?(Complete\s+)?(Verify\s+and\s+)?",
+            "",
+            clean,
+            flags=re.IGNORECASE,
+        )
+
+        # Limit length (max 8 words)
+        words = clean.split()
+        if len(words) > 8:
+            clean = " ".join(words[:8])
+
+        clean = " ".join(clean.split())
+        return clean if clean and len(clean) > 3 else "Investigation Step"
+
+    def _clean_explanation_parsing(self, text: str) -> str:
+        """Clean explanation - keep it CONCISE (2-3 sentences max)"""
+        # Remove markdown
+        text = re.sub(r"\*+", "", text)
+        text = re.sub(r"#+", "", text)
+        text = re.sub(r"`", "", text)
+
+        # Split into sentences
+        sentences = text.split(". ")
+
+        # Keep only first 2-3 sentences
+        if len(sentences) > 3:
+            text = ". ".join(sentences[:3])
+            if not text.endswith("."):
+                text += "."
+
+        # Remove common prefixes
+        text = re.sub(
+            r"^(Explanation:|EXPLANATION:|Instructions:)\s*",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
+
+        # Limit total length
+        if len(text) > 300:
+            text = text[:297] + "..."
+
+        text = " ".join(text.split())
+        return text.strip()
+
+    def _clean_expected_output(self, text: str) -> str:
+        """Clean expected output - ONE clear sentence"""
+        if not text or text.upper() in ["N/A", "NA", ""]:
+            return ""
+
+        # Remove markdown
+        text = re.sub(r"\*+", "", text)
+        text = re.sub(
+            r"^(Expected Output:|EXPECTED_OUTPUT:|Expected:)\s*",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
+
+        # Get first sentence only
+        sentences = text.split(". ")
+        text = sentences[0]
+        if not text.endswith("."):
+            text += "."
+
+        # Limit length
+        if len(text) > 150:
+            text = text[:147] + "..."
+
+        text = " ".join(text.split())
+        return text.strip()
+
+    def _create_fallback_steps(self) -> list:
+        """Create CONCISE fallback steps"""
         return [
             {
-                "step_name": "1. Review Incident Details",
-                "explanation": f'Review the incident: {incident_data.get("rule", "N/A")}. Check all provided information.',
+                "step_name": "Review Incident Details",
+                "explanation": "Review incident metadata including user, IP, and timestamp. Identify any obvious anomalies or patterns.",
                 "kql_query": "",
+                "expected_output": "Complete incident overview with key entities identified.",
                 "user_input_required": True,
             },
             {
-                "step_name": "2. Investigate Key Indicators",
-                "explanation": "Based on resolver comments, investigate the key security indicators.",
+                "step_name": "Check Threat Intelligence",
+                "explanation": "Query threat intelligence sources for IP reputation and known malicious indicators. Clean reputation indicates FP.",
                 "kql_query": "",
+                "expected_output": "Typically shows: Clean IP, No threats. If found → False Positive.",
                 "user_input_required": True,
             },
             {
-                "step_name": "3. Make Final Classification",
-                "explanation": "Classify as True Positive, False Positive, or Benign Positive with justification.",
+                "step_name": "Review User Activity",
+                "explanation": "Check user sign-in history and behavior patterns. Consistent with normal activity indicates FP.",
                 "kql_query": "",
+                "expected_output": "Typically shows: Known devices, Normal patterns. If found → False Positive.",
+                "user_input_required": True,
+            },
+            {
+                "step_name": "Verify MFA Status",
+                "explanation": "Confirm multi-factor authentication completion. Successful MFA indicates legitimate access.",
+                "kql_query": "",
+                "expected_output": "Typically shows: MFA successful. If found → False Positive.",
+                "user_input_required": True,
+            },
+            {
+                "step_name": "Final Classification",
+                "explanation": "Classify as True Positive, False Positive, or Benign Positive based on all evidence. Document justification.",
+                "kql_query": "",
+                "expected_output": "Final determination with supporting evidence.",
                 "user_input_required": True,
             },
         ]
 
+    def _create_minimal_plan(self, incident_data: dict, template: str) -> list:
+        """Create minimal viable plan if AI fails"""
+        return self._create_fallback_steps()
+
+    def run_real_time_prediction(
+        self, 
+        triaging_comments: dict, 
+        rule_number: str, 
+        template_content: str,
+        consolidated_data: dict
+    ) -> dict:
+        """Run real-time prediction with robust fallback."""
+        try:
+            print("\n" + "=" * 80)
+            print("RUNNING REAL-TIME PREDICTION...")
+            print("=" * 80)
+            
+            # Get historical data
+            from src.utils import read_all_tracker_sheets, consolidate_rule_data
+            
+            all_data = read_all_tracker_sheets("data")
+            rule_history = consolidate_rule_data(all_data, rule_number)
+            
+            # Create prediction agent
+            prediction_agent = self.agents.real_time_prediction_agent()
+            
+            # Create prediction task
+            prediction_task = self.tasks.real_time_prediction_task(
+                agent=prediction_agent,
+                triaging_comments=triaging_comments,
+                rule_number=rule_number,
+                rule_history=rule_history,
+                template_content=template_content
+            )
+            
+            # Create and run crew
+            crew = Crew(
+                agents=[prediction_agent],
+                tasks=[prediction_task],
+                process=Process.sequential,
+                verbose=True,
+            )
+            
+            result = crew.kickoff()
+            
+            # Parse the prediction
+            parsed_prediction = self._parse_real_time_prediction(str(result))
+            
+            # If parsing failed or returned None, use fallback
+            if parsed_prediction is None:
+                print("⚠️ AI prediction parsing failed. Using keyword-based fallback.")
+                return self._create_fallback_prediction(triaging_comments, rule_history)
+            
+            print("\n" + "=" * 80)
+            print("REAL-TIME PREDICTION COMPLETE!")
+            print("=" * 80)
+            
+            return parsed_prediction
+            
+        except Exception as e:
+            print(f"\n⚠️ Error in AI prediction: {str(e)}")
+            print("Using keyword-based fallback prediction...")
+            import traceback
+            traceback.print_exc()
+            
+            # Return fallback prediction
+            from src.utils import read_all_tracker_sheets, consolidate_rule_data
+            all_data = read_all_tracker_sheets("data")
+            rule_history = consolidate_rule_data(all_data, rule_number)
+            return self._create_fallback_prediction(triaging_comments, rule_history)
+    
+    def _parse_real_time_prediction(self, output: str) -> dict:
+        """Parse real-time prediction output - FIXED VERSION."""
+        import re
+
+        # Default to unknown
+        prediction = {
+            "prediction_type": "Requires Investigation",
+            "false_positive_likelihood": 50,
+            "true_positive_likelihood": 50,
+            "benign_positive_likelihood": 0,
+            "confidence_level": "Low",
+            "key_factors": [],
+            "historical_comparison": "",
+            "reasoning": "",
+            "web_research": "",
+        }
+
+        output_lower = output.lower()
+
+        # Extract prediction type
+        pred_type_match = re.search(
+            r"PREDICTION_TYPE:\s*(.+?)(?:\n|$)", output, re.IGNORECASE
+        )
+        if pred_type_match:
+            prediction["prediction_type"] = pred_type_match.group(1).strip()
+
+        # Extract percentages - FIXED to handle multiple formats
+        fp_match = re.search(
+            r"False Positive[^:]*:\s*(\d+(?:\.\d+)?)%", output, re.IGNORECASE
+        )
+        tp_match = re.search(
+            r"True Positive[^:]*:\s*(\d+(?:\.\d+)?)%", output, re.IGNORECASE
+        )
+        bp_match = re.search(
+            r"Benign Positive[^:]*:\s*(\d+(?:\.\d+)?)%", output, re.IGNORECASE
+        )
+
+        if fp_match:
+            prediction["false_positive_likelihood"] = int(float(fp_match.group(1)))
+        if tp_match:
+            prediction["true_positive_likelihood"] = int(float(tp_match.group(1)))
+        if bp_match:
+            prediction["benign_positive_likelihood"] = int(float(bp_match.group(1)))
+
+        # VALIDATION: Check if percentages make sense
+        total_pct = (
+            prediction["false_positive_likelihood"]
+            + prediction["true_positive_likelihood"]
+            + prediction["benign_positive_likelihood"]
+        )
+
+        # If percentages don't add up to ~100, recalculate
+        if total_pct < 90 or total_pct > 110:
+            print(
+                f"⚠️ Invalid percentages detected (total: {total_pct}%). Using fallback calculation."
+            )
+            return None  # Signal to use fallback
+
+        # VALIDATION: Check if prediction_type matches the highest percentage
+        highest_pct = max(
+            prediction["false_positive_likelihood"],
+            prediction["true_positive_likelihood"],
+            prediction["benign_positive_likelihood"],
+        )
+
+        pred_type_lower = prediction["prediction_type"].lower()
+
+        # Fix mismatched prediction type
+        if highest_pct == prediction["false_positive_likelihood"]:
+            if "false" not in pred_type_lower:
+                print("⚠️ Prediction type mismatch! Correcting to False Positive")
+                prediction["prediction_type"] = "False Positive"
+        elif highest_pct == prediction["true_positive_likelihood"]:
+            if "true" not in pred_type_lower or "false" in pred_type_lower:
+                print("⚠️ Prediction type mismatch! Correcting to True Positive")
+                prediction["prediction_type"] = "True Positive"
+
+        # Extract confidence level
+        conf_match = re.search(
+            r"CONFIDENCE_LEVEL:\s*(.+?)(?:\n|$)", output, re.IGNORECASE
+        )
+        if conf_match:
+            prediction["confidence_level"] = conf_match.group(1).strip()
+
+        # Extract key factors
+        factors_section = re.search(
+            r"KEY_FACTORS:(.*?)(?:HISTORICAL_COMPARISON:|REASONING:|$)",
+            output,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if factors_section:
+            factors_text = factors_section.group(1)
+            factors = re.findall(r"[\d]+\.\s*(.+?)(?:\n|$)", factors_text)
+            prediction["key_factors"] = [
+                f.strip() for f in factors[:5] if f.strip()
+            ]  # Limit to 5
+
+        # Extract historical comparison
+        hist_match = re.search(
+            r"HISTORICAL_COMPARISON:\s*(.+?)(?:REASONING:|WEB_RESEARCH_FINDINGS:|$)",
+            output,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if hist_match:
+            prediction["historical_comparison"] = hist_match.group(1).strip()[
+                :500
+            ]  # Limit length
+
+        # Extract reasoning
+        reasoning_match = re.search(
+            r"REASONING:\s*(.+?)(?:WEB_RESEARCH_FINDINGS:|---|\Z)",
+            output,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if reasoning_match:
+            prediction["reasoning"] = reasoning_match.group(1).strip()[:500]
+
+        # Extract web research
+        web_match = re.search(
+            r"WEB_RESEARCH_FINDINGS:\s*(.+?)(?:---|\Z)",
+            output,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if web_match:
+            prediction["web_research"] = web_match.group(1).strip()[:500]
+
+        return prediction
+
+    def _create_fallback_prediction(
+        self, triaging_comments: dict, rule_history: dict
+    ) -> dict:
+        """Create SMART fallback prediction using keyword analysis."""
+
+        # Combine all comments
+        all_comments = " ".join(str(v) for v in triaging_comments.values()).lower()
+
+        print("\n" + "=" * 80)
+        print("RUNNING FALLBACK PREDICTION (Keyword-Based)")
+        print("=" * 80)
+        print(f"Analyzing comments: {all_comments[:200]}...")
+
+        # Strong FP indicators (high confidence)
+        strong_fp_keywords = {
+            "clean ip": 15,
+            "no malicious": 15,
+            "known device": 15,
+            "registered device": 15,
+            "mfa success": 15,
+            "legitimate": 12,
+            "authorized": 12,
+            "user confirmed": 12,
+            "known app": 10,
+            "vpn": 8,
+            "nothing suspicious": 15,
+            "normal behavior": 10,
+            "corporate": 8,
+            "approved": 8,
+        }
+
+        # Strong TP indicators (high confidence)
+        strong_tp_keywords = {
+            "malicious": 20,
+            "threat detected": 20,
+            "unauthorized": 18,
+            "suspicious": 15,
+            "compromised": 20,
+            "bad reputation": 18,
+            "unknown device": 12,
+            "failed mfa": 15,
+            "data exfiltration": 20,
+            "escalated": 12,
+            "anomalous": 15,
+        }
+
+        # Calculate scores
+        fp_score = 0
+        tp_score = 0
+
+        fp_matches = []
+        tp_matches = []
+
+        for keyword, weight in strong_fp_keywords.items():
+            if keyword in all_comments:
+                fp_score += weight
+                fp_matches.append(keyword)
+                print(f"✅ Found FP indicator: '{keyword}' (weight: {weight})")
+
+        for keyword, weight in strong_tp_keywords.items():
+            if keyword in all_comments:
+                tp_score += weight
+                tp_matches.append(keyword)
+                print(f"⚠️ Found TP indicator: '{keyword}' (weight: {weight})")
+
+        print(f"\nScore - FP: {fp_score}, TP: {tp_score}")
+
+        # Get historical baseline
+        base_fp = rule_history.get("fp_rate", 50)
+        base_tp = rule_history.get("tp_rate", 50)
+
+        print(f"Historical baseline - FP: {base_fp}%, TP: {base_tp}%")
+
+        # Calculate final percentages
+        if fp_score == 0 and tp_score == 0:
+            # No indicators found - use historical baseline
+            fp_likelihood = base_fp
+            tp_likelihood = base_tp
+            confidence = "Low"
+            reasoning = f"No clear indicators found. Using historical baseline: {base_fp}% FP, {base_tp}% TP."
+        else:
+            # Adjust baseline based on evidence
+            total_score = fp_score + tp_score
+
+            if total_score > 0:
+                # Weight the scores
+                fp_evidence_weight = (fp_score / total_score) * 100
+                tp_evidence_weight = (tp_score / total_score) * 100
+
+                # Combine with baseline (70% evidence, 30% baseline)
+                fp_likelihood = int((fp_evidence_weight * 0.7) + (base_fp * 0.3))
+                tp_likelihood = 100 - fp_likelihood
+
+                # Determine confidence
+                if abs(fp_score - tp_score) > 20:
+                    confidence = "High"
+                elif abs(fp_score - tp_score) > 10:
+                    confidence = "Medium"
+                else:
+                    confidence = "Low"
+
+                # Build reasoning
+                if fp_score > tp_score:
+                    reasoning = f"Strong False Positive indicators found ({len(fp_matches)} matches). "
+                    reasoning += f"Evidence weight: {fp_evidence_weight:.0f}% FP vs {tp_evidence_weight:.0f}% TP. "
+                    reasoning += (
+                        f"Combined with historical baseline ({base_fp}% FP rate)."
+                    )
+                else:
+                    reasoning = f"Strong True Positive indicators found ({len(tp_matches)} matches). "
+                    reasoning += f"Evidence weight: {tp_evidence_weight:.0f}% TP vs {fp_evidence_weight:.0f}% FP. "
+                    reasoning += (
+                        f"Combined with historical baseline ({base_tp}% TP rate)."
+                    )
+            else:
+                fp_likelihood = base_fp
+                tp_likelihood = base_tp
+                confidence = "Low"
+                reasoning = f"Using historical baseline: {base_fp}% FP, {base_tp}% TP."
+
+        # Determine prediction type
+        if fp_likelihood > tp_likelihood:
+            pred_type = "False Positive"
+        elif tp_likelihood > fp_likelihood:
+            pred_type = "True Positive"
+        else:
+            pred_type = "Requires Further Investigation"
+
+        print(f"\n✅ FINAL PREDICTION: {pred_type}")
+        print(f"   FP: {fp_likelihood}%, TP: {tp_likelihood}%")
+        print(f"   Confidence: {confidence}")
+        print("=" * 80 + "\n")
+
+        return {
+            "prediction_type": pred_type,
+            "false_positive_likelihood": fp_likelihood,
+            "true_positive_likelihood": tp_likelihood,
+            "benign_positive_likelihood": 0,
+            "confidence_level": confidence,
+            "key_factors": [
+                (
+                    f"Found {len(fp_matches)} FP indicators: {', '.join(fp_matches[:5])}"
+                    if fp_matches
+                    else "No FP indicators"
+                ),
+                (
+                    f"Found {len(tp_matches)} TP indicators: {', '.join(tp_matches[:5])}"
+                    if tp_matches
+                    else "No TP indicators"
+                ),
+                f"Historical pattern: {base_fp}% FP rate from {rule_history.get('total_incidents', 0)} past incidents",
+            ],
+            "historical_comparison": f"This case aligns with {base_fp}% of past incidents that were False Positive",
+            "reasoning": reasoning,
+            "web_research": "N/A (Fallback prediction)",
+        }
+
     def _create_minimal_prediction(self, incident_data: dict) -> list:
-        """Create minimal prediction if LLM fails."""
+        """Create minimal prediction if AI fails"""
         comments = str(incident_data.get("resolver_comments", "")).lower()
 
-        # Simple keyword detection
         if any(
             word in comments for word in ["clean", "legitimate", "nothing suspicious"]
         ):

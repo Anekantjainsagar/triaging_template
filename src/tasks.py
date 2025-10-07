@@ -241,98 +241,131 @@ class TriagingTasks:
         )
 
     def generate_triaging_plan_task(self, agent, synthesis_output, rule_number):
-        """Task to generate detailed step-by-step triaging plan with KQL queries."""
+        """Task to generate CONCISE, ACTION-FOCUSED triaging plan."""
         return Task(
             description=dedent(
                 f"""
-                Generate a comprehensive, detailed triaging plan for: {rule_number}
+                Generate a CONCISE and ACTIONABLE triaging plan for: {rule_number}
                 
-                Based on the synthesis: {synthesis_output}
+                Based on synthesis: {synthesis_output}
                 
-                Create a DETAILED step-by-step investigation plan. Each step MUST include:
+                CRITICAL REQUIREMENTS:
+                ====================
                 
-                1. **Step Name**: Clear, action-oriented title (e.g., "Verify IP Reputation and Geolocation")
+                1. **Step Names**: Must be SPECIFIC and ACTION-ORIENTED
+                ❌ BAD: "Verify IP Reputation and Geolocation"
+                ✅ GOOD: "Check Source IP: Threat Intelligence"
                 
-                2. **Explanation**: Detailed 4-6 sentences covering:
-                   - What exactly to investigate
-                   - Why this step is important
-                   - What indicators to look for (specific values, patterns)
-                   - How to interpret findings (what's normal vs suspicious)
-                   - Decision criteria (when to escalate, when to close)
+                ❌ BAD: "User Behavior Analysis and Pattern Review"
+                ✅ GOOD: "Review User Sign-in History"
                 
-                3. **KQL Query**: If applicable, provide the EXACT KQL query for:
-                   - Azure Sentinel / Log Analytics
-                   - Microsoft 365 Defender
-                   - Include filters for specific fields
-                   - Add comments explaining the query
+                2. **Explanations**: Keep to 2-3 sentences MAX. Format:
+                - Sentence 1: What to check (specific action)
+                - Sentence 2: What indicates FP vs TP (decision criteria)
+                - Sentence 3 (optional): When to escalate
                 
-                4. **User Input Required**: Yes/No
-                   - Set to "No" only for informational/review steps
-                   - Set to "Yes" for all investigation steps
+                3. **Expected Output**: ONE clear sentence showing the most common finding
+                Format: "Typically shows: [specific value/pattern]. If found → [FP/TP]"
                 
-                IMPORTANT GUIDELINES:
-                - Create 6-10 steps (comprehensive but not overwhelming)
-                - Order steps logically (initial triage â†’ detailed investigation â†’ classification)
-                - Include specific technical checks (IP reputation, MFA status, device fingerprint, etc.)
-                - Provide decision trees in explanations ("If X is found, then Y")
-                - Reference industry best practices where applicable
-                - Include escalation criteria clearly
+                4. **Step Count**: Create 5-8 steps only (quality over quantity)
                 
-                Common investigation patterns by rule type:
+                STEP STRUCTURE TEMPLATE:
+                =======================
                 
-                **For Sophos/EDR Alerts (Rule#280):**
-                - Service health check
-                - Process/file analysis
-                - Endpoint status verification
-                - False positive pattern recognition
-                - Escalation to L3 decision
-                
-                **For Atypical Travel (Rule#286):**
-                - Impossible travel calculation
-                - IP/geolocation analysis
-                - Device trust verification
-                - MFA validation
-                - VPN usage check
-                - User behavior baseline comparison
-                
-                **For Privileged Role Assignment (Rule#014):**
-                - Role sensitivity assessment
-                - Initiator verification
-                - PIM vs permanent assignment
-                - Business justification check
-                - Change management validation
-                - Post-assignment activity monitoring
-                
-                **For Passwordless Authentication (Rule#183):**
-                - Authentication method verification
-                - Application criticality assessment
-                - Certificate/token validation
-                - User confirmation
-                - MFA enforcement check
-                
-                FORMAT each step EXACTLY as:
                 ---
-                STEP: [Clear Step Name]
-                EXPLANATION: [4-6 detailed sentences with specific guidance, indicators, and decision criteria]
-                KQL: [Complete query with comments, or "N/A" if not applicable]
-                INPUT_REQUIRED: [Yes/No]
+                STEP: [Verb] + [Specific Target] + [Brief Context]
+                
+                EXPLANATION: [Action sentence]. [Decision criteria]. [Escalation if needed].
+                
+                KQL: [Query if applicable, otherwise empty]
+                
+                EXPECTED_OUTPUT: Typically shows: [specific finding from historical data]. If found → [indicates FP/TP].
+                
+                INPUT_REQUIRED: Yes/No
                 ---
+                
+                EXAMPLES OF GOOD STEPS:
+                ======================
+                
+                Example 1 (IP Check):
+                ---
+                STEP: Check Source IP Reputation
+                EXPLANATION: Query threat intelligence for the source IP address. Clean reputation with no alerts indicates legitimate activity (FP). Malicious IP or high-risk score requires immediate escalation.
+                KQL: SigninLogs | where IPAddress == "x.x.x.x" | project TimeGenerated, IPAddress, Location, RiskLevel
+                EXPECTED_OUTPUT: Typically shows: "Clean IP, No threats, Known range". If found → False Positive (85% historical rate).
+                INPUT_REQUIRED: Yes
+                ---
+                
+                Example 2 (User Confirmation):
+                ---
+                STEP: Confirm Activity with User
+                EXPLANATION: Contact user to verify if they performed this action. User confirmation of legitimate activity closes as FP. No response or user denial requires L3 escalation.
+                KQL: N/A
+                EXPECTED_OUTPUT: Typically shows: "User confirmed legitimate action". If found → False Positive (90% historical rate).
+                INPUT_REQUIRED: Yes
+                ---
+                
+                Example 3 (MFA Check):
+                ---
+                STEP: Verify MFA Completion
+                EXPLANATION: Check if multi-factor authentication was successfully completed. MFA success indicates legitimate access (FP). Missing or failed MFA is suspicious (TP).
+                KQL: SigninLogs | where UserPrincipalName == "user@domain.com" | project MfaDetail, AuthenticationRequirement
+                EXPECTED_OUTPUT: Typically shows: "MFA successful, All requirements met". If found → False Positive (88% historical rate).
+                INPUT_REQUIRED: Yes
+                ---
+                
+                RULE-SPECIFIC GUIDANCE:
+                ======================
+                
+                **For Sophos/EDR Alerts:**
+                - Step 1: Check Sophos Service Status
+                - Step 2: Review Endpoint Health
+                - Step 3: Analyze Process/File Behavior
+                - Step 4: Check for Known False Positives
+                - Step 5: Escalate if Service Down
+                
+                **For Atypical Travel:**
+                - Step 1: Calculate Travel Timeframe
+                - Step 2: Check Source/Destination IPs
+                - Step 3: Verify Device Consistency
+                - Step 4: Check VPN Usage
+                - Step 5: Confirm with User
+                
+                **For Passwordless Authentication:**
+                - Step 1: Check Authentication Method
+                - Step 2: Verify Certificate/Token Validity
+                - Step 3: Review Application Access
+                - Step 4: Check User MFA Status
+                - Step 5: Confirm with User
+                
+                **For Privileged Role Assignment:**
+                - Step 1: Identify Assigned Role
+                - Step 2: Verify Initiator Authorization
+                - Step 3: Check Change Management Ticket
+                - Step 4: Review Post-Assignment Activity
+                - Step 5: Validate Business Justification
+                
+                QUALITY CHECKLIST:
+                ==================
+                - [ ] Each step name is under 6 words
+                - [ ] Each explanation is under 50 words
+                - [ ] Expected output references historical FP/TP rate
+                - [ ] KQL queries are complete (not truncated)
+                - [ ] Total steps between 5-8
+                - [ ] Steps follow logical investigation order
+                - [ ] Each step has clear FP vs TP criteria
             """
             ),
             expected_output=dedent(
                 """
-                A structured plan with 6-10 detailed investigation steps.
+                5-8 concise, actionable steps formatted exactly as:
                 
-                Each step formatted as:
                 ---
-                STEP: Verify IP Reputation and Geographic Location
-                EXPLANATION: Check the source IP address against threat intelligence databases to determine if it's associated with malicious activity. Use VirusTotal, AbuseIPDB, or Azure Sentinel threat intelligence. Also verify the geographic location matches expected user behavior. If the IP is clean and location is normal (user's home country/city), this indicates a potential false positive. If the IP has a poor reputation score or originates from an unexpected country, this warrants further investigation and possible escalation. Document the IP address, reputation score, and location in your findings.
-                KQL: SigninLogs
-| where TimeGenerated > ago(7d)
-| where UserPrincipalName == "user@domain.com"
-| project TimeGenerated, UserPrincipalName, IPAddress, Location, DeviceDetail, AppDisplayName
-| summarize SignInCount = count() by IPAddress, Location
-INPUT_REQUIRED: Yes
+                STEP: [Action-focused name under 6 words]
+                EXPLANATION: [2-3 sentences, under 50 words total]
+                KQL: [Complete query or empty]
+                EXPECTED_OUTPUT: Typically shows: [specific finding]. If found → [FP/TP with percentage].
+                INPUT_REQUIRED: Yes/No
                 ---
             """
             ),
@@ -475,6 +508,146 @@ INPUT_REQUIRED: Yes
             ),
             agent=agent,
             context=[synthesis_output] if synthesis_output else [],
+        )
+
+    def real_time_prediction_task(
+        self,
+        agent,
+        triaging_comments: dict,
+        rule_number: str,
+        rule_history: dict,
+        template_content: str,
+    ):
+        """Task to predict outcome in real-time based on triaging comments."""
+
+        # Combine all comments/answers provided so far
+        all_comments = "\n\n".join(
+            [f"**{step}**: {comment}" for step, comment in triaging_comments.items()]
+        )
+
+        return Task(
+            description=dedent(
+                f"""
+                Provide REAL-TIME prediction for: {rule_number}
+                
+                Based on triaging comments collected so far:
+                {all_comments}
+                
+                Historical Context:
+                - Total Past Incidents: {rule_history.get('total_incidents', 0)}
+                - Historical FP Rate: {rule_history.get('fp_rate', 0)}%
+                - Historical TP Rate: {rule_history.get('tp_rate', 0)}%
+                - Common FP Indicators: {rule_history.get('fp_indicators', 'N/A')[:200]}
+                - Common TP Indicators: {rule_history.get('tp_indicators', 'N/A')[:200]}
+                
+                Template Guidance:
+                {template_content[:500]}...
+                
+                YOUR TASK:
+                ==========
+                
+                1. **Analyze Each Comment**: Review every finding documented by the analyst
+                
+                2. **Pattern Matching**: Compare findings against historical FP/TP patterns
+                
+                3. **Web Research** (if needed): Search for similar cases or indicators
+                - Example: "Rule {rule_number.split('#')[1] if '#' in rule_number else rule_number} + [key finding] false positive rate"
+                
+                4. **Calculate Probabilities**:
+                - Start with historical baseline (FP: {rule_history.get('fp_rate', 50)}%, TP: {rule_history.get('tp_rate', 50)}%)
+                - Adjust based on each finding:
+                    * If finding matches common FP patterns → increase FP probability
+                    * If finding matches common TP patterns → increase TP probability
+                - Consider strength of evidence (strong indicators = larger adjustment)
+                
+                5. **Provide Classification Prediction**:
+                
+                Format your response EXACTLY as:
+                
+                ---
+                PREDICTION_TYPE: [False Positive / True Positive / Benign Positive]
+                
+                CONFIDENCE_PERCENTAGES:
+                - False Positive Likelihood: [X]%
+                - True Positive Likelihood: [Y]%
+                - Benign Positive Likelihood: [Z]%
+                (Note: X + Y + Z should equal 100%)
+                
+                CONFIDENCE_LEVEL: [High (80-100%) / Medium (50-79%) / Low (<50%)]
+                
+                KEY_FACTORS:
+                1. [Finding from comments that supports this prediction]
+                2. [Another supporting finding]
+                3. [Another supporting finding]
+                
+                HISTORICAL_COMPARISON:
+                [How this case compares to the {rule_history.get('total_incidents', 0)} past incidents]
+                
+                REASONING:
+                [2-3 sentence explanation of why these percentages were assigned based on the evidence]
+                
+                WEB_RESEARCH_FINDINGS: (if search was performed)
+                [Key insights from web search that influenced prediction]
+                ---
+                
+                CRITICAL INDICATORS:
+                
+                **Strong False Positive Indicators** (increase FP %):
+                - "Clean IP", "No malicious reputation", "Known IP"
+                - "Registered device", "Known device", "Corporate device"
+                - "MFA successful", "MFA enabled"
+                - "User confirmed", "Legitimate activity"
+                - "Known applications", "Approved apps"
+                - "VPN usage" (NordVPN, ExpressVPN, corporate VPN)
+                - "BAS testing", "Security testing"
+                - "Nothing suspicious", "Normal behavior"
+                
+                **Strong True Positive Indicators** (increase TP %):
+                - "Malicious IP", "Bad reputation", "Threat detected"
+                - "Unknown device", "Unregistered device"
+                - "Failed MFA", "MFA bypass"
+                - "Unauthorized access", "Suspicious activity"
+                - "Service not running", "Service down"
+                - "Data exfiltration", "Unusual downloads"
+                - "Multiple failed attempts"
+                - "Sensitive data access"
+                
+                **Benign Positive Indicators** (increase BP %):
+                - "Legitimate but unexpected", "Authorized but unusual"
+                - "Policy violation but not malicious"
+                - "Configuration issue", "Misconfiguration"
+                - "Automated process", "Scheduled task"
+            """
+            ),
+            expected_output=dedent(
+                """
+                A comprehensive real-time prediction with exact percentages:
+                
+                ---
+                PREDICTION_TYPE: [Most Likely Classification]
+                
+                CONFIDENCE_PERCENTAGES:
+                - False Positive Likelihood: X%
+                - True Positive Likelihood: Y%
+                - Benign Positive Likelihood: Z%
+                
+                CONFIDENCE_LEVEL: [High/Medium/Low]
+                
+                KEY_FACTORS:
+                [Numbered list of supporting evidence from comments]
+                
+                HISTORICAL_COMPARISON:
+                [How this case aligns with historical patterns]
+                
+                REASONING:
+                [Clear explanation of percentage calculations]
+                
+                WEB_RESEARCH_FINDINGS:
+                [If web search was used, what was found]
+                ---
+            """
+            ),
+            agent=agent,
         )
 
     def combine_results_task(self, agent, triaging_plan, predictions):
