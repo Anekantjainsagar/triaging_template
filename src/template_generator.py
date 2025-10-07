@@ -114,8 +114,6 @@ class TriagingTemplateGenerator:
 
         # Simplify overly long names (keep first 6-7 words max)
         words = clean.split()
-        if len(words) > 7:
-            clean = " ".join(words[:7])
 
         # Clean whitespace
         clean = " ".join(clean.strip().split())
@@ -170,9 +168,6 @@ class TriagingTemplateGenerator:
         if expected_output:
             clean_expected = self._clean_text(expected_output)
             if clean_expected and len(clean_expected) > 10:
-                # Truncate to 120 chars max
-                if len(clean_expected) > 120:
-                    clean_expected = clean_expected[:117] + "..."
                 remarks.append(clean_expected)
 
         # Add ONE historical insight (most relevant)
@@ -189,7 +184,7 @@ class TriagingTemplateGenerator:
             remarks.append("Handle with priority")
 
         # Join with separator, max 2 remarks
-        return " | ".join(remarks[:2]) if remarks else "Document findings"
+        return " | ".join(remarks) if remarks else "Document findings"
 
     def _extract_input_requirements(
         self, explanation: str, expected_output: str
@@ -403,8 +398,6 @@ class TriagingTemplateGenerator:
         justifications = rule_history.get("common_justifications", "")
         if justifications and justifications != "N/A" and len(justifications) > 5:
             # Truncate if too long
-            if len(justifications) > 300:
-                justifications = justifications[:297] + "..."
             reference_rows.append(
                 {
                     "Step": "",
@@ -423,8 +416,6 @@ class TriagingTemplateGenerator:
         if fp_indicators and fp_indicators != "N/A" and len(fp_indicators) > 10:
             # Clean and truncate
             fp_indicators = fp_indicators.replace("\n", " | ")
-            if len(fp_indicators) > 300:
-                fp_indicators = fp_indicators[:297] + "..."
             reference_rows.append(
                 {
                     "Step": "",

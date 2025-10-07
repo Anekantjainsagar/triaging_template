@@ -5,6 +5,7 @@ import json
 import traceback
 from textwrap import dedent
 from crewai import Crew, Process
+import os
 from src.agents import TriagingAgents
 from src.tasks import TriagingTasks
 
@@ -50,19 +51,12 @@ class TriagingCrew:
                 }
                 steps.append(step)
             
-            # Quality check: limit to a reasonable number of steps
-            if len(steps) > 8:
-                print(f"⚠ Trimming from {len(steps)} to 8 steps (quality over quantity)")
-                steps = steps[:8]
             
             return steps
 
         # Strategy 2: Line-by-line parsing
         print("⚠ Structured format not found, using line-by-line parsing...")
         steps = self._parse_line_by_line(output_str, rule_history)
-        
-        if len(steps) > 8:
-            steps = steps[:8]
 
         return steps if steps else self._create_fallback_steps()
 
@@ -150,7 +144,7 @@ class TriagingCrew:
         clean = re.sub(r"^(Please\s+)?(Perform\s+)?(Complete\s+)?(Verify\s+and\s+)?", "", clean, flags=re.IGNORECASE)
         words = clean.split()
         if len(words) > 8:
-            clean = " ".join(words[:8])
+            clean = " ".join(words)
         clean = " ".join(clean.split())
         return clean if clean and len(clean) > 3 else "Investigation Step"
 
@@ -161,12 +155,10 @@ class TriagingCrew:
         text = re.sub(r"`", "", text)
         sentences = text.split(". ")
         if len(sentences) > 3:
-            text = ". ".join(sentences[:3])
+            text = ". ".join(sentences)
             if not text.endswith("."):
                 text += "."
         text = re.sub(r"^(Explanation:|EXPLANATION:|Instructions:)\s*", "", text, flags=re.IGNORECASE)
-        if len(text) > 300:
-            text = text[:297] + "..."
         text = " ".join(text.split())
         return text.strip()
 
@@ -180,8 +172,6 @@ class TriagingCrew:
         text = sentences[0]
         if not text.endswith("."):
             text += "."
-        if len(text) > 150:
-            text = text[:147] + "..."
         text = " ".join(text.split())
         return text.strip()
 
@@ -285,10 +275,8 @@ class TriagingCrew:
             traceback.print_exc()
             return None
 
-    def run_analysis_phase(
-        self, consolidated_data: dict, template_content: str, rule_number: str
-    ):
-        """Run complete analysis phase with improved parsing"""
+    def run_analysis_phase(self, consolidated_data: dict, template_content: str, rule_number: str):
+        """Run analysis with DETERMINISTIC parsing + AI enhancement"""
         try:
             print("\n" + "=" * 80)
             print("Starting AI-Powered Analysis...")
@@ -296,90 +284,89 @@ class TriagingCrew:
 
             # Get historical data
             from src.utils import read_all_tracker_sheets, consolidate_rule_data
-
             all_data = read_all_tracker_sheets("data")
             rule_history = consolidate_rule_data(all_data, rule_number)
 
-            print(
-                f"\nHistorical Context: {rule_history.get('total_incidents', 0)} past incidents"
-            )
-            print(f"True Positive Rate: {rule_history.get('tp_rate', 0)}%")
-            print(f"False Positive Rate: {rule_history.get('fp_rate', 0)}%")
-
-            # Create agents
-            knowledge_agent = self.agents.knowledge_synthesis_agent()
-            content_agent = self.agents.content_generation_agent()
+            # ========== DETERMINISTIC PARSING ==========
+            from src.template_parser import TemplateParser
+            import os
+            
+            parser = TemplateParser()
+            
+            # Find template file with better error handling
+            template_dir = "data/triaging_templates"
+            
+            print(f"\n🔍 Looking for template for: {rule_number}")
+            print(f"📁 Template directory: {template_dir}")
+            
+            if not os.path.exists(template_dir):
+                print(f"❌ Template directory does not exist!")
+                triaging_plan = self._create_fallback_steps()
+            else:
+                # Extract rule number
+                rule_num_match = re.search(r'#?(\d+)', rule_number)
+                rule_num = rule_num_match.group(1) if rule_num_match else rule_number.replace('#', '').strip()
+                
+                print(f"🔢 Extracted rule number: {rule_num}")
+                
+                # List all files in directory
+                all_files = os.listdir(template_dir)
+                print(f"📄 Files in template directory: {all_files}")
+                
+                # Find matching template
+                template_files = [f for f in all_files if rule_num in f and (f.endswith('.csv') or f.endswith('.xlsx'))]
+                
+                print(f"✅ Matching templates found: {template_files}")
+                
+                if template_files:
+                    template_path = os.path.join(template_dir, template_files[0])
+                    print(f"📖 Using template: {template_path}")
+                    
+                    try:
+                        if template_path.endswith('.csv'):
+                            triaging_plan = parser.parse_csv_template(template_path)
+                        else:  # Excel
+                            triaging_plan = parser.parse_excel_template(template_path)
+                        
+                        print(f"✅ Successfully parsed {len(triaging_plan)} steps from template")
+                        
+                        # Print first step as verification
+                        if triaging_plan:
+                            print(f"\n📋 First step preview:")
+                            print(f"   Name: {triaging_plan[0].get('step_name', 'N/A')}")
+                            print(f"   Has KQL: {'Yes' if triaging_plan[0].get('kql_query') else 'No'}")
+                        
+                    except Exception as parse_error:
+                        print(f"❌ Template parsing failed: {str(parse_error)}")
+                        import traceback
+                        traceback.print_exc()
+                        triaging_plan = self._create_fallback_steps()
+                else:
+                    print(f"⚠️ No template found for rule {rule_num}, using fallback")
+                    triaging_plan = self._create_fallback_steps()
+            
+            # ========== AI PREDICTION (OPTIONAL) ==========
             prediction_agent = self.agents.prediction_analysis_agent()
-
-            # Convert consolidated data to string
+            
             data_summary = self._create_data_summary(consolidated_data)
-
-            # Add historical context
-            data_summary += f"""
-
-COMPLETE HISTORICAL PATTERN ANALYSIS FOR {rule_number}:
-Total Past Incidents: {rule_history.get('total_incidents', 0)}
-True Positive Count: {rule_history.get('true_positives', 0)}
-False Positive Count: {rule_history.get('false_positives', 0)}
-True Positive Rate: {rule_history.get('tp_rate', 0)}%
-False Positive Rate: {rule_history.get('fp_rate', 0)}%
-
-COMMON PATTERNS FROM RESOLVER COMMENTS:
-{rule_history.get('all_resolver_comments', 'N/A')[:500]}
-"""
-
-            # Task 1: Synthesize knowledge
-            print("\n[1/3] Synthesizing knowledge from historical data...")
-            synthesis_task = self.tasks.synthesize_knowledge_task(
-                agent=knowledge_agent,
-                consolidated_data=data_summary,
-                template_content=template_content,
-                rule_number=rule_number,
-                rule_history=rule_history,
-            )
-
-            # Task 2: Generate triaging plan
-            print("\n[2/3] Generating triaging plan...")
-            plan_task = self.tasks.generate_triaging_plan_task(
-                agent=content_agent,
-                synthesis_output=synthesis_task,
-                rule_number=rule_number,
-            )
-
-            # Task 3: Predict outcome
-            print("\n[3/3] Predicting outcome...")
+            data_summary += f"\n\nHistorical: {rule_history.get('total_incidents', 0)} incidents, {rule_history.get('fp_rate', 0)}% FP"
+            
             prediction_task = self.tasks.predict_outcome_task(
                 agent=prediction_agent,
                 consolidated_data=consolidated_data,
                 rule_number=rule_number,
             )
-
-            # Create and run crew
+            
             crew = Crew(
-                agents=[knowledge_agent, content_agent, prediction_agent],
-                tasks=[synthesis_task, plan_task, prediction_task],
+                agents=[prediction_agent],
+                tasks=[prediction_task],
                 process=Process.sequential,
-                verbose=True,
+                verbose=False,  # Disable verbose to reduce noise
             )
-
-            print("\n" + "=" * 80)
-            print("Running CrewAI Workflow...")
-            print("=" * 80 + "\n")
-
+            
             result = crew.kickoff()
-
-            print("\n" + "=" * 80)
-            print("AI Analysis Complete!")
-            print("=" * 80 + "\n")
-
-            # Parse results with improved logic
-            triaging_plan = self._parse_triaging_plan_robust(
-                plan_task.output, rule_history
-            )
             predictions = self._parse_predictions(prediction_task.output)
-            progressive_predictions = self._calculate_progressive_predictions(
-                triaging_plan, rule_history
-            )
+            progressive_predictions = self._calculate_progressive_predictions(triaging_plan, rule_history)
 
             return {
                 "triaging_plan": triaging_plan,
@@ -389,15 +376,11 @@ COMMON PATTERNS FROM RESOLVER COMMENTS:
             }
 
         except Exception as e:
-            print(f"\nError in AI analysis: {str(e)}")
+            print(f"\n❌ Critical error in analysis: {str(e)}")
             import traceback
-
             traceback.print_exc()
-
             return {
-                "triaging_plan": self._create_minimal_plan(
-                    consolidated_data, template_content
-                ),
+                "triaging_plan": self._create_fallback_steps(),
                 "predictions": self._create_minimal_prediction(consolidated_data),
                 "progressive_predictions": {},
                 "rule_history": {},
@@ -515,7 +498,7 @@ Justification: {data.get('justification', 'N/A')}
                     "reasoning": (
                         reasoning_match.group(1).strip()
                         if reasoning_match
-                        else output_str[:300]
+                        else output_str
                     ),
                 }
             ]
@@ -576,7 +559,7 @@ Justification: {data.get('justification', 'N/A')}
                 "step_name": "Overall Assessment",
                 "prediction": prediction,
                 "confidence_score": "Medium",
-                "reasoning": text[:300],
+                "reasoning": text,
             }
         ]
 
@@ -616,21 +599,11 @@ Justification: {data.get('justification', 'N/A')}
                 }
                 steps.append(step)
 
-            # Quality check: limit to 8 steps max
-            if len(steps) > 8:
-                print(
-                    f"⚠ Trimming from {len(steps)} to 8 steps (quality over quantity)"
-                )
-                steps = steps[:8]
-
             return steps
 
         # Strategy 2: Line-by-line parsing
         print("⚠ Using line-by-line parsing...")
         steps = self._parse_line_by_line(output_str, rule_history)
-
-        if len(steps) > 8:
-            steps = steps[:8]
 
         return steps if steps else self._create_fallback_steps()
 
@@ -799,7 +772,7 @@ Justification: {data.get('justification', 'N/A')}
             factors_text = factors_section.group(1)
             factors = re.findall(r"[\d]+\.\s*(.+?)(?:\n|$)", factors_text)
             prediction["key_factors"] = [
-                f.strip() for f in factors[:5] if f.strip()
+                f.strip() for f in factors if f.strip()
             ]  # Limit to 5
 
         # Extract historical comparison
@@ -820,7 +793,7 @@ Justification: {data.get('justification', 'N/A')}
             re.DOTALL | re.IGNORECASE,
         )
         if reasoning_match:
-            prediction["reasoning"] = reasoning_match.group(1).strip()[:500]
+            prediction["reasoning"] = reasoning_match.group(1).strip()
 
         # Extract web research
         web_match = re.search(
@@ -829,7 +802,7 @@ Justification: {data.get('justification', 'N/A')}
             re.DOTALL | re.IGNORECASE,
         )
         if web_match:
-            prediction["web_research"] = web_match.group(1).strip()[:500]
+            prediction["web_research"] = web_match.group(1).strip()
 
         return prediction
 
@@ -844,7 +817,7 @@ Justification: {data.get('justification', 'N/A')}
         print("\n" + "=" * 80)
         print("RUNNING FALLBACK PREDICTION (Keyword-Based)")
         print("=" * 80)
-        print(f"Analyzing comments: {all_comments[:200]}...")
+        print(f"Analyzing comments: {all_comments}...")
 
         # Strong FP indicators (high confidence)
         strong_fp_keywords = {
@@ -974,12 +947,12 @@ Justification: {data.get('justification', 'N/A')}
             "confidence_level": confidence,
             "key_factors": [
                 (
-                    f"Found {len(fp_matches)} FP indicators: {', '.join(fp_matches[:5])}"
+                    f"Found {len(fp_matches)} FP indicators: {', '.join(fp_matches)}"
                     if fp_matches
                     else "No FP indicators"
                 ),
                 (
-                    f"Found {len(tp_matches)} TP indicators: {', '.join(tp_matches[:5])}"
+                    f"Found {len(tp_matches)} TP indicators: {', '.join(tp_matches)}"
                     if tp_matches
                     else "No TP indicators"
                 ),

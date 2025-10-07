@@ -58,8 +58,6 @@ class CSVTemplateGenerator:
 
         # Clean and simplify step name (max 50 chars)
         clean_name = self._clean_text(step_name)
-        if len(clean_name) > 50:
-            clean_name = clean_name[:47] + "..."
 
         # Build CONCISE instructions (key info only)
         instructions = self._build_concise_instructions(
@@ -79,8 +77,6 @@ class CSVTemplateGenerator:
             clean_exp = self._clean_text(explanation)
             sentences = clean_exp.split(". ")
             action = sentences[0]
-            if len(action) > 100:
-                action = action[:97] + "..."
             parts.append(action)
 
         # 2. Expected finding (SHORT version)
@@ -92,27 +88,17 @@ class CSVTemplateGenerator:
                 if len(split_parts) > 1:  # Check if split actually produced 2 parts
                     finding = split_parts[1]
                     finding = finding.split(".", 1)[0].strip(": ")
-                    if len(finding) > 80:
-                        finding = finding[:77] + "..."
                     parts.append(f"Expected: {finding}")
                 else:
                     # Fallback if split didn't work as expected
-                    if len(clean_exp) > 80:
-                        parts.append(f"Expected: {clean_exp[:77]}...")
-                    else:
-                        parts.append(f"Expected: {clean_exp}")
-            elif len(clean_exp) > 80:
-                parts.append(f"Expected: {clean_exp[:77]}...")
-            else:
-                parts.append(f"Expected: {clean_exp}")
+                    parts.append(f"Expected: {clean_exp}")
+                    
+            parts.append(f"Expected: {clean_exp}")
 
         # 3. KQL (one-liner if present)
         if kql_query and kql_query.strip():
             clean_kql = self._clean_kql_for_csv(kql_query)
             if clean_kql:
-                # Truncate very long queries
-                if len(clean_kql) > 150:
-                    clean_kql = clean_kql[:147] + "..."
                 parts.append(f"Query: {clean_kql}")
 
         # 4. Historical context (ONE metric only)
@@ -123,7 +109,7 @@ class CSVTemplateGenerator:
             parts.append(f"[{fp_rate}% FP - investigate carefully]")
 
         # Join with " | " separator (max 3 parts)
-        return " | ".join(parts[:3]) if parts else "Investigate and document"
+        return " | ".join(parts) if parts else "Investigate and document"
 
     def _clean_text(self, text: str) -> str:
         """Clean text - remove ALL formatting, keep content only"""
@@ -328,8 +314,6 @@ class CSVTemplateGenerator:
         justifications = rule_history.get("common_justifications", "")
         if justifications and justifications != "N/A" and len(justifications) > 5:
             clean_just = self._clean_text(justifications)
-            if len(clean_just) > 300:
-                clean_just = clean_just[:297] + "..."
             rows.append(["", "Common FP Justifications", "", clean_just])
 
         # Typical FP Indicators
@@ -337,8 +321,6 @@ class CSVTemplateGenerator:
         if fp_indicators and fp_indicators != "N/A" and len(fp_indicators) > 10:
             clean_indicators = fp_indicators.replace("\n", " | ")
             clean_indicators = self._clean_text(clean_indicators)
-            if len(clean_indicators) > 300:
-                clean_indicators = clean_indicators[:297] + "..."
             rows.append(
                 [
                     "",
@@ -353,8 +335,6 @@ class CSVTemplateGenerator:
         if tp_indicators and tp_indicators != "N/A" and len(tp_indicators) > 10:
             clean_tp = tp_indicators.replace("\n", " | ")
             clean_tp = self._clean_text(clean_tp)
-            if len(clean_tp) > 300:
-                clean_tp = clean_tp[:297] + "..."
             rows.append(
                 ["", "Typical TP Indicators", "", f"Red flags to watch for: {clean_tp}"]
             )

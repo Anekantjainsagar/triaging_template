@@ -405,7 +405,7 @@ def consolidate_rule_data(df: pd.DataFrame, rule_number: str) -> dict:
                     "nothing suspicious",
                 ]
             ):
-                fp_indicators.append(comment[:200])
+                fp_indicators.append(comment)
 
             # Extract TP indicators
             if any(
@@ -418,7 +418,7 @@ def consolidate_rule_data(df: pd.DataFrame, rule_number: str) -> dict:
                     "compromise",
                 ]
             ):
-                tp_indicators.append(comment[:200])
+                tp_indicators.append(comment)
 
         classification = str(row.get("false_true_positive", "")).lower()
         if "true" in classification:
@@ -443,8 +443,8 @@ def consolidate_rule_data(df: pd.DataFrame, rule_number: str) -> dict:
         ),
         "all_resolver_comments": "\n---\n".join(all_resolver_comments),  # ALL comments
         "common_justifications": ", ".join(set(common_justifications)),
-        "fp_indicators": "\n".join(set(fp_indicators[:10])),  # Top FP patterns
-        "tp_indicators": "\n".join(set(tp_indicators[:10])),  # Top TP patterns
+        "fp_indicators": "\n".join(set(fp_indicators)),  # Top FP patterns
+        "tp_indicators": "\n".join(set(tp_indicators)),  # Top TP patterns
         "sample_incidents": rule_data.to_dict("records"),  # ALL incidents as dict
     }
 
@@ -602,13 +602,13 @@ def generate_blank_triaging_template_csv(
     common_justifications = rule_history.get("common_justifications", "")
     if common_justifications and common_justifications != "N/A":
         writer.writerow(
-            ["", "Common FP Justifications", "", common_justifications[:300]]
+            ["", "Common FP Justifications", "", common_justifications]
         )
 
     fp_indicators = rule_history.get("fp_indicators", "")
     if fp_indicators and fp_indicators != "N/A":
         writer.writerow(
-            ["", "Typical FP Indicators", "", fp_indicators[:300].replace("\n", " | ")]
+            ["", "Typical FP Indicators", "", fp_indicators.replace("\n", " | ")]
         )
 
     return output.getvalue()

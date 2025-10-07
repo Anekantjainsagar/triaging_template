@@ -397,9 +397,7 @@ elif st.session_state.step == 2:
                     st.json(consolidated)
 
             with tab2:
-                st.text(template[:1000] + "..." if len(template) > 1000 else template)
-                with st.expander("View Full Template"):
-                    st.text(template)
+                st.text(template)
 
             st.markdown("---")
 
@@ -718,9 +716,7 @@ if st.session_state.step == 4:
 
         with tab2:
             st.text(
-                csv_template[:2000] + "..."
-                if len(csv_template) > 2000
-                else csv_template
+                csv_template
             )
 
         with tab3:

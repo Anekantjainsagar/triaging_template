@@ -1,5 +1,6 @@
 import os
 from crewai import Task
+import json
 from textwrap import dedent
 
 
@@ -97,280 +98,613 @@ class TriagingTasks:
         self, agent, consolidated_data, template_content, rule_number, rule_history=None
     ):
         """
-        Task to synthesize information AND use web search strategically.
+        FIXED: Extract steps from template, then enhance with web research.
         """
-        # Safely extract rule history values with defaults
         if rule_history is None:
             rule_history = {}
 
         total_incidents = rule_history.get("total_incidents", 0)
         fp_rate = rule_history.get("fp_rate", 0)
         tp_rate = rule_history.get("tp_rate", 0)
-        all_resolver_comments = rule_history.get("all_resolver_comments", "N/A")
-        common_justifications = rule_history.get("common_justifications", "N/A")
-        fp_indicators = rule_history.get(
-            "fp_indicators", "Clean IP, known devices, legitimate apps"
-        )
-        tp_indicators = rule_history.get(
-            "tp_indicators", "Malicious activity, unauthorized access"
-        )
 
         return Task(
             description=dedent(
                 f"""
-                Analyze and synthesize comprehensive information for: {rule_number}
+                Your task: LEARN from the template, then ENHANCE with research.
                 
-                You have access to:
-                1. **Incident Data**: {consolidated_data[:800]}...
-                2. **Template Structure** (LEARN THIS SEQUENCE): 
-                {template_content[:1500]}...
-                3. **Web Search Tool** (Serper) - USE THIS STRATEGICALLY
+                ===========================================================================
+                PHASE 1: LEARN FROM TEMPLATE (MANDATORY - EXTRACT EVERYTHING)
+                ===========================================================================
                 
-                YOUR MULTI-PHASE TASK:
-                =======================
+                The template shows how analysts have triaged {rule_number} before:
                 
-                PHASE 1: UNDERSTAND THE TEMPLATE LOGIC
-                - The template shows SEQUENTIAL steps with dependencies
-                - Identify: What gets checked first? What depends on what?
-                - Extract: Conditional logic (IF X THEN Y patterns)
-                - Note: Which steps branch based on previous results?
+                TEMPLATE:
+                {template_content}
                 
-                PHASE 2: EXTRACT ACTUAL INCIDENT ENTITIES
-                - From the incident data, extract:
-                * Exact usernames (e.g., jsmith@company.com)
-                * Exact IP addresses if mentioned
-                * Applications mentioned
-                * Any other specific identifiers
-                - These will be used in EVERY subsequent step
+                EXTRACTION TASK:
                 
-                PHASE 3: STRATEGIC WEB SEARCH (if needed)
-                - Only search if you need clarification on:
-                * Alert type behavior (e.g., "passwordless authentication risks")
-                * Investigation best practices for this specific rule type
-                * Common false positive patterns
+                1. **Find the Step Names/Titles** in the template:
+                - Look for rows like "Inputs Required" or numbered steps
+                - Extract EVERY step name
+                - Example from template: "Check Alert Details", "Verify Role Sensitivity", "Review Sign-In Logs"
+                
+                2. **Find the Instructions/Explanations** for each step:
+                - Look for "Instructions" column or detailed descriptions
+                - Extract what the analyst should DO at each step
+                - Example: "Username, Role Assigned, Time of Assignment, Initiator, Source IP, Location"
+                
+                3. **Find Decision Points** (IF/THEN logic):
+                - Look for phrases like "If suspicious, escalate", "If True Positive", "If unauthorized"
+                - Extract the branching logic
+                - Example: "If suspicious, escalate to L3/IT for investigation"
+                
+                4. **Find Expected Outputs** (what analysts typically find):
+                - Look for "INPUT details" column or example findings
+                - Example: "Observed the Events and checked user...nothing Suspicious activities found"
+                
+                5. **Identify the Sequential Flow**:
+                - What order are steps in?
+                - Which steps depend on previous steps?
+                - Example: Step 1 → Step 2 → Step 3 (if condition met) → Step 4
+                
+                OUTPUT YOUR EXTRACTION:
+                ```
+                EXTRACTED_FROM_TEMPLATE:
+                
+                Step 1: [Name from template]
+                Explanation: [Instructions from template]
+                Decision Logic: [IF/THEN if present]
+                Example Finding: [From INPUT details if available]
+                
+                Step 2: [Name from template]
+                Explanation: [Instructions from template]
+                Decision Logic: [IF/THEN if present]
+                Example Finding: [From INPUT details if available]
+                
+                [Continue for ALL steps found in template...]
+                
+                SEQUENTIAL_FLOW:
+                Step 1 → Step 2 → [branches: if X then Step 3A, else Step 3B] → Step 4...
+                ```
+                
+                ===========================================================================
+                PHASE 2: MAP INCIDENT DATA (MANDATORY)
+                ===========================================================================
+                
+                Extract SPECIFIC entities from this incident:
+                
+                INCIDENT DATA:
+                {consolidated_data}
+                
+                Find and list:
+                - Exact usernames (e.g., john.doe@company.com)
+                - Exact IP addresses (e.g., 192.168.1.100)
+                - Applications mentioned
+                - Roles/permissions mentioned
+                - Timestamps
+                - Locations
+                - Device names
+                
+                OUTPUT:
+                ```
+                INCIDENT_ENTITIES:
+                - Users: [list]
+                - IPs: [list]
+                - Applications: [list]
+                - Roles: [list]
+                - Timestamps: [list]
+                - Locations: [list]
+                - Devices: [list]
+                ```
+                
+                ===========================================================================
+                PHASE 3: APPLY HISTORICAL CONTEXT (MANDATORY)
+                ===========================================================================
+                
+                Historical data for {rule_number}:
+                - Total incidents: {total_incidents}
+                - FP Rate: {fp_rate}%
+                - TP Rate: {tp_rate}%
+                - Common FP patterns: {rule_history.get('fp_indicators', 'N/A')}
+                - Common TP patterns: {rule_history.get('tp_indicators', 'N/A')}
+                
+                For EACH template step, note:
+                - What percentage of past incidents found specific things at this step?
+                - Did those findings lead to FP or TP?
+                
+                Example: "In Step 3 (IP Check), 82% of incidents found 'clean IP' → those became FP"
+                
+                ===========================================================================
+                PHASE 4: WEB RESEARCH ENHANCEMENT (DO THIS NOW)
+                ===========================================================================
+                
+                Now use web search to ENHANCE the template steps:
+                
+                **Search Task 1: Find KQL Queries**
+                If template steps mention checking logs but don't have queries:
+                - Search: "{rule_number} KQL query"
+                - Search: "[step name] Azure Sentinel KQL"
+                - Search: "SigninLogs KQL query for [specific check]"
                 
                 Example searches:
-                - "Rule 183 passwordless authentication false positive indicators"
-                - "Azure AD passwordless authentication investigation steps"
-                - "How to verify legitimate passwordless authentication"
+                - "Privileged role assignment KQL query Sentinel"
+                - "Atypical travel investigation KQL Azure"
+                - "Check user sign-in logs KQL last 7 days"
                 
-                DO NOT search for generic security info - be SPECIFIC to the rule type.
+                **Search Task 2: Find Additional Investigation Steps**
+                If template seems incomplete:
+                - Search: "{rule_number} investigation steps best practices"
+                - Search: "[alert type] SOC playbook"
+                - Search: "How to investigate [alert type] false positive"
                 
-                PHASE 4: MAP TEMPLATE TO INCIDENT
-                Create a synthesis that shows:
+                **Search Task 3: Find Decision Criteria**
+                For steps with unclear decisions:
+                - Search: "[alert type] true positive indicators"
+                - Search: "[alert type] false positive common causes"
                 
-                1. **Template Flow Summary**: 
-                "The template follows this sequence: [Step 1] → [Step 2] → [Step 3 branches if condition X]..."
+                OUTPUT YOUR RESEARCH:
+                ```
+                WEB_RESEARCH_FINDINGS:
                 
-                2. **Incident-Specific Entities**:
-                "This incident involves:"
-                - Users: [exact usernames]
-                - IPs: [if available]
-                - Apps: [if mentioned]
-                - Timeline: [key timestamps]
+                KQL Queries Found:
+                - For Step [N] ([step name]): [KQL query from web]
+                - For Step [M] ([step name]): [KQL query from web]
                 
-                3. **Investigation Strategy** (from template + web research):
-                "Based on template structure and {rule_number} best practices:"
-                - First, we'll [action from Step 1 using actual user data]
-                - Then, check [Step 2 condition] which will determine [next path]
-                - If [condition from template], we'll [branch action]
-                - Final classification will depend on [cumulative evidence]
+                Additional Steps Recommended:
+                - [New step name]: [Why needed, from which source]
                 
-                4. **Historical Pattern Context**:
-                "From {total_incidents} past incidents:"
-                - {fp_rate}% were False Positives because [common reasons]
-                - {tp_rate}% were True Positives because [common reasons]
-                - Expected findings: [specific phrases/values from history]
+                Enhanced Decision Criteria:
+                - For [step name]: [Additional FP/TP indicators found online]
                 
-                5. **Critical Decision Points** (from template):
-                Extract IF/THEN logic:
-                - "If VIP user = YES, then [action A], else [action B]"
-                - "If critical app found, escalate; if not, likely FP"
+                Sources Used:
+                - [URL 1]
+                - [URL 2]
+                ```
                 
-                FORMAT YOUR OUTPUT:
-                ===================
+                ===========================================================================
+                FINAL SYNTHESIS OUTPUT (COMBINE ALL PHASES)
+                ===========================================================================
                 
-                # SYNTHESIS FOR {rule_number}
+                # COMPLETE SYNTHESIS FOR {rule_number}
                 
-                ## Template Investigation Flow
-                [Sequential summary of template steps with dependencies]
+                ## 1. TEMPLATE STEPS (Extracted from Phase 1)
+                [Every step with name, explanation, decision logic, example findings]
                 
-                ## This Incident's Key Entities
-                - Users: [exact list]
-                - IPs: [exact list if available]
-                - Apps: [exact list if available]
-                - Timestamps: [key times]
+                ## 2. INCIDENT DATA (From Phase 2)
+                [All specific entities to use in investigation]
                 
-                ## Investigation Strategy (Template + Research)
-                [Step-by-step plan that follows template logic]
+                ## 3. HISTORICAL PATTERNS (From Phase 3)
+                [What past incidents found at each step, FP/TP correlation]
                 
-                ## Historical Patterns ({total_incidents} incidents)
-                - FP Rate: {fp_rate}% typically show: [patterns]
-                - TP Rate: {tp_rate}% typically show: [patterns]
+                ## 4. WEB-ENHANCED STEPS (From Phase 4)
+                [Template steps + KQL queries from web + additional steps if needed]
                 
-                ## Critical Decision Points
-                [List of IF/THEN branches from template]
+                For each step, show:
+                - Step name (from template)
+                - Explanation (from template)
+                - KQL Query (from template OR web research)
+                - Expected Output (from template examples + historical data)
+                - Decision Logic (from template + web-enhanced criteria)
+                - Incident-specific: How to apply this step with actual data (user: X, IP: Y)
                 
-                ## Web Research Findings (if searched)
-                [Key insights from Serper search about this alert type]
+                ## 5. INVESTIGATION BLUEPRINT
+                Step-by-step guide showing:
+                1. [Step name from template]
+                - Run: [KQL query with actual incident data]
+                - Look for: [Expected finding from template/history]
+                - Decide: [IF finding = X THEN Y, from template logic]
                 
-                IMPORTANT: Your synthesis should make it EASY for the next agent to:
-                1. Generate steps that follow template sequence
-                2. Use actual incident data (real usernames, etc.)
-                3. Include conditional logic from template
-                4. Connect each step to previous findings
+                2. [Next step...]
+                
+                CRITICAL: Make it so clear that the next agent can generate steps
+                that are IDENTICAL to template structure but ENHANCED with:
+                - Real KQL queries from web
+                - Actual incident entities
+                - Historical success rates
+                - Clear decision criteria
             """
             ),
             expected_output=dedent(
                 """
-                A structured synthesis document that includes:
+                A 5-section synthesis:
                 
-                1. Clear template flow diagram (Step A → Step B → [if X then C else D])
-                2. All specific entities from incident (exact usernames, IPs, apps)
-                3. Investigation strategy that maps template to this incident
-                4. Historical patterns with percentages and specific indicators
-                5. All conditional logic extracted from template
-                6. Web research findings (if searches were performed)
+                1. TEMPLATE STEPS - Every step extracted with full details
+                2. INCIDENT DATA - All specific entities (names, IPs, etc.)
+                3. HISTORICAL PATTERNS - Statistical context per step
+                4. WEB-ENHANCED STEPS - Template + queries/steps from web research
+                5. INVESTIGATION BLUEPRINT - Step-by-step with actual data
                 
-                The synthesis should read like an investigation blueprint that another
-                analyst could follow step-by-step, knowing exactly what to check and
-                in what order, using the actual data from this specific incident.
+                Each step must have:
+                - Name (from template)
+                - Explanation (from template)
+                - KQL (from template OR web, populated with incident data)
+                - Expected output (from template examples + history)
+                - Decision logic (from template + web)
             """
             ),
             agent=agent,
         )
 
+
     def generate_triaging_plan_task(self, agent, synthesis_output, rule_number):
-        """Task to generate CONCISE, ACTION-FOCUSED triaging plan."""
+        """
+        FIXED: Generate plan using EXTRACTED template steps + web enhancements.
+        """
         return Task(
             description=dedent(
                 f"""
-                Generate a CONCISE and ACTIONABLE triaging plan for: {rule_number}
+                Generate triaging plan for {rule_number} using the synthesis.
                 
-                Based on synthesis: {synthesis_output}
+                SYNTHESIS (contains extracted template + web research):
+                {synthesis_output}
                 
-                CRITICAL REQUIREMENTS:
-                ====================
+                ===========================================================================
+                YOUR TASK: TRANSFORM SYNTHESIS INTO STRUCTURED STEPS
+                ===========================================================================
                 
-                1. **Step Names**: Must be SPECIFIC and ACTION-ORIENTED
-                ❌ BAD: "Verify IP Reputation and Geolocation"
-                ✅ GOOD: "Check Source IP: Threat Intelligence"
+                The synthesis contains:
+                - TEMPLATE STEPS (what analysts actually do)
+                - WEB-ENHANCED STEPS (KQL queries, additional checks)
+                - INCIDENT DATA (actual usernames, IPs to use)
+                - HISTORICAL PATTERNS (what typically found)
                 
-                ❌ BAD: "User Behavior Analysis and Pattern Review"
-                ✅ GOOD: "Review User Sign-in History"
+                You must OUTPUT one formatted step for EACH template step.
                 
-                2. **Explanations**: Keep to 2-3 sentences MAX. Format:
-                - Sentence 1: What to check (specific action)
-                - Sentence 2: What indicates FP vs TP (decision criteria)
-                - Sentence 3 (optional): When to escalate
+                ===========================================================================
+                STEP GENERATION RULES
+                ===========================================================================
                 
-                3. **Expected Output**: ONE clear sentence showing the most common finding
-                Format: "Typically shows: [specific value/pattern]. If found → [FP/TP]"
+                For EACH step in "TEMPLATE STEPS" or "WEB-ENHANCED STEPS":
                 
-                4. **Step Count**: Create 5-8 steps only (quality over quantity)
+                1. **STEP Name**:
+                - Use EXACT name from template
+                - If too long, shorten but keep meaning
+                - Example: Template: "Check Alert Details" → Keep as "Check Alert Details"
                 
-                STEP STRUCTURE TEMPLATE:
-                =======================
+                2. **EXPLANATION** (2-3 sentences):
+                - Sentence 1: What to check (from template explanation)
+                - Sentence 2: What indicates FP vs TP (from historical patterns + web)
+                - Sentence 3: Escalation criteria (from template decision logic)
+                
+                Example:
+                "Check the source IP reputation using VirusTotal or threat intelligence. 
+                Clean IP with no alerts indicates legitimate activity (FP). 
+                Malicious IP requires immediate escalation to L3 SOC."
+                
+                3. **KQL Query**:
+                - Use query from "WEB_RESEARCH_FINDINGS" if available
+                - Otherwise use query from template
+                - POPULATE with actual incident data (real username, IP)
+                - If no query exists, leave empty
+                
+                Example:
+                ```
+                SigninLogs
+                | where UserPrincipalName == "john.doe@company.com"
+                | where TimeGenerated > ago(7d)
+                | project TimeGenerated, IPAddress, Location, DeviceDetail
+                ```
+                
+                4. **EXPECTED_OUTPUT**:
+                Format: "Based on [X] past incidents ([Y]% FP): Typically shows '[specific finding from template/history]'. If found → [FP/TP]."
+                
+                Example:
+                "Based on 45 past incidents (82% FP): Typically shows 'Clean IP, No malicious reputation, Known device'. If found → False Positive (82% likelihood)."
+                
+                5. **DECISION_POINT** (if template had IF/THEN):
+                Extract from template's decision logic
+                
+                Example:
+                "If IP is malicious OR user denies activity → Escalate to L3 SOC. Else proceed to next step."
+                
+                ===========================================================================
+                OUTPUT FORMAT (MANDATORY - EXACT FORMAT)
+                ===========================================================================
+                
+                For each template step, output:
                 
                 ---
-                STEP: [Verb] + [Specific Target] + [Brief Context]
+                STEP: [Exact name from template]
                 
-                EXPLANATION: [Action sentence]. [Decision criteria]. [Escalation if needed].
+                EXPLANATION: [3 sentences: what to check, FP/TP indicators, escalation]
                 
-                KQL: [Query if applicable, otherwise empty]
+                KQL: 
+                [Complete query from web research with actual incident data]
+                [Or empty if N/A]
                 
-                EXPECTED_OUTPUT: Typically shows: [specific finding from historical data]. If found → [indicates FP/TP].
+                EXPECTED_OUTPUT: Based on [X] incidents ([Y]% FP): Typically shows '[finding]'. If found → [indicates FP/TP].
                 
-                INPUT_REQUIRED: Yes/No
-                ---
+                DECISION_POINT: [IF/THEN logic from template, if exists]
                 
-                EXAMPLES OF GOOD STEPS:
-                ======================
-                
-                Example 1 (IP Check):
-                ---
-                STEP: Check Source IP Reputation
-                EXPLANATION: Query threat intelligence for the source IP address. Clean reputation with no alerts indicates legitimate activity (FP). Malicious IP or high-risk score requires immediate escalation.
-                KQL: SigninLogs | where IPAddress == "x.x.x.x" | project TimeGenerated, IPAddress, Location, RiskLevel
-                EXPECTED_OUTPUT: Typically shows: "Clean IP, No threats, Known range". If found → False Positive (85% historical rate).
                 INPUT_REQUIRED: Yes
                 ---
                 
-                Example 2 (User Confirmation):
+                ===========================================================================
+                COMPLETE EXAMPLE (Template: Rule#286 Atypical Travel)
+                ===========================================================================
+                
                 ---
-                STEP: Confirm Activity with User
-                EXPLANATION: Contact user to verify if they performed this action. User confirmation of legitimate activity closes as FP. No response or user denial requires L3 escalation.
-                KQL: N/A
-                EXPECTED_OUTPUT: Typically shows: "User confirmed legitimate action". If found → False Positive (90% historical rate).
+                STEP: Check Alert Details
+                
+                EXPLANATION: Gather incident details including username, IP address, geolocation, and timestamp. Review if locations are geographically impossible within the timeframe. Atypical travel between distant locations in short time indicates TP.
+                
+                KQL:
+                SigninLogs
+                | where UserPrincipalName == "chorton@arcutis.com"
+                | where TimeGenerated > ago(1d)
+                | project TimeGenerated, IPAddress, Location, DeviceDetail, AppDisplayName
+                | order by TimeGenerated desc
+                
+                EXPECTED_OUTPUT: Based on 58 past incidents (78% FP): Typically shows 'Same country travel (US to US), Known device, MFA satisfied'. If found → False Positive (78% likelihood).
+                
+                DECISION_POINT: If impossible travel detected (e.g., India to USA in 10 minutes) AND unknown device → Escalate immediately. Else proceed to IP check.
+                
                 INPUT_REQUIRED: Yes
                 ---
                 
-                Example 3 (MFA Check):
                 ---
-                STEP: Verify MFA Completion
-                EXPLANATION: Check if multi-factor authentication was successfully completed. MFA success indicates legitimate access (FP). Missing or failed MFA is suspicious (TP).
-                KQL: SigninLogs | where UserPrincipalName == "user@domain.com" | project MfaDetail, AuthenticationRequirement
-                EXPECTED_OUTPUT: Typically shows: "MFA successful, All requirements met". If found → False Positive (88% historical rate).
+                STEP: IP Reputation Check
+                
+                EXPLANATION: Verify IP reputation using VirusTotal, GreyNoise, or threat intelligence feeds. Clean IP with no malicious history indicates legitimate activity (FP). Malicious IP requires immediate escalation and blocking.
+                
+                KQL:
+                SigninLogs
+                | where UserPrincipalName == "chorton@arcutis.com"
+                | where TimeGenerated > ago(7d)
+                | distinct IPAddress
+                | project IPAddress
+                
+                EXPECTED_OUTPUT: Based on 58 past incidents (78% FP): Typically shows 'Clean IP, No threats, Corporate IP range'. If found → False Positive (78% likelihood).
+                
+                DECISION_POINT: If IP is malicious OR flagged as VPN/TOR → Escalate to IT for blocking. Else proceed to user behavior check.
+                
                 INPUT_REQUIRED: Yes
                 ---
                 
-                RULE-SPECIFIC GUIDANCE:
-                ======================
+                ---
+                STEP: Contact User for Verification
                 
-                **For Sophos/EDR Alerts:**
-                - Step 1: Check Sophos Service Status
-                - Step 2: Review Endpoint Health
-                - Step 3: Analyze Process/File Behavior
-                - Step 4: Check for Known False Positives
-                - Step 5: Escalate if Service Down
+                EXPLANATION: Reach out to user to confirm if they traveled to the detected location and recognize the device/IP. User confirmation of legitimate activity closes as FP. User denial or no response requires escalation.
                 
-                **For Atypical Travel:**
-                - Step 1: Calculate Travel Timeframe
-                - Step 2: Check Source/Destination IPs
-                - Step 3: Verify Device Consistency
-                - Step 4: Check VPN Usage
-                - Step 5: Confirm with User
+                KQL:
                 
-                **For Passwordless Authentication:**
-                - Step 1: Check Authentication Method
-                - Step 2: Verify Certificate/Token Validity
-                - Step 3: Review Application Access
-                - Step 4: Check User MFA Status
-                - Step 5: Confirm with User
+                EXPECTED_OUTPUT: Based on 58 past incidents (78% FP): Typically shows 'User confirmed travel, Using VPN, Business trip'. If found → False Positive (78% likelihood).
                 
-                **For Privileged Role Assignment:**
-                - Step 1: Identify Assigned Role
-                - Step 2: Verify Initiator Authorization
-                - Step 3: Check Change Management Ticket
-                - Step 4: Review Post-Assignment Activity
-                - Step 5: Validate Business Justification
+                DECISION_POINT: If user confirms activity → Close as FP. If user denies OR no response within 2 hours → Escalate to IT and disable account.
                 
-                QUALITY CHECKLIST:
-                ==================
-                - [ ] Each step name is under 6 words
-                - [ ] Each explanation is under 50 words
-                - [ ] Expected output references historical FP/TP rate
-                - [ ] KQL queries are complete (not truncated)
-                - [ ] Total steps between 5-8
-                - [ ] Steps follow logical investigation order
-                - [ ] Each step has clear FP vs TP criteria
+                INPUT_REQUIRED: Yes
+                ---
+                
+                ===========================================================================
+                FINAL DECISION STEP (ADD THIS AT THE END)
+                ===========================================================================
+                
+                After all template steps, add:
+                
+                ---
+                STEP: Final Classification & Documentation
+                
+                EXPLANATION: Based on all findings from previous steps, classify as True Positive, False Positive, or Benign Positive. Document detailed justification referencing specific step numbers and findings. Determine escalation path based on classification.
+                
+                KQL:
+                
+                EXPECTED_OUTPUT: Classification with comprehensive justification citing evidence from Steps 1-[N]. Clear documentation of all actions taken and next steps.
+                
+                DECISION_POINT: If TP confirmed → Escalate per template (IT Team/L3 SOC). If FP confirmed → Close with justification. If uncertain → Escalate to L3 for review.
+                
+                INPUT_REQUIRED: Yes
+                ---
+                
+                ===========================================================================
+                QUALITY REQUIREMENTS
+                ===========================================================================
+                
+                ✅ Every template step is included (no steps missed)
+                ✅ Steps are in template's original order
+                ✅ Each step has 2-3 sentence explanation
+                ✅ KQL queries use ACTUAL incident data (real username, IP)
+                ✅ Expected outputs reference historical % and specific findings
+                ✅ Decision points are clear (IF X THEN Y)
+                ✅ Final decision step is added
+                ✅ Total steps = template steps + 1 (final decision)
             """
             ),
             expected_output=dedent(
                 """
-                5-8 concise, actionable steps formatted exactly as:
+                Steps formatted EXACTLY as shown:
                 
                 ---
-                STEP: [Action-focused name under 6 words]
-                EXPLANATION: [2-3 sentences, under 50 words total]
-                KQL: [Complete query or empty]
-                EXPECTED_OUTPUT: Typically shows: [specific finding]. If found → [FP/TP with percentage].
-                INPUT_REQUIRED: Yes/No
+                STEP: [Name from template]
+                EXPLANATION: [2-3 sentences]
+                KQL: [Query with actual data OR empty]
+                EXPECTED_OUTPUT: Based on X incidents (Y% FP): [finding]. If found → [FP/TP].
+                DECISION_POINT: [IF/THEN OR empty]
+                INPUT_REQUIRED: Yes
                 ---
+                
+                Output one block per template step + final decision step.
+                Must include ALL steps from template in original order.
             """
             ),
             agent=agent,
             context=[synthesis_output] if synthesis_output else [],
+        )
+
+
+    def real_time_prediction_task(
+        self,
+        agent,
+        triaging_comments: dict,
+        rule_number: str,
+        rule_history: dict,
+        template_content: str,
+    ):
+        """
+        FIXED: Prediction based on template's decision criteria.
+        """
+        all_comments = "\n\n".join(
+            [f"**{step}**: {comment}" for step, comment in triaging_comments.items()]
+        )
+
+        return Task(
+            description=dedent(
+                f"""
+                Predict classification for {rule_number} based on completed triaging.
+                
+                ===========================================================================
+                COMPLETED INVESTIGATION FINDINGS:
+                ===========================================================================
+                {all_comments}
+                
+                ===========================================================================
+                TEMPLATE'S DECISION CRITERIA (MUST FOLLOW):
+                ===========================================================================
+                {template_content}
+                
+                Extract from template:
+                - What conditions = True Positive?
+                - What conditions = False Positive?
+                - What are escalation triggers?
+                
+                ===========================================================================
+                HISTORICAL BASELINE:
+                ===========================================================================
+                - Total Past Incidents: {rule_history.get('total_incidents', 0)}
+                - FP Rate: {rule_history.get('fp_rate', 0)}%
+                - TP Rate: {rule_history.get('tp_rate', 0)}%
+                - Common FP Indicators: {rule_history.get('fp_indicators', 'N/A')}
+                - Common TP Indicators: {rule_history.get('tp_indicators', 'N/A')}
+                
+                ===========================================================================
+                PREDICTION PROCESS (FOLLOW EXACTLY):
+                ===========================================================================
+                
+                **STEP 1: Map findings to template decision criteria**
+                
+                Go through each completed step's findings:
+                - Does finding match template's FP criteria? (e.g., "clean IP", "user confirmed")
+                - Does finding match template's TP criteria? (e.g., "malicious IP", "user denied")
+                - Were any escalation triggers met?
+                
+                **STEP 2: Calculate probability adjustments**
+                
+                Start with historical baseline: FP={rule_history.get('fp_rate', 50)}%, TP={rule_history.get('tp_rate', 50)}%
+                
+                For EACH finding, adjust:
+                - Strong FP indicator (matches template FP criteria) → +15-20% FP
+                - Weak FP indicator → +5-10% FP
+                - Strong TP indicator (matches template TP criteria) → +15-20% TP
+                - Weak TP indicator → +5-10% TP
+                
+                **STEP 3: Normalize to 100%**
+                
+                Ensure: FP% + TP% + BP% = 100%
+                
+                **STEP 4: Validate against template**
+                
+                Does highest percentage match template's decision logic?
+                - If template says "if clean IP + user confirm → FP", and both found → FP% should be highest
+                
+                ===========================================================================
+                OUTPUT FORMAT (MANDATORY):
+                ===========================================================================
+                
+                ---
+                PREDICTION_TYPE: [False Positive / True Positive / Benign Positive]
+                
+                CONFIDENCE_PERCENTAGES:
+                - False Positive Likelihood: [X]%
+                - True Positive Likelihood: [Y]%
+                - Benign Positive Likelihood: [Z]%
+                (MUST SUM TO 100%)
+                
+                CONFIDENCE_LEVEL: [High / Medium / Low]
+                
+                KEY_FACTORS:
+                1. [Step N finding]: [How it matches template criteria]
+                2. [Step M finding]: [How it matches template criteria]
+                3. [Template decision point met/not met]
+                4. [Historical pattern alignment]
+                
+                TEMPLATE_ALIGNMENT:
+                "[Explain how findings match template's decision logic]"
+                Example: "Template states: 'If clean IP AND MFA success → FP'. Both conditions met in Steps 2 and 4."
+                
+                HISTORICAL_COMPARISON:
+                "[Compare to past {rule_history.get('total_incidents', 0)} incidents]"
+                Example: "Findings match 82% of past FP cases where clean IP and user confirmation were found."
+                
+                REASONING:
+                "[2-3 sentences why these percentages]"
+                
+                RECOMMENDED_ACTION:
+                "[From template's escalation logic]"
+                - If TP → [action from template]
+                - If FP → Close with justification
+                ---
+                
+                ===========================================================================
+                EXAMPLE OUTPUT:
+                ===========================================================================
+                
+                ---
+                PREDICTION_TYPE: False Positive
+                
+                CONFIDENCE_PERCENTAGES:
+                - False Positive Likelihood: 85%
+                - True Positive Likelihood: 10%
+                - Benign Positive Likelihood: 5%
+                
+                CONFIDENCE_LEVEL: High
+                
+                KEY_FACTORS:
+                1. Step 2 (IP Check): Found "Clean IP, No threats" - matches template FP criteria
+                2. Step 4 (User Verification): User confirmed legitimate travel - strong FP indicator per template
+                3. Step 3 (Device Check): Known device with MFA satisfied - template FP pattern
+                4. Historical: 78% of past incidents with these patterns were FP
+                
+                TEMPLATE_ALIGNMENT:
+                Template decision logic states: "If clean IP AND user confirms travel AND known device → False Positive". All three conditions were met across Steps 2, 3, and 4, strongly supporting FP classification per template guidance.
+                
+                HISTORICAL_COMPARISON:
+                This incident matches 85% of the 58 past {rule_number} cases that were False Positives. Historical FP rate is 78%, and this case shows the same pattern: clean IP + user confirmation + known device + MFA satisfied.
+                
+                REASONING:
+                The combination of clean IP reputation (Step 2), user confirmation of legitimate travel (Step 4), and known device with MFA (Step 3) strongly indicates legitimate activity. These findings align perfectly with the template's FP decision criteria and match 85% of historical FP patterns.
+                
+                RECOMMENDED_ACTION:
+                Per template: Close as False Positive. Document: "Legitimate user travel confirmed via IP reputation check, user verification, and device recognition. No escalation required."
+                ---
+                
+                ===========================================================================
+                VALIDATION CHECKLIST:
+                ===========================================================================
+                
+                Before outputting, verify:
+                ✅ Percentages total 100%
+                ✅ Prediction type matches highest %
+                ✅ Key factors reference actual step findings
+                ✅ Template alignment explains decision logic match
+                ✅ Historical comparison included
+                ✅ Recommended action from template
+            """
+            ),
+            expected_output=dedent(
+                """
+                Complete prediction with:
+                1. Prediction type (FP/TP/BP)
+                2. Three percentages summing to 100%
+                3. Confidence level
+                4. 4-5 key factors referencing steps
+                5. Template alignment explanation
+                6. Historical comparison
+                7. Clear reasoning (2-3 sentences)
+                8. Recommended action from template
+                
+                Must match MANDATORY OUTPUT FORMAT exactly.
+            """
+            ),
+            agent=agent,
         )
 
     def predict_outcome_task(self, agent, consolidated_data, rule_number):
@@ -380,13 +714,21 @@ class TriagingTasks:
                 f"""
                 Predict the outcome for: {rule_number}
                 
-                Perform a comprehensive analysis of this incident: {str(consolidated_data)[:1000]}...
+                Perform a comprehensive analysis of this incident: {str(consolidated_data)}...
+                
+                INCIDENT DATA:
+                {json.dumps(consolidated_data, indent=2)}
                 
                 ANALYSIS STEPS:
                 1. Extract and analyze resolver comments for key indicators
                 2. Review historical classification and justification
                 3. Apply pattern recognition based on known TP/FP patterns
                 4. Consider context: priority, VIP users, time of day, etc.
+                
+                Historical context:
+                - Previous Classification: {consolidated_data.get('false_true_positive', 'N/A')}
+                - Justification: {consolidated_data.get('why_false_positive', 'N/A')}
+                - Resolver Comments: {consolidated_data.get('resolver_comments', 'N/A')}
                 
                 FALSE POSITIVE indicators:
                 - IP reputation explicitly marked as "clean"
@@ -422,7 +764,7 @@ class TriagingTasks:
                 Historical context:
                 - Previous Classification: {consolidated_data.get('false_true_positive', 'N/A')}
                 - Justification: {consolidated_data.get('why_false_positive', 'N/A')}
-                - Resolver Comments: {consolidated_data.get('resolver_comments', 'N/A')[:200]}
+                - Resolver Comments: {consolidated_data.get('resolver_comments', 'N/A')}
                 
                 Provide prediction with:
                 - Classification (Likely True Positive / Likely False Positive / Requires Further Investigation)
@@ -444,207 +786,6 @@ class TriagingTasks:
                 KEY_INDICATORS: [Bullet list of 3-5 specific data points that support this prediction]
                 
                 RECOMMENDATION: [Specific next steps based on prediction]
-            """
-            ),
-            agent=agent,
-        )
-
-    def generate_triaging_plan_task(self, agent, synthesis_output, rule_number):
-        """Task to generate detailed step-by-step triaging plan with expected outputs."""
-        return Task(
-            description=dedent(
-                f"""
-                Generate a comprehensive triaging plan for: {rule_number}
-                
-                Based on the synthesis with FULL HISTORICAL DATA: {synthesis_output}
-                
-                Each step MUST include:
-                
-                1. **Step Name**: Clear, action-oriented title
-                
-                2. **Explanation**: Detailed 4-6 sentences
-                
-                3. **KQL Query**: If applicable
-                
-                4. **EXPECTED OUTPUT**: Critical addition - what should the analyst expect to find?
-                - Based on historical patterns from ALL past incidents
-                - Include percentage likelihood (e.g., "80% of cases show clean IP")
-                - List specific phrases/values to look for
-                - Indicate if this supports False Positive or True Positive
-                
-                Example for IP check:
-                "Expected Output: Based on 45 historical incidents (82% False Positive rate), 
-                you should typically find: 'Clean IP reputation', 'No malicious indicators', 
-                'Known IP range'. If these are found, incident leans toward False Positive."
-                
-                5. **User Input Required**: Yes/No
-                
-                FORMAT each step EXACTLY as:
-                ---
-                STEP: [Step Name]
-                EXPLANATION: [Detailed guidance]
-                KQL: [Query or N/A]
-                EXPECTED_OUTPUT: [What to expect based on historical data - be specific with percentages and examples]
-                INPUT_REQUIRED: [Yes/No]
-                ---
-            """
-            ),
-            expected_output=dedent(
-                """
-                6-10 steps, each with EXPECTED_OUTPUT field showing:
-                - Historical percentage likelihood
-                - Specific phrases/values to look for
-                - How this indicates FP vs TP
-                
-                Example:
-                ---
-                STEP: Verify IP Reputation
-                EXPLANATION: Check source IP against threat intelligence...
-                KQL: SigninLogs | where...
-                EXPECTED_OUTPUT: Based on 45 past incidents (82% FP rate): Expect "Clean IP", "No threats detected", "Known corporate IP range". Finding these indicates ~82% chance of False Positive. If instead you find "Malicious IP" or "Bad reputation", indicates True Positive.
-                INPUT_REQUIRED: Yes
-                ---
-            """
-            ),
-            agent=agent,
-            context=[synthesis_output] if synthesis_output else [],
-        )
-
-    def real_time_prediction_task(
-        self,
-        agent,
-        triaging_comments: dict,
-        rule_number: str,
-        rule_history: dict,
-        template_content: str,
-    ):
-        """Task to predict outcome in real-time based on triaging comments."""
-
-        # Combine all comments/answers provided so far
-        all_comments = "\n\n".join(
-            [f"**{step}**: {comment}" for step, comment in triaging_comments.items()]
-        )
-
-        return Task(
-            description=dedent(
-                f"""
-                Provide REAL-TIME prediction for: {rule_number}
-                
-                Based on triaging comments collected so far:
-                {all_comments}
-                
-                Historical Context:
-                - Total Past Incidents: {rule_history.get('total_incidents', 0)}
-                - Historical FP Rate: {rule_history.get('fp_rate', 0)}%
-                - Historical TP Rate: {rule_history.get('tp_rate', 0)}%
-                - Common FP Indicators: {rule_history.get('fp_indicators', 'N/A')[:200]}
-                - Common TP Indicators: {rule_history.get('tp_indicators', 'N/A')[:200]}
-                
-                Template Guidance:
-                {template_content[:500]}...
-                
-                YOUR TASK:
-                ==========
-                
-                1. **Analyze Each Comment**: Review every finding documented by the analyst
-                
-                2. **Pattern Matching**: Compare findings against historical FP/TP patterns
-                
-                3. **Web Research** (if needed): Search for similar cases or indicators
-                - Example: "Rule {rule_number.split('#')[1] if '#' in rule_number else rule_number} + [key finding] false positive rate"
-                
-                4. **Calculate Probabilities**:
-                - Start with historical baseline (FP: {rule_history.get('fp_rate', 50)}%, TP: {rule_history.get('tp_rate', 50)}%)
-                - Adjust based on each finding:
-                    * If finding matches common FP patterns → increase FP probability
-                    * If finding matches common TP patterns → increase TP probability
-                - Consider strength of evidence (strong indicators = larger adjustment)
-                
-                5. **Provide Classification Prediction**:
-                
-                Format your response EXACTLY as:
-                
-                ---
-                PREDICTION_TYPE: [False Positive / True Positive / Benign Positive]
-                
-                CONFIDENCE_PERCENTAGES:
-                - False Positive Likelihood: [X]%
-                - True Positive Likelihood: [Y]%
-                - Benign Positive Likelihood: [Z]%
-                (Note: X + Y + Z should equal 100%)
-                
-                CONFIDENCE_LEVEL: [High (80-100%) / Medium (50-79%) / Low (<50%)]
-                
-                KEY_FACTORS:
-                1. [Finding from comments that supports this prediction]
-                2. [Another supporting finding]
-                3. [Another supporting finding]
-                
-                HISTORICAL_COMPARISON:
-                [How this case compares to the {rule_history.get('total_incidents', 0)} past incidents]
-                
-                REASONING:
-                [2-3 sentence explanation of why these percentages were assigned based on the evidence]
-                
-                WEB_RESEARCH_FINDINGS: (if search was performed)
-                [Key insights from web search that influenced prediction]
-                ---
-                
-                CRITICAL INDICATORS:
-                
-                **Strong False Positive Indicators** (increase FP %):
-                - "Clean IP", "No malicious reputation", "Known IP"
-                - "Registered device", "Known device", "Corporate device"
-                - "MFA successful", "MFA enabled"
-                - "User confirmed", "Legitimate activity"
-                - "Known applications", "Approved apps"
-                - "VPN usage" (NordVPN, ExpressVPN, corporate VPN)
-                - "BAS testing", "Security testing"
-                - "Nothing suspicious", "Normal behavior"
-                
-                **Strong True Positive Indicators** (increase TP %):
-                - "Malicious IP", "Bad reputation", "Threat detected"
-                - "Unknown device", "Unregistered device"
-                - "Failed MFA", "MFA bypass"
-                - "Unauthorized access", "Suspicious activity"
-                - "Service not running", "Service down"
-                - "Data exfiltration", "Unusual downloads"
-                - "Multiple failed attempts"
-                - "Sensitive data access"
-                
-                **Benign Positive Indicators** (increase BP %):
-                - "Legitimate but unexpected", "Authorized but unusual"
-                - "Policy violation but not malicious"
-                - "Configuration issue", "Misconfiguration"
-                - "Automated process", "Scheduled task"
-            """
-            ),
-            expected_output=dedent(
-                """
-                A comprehensive real-time prediction with exact percentages:
-                
-                ---
-                PREDICTION_TYPE: [Most Likely Classification]
-                
-                CONFIDENCE_PERCENTAGES:
-                - False Positive Likelihood: X%
-                - True Positive Likelihood: Y%
-                - Benign Positive Likelihood: Z%
-                
-                CONFIDENCE_LEVEL: [High/Medium/Low]
-                
-                KEY_FACTORS:
-                [Numbered list of supporting evidence from comments]
-                
-                HISTORICAL_COMPARISON:
-                [How this case aligns with historical patterns]
-                
-                REASONING:
-                [Clear explanation of percentage calculations]
-                
-                WEB_RESEARCH_FINDINGS:
-                [If web search was used, what was found]
-                ---
             """
             ),
             agent=agent,
