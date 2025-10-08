@@ -151,6 +151,19 @@ class IntelligentStepNameGenerator:
     def _detect_subject(self, text: str) -> str:
         """Detect subject matter"""
         # Role-related
+
+        # Passwordless authentication specific
+        if "passwordless" in text or "without password" in text:
+            if "vip" in text:
+                return "VIP User Verification"
+            elif "application" in text and "critical" in text:
+                return "Critical Application Assessment"
+            elif "legitimate" in text or "authentication method" in text:
+                return "Authentication Method Validation"
+            elif "monitoring" in text or "future" in text:
+                return "Enhanced Monitoring Setup"
+            return "Passwordless Authentication Analysis"
+
         if any(
             word in text
             for word in ["role", "privileged", "global admin", "administrator"]

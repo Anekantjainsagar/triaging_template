@@ -267,20 +267,42 @@ class WebLLMEnhancer:
     def _generate_clear_step_name(
         self, raw_name: str, explanation: str, step_num: int, rule_number: str
     ) -> str:
-        """
-        Generate CLEAR, DESCRIPTIVE step names based on content.
-        """
+        """Generate CLEAR step names based on template patterns"""
+
         # Clean raw name
-        clean = re.sub(r"^\d+\.?\d*\s*", "", raw_name)  # Remove numbers
-        clean = re.sub(r"[*#_`]", "", clean)  # Remove markdown
+        clean = re.sub(r"^\d+\.?\d*\s*", "", raw_name)
+        clean = re.sub(r"[*#_`]", "", clean)
         clean = clean.strip()
 
-        # If name is clear and descriptive, use it
-        if len(clean) > 10 and clean.lower() not in ["investigation step", "step"]:
+        # If raw name is already clear (not just a number), use it
+        if clean and len(clean) > 3 and not clean.replace(".", "").isdigit():
             return clean
 
-        # Otherwise, generate from explanation
         exp_lower = explanation.lower() if explanation else ""
+
+        # Passwordless authentication specific patterns
+        if "passwordless" in rule_number.lower():
+            if "vip" in exp_lower and "cross verify" in exp_lower:
+                return "Verify VIP User Status"
+            elif "application" in exp_lower and "without sign in" in exp_lower:
+                return "Check Application Sign-In Attempts"
+            elif "application" in exp_lower and "critical" in exp_lower:
+                return "Assess Critical Application Usage"
+            elif "no critical" in exp_lower and "false positive" in exp_lower:
+                return "Close as False Positive (No Critical Apps)"
+            elif (
+                "critical application found" in exp_lower
+                and "true positive" in exp_lower
+            ):
+                return "Escalate as True Positive (Critical App Found)"
+            elif "legitimate" in exp_lower and "biometric" in exp_lower:
+                return "Validate Passwordless Authentication Method"
+            elif "legitimate" in exp_lower and "false positive" in exp_lower:
+                return "Close as False Positive (Legitimate Auth)"
+            elif "unauthorized" in exp_lower and "locking" in exp_lower:
+                return "Execute Remediation Actions"
+            elif "monitoring" in exp_lower and "future" in exp_lower:
+                return "Enhance Future Monitoring"
 
         # Rule-specific patterns for "New User Assigned to Privileged Role"
         if "privileged" in rule_number.lower() or "role" in rule_number.lower():

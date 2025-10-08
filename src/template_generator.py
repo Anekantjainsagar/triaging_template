@@ -35,6 +35,7 @@ class CompleteTemplateGenerator:
             "Name",
             "Explanation",
             "KQL Query",
+            "KQL Purpose",
             "Execute",
             "Output",
             "Remarks/Comments",
@@ -100,15 +101,30 @@ class CompleteTemplateGenerator:
 
             # 3. Create clean explanation
             clean_explanation = self._clean_explanation(explanation)
+            
+            # 4. Build row with KQL purpose
+            kql_purpose = ""
+            if kql_query:
+                # Generate brief explanation
+                if "SigninLogs" in kql_query:
+                    kql_purpose = "Queries user sign-in activity and patterns"
+                elif "AuditLogs" in kql_query and "role" in kql_query.lower():
+                    kql_purpose = "Checks role assignment audit logs"
+                elif "IdentityInfo" in kql_query:
+                    kql_purpose = "Retrieves user identity and VIP status"
+                elif "ThreatIntelligence" in kql_query:
+                    kql_purpose = "Checks IP reputation against threat feeds"
+                else:
+                    kql_purpose = "Investigative query for this step"
 
-            # 4. Build row (NO INPUT COLUMN)
             step_row = {
                 "Step": i,
                 "Name": clear_name,
                 "Explanation": clean_explanation,
                 "KQL Query": kql_query,
-                "Execute": "",  # For manual checkbox/completion
-                "Output": "",  # For findings
+                "KQL Purpose": kql_purpose,  # 🔥 NEW
+                "Execute": "",
+                "Output": "",
                 "Remarks/Comments": self._generate_remarks(step, rule_history),
             }
 

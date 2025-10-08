@@ -65,34 +65,51 @@ class TemplateParser:
             return self._extract_from_first_column(df)
 
         steps = []
-        skipped_rows = []
 
         for idx, row in df.iterrows():
             step_name = str(row.get(step_col, "")).strip()
 
-            # Skip completely empty rows
             if not step_name or step_name == "nan" or len(step_name) < 2:
                 continue
 
-            # Skip obvious metadata/header rows
             if self._is_metadata_row(step_name):
-                skipped_rows.append(f"Row {idx}: {step_name} (metadata)")
                 continue
 
-            # Extract explanation and input
             explanation = (
                 str(row.get(explanation_col, "")).strip() if explanation_col else ""
             )
             input_details = str(row.get(input_col, "")).strip() if input_col else ""
 
-            # Clean 'nan' values
+            # Clean nan values
             if explanation == "nan":
                 explanation = ""
             if input_details == "nan":
                 input_details = ""
 
-            # ⭐ CRITICAL: Accept ALL remaining rows as investigation steps
-            # Build step dictionary
+            # 🔥 NEW: Extract decision logic
+            decision_point = ""
+            if "if" in explanation.lower():
+                # Extract the condition
+                decision_match = re.search(
+                    r"if\s+(.+?)\s+(?:then|,)", explanation, re.IGNORECASE
+                )
+                if decision_match:
+                    decision_point = decision_match.group(1).strip()
+
+            # 🔥 NEW: Extract expected outcome from INPUT details
+            expected_output = ""
+            if input_details and input_details != "NA":
+                # INPUT details often contains the expected finding
+                expected_output = input_details
+            elif "closure" in explanation.lower() or "closing" in explanation.lower():
+                # Extract closure logic
+                closure_match = re.search(
+                    r"closing as (.*?)(?:\.|$)", explanation, re.IGNORECASE
+                )
+                if closure_match:
+                    expected_output = f"Expected: {closure_match.group(1).strip()}"
+
+            # Inside the loop where you build step dict:
             step = {
                 "step_name": step_name,
                 "explanation": (
@@ -101,27 +118,14 @@ class TemplateParser:
                     else f"Complete {step_name} and document findings"
                 ),
                 "input_required": self._extract_inputs(step_name, explanation),
-                "kql_query": "",  # Will be filled by web enhancement
+                "expected_output": self._extract_expected_outcome(
+                    explanation, input_details
+                ),  # 🔥 NEW
+                "decision_point": self._extract_decision_logic(explanation),  # 🔥 NEW
+                "kql_query": "",
             }
 
-            print(f"\n📋 Extracted Step {len(steps) + 1}: {step_name}")
-            if explanation:
-                print(f"   Has explanation: {explanation[:60]}...")
             steps.append(step)
-
-        # Report skipped rows
-        if skipped_rows:
-            print(f"\n⏭️ Skipped {len(skipped_rows)} metadata rows:")
-            for skipped in skipped_rows[:3]:  # Show first 3
-                print(f"   {skipped}")
-
-        print(f"\n✅ Total investigation steps extracted: {len(steps)}")
-
-        # ⭐ VALIDATION: Warn if too few steps
-        if len(steps) < 3:
-            print(
-                f"⚠️ WARNING: Only {len(steps)} steps found. Template may be incomplete."
-            )
 
         return steps
 
