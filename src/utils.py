@@ -451,7 +451,6 @@ def consolidate_rule_data(df: pd.DataFrame, rule_number: str) -> dict:
     return summary
 
 
-
 def get_triaging_template(rule_number: str) -> str:
     """Find and read the triaging template for a rule - IMPROVED VERSION."""
     template_dir = "data/triaging_templates"

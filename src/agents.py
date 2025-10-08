@@ -3,7 +3,6 @@ import pandas as pd
 from crewai import Agent, LLM
 from crewai_tools import SerperDevTool
 from crewai.tools import BaseTool
-from pydantic import Field
 
 
 # Custom tool for reading tracker data
@@ -120,26 +119,6 @@ class TriagingAgents:
         self.alert_search_tool = AlertSearchTool()
         self.incident_consolidation_tool = IncidentConsolidationTool()
         self.template_retrieval_tool = TemplateRetrievalTool()
-
-    def knowledge_synthesis_agent(self):
-        """Agent that synthesizes information from multiple sources."""
-        tools = [self.incident_consolidation_tool]
-        if self.web_search_tool:
-            tools.append(self.web_search_tool)
-
-        return Agent(
-            role="Security Intelligence Analyst",
-            goal="Synthesize incident data, templates, and threat intelligence into comprehensive analysis.",
-            backstory=(
-                "You are a senior security analyst with expertise in correlating information "
-                "from multiple sources. You excel at understanding the full context of security "
-                "incidents and providing clear summaries for investigation teams."
-            ),
-            tools=tools,
-            verbose=True,
-            allow_delegation=False,
-            llm=self.llm,
-        )
 
     def prediction_analysis_agent(self):
         """Agent that predicts incident outcomes based on historical data."""

@@ -1,18 +1,26 @@
+# Add these imports at the top of main.py
+
 import streamlit as st
 import pandas as pd
 import os
+import re
+import json
+import traceback
+
+# Existing imports
 from src.crew import TriagingCrew
 from src.utils import (
     read_all_tracker_sheets,
     search_alerts_in_data,
-    consolidate_incident_data,
-    get_triaging_template,
-    generate_completed_template,
     export_rule_incidents_to_excel,
+    generate_completed_template,
 )
+
+# NEW IMPORTS - Add these
+from src.template_parser import TemplateParser
+from src.web_llm_enhancer import WebLLMEnhancer
+from src.template_generator import EnhancedTemplateGenerator
 from src.csv_template_generator import generate_blank_triaging_template_csv
-import json
-import traceback
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -326,12 +334,13 @@ elif st.session_state.step == 1:
         st.session_state.alerts = []
         st.rerun()
 
+
 # ============================================================================
-# STEP 2: DATA CONSOLIDATION & TEMPLATE RETRIEVAL
+# FIXED STEP 2: DATA CONSOLIDATION & TEMPLATE ENHANCEMENT
 # ============================================================================
 elif st.session_state.step == 2:
     st.markdown(
-        '<div class="step-header"><h2>Step 3: Data Consolidation & Template Retrieval</h2></div>',
+        '<div class="step-header"><h2>Step 3: Template Enhancement & Generation</h2></div>',
         unsafe_allow_html=True,
     )
 
@@ -349,70 +358,282 @@ elif st.session_state.step == 2:
 
     with st.spinner("Processing..."):
         try:
-            status_text.text("📊 Consolidating incident data...")
-            progress_bar.progress(25, text="Consolidating incident data...")
+            # STEP 1: Find Template
+            status_text.text("🔍 Searching for triaging template...")
+            progress_bar.progress(20, text="Searching for template...")
 
-            consolidated = consolidate_incident_data(
-                st.session_state.all_data, selected_incident
-            )
+            from src.template_parser import TemplateParser
+            from src.web_llm_enhancer import WebLLMEnhancer
+            from src.template_generator import EnhancedTemplateGenerator
+            import os
 
-            if not consolidated:
-                st.error(f"❌ No data found for incident {selected_incident}")
+            parser = TemplateParser()
+            template_dir = "data/triaging_templates"
+
+            if not os.path.exists(template_dir):
+                st.error(f"❌ Template directory not found: {template_dir}")
                 if st.button("← Go Back"):
                     st.session_state.step = 1
                     st.rerun()
                 st.stop()
 
-            st.session_state.consolidated_data = consolidated
-            progress_bar.progress(50, text="Data consolidated successfully")
+            # Extract rule number
+            rule_num_match = re.search(r"#?(\d+)", rule_number)
+            rule_num = (
+                rule_num_match.group(1)
+                if rule_num_match
+                else rule_number.replace("#", "").strip()
+            )
 
-            status_text.text("📄 Retrieving triaging template...")
-            progress_bar.progress(75, text="Retrieving triaging template...")
+            # Find matching template
+            all_files = os.listdir(template_dir)
+            template_files = [
+                f
+                for f in all_files
+                if rule_num in f and (f.endswith(".csv") or f.endswith(".xlsx"))
+            ]
 
-            template = get_triaging_template(rule_number)
-            st.session_state.template_content = template
+            if not template_files:
+                st.error(f"❌ No template found for {rule_number}")
+                st.info(
+                    "💡 Please ensure a template file exists in data/triaging_templates/"
+                )
+                if st.button("← Go Back"):
+                    st.session_state.step = 1
+                    st.rerun()
+                st.stop()
 
-            progress_bar.progress(100, text="✅ Ready to start AI analysis!")
-            status_text.text("✅ All data prepared successfully!")
+            template_path = os.path.join(template_dir, template_files[0])
+            st.success(f"✅ Found template: {template_files[0]}")
 
-            st.markdown("### 📋 Data Preview")
+            # STEP 2: Parse Template (Get ALL steps)
+            status_text.text("📖 Parsing template steps...")
+            progress_bar.progress(40, text="Parsing template...")
 
-            tab1, tab2 = st.tabs(["Consolidated Data", "Triaging Template"])
+            if template_path.endswith(".csv"):
+                original_steps = parser.parse_csv_template(template_path)
+            else:
+                original_steps = parser.parse_excel_template(template_path)
+
+            if not original_steps:
+                st.warning(
+                    "⚠️ Template parsing returned no steps. Using fallback generation."
+                )
+                original_steps = [
+                    {
+                        "step_name": "Review Alert Details",
+                        "explanation": "Gather incident information",
+                        "input_required": "Incident number, timestamp",
+                        "kql_query": "",
+                    }
+                ]
+
+            # ⭐ SHOW WHAT WAS PARSED
+            st.info(
+                f"📋 Successfully parsed {len(original_steps)} steps from template:"
+            )
+            with st.expander("View Parsed Steps", expanded=False):
+                for i, step in enumerate(original_steps, 1):
+                    st.markdown(f"**{i}. {step.get('step_name')}**")
+                    st.markdown(
+                        f"- Explanation: {step.get('explanation', 'N/A')[:100]}..."
+                    )
+                    st.markdown(
+                        f"- Has KQL: {'Yes' if step.get('kql_query') else 'No'}"
+                    )
+                    st.markdown("---")
+
+            # STEP 3: Web + LLM Enhancement
+            status_text.text("🌐 Enhancing template with web research + LLM...")
+            progress_bar.progress(60, text="Enhancing with web + LLM...")
+
+            enhancer = WebLLMEnhancer()
+
+            # ⭐ CRITICAL FIX: Pass ALL original steps for enhancement
+            enhanced_steps = enhancer.enhance_template_steps(
+                rule_number=rule_number,
+                original_steps=original_steps,  # Pass ALL steps here
+            )
+
+            if not enhanced_steps or len(enhanced_steps) < len(original_steps):
+                st.warning(
+                    f"⚠️ Enhancement incomplete. Using parsed steps with cleanup."
+                )
+                # Fallback: Use original steps but clean them
+                enhanced_steps = []
+                for step in original_steps:
+                    enhanced_steps.append(
+                        {
+                            "step_name": step.get("step_name", "Investigation Step"),
+                            "explanation": step.get(
+                                "explanation",
+                                "Complete this step and document findings.",
+                            ),
+                            "input_required": step.get(
+                                "input_required", "Investigation data"
+                            ),
+                            "kql_query": step.get("kql_query", ""),
+                        }
+                    )
+
+            st.success(f"✅ Enhanced to {len(enhanced_steps)} steps")
+
+            # ⭐ SHOW ENHANCEMENT RESULTS
+            st.info("🔍 Enhancement Summary:")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Original Steps", len(original_steps))
+            with col2:
+                st.metric("Enhanced Steps", len(enhanced_steps))
+            with col3:
+                kql_count = len([s for s in enhanced_steps if s.get("kql_query")])
+                st.metric("Steps with KQL", kql_count)
+
+            # STEP 4: Generate Clean Excel Template
+            status_text.text("📊 Generating Excel template...")
+            progress_bar.progress(80, text="Generating Excel template...")
+
+            template_gen = EnhancedTemplateGenerator()
+            template_df = template_gen.generate_clean_template(
+                rule_number=rule_number, enhanced_steps=enhanced_steps
+            )
+
+            # Export to Excel
+            excel_file = template_gen.export_to_excel(template_df, rule_number)
+
+            # Store in session state
+            st.session_state.enhanced_steps = enhanced_steps
+            st.session_state.excel_template_data = excel_file
+
+            progress_bar.progress(100, text="✅ Template ready!")
+            status_text.text("✅ Template generation complete!")
+
+            # STEP 5: Display Preview
+            st.markdown("---")
+            st.markdown("### 📋 Generated Template Preview")
+
+            tab1, tab2, tab3 = st.tabs(
+                ["Excel Preview", "Steps Overview", "KQL Queries"]
+            )
 
             with tab1:
+                st.dataframe(template_df, use_container_width=True, height=400)
+
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Priority", consolidated.get("priority", "N/A"))
-                    st.metric("MTTD", f"{consolidated.get('mttd_mins', 'N/A')} mins")
+                    st.metric("Total Steps", len(enhanced_steps))
                 with col2:
-                    st.metric("Status", consolidated.get("status", "N/A"))
-                    st.metric("MTTR", f"{consolidated.get('mttr_mins', 'N/A')} mins")
+                    kql_count = len([s for s in enhanced_steps if s.get("kql_query")])
+                    st.metric("Steps with KQL", kql_count)
                 with col3:
-                    st.metric(
-                        "Classification", consolidated.get("false_true_positive", "N/A")
-                    )
-                    st.metric("VIP User", consolidated.get("vip_users", "N/A"))
-
-                with st.expander("View Complete Data"):
-                    st.json(consolidated)
+                    exp_count = len([s for s in enhanced_steps if s.get("explanation")])
+                    st.metric("Explained Steps", exp_count)
 
             with tab2:
-                st.text(template)
+                for i, step in enumerate(enhanced_steps, 1):
+                    with st.expander(
+                        f"Step {i}: {step.get('step_name', 'N/A')}", expanded=False
+                    ):
+                        st.markdown(
+                            f"**Explanation:**\n{step.get('explanation', 'N/A')}"
+                        )
+                        st.markdown(
+                            f"**Input Required:**\n{step.get('input_required', 'N/A')}"
+                        )
+                        if step.get("kql_query"):
+                            st.markdown("**KQL Query:**")
+                            st.code(step.get("kql_query"), language="kql")
+                        else:
+                            st.info("No KQL query for this step")
+
+            with tab3:
+                st.markdown("### KQL Queries (Ready to Use)")
+                kql_found = False
+                for i, step in enumerate(enhanced_steps, 1):
+                    if step.get("kql_query"):
+                        kql_found = True
+                        st.markdown(f"**Step {i}: {step.get('step_name')}**")
+                        st.code(step.get("kql_query"), language="kql")
+                        st.markdown("---")
+
+                if not kql_found:
+                    st.info("No KQL queries were generated/found in the template.")
+
+            # STEP 6: Download Options
+            st.markdown("---")
+            st.markdown("### 📥 Download Template")
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.download_button(
+                    label="📊 Download Excel Template",
+                    data=st.session_state.excel_template_data,
+                    file_name=f"triaging_template_{rule_number.replace('#', '_')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                    type="primary",
+                )
+
+            with col2:
+                # Generate JSON export
+                import json
+
+                json_export = {
+                    "rule": rule_number,
+                    "total_steps": len(enhanced_steps),
+                    "steps": enhanced_steps,
+                }
+                st.download_button(
+                    label="📄 Download JSON",
+                    data=json.dumps(json_export, indent=2),
+                    file_name=f"triaging_template_{rule_number.replace('#', '_')}.json",
+                    mime="application/json",
+                    use_container_width=True,
+                )
+
+            with col3:
+                # Generate KQL-only export
+                kql_export = "\n\n".join(
+                    [
+                        f"-- Step {i}: {step.get('step_name')}\n{step.get('kql_query')}"
+                        for i, step in enumerate(enhanced_steps, 1)
+                        if step.get("kql_query")
+                    ]
+                )
+                if kql_export:
+                    st.download_button(
+                        label="🔍 Download KQL Queries",
+                        data=kql_export,
+                        file_name=f"kql_queries_{rule_number.replace('#', '_')}.kql",
+                        mime="text/plain",
+                        use_container_width=True,
+                    )
+                else:
+                    st.button(
+                        label="🔍 No KQL Queries",
+                        disabled=True,
+                        use_container_width=True,
+                    )
 
             st.markdown("---")
 
-            col1, col2 = st.columns([1, 4])
+            # Navigation buttons
+            col1, col2, col3 = st.columns([1, 2, 1])
+
             with col1:
-                if st.button("← Back"):
+                if st.button("← Back to Alerts"):
                     st.session_state.step = 1
                     st.rerun()
-            with col2:
+
+            with col3:
                 if st.button(
-                    "Start AI-Powered Triaging →",
-                    type="primary",
-                    use_container_width=True,
+                    "Start New Search", type="primary", use_container_width=True
                 ):
-                    st.session_state.step = 3
+                    for key in list(st.session_state.keys()):
+                        if key != "all_data":
+                            del st.session_state[key]
+                    initialize_session_state()
                     st.rerun()
 
         except Exception as e:
@@ -786,7 +1007,6 @@ if st.session_state.step == 4:
                 del st.session_state[key]
         initialize_session_state()
         st.rerun()
-
 
 # ============================================================================
 # STEP 3: AI-POWERED TRIAGING WALKTHROUGH
