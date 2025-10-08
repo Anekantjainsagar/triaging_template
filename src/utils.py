@@ -465,7 +465,11 @@ def get_triaging_template(rule_number: str) -> str:
 
     # Extract rule number
     rule_num_match = re.search(r"#?(\d+)", rule_number)
-    rule_num_only = rule_num_match.group(1) if rule_num_match else rule_number.replace("#", "").strip()
+    rule_num_only = (
+        rule_num_match.group(1)
+        if rule_num_match
+        else rule_number.replace("#", "").strip()
+    )
 
     # Find matching template file
     all_files = os.listdir(template_dir)
@@ -479,7 +483,7 @@ def get_triaging_template(rule_number: str) -> str:
     template_path = os.path.join(template_dir, template_file)
     file_ext = os.path.splitext(template_file)[1].lower()
 
-    print(f"âœ… TEMPLATE FOUND: {template_file}")
+    print(f"Ã¢Å“â€¦ TEMPLATE FOUND: {template_file}")
 
     try:
         if file_ext == ".csv":
@@ -503,69 +507,79 @@ def parse_csv_template_to_structured_text(csv_path: str) -> str:
     """
     # Try multiple encodings
     df = None
-    for encoding in ['utf-8', 'latin1', 'cp1252']:
+    for encoding in ["utf-8", "latin1", "cp1252"]:
         try:
             df = pd.read_csv(csv_path, encoding=encoding)
             break
         except:
             continue
-    
+
     if df is None:
         return "Template parsing failed"
 
     # Clean column names
     df.columns = df.columns.str.strip()
-    
+
     structured_template = "# TRIAGING TEMPLATE STRUCTURE\n\n"
     structured_template += "## IMPORTANT: Follow this EXACT sequential logic\n\n"
-    
+
     current_step = 1
     previous_step_context = ""
-    
+
     for idx, row in df.iterrows():
         # Skip header rows or empty rows
-        if pd.isna(row.get('Inputs Required', '')) or 'Rule#' in str(row.get('Inputs Required', '')):
+        if pd.isna(row.get("Inputs Required", "")) or "Rule#" in str(
+            row.get("Inputs Required", "")
+        ):
             continue
-            
-        sr_no = str(row.get('Sr.No.', current_step)).strip()
-        input_required = str(row.get('Inputs Required', '')).strip()
-        instructions = str(row.get('Instructions', '')).strip()
-        input_details = str(row.get('INPUT details', '')).strip()
-        
-        if not input_required or input_required == 'nan':
+
+        sr_no = str(row.get("Sr.No.", current_step)).strip()
+        input_required = str(row.get("Inputs Required", "")).strip()
+        instructions = str(row.get("Instructions", "")).strip()
+        input_details = str(row.get("INPUT details", "")).strip()
+
+        if not input_required or input_required == "nan":
             continue
-        
+
         # Build structured step with CONTEXT
         structured_template += f"\n---\n"
         structured_template += f"STEP_{sr_no}: {input_required}\n\n"
-        
+
         # Add context from previous step if applicable
         if previous_step_context:
-            structured_template += f"CONTEXT_FROM_PREVIOUS_STEP: {previous_step_context}\n\n"
-        
+            structured_template += (
+                f"CONTEXT_FROM_PREVIOUS_STEP: {previous_step_context}\n\n"
+            )
+
         structured_template += f"INSTRUCTIONS: {instructions}\n\n"
-        
-        if input_details and input_details != 'nan' and input_details != 'NA':
+
+        if input_details and input_details != "nan" and input_details != "NA":
             structured_template += f"EXAMPLE_OUTPUT: {input_details}\n\n"
             # Store this as context for next step
-            previous_step_context = f"Based on '{input_required}', the result was: {input_details}"
-        
+            previous_step_context = (
+                f"Based on '{input_required}', the result was: {input_details}"
+            )
+
         # Extract conditional logic if present
-        if 'if' in instructions.lower() or 'then' in instructions.lower():
-            structured_template += f"CONDITIONAL_LOGIC: This step contains decision points\n"
-        
-        if 'yes' in instructions.lower() and 'no' in instructions.lower():
-            structured_template += f"BRANCHING: This step has YES/NO outcomes that affect next steps\n"
-        
+        if "if" in instructions.lower() or "then" in instructions.lower():
+            structured_template += (
+                f"CONDITIONAL_LOGIC: This step contains decision points\n"
+            )
+
+        if "yes" in instructions.lower() and "no" in instructions.lower():
+            structured_template += (
+                f"BRANCHING: This step has YES/NO outcomes that affect next steps\n"
+            )
+
         current_step += 1
-    
+
     structured_template += "\n---\n"
     structured_template += "\n## KEY PATTERNS TO LEARN:\n"
     structured_template += "1. Each step builds on previous findings\n"
     structured_template += "2. Conditional logic determines next actions\n"
     structured_template += "3. User inputs guide investigation direction\n"
     structured_template += "4. Final classification depends on cumulative evidence\n"
-    
+
     return structured_template
 
 

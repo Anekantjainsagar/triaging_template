@@ -35,7 +35,6 @@ class CompleteTemplateGenerator:
             "Name",
             "Explanation",
             "KQL Query",
-            "KQL Purpose",
             "Execute",
             "Output",
             "Remarks/Comments",
@@ -87,7 +86,7 @@ class CompleteTemplateGenerator:
                 step_num=i,
                 context=rule_number,
             )
-            print(f"✅ Step Name: {clear_name}")
+            print(f"âœ… Step Name: {clear_name}")
 
             # 2. Generate KQL query
             kql_query = self.kql_gen.generate_kql_query(
@@ -95,42 +94,27 @@ class CompleteTemplateGenerator:
             )
 
             if kql_query:
-                print(f"✅ KQL Generated: {len(kql_query)} chars")
+                print(f"âœ… KQL Generated: {len(kql_query)} chars")
             else:
-                print("⚠️ No KQL query (documentation step)")
+                print("âš ï¸ No KQL query (documentation step)")
 
             # 3. Create clean explanation
             clean_explanation = self._clean_explanation(explanation)
-            
-            # 4. Build row with KQL purpose
-            kql_purpose = ""
-            if kql_query:
-                # Generate brief explanation
-                if "SigninLogs" in kql_query:
-                    kql_purpose = "Queries user sign-in activity and patterns"
-                elif "AuditLogs" in kql_query and "role" in kql_query.lower():
-                    kql_purpose = "Checks role assignment audit logs"
-                elif "IdentityInfo" in kql_query:
-                    kql_purpose = "Retrieves user identity and VIP status"
-                elif "ThreatIntelligence" in kql_query:
-                    kql_purpose = "Checks IP reputation against threat feeds"
-                else:
-                    kql_purpose = "Investigative query for this step"
 
+            # 4. Build row (NO INPUT COLUMN)
             step_row = {
                 "Step": i,
                 "Name": clear_name,
                 "Explanation": clean_explanation,
                 "KQL Query": kql_query,
-                "KQL Purpose": kql_purpose,  # 🔥 NEW
-                "Execute": "",
-                "Output": "",
+                "Execute": "",  # For manual checkbox/completion
+                "Output": "",  # For findings
                 "Remarks/Comments": self._generate_remarks(step, rule_history),
             }
 
             template_rows.append(step_row)
 
-        print(f"\n✅ Generated {len(template_rows)-1} investigation steps")
+        print(f"\nâœ… Generated {len(template_rows)-1} investigation steps")
         return pd.DataFrame(template_rows)
 
     def _clean_explanation(self, explanation: str) -> str:

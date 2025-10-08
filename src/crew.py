@@ -9,6 +9,7 @@ import os
 from src.agents import TriagingAgents
 from src.tasks import TriagingTasks
 
+
 class TriagingCrew:
     def __init__(self):
         self.agents = TriagingAgents()
@@ -28,21 +29,21 @@ class TriagingCrew:
                 "step_name": "Check Threat Intelligence",
                 "explanation": "Query threat intelligence sources for IP reputation and known malicious indicators. Clean reputation indicates FP.",
                 "kql_query": "",
-                "expected_output": "Typically shows: Clean IP, No threats. If found → False Positive.",
+                "expected_output": "Typically shows: Clean IP, No threats. If found â†’ False Positive.",
                 "user_input_required": True,
             },
             {
                 "step_name": "Review User Activity",
                 "explanation": "Check user sign-in history and behavior patterns. Consistent with normal activity indicates FP.",
                 "kql_query": "",
-                "expected_output": "Typically shows: Known devices, Normal patterns. If found → False Positive.",
+                "expected_output": "Typically shows: Known devices, Normal patterns. If found â†’ False Positive.",
                 "user_input_required": True,
             },
             {
                 "step_name": "Verify MFA Status",
                 "explanation": "Confirm multi-factor authentication completion. Successful MFA indicates legitimate access.",
                 "kql_query": "",
-                "expected_output": "Typically shows: MFA successful. If found → False Positive.",
+                "expected_output": "Typically shows: MFA successful. If found â†’ False Positive.",
                 "user_input_required": True,
             },
             {
@@ -54,7 +55,9 @@ class TriagingCrew:
             },
         ]
 
-    def run_analysis_phase(self, consolidated_data: dict, template_content: str, rule_number: str):
+    def run_analysis_phase(
+        self, consolidated_data: dict, template_content: str, rule_number: str
+    ):
         """Run analysis with DETERMINISTIC parsing + AI enhancement"""
         try:
             print("\n" + "=" * 80)
@@ -63,6 +66,7 @@ class TriagingCrew:
 
             # Get historical data
             from src.utils import read_all_tracker_sheets, consolidate_rule_data
+
             all_data = read_all_tracker_sheets("data")
             rule_history = consolidate_rule_data(all_data, rule_number)
 
@@ -75,53 +79,70 @@ class TriagingCrew:
             # Find template file with better error handling
             template_dir = "data/triaging_templates"
 
-            print(f"\n🔍 Looking for template for: {rule_number}")
-            print(f"📁 Template directory: {template_dir}")
+            print(f"\nðŸ” Looking for template for: {rule_number}")
+            print(f"ðŸ“ Template directory: {template_dir}")
 
             if not os.path.exists(template_dir):
-                print(f"❌ Template directory does not exist!")
+                print(f"âŒ Template directory does not exist!")
                 triaging_plan = self._create_fallback_steps()
             else:
                 # Extract rule number
-                rule_num_match = re.search(r'#?(\d+)', rule_number)
-                rule_num = rule_num_match.group(1) if rule_num_match else rule_number.replace('#', '').strip()
+                rule_num_match = re.search(r"#?(\d+)", rule_number)
+                rule_num = (
+                    rule_num_match.group(1)
+                    if rule_num_match
+                    else rule_number.replace("#", "").strip()
+                )
 
-                print(f"🔢 Extracted rule number: {rule_num}")
+                print(f"ðŸ”¢ Extracted rule number: {rule_num}")
 
                 # List all files in directory
                 all_files = os.listdir(template_dir)
-                print(f"📄 Files in template directory: {all_files}")
+                print(f"ðŸ“„ Files in template directory: {all_files}")
 
                 # Find matching template
-                template_files = [f for f in all_files if rule_num in f and (f.endswith('.csv') or f.endswith('.xlsx'))]
+                template_files = [
+                    f
+                    for f in all_files
+                    if rule_num in f and (f.endswith(".csv") or f.endswith(".xlsx"))
+                ]
 
-                print(f"✅ Matching templates found: {template_files}")
+                print(f"âœ… Matching templates found: {template_files}")
 
                 if template_files:
                     template_path = os.path.join(template_dir, template_files[0])
-                    print(f"📖 Using template: {template_path}")
+                    print(f"ðŸ“– Using template: {template_path}")
 
                     try:
-                        if template_path.endswith('.csv'):
+                        if template_path.endswith(".csv"):
                             triaging_plan = parser.parse_csv_template(template_path)
                         else:  # Excel
                             triaging_plan = parser.parse_excel_template(template_path)
 
-                        print(f"✅ Successfully parsed {len(triaging_plan)} steps from template")
+                        print(
+                            f"âœ… Successfully parsed {len(triaging_plan)} steps from template"
+                        )
 
                         # Print first step as verification
                         if triaging_plan:
-                            print(f"\n📋 First step preview:")
-                            print(f"   Name: {triaging_plan[0].get('step_name', 'N/A')}")
-                            print(f"   Has KQL: {'Yes' if triaging_plan[0].get('kql_query') else 'No'}")
+                            print(f"\nðŸ“‹ First step preview:")
+                            print(
+                                f"   Name: {triaging_plan[0].get('step_name', 'N/A')}"
+                            )
+                            print(
+                                f"   Has KQL: {'Yes' if triaging_plan[0].get('kql_query') else 'No'}"
+                            )
 
                     except Exception as parse_error:
-                        print(f"❌ Template parsing failed: {str(parse_error)}")
+                        print(f"âŒ Template parsing failed: {str(parse_error)}")
                         import traceback
+
                         traceback.print_exc()
                         triaging_plan = self._create_fallback_steps()
                 else:
-                    print(f"⚠️ No template found for rule {rule_num}, using fallback")
+                    print(
+                        f"âš ï¸ No template found for rule {rule_num}, using fallback"
+                    )
                     triaging_plan = self._create_fallback_steps()
 
             # ========== AI PREDICTION (OPTIONAL) ==========
@@ -145,7 +166,9 @@ class TriagingCrew:
 
             result = crew.kickoff()
             predictions = self._parse_predictions(prediction_task.output)
-            progressive_predictions = self._calculate_progressive_predictions(triaging_plan, rule_history)
+            progressive_predictions = self._calculate_progressive_predictions(
+                triaging_plan, rule_history
+            )
 
             return {
                 "triaging_plan": triaging_plan,
@@ -155,8 +178,9 @@ class TriagingCrew:
             }
 
         except Exception as e:
-            print(f"\n❌ Critical error in analysis: {str(e)}")
+            print(f"\nâŒ Critical error in analysis: {str(e)}")
             import traceback
+
             traceback.print_exc()
             return {
                 "triaging_plan": self._create_fallback_steps(),
@@ -294,7 +318,7 @@ Justification: {data.get('justification', 'N/A')}
         triaging_comments: dict,
         rule_number: str,
         template_content: str,
-        consolidated_data: dict
+        consolidated_data: dict,
     ) -> dict:
         """Run real-time prediction with robust fallback."""
         try:
@@ -317,7 +341,7 @@ Justification: {data.get('justification', 'N/A')}
                 triaging_comments=triaging_comments,
                 rule_number=rule_number,
                 rule_history=rule_history,
-                template_content=template_content
+                template_content=template_content,
             )
 
             # Create and run crew
@@ -335,7 +359,9 @@ Justification: {data.get('justification', 'N/A')}
 
             # If parsing failed or returned None, use fallback
             if parsed_prediction is None:
-                print("⚠️ AI prediction parsing failed. Using keyword-based fallback.")
+                print(
+                    "âš ï¸ AI prediction parsing failed. Using keyword-based fallback."
+                )
                 return self._create_fallback_prediction(triaging_comments, rule_history)
 
             print("\n" + "=" * 80)
@@ -345,13 +371,15 @@ Justification: {data.get('justification', 'N/A')}
             return parsed_prediction
 
         except Exception as e:
-            print(f"\n⚠️ Error in AI prediction: {str(e)}")
+            print(f"\nâš ï¸ Error in AI prediction: {str(e)}")
             print("Using keyword-based fallback prediction...")
             import traceback
+
             traceback.print_exc()
 
             # Return fallback prediction
             from src.utils import read_all_tracker_sheets, consolidate_rule_data
+
             all_data = read_all_tracker_sheets("data")
             rule_history = consolidate_rule_data(all_data, rule_number)
             return self._create_fallback_prediction(triaging_comments, rule_history)
@@ -410,7 +438,7 @@ Justification: {data.get('justification', 'N/A')}
         # If percentages don't add up to ~100, recalculate
         if total_pct < 90 or total_pct > 110:
             print(
-                f"⚠️ Invalid percentages detected (total: {total_pct}%). Using fallback calculation."
+                f"âš ï¸ Invalid percentages detected (total: {total_pct}%). Using fallback calculation."
             )
             return None  # Signal to use fallback
 
@@ -426,11 +454,11 @@ Justification: {data.get('justification', 'N/A')}
         # Fix mismatched prediction type
         if highest_pct == prediction["false_positive_likelihood"]:
             if "false" not in pred_type_lower:
-                print("⚠️ Prediction type mismatch! Correcting to False Positive")
+                print("âš ï¸ Prediction type mismatch! Correcting to False Positive")
                 prediction["prediction_type"] = "False Positive"
         elif highest_pct == prediction["true_positive_likelihood"]:
             if "true" not in pred_type_lower or "false" in pred_type_lower:
-                print("⚠️ Prediction type mismatch! Correcting to True Positive")
+                print("âš ï¸ Prediction type mismatch! Correcting to True Positive")
                 prediction["prediction_type"] = "True Positive"
 
         # Extract confidence level
@@ -541,13 +569,13 @@ Justification: {data.get('justification', 'N/A')}
             if keyword in all_comments:
                 fp_score += weight
                 fp_matches.append(keyword)
-                print(f"✅ Found FP indicator: '{keyword}' (weight: {weight})")
+                print(f"âœ… Found FP indicator: '{keyword}' (weight: {weight})")
 
         for keyword, weight in strong_tp_keywords.items():
             if keyword in all_comments:
                 tp_score += weight
                 tp_matches.append(keyword)
-                print(f"⚠️ Found TP indicator: '{keyword}' (weight: {weight})")
+                print(f"âš ï¸ Found TP indicator: '{keyword}' (weight: {weight})")
 
         print(f"\nScore - FP: {fp_score}, TP: {tp_score}")
 
@@ -612,7 +640,7 @@ Justification: {data.get('justification', 'N/A')}
         else:
             pred_type = "Requires Further Investigation"
 
-        print(f"\n✅ FINAL PREDICTION: {pred_type}")
+        print(f"\nâœ… FINAL PREDICTION: {pred_type}")
         print(f"   FP: {fp_likelihood}%, TP: {tp_likelihood}%")
         print(f"   Confidence: {confidence}")
         print("=" * 80 + "\n")

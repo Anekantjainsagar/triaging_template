@@ -46,7 +46,7 @@ class CSVTemplateGenerator:
     def _create_step_row(self, sr_no: int, step: dict, rule_history: dict) -> list:
         """Create a CONCISE, CLEAR step row"""
         step_name = step.get("step_name", f"Step {sr_no}")
-        explanation = step.get("explanation", "")  # ⭐ Instructions
+        explanation = step.get("explanation", "")  # â­ Instructions
         input_required = step.get("input_required", "")
         expected_output = step.get("expected_output", "")
         kql_query = step.get("kql_query", "")
@@ -58,7 +58,7 @@ class CSVTemplateGenerator:
             explanation, expected_output, kql_query, rule_history
         )
 
-        return [sr_no, clean_name, "", instructions]  # ⭐ INPUT details EMPTY
+        return [sr_no, clean_name, "", instructions]  # â­ INPUT details EMPTY
 
     def _build_concise_instructions(
         self, explanation: str, expected_output: str, kql_query: str, rule_history: dict
@@ -86,7 +86,7 @@ class CSVTemplateGenerator:
                 else:
                     # Fallback if split didn't work as expected
                     parts.append(f"Expected: {clean_exp}")
-                    
+
             parts.append(f"Expected: {clean_exp}")
 
         # 3. KQL (one-liner if present)

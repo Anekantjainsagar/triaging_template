@@ -19,7 +19,7 @@ class DynamicKQLGenerator:
             self.web_search = SerperDevTool()
         except:
             self.web_search = None
-            print("⚠️ Web search unavailable")
+            print("âš ï¸ Web search unavailable")
 
         # KQL Query Templates - Microsoft Sentinel/Defender
         self.kql_templates = {
@@ -132,28 +132,28 @@ class DynamicKQLGenerator:
         Returns:
             Formatted KQL query with placeholders
         """
-        print(f"\n🔍 Generating KQL for: {step_name}")
+        print(f"\nðŸ” Generating KQL for: {step_name}")
 
         # Strategy 1: Pattern matching for common scenarios
         kql = self._match_pattern(step_name, explanation)
         if kql:
-            print("✅ Generated from pattern matching")
+            print("âœ… Generated from pattern matching")
             return self._clean_and_format_kql(kql)
 
         # Strategy 2: Web research for specific cases
         if self.web_search:
             kql = self._web_research_kql(step_name, explanation, context)
             if kql:
-                print("✅ Generated from web research")
+                print("âœ… Generated from web research")
                 return self._clean_and_format_kql(kql)
 
         # Strategy 3: LLM generation for complex cases
         kql = self._llm_generate_kql(step_name, explanation, context)
         if kql:
-            print("✅ Generated using LLM")
+            print("âœ… Generated using LLM")
             return self._clean_and_format_kql(kql)
 
-        print("⚠️ No KQL query generated")
+        print("âš ï¸ No KQL query generated")
         return ""
 
     def _match_pattern(self, step_name: str, explanation: str) -> Optional[str]:
@@ -223,14 +223,14 @@ class DynamicKQLGenerator:
         """Research KQL queries using web search"""
         try:
             search_query = f"Microsoft Sentinel KQL query {step_name} {context}"
-            print(f"🌐 Searching: {search_query}")
+            print(f"ðŸŒ Searching: {search_query}")
 
             # This would use SerperDevTool to search
             # For now, return pattern-based as fallback
             return None
 
         except Exception as e:
-            print(f"⚠️ Web research failed: {str(e)}")
+            print(f"âš ï¸ Web research failed: {str(e)}")
             return None
 
     def _llm_generate_kql(
@@ -289,7 +289,60 @@ Generate KQL query:"""
                 return kql
 
         except Exception as e:
-            print(f"⚠️ LLM generation failed: {str(e)}")
+            print(f"âš ï¸ LLM generation failed: {str(e)}")
 
         return None
 
+    def _clean_and_format_kql(self, kql: str) -> str:
+        """Clean and format KQL query"""
+        if not kql:
+            return ""
+
+        # Remove markdown code blocks
+        kql = re.sub(r"```[a-z]*\s*", "", kql)
+        kql = re.sub(r"```", "", kql)
+
+        # Replace any hardcoded values with placeholders
+        kql = re.sub(
+            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "<USER_EMAIL>", kql
+        )
+        kql = re.sub(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", "<IP_ADDRESS>", kql)
+        kql = re.sub(r"ago\(\d+[dhm]\)", "ago(<TIMESPAN>)", kql)
+
+        # Clean whitespace but preserve structure
+        lines = [line.strip() for line in kql.split("\n") if line.strip()]
+        kql = "\n".join(lines)
+
+        return kql.strip()
+
+
+# Example usage
+if __name__ == "__main__":
+    generator = DynamicKQLGenerator()
+
+    # Test cases
+    test_cases = [
+        (
+            "Check Role Assignment",
+            "Query Azure AD for privileged role assignments in last 7 days",
+            "Rule#014",
+        ),
+        (
+            "Analyze User Sign-Ins",
+            "Review sign-in patterns for suspicious activity",
+            "Rule#014",
+        ),
+        (
+            "Validate Initiator Permissions",
+            "Check if assigning user had legitimate access",
+            "Rule#014",
+        ),
+    ]
+
+    for step_name, explanation, context in test_cases:
+        print(f"\n{'='*80}")
+        kql = generator.generate_kql_query(step_name, explanation, context)
+        if kql:
+            print(f"\nGenerated KQL:\n{kql}")
+        else:
+            print("No query generated")

@@ -6,33 +6,33 @@ from typing import List, Dict
 class TemplateParser:
     def parse_csv_template(self, csv_path: str) -> List[Dict]:
         """Parse CSV template and extract ALL steps"""
-        print(f"\n📖 Parsing CSV template: {csv_path}")
+        print(f"\nðŸ“– Parsing CSV template: {csv_path}")
 
         df = None
         for encoding in ["utf-8", "latin1", "cp1252"]:
             try:
                 df = pd.read_csv(csv_path, encoding=encoding)
-                print(f"✅ Successfully read CSV with {encoding} encoding")
+                print(f"âœ… Successfully read CSV with {encoding} encoding")
                 break
             except:
                 continue
 
         if df is None:
-            print("❌ Could not read CSV")
+            print("âŒ Could not read CSV")
             return []
 
         return self._extract_steps(df)
 
     def parse_excel_template(self, excel_path: str) -> List[Dict]:
         """Parse Excel template and extract ALL steps"""
-        print(f"\n📖 Parsing Excel template: {excel_path}")
+        print(f"\nðŸ“– Parsing Excel template: {excel_path}")
 
         try:
             df = pd.read_excel(excel_path, engine="openpyxl")
-            print(f"✅ Successfully read Excel file")
+            print(f"âœ… Successfully read Excel file")
             return self._extract_steps(df)
         except Exception as e:
-            print(f"❌ Failed to read Excel: {str(e)}")
+            print(f"âŒ Failed to read Excel: {str(e)}")
             return []
 
     def _extract_steps(self, df: pd.DataFrame) -> List[Dict]:
@@ -43,8 +43,8 @@ class TemplateParser:
         # Clean column names
         df.columns = df.columns.str.strip()
 
-        print(f"\n📊 DataFrame columns: {list(df.columns)}")
-        print(f"📢 DataFrame shape: {df.shape} (rows x columns)")
+        print(f"\nðŸ“Š DataFrame columns: {list(df.columns)}")
+        print(f"ðŸ“¢ DataFrame shape: {df.shape} (rows x columns)")
 
         # Identify columns (flexible matching)
         step_col = self._find_column(
@@ -55,61 +55,44 @@ class TemplateParser:
         )
         input_col = self._find_column(df, ["INPUT details", "Input", "Input Required"])
 
-        print(f"✅ Mapped columns:")
+        print(f"âœ… Mapped columns:")
         print(f"   Step: {step_col}")
         print(f"   Explanation: {explanation_col}")
         print(f"   Input: {input_col}")
 
         if not step_col:
-            print("❌ Could not find step column - trying fallback...")
+            print("âŒ Could not find step column - trying fallback...")
             return self._extract_from_first_column(df)
 
         steps = []
+        skipped_rows = []
 
         for idx, row in df.iterrows():
             step_name = str(row.get(step_col, "")).strip()
 
+            # Skip completely empty rows
             if not step_name or step_name == "nan" or len(step_name) < 2:
                 continue
 
+            # Skip obvious metadata/header rows
             if self._is_metadata_row(step_name):
+                skipped_rows.append(f"Row {idx}: {step_name} (metadata)")
                 continue
 
+            # Extract explanation and input
             explanation = (
                 str(row.get(explanation_col, "")).strip() if explanation_col else ""
             )
             input_details = str(row.get(input_col, "")).strip() if input_col else ""
 
-            # Clean nan values
+            # Clean 'nan' values
             if explanation == "nan":
                 explanation = ""
             if input_details == "nan":
                 input_details = ""
 
-            # 🔥 NEW: Extract decision logic
-            decision_point = ""
-            if "if" in explanation.lower():
-                # Extract the condition
-                decision_match = re.search(
-                    r"if\s+(.+?)\s+(?:then|,)", explanation, re.IGNORECASE
-                )
-                if decision_match:
-                    decision_point = decision_match.group(1).strip()
-
-            # 🔥 NEW: Extract expected outcome from INPUT details
-            expected_output = ""
-            if input_details and input_details != "NA":
-                # INPUT details often contains the expected finding
-                expected_output = input_details
-            elif "closure" in explanation.lower() or "closing" in explanation.lower():
-                # Extract closure logic
-                closure_match = re.search(
-                    r"closing as (.*?)(?:\.|$)", explanation, re.IGNORECASE
-                )
-                if closure_match:
-                    expected_output = f"Expected: {closure_match.group(1).strip()}"
-
-            # Inside the loop where you build step dict:
+            # â­ CRITICAL: Accept ALL remaining rows as investigation steps
+            # Build step dictionary
             step = {
                 "step_name": step_name,
                 "explanation": (
@@ -118,14 +101,27 @@ class TemplateParser:
                     else f"Complete {step_name} and document findings"
                 ),
                 "input_required": self._extract_inputs(step_name, explanation),
-                "expected_output": self._extract_expected_outcome(
-                    explanation, input_details
-                ),  # 🔥 NEW
-                "decision_point": self._extract_decision_logic(explanation),  # 🔥 NEW
-                "kql_query": "",
+                "kql_query": "",  # Will be filled by web enhancement
             }
 
+            print(f"\nðŸ“‹ Extracted Step {len(steps) + 1}: {step_name}")
+            if explanation:
+                print(f"   Has explanation: {explanation[:60]}...")
             steps.append(step)
+
+        # Report skipped rows
+        if skipped_rows:
+            print(f"\nâ­ï¸ Skipped {len(skipped_rows)} metadata rows:")
+            for skipped in skipped_rows[:3]:  # Show first 3
+                print(f"   {skipped}")
+
+        print(f"\nâœ… Total investigation steps extracted: {len(steps)}")
+
+        # â­ VALIDATION: Warn if too few steps
+        if len(steps) < 3:
+            print(
+                f"âš ï¸ WARNING: Only {len(steps)} steps found. Template may be incomplete."
+            )
 
         return steps
 
@@ -160,7 +156,7 @@ class TemplateParser:
 
     def _extract_from_first_column(self, df: pd.DataFrame) -> List[Dict]:
         """Fallback: Extract from first column if column detection fails"""
-        print("⚠️ Using fallback extraction from first column...")
+        print("âš ï¸ Using fallback extraction from first column...")
 
         steps = []
         first_col = df.columns[0]
@@ -179,7 +175,7 @@ class TemplateParser:
                         }
                     )
 
-        print(f"✅ Fallback extracted {len(steps)} steps")
+        print(f"âœ… Fallback extracted {len(steps)} steps")
         return steps
 
     def _extract_inputs(self, step_name: str, explanation: str) -> str:

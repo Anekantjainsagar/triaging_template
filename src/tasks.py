@@ -68,10 +68,10 @@ class TriagingTasks:
                 Start with historical baseline: FP={rule_history.get('fp_rate', 50)}%, TP={rule_history.get('tp_rate', 50)}%
                 
                 For EACH finding, adjust:
-                - Strong FP indicator (matches template FP criteria) → +15-20% FP
-                - Weak FP indicator → +5-10% FP
-                - Strong TP indicator (matches template TP criteria) → +15-20% TP
-                - Weak TP indicator → +5-10% TP
+                - Strong FP indicator (matches template FP criteria) â†’ +15-20% FP
+                - Weak FP indicator â†’ +5-10% FP
+                - Strong TP indicator (matches template TP criteria) â†’ +15-20% TP
+                - Weak TP indicator â†’ +5-10% TP
                 
                 **STEP 3: Normalize to 100%**
                 
@@ -80,7 +80,7 @@ class TriagingTasks:
                 **STEP 4: Validate against template**
                 
                 Does highest percentage match template's decision logic?
-                - If template says "if clean IP + user confirm → FP", and both found → FP% should be highest
+                - If template says "if clean IP + user confirm â†’ FP", and both found â†’ FP% should be highest
                 
                 ===========================================================================
                 OUTPUT FORMAT (MANDATORY):
@@ -105,7 +105,7 @@ class TriagingTasks:
                 
                 TEMPLATE_ALIGNMENT:
                 "[Explain how findings match template's decision logic]"
-                Example: "Template states: 'If clean IP AND MFA success → FP'. Both conditions met in Steps 2 and 4."
+                Example: "Template states: 'If clean IP AND MFA success â†’ FP'. Both conditions met in Steps 2 and 4."
                 
                 HISTORICAL_COMPARISON:
                 "[Compare to past {rule_history.get('total_incidents', 0)} incidents]"
@@ -116,8 +116,8 @@ class TriagingTasks:
                 
                 RECOMMENDED_ACTION:
                 "[From template's escalation logic]"
-                - If TP → [action from template]
-                - If FP → Close with justification
+                - If TP â†’ [action from template]
+                - If FP â†’ Close with justification
                 ---
                 
                 ===========================================================================
@@ -141,7 +141,7 @@ class TriagingTasks:
                 4. Historical: 78% of past incidents with these patterns were FP
                 
                 TEMPLATE_ALIGNMENT:
-                Template decision logic states: "If clean IP AND user confirms travel AND known device → False Positive". All three conditions were met across Steps 2, 3, and 4, strongly supporting FP classification per template guidance.
+                Template decision logic states: "If clean IP AND user confirms travel AND known device â†’ False Positive". All three conditions were met across Steps 2, 3, and 4, strongly supporting FP classification per template guidance.
                 
                 HISTORICAL_COMPARISON:
                 This incident matches 85% of the 58 past {rule_number} cases that were False Positives. Historical FP rate is 78%, and this case shows the same pattern: clean IP + user confirmation + known device + MFA satisfied.
@@ -158,12 +158,12 @@ class TriagingTasks:
                 ===========================================================================
                 
                 Before outputting, verify:
-                ✅ Percentages total 100%
-                ✅ Prediction type matches highest %
-                ✅ Key factors reference actual step findings
-                ✅ Template alignment explains decision logic match
-                ✅ Historical comparison included
-                ✅ Recommended action from template
+                âœ… Percentages total 100%
+                âœ… Prediction type matches highest %
+                âœ… Key factors reference actual step findings
+                âœ… Template alignment explains decision logic match
+                âœ… Historical comparison included
+                âœ… Recommended action from template
             """
             ),
             expected_output=dedent(
@@ -267,4 +267,3 @@ class TriagingTasks:
             ),
             agent=agent,
         )
-
