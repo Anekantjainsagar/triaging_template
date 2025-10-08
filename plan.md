@@ -1,115 +1,697 @@
-This is a comprehensive and complex project that involves multiple technologies and a multi-agent system. Here is a high-level plan, including the folder structure and a breakdown of the agent roles and responsibilities.
+from crewai import Agent, Task, Crew, Process, LLM
+from crewai_tools import SerperDevTool
+from textwrap import dedent
+import re
+import requests
+from typing import List, Dict
 
-### Project Plan and Folder Structure
 
-The project will be structured to keep the code organized and the data separate.
+class KQLSearchTool:
+    """Tool to search and generate KQL queries using kqlsearch.com"""
 
-```
-/project_root
-├── app.py                     # Main Streamlit application
-├── requirements.txt           # Python dependencies
-├── .env                       # Environment variables (API keys)
-├── /data        # Contains all the .xlsx and .csv tracker files
-│   │── tracker_sheet_1.xlsx
-│   │── tracker_sheet_2.csv
-│   │── ...
-│   ├── /triaging_templates      # Contains the triaging template files
-│   │   ├── Rule#280.xlsx
-│   │   ├── Rule#002.csv
-│   │   └── ...
-├── /src
-│   ├── crew.py                # Defines the CrewAI agents and tasks
-│   ├── utils.py               # Helper functions for data processing, file handling, etc.
-│   ├── agents.py              # Agent definitions
-│   └── tasks.py               # Task definitions
-└── README.md
-```
+    def __init__(self):
+        self.base_url = "https://www.kqlsearch.com"
 
----
+    def search_kql(self, query: str) -> str:
+        """
+        Search for KQL queries related to the investigation step.
+        Falls back to pattern-based generation if API unavailable.
+        """
+        try:
+            # Try web search for KQL examples
+            search_query = f"{query} KQL query Azure Sentinel Microsoft Defender"
+            print(f"ðŸ” Searching KQL for: {search_query}")
 
-### Step-by-Step Execution Plan
+            # Pattern-based KQL generation as reliable fallback
+            return self._generate_kql_by_pattern(query)
 
-#### 1\. Frontend Platform (Streamlit)
+        except Exception as e:
+            print(f"âš ï¸ KQL search failed: {str(e)}, using pattern generation")
+            return self._generate_kql_by_pattern(query)
 
-- **Initial View:** Create a Streamlit app with a single search box.
-- **Search Box Logic:** When a user types, the app will use the **Data Analyst Agent** to query the concatenated data from all tracker sheets.
-- **Top 5 Suggestions:** The agent will find and display the top 5 most relevant alert titles based on the user's input. This will be a quick, low-latency search to provide a good user experience.
+    def _generate_kql_by_pattern(self, step_description: str) -> str:
+        """Generate KQL query based on step description patterns"""
+        desc_lower = step_description.lower()
 
-#### 2\. Alert Selection and Data Consolidation
+        # Role assignment queries
+        if "role" in desc_lower and "assign" in desc_lower:
+            return """AuditLogs
+| where TimeGenerated > ago(<TIMESPAN>)
+| where OperationName == "Add member to role"
+| where Result == "success"
+| extend RoleAssigned = tostring(TargetResources[0].modifiedProperties[1].newValue)
+| extend AssignedUser = tostring(TargetResources[0].userPrincipalName)
+| extend InitiatedBy = tostring(InitiatedBy.user.userPrincipalName)
+| extend SourceIP = tostring(InitiatedBy.user.ipAddress)
+| project TimeGenerated, AssignedUser, RoleAssigned, InitiatedBy, SourceIP, CorrelationId
+| order by TimeGenerated desc"""
 
-- **User Action:** A user clicks on one of the suggested alerts.
-- **Data Processing Task:** The **Data Consolidation Agent** is activated.
-  - It will identify the corresponding tracker sheet file.
-  - It will read the entire sheet (xlsx/csv).
-  - It will **sum up** the relevant numerical columns (if any) and consolidate all rows for that specific alert.
-  - The consolidated data will be formatted into a new pandas DataFrame.
-- **File Export:** The consolidated DataFrame will be saved as a new Excel file in a designated output folder, with a clear filename like `consolidated_INC208308.xlsx`.
+        # User details query
+        elif "user" in desc_lower and "detail" in desc_lower:
+            return """IdentityInfo
+| where AccountUPN == "<USER_EMAIL>"
+| project AccountUPN, AccountDisplayName, JobTitle, Department, Manager, Tags
+| extend IsVIP = iff(Tags contains "VIP", "Yes", "No")"""
 
----
+        # High-risk role check
+        elif (
+            "high-risk" in desc_lower
+            or "privileged" in desc_lower
+            or "global admin" in desc_lower
+        ):
+            return """AuditLogs
+| where TimeGenerated > ago(<TIMESPAN>)
+| where OperationName == "Add member to role"
+| extend RoleAssigned = tostring(TargetResources[0].modifiedProperties[1].newValue)
+| where RoleAssigned in ("Global Administrator", "Privileged Role Administrator", "Security Administrator", "Exchange Administrator")
+| extend AssignedUser = tostring(TargetResources[0].userPrincipalName)
+| project TimeGenerated, AssignedUser, RoleAssigned, Result
+| summarize HighRiskRoles = make_set(RoleAssigned) by AssignedUser"""
 
-#### 3\. Triaging Template Retrieval
+        # Sign-in pattern analysis
+        elif (
+            "sign-in" in desc_lower
+            or "login" in desc_lower
+            or "authentication" in desc_lower
+        ):
+            return """SigninLogs
+| where UserPrincipalName == "<USER_EMAIL>"
+| where TimeGenerated > ago(<TIMESPAN>)
+| summarize 
+    TotalSignIns = count(),
+    UniqueIPs = dcount(IPAddress),
+    UniqueLocations = dcount(Location),
+    UniqueDevices = dcount(DeviceDetail.deviceId),
+    FailedAttempts = countif(ResultType != "0"),
+    Countries = make_set(LocationDetails.countryOrRegion)
+  by UserPrincipalName
+| extend AnomalyScore = (UniqueIPs * 2) + (UniqueLocations * 3) + (FailedAttempts * 5)
+| order by AnomalyScore desc"""
 
-- **Template Search Task:** The **Template Search Agent** takes over.
-  - It will use the rule number or keywords from the selected alert to search for the relevant triaging template file within the `/data/triaging_templates` folder.
-  - It will read the content of the identified template file.
+        # Assigning user validation
+        elif (
+            "assigning user" in desc_lower
+            or "initiator" in desc_lower
+            or "legitimate access" in desc_lower
+        ):
+            return """AuditLogs
+| where TimeGenerated > ago(<TIMESPAN>)
+| where InitiatedBy.user.userPrincipalName == "<INITIATOR_EMAIL>"
+| where OperationName has_any ("Add member to role", "Update role", "Remove member from role")
+| extend TargetRole = tostring(TargetResources[0].modifiedProperties[1].newValue)
+| project TimeGenerated, InitiatedBy = tostring(InitiatedBy.user.userPrincipalName), 
+          OperationName, TargetRole, Result, SourceIP = tostring(InitiatedBy.user.ipAddress)
+| order by TimeGenerated desc"""
 
----
+        # IP reputation check
+        elif "ip" in desc_lower and (
+            "reputation" in desc_lower
+            or "threat" in desc_lower
+            or "suspicious" in desc_lower
+        ):
+            return """SigninLogs
+| where UserPrincipalName == "<USER_EMAIL>"
+| where TimeGenerated > ago(<TIMESPAN>)
+| distinct IPAddress
+| join kind=inner (
+    ThreatIntelligenceIndicator
+    | where isnotempty(NetworkIP)
+    | project ThreatIP = NetworkIP, ThreatType, Description
+) on $left.IPAddress == $right.ThreatIP
+| project IPAddress, ThreatType, Description"""
 
-#### 4\. The Triaging Engine (CrewAI Agents)
+        # Device check
+        elif "device" in desc_lower:
+            return """SigninLogs
+| where UserPrincipalName == "<USER_EMAIL>"
+| where TimeGenerated > ago(<TIMESPAN>)
+| extend DeviceId = tostring(DeviceDetail.deviceId)
+| extend DeviceName = tostring(DeviceDetail.displayName)
+| extend IsCompliant = tostring(DeviceDetail.isCompliant)
+| extend IsManaged = tostring(DeviceDetail.isManaged)
+| summarize 
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated),
+    SignInCount = count()
+  by DeviceId, DeviceName, IsCompliant, IsManaged
+| order by SignInCount desc"""
 
-This is the most complex part, involving multiple agents working together to generate the new template and the step-by-step guidance.
+        # MFA check
+        elif "mfa" in desc_lower or "multi-factor" in desc_lower:
+            return """SigninLogs
+| where UserPrincipalName == "<USER_EMAIL>"
+| where TimeGenerated > ago(<TIMESPAN>)
+| extend MFAStatus = tostring(AuthenticationDetails[0].succeeded)
+| extend MFAMethod = tostring(AuthenticationDetails[0].authenticationMethod)
+| summarize 
+    TotalSignIns = count(),
+    MFASuccess = countif(MFAStatus == "true"),
+    MFAFailed = countif(MFAStatus == "false")
+  by UserPrincipalName, MFAMethod
+| extend MFASuccessRate = round(todouble(MFASuccess) / todouble(TotalSignIns) * 100, 2)"""
 
-- **Knowledge & Synthesis Agent:**
+        # Escalation/incident response
+        elif (
+            "escalat" in desc_lower
+            or "incident" in desc_lower
+            or "remediation" in desc_lower
+        ):
+            return """SecurityIncident
+| where Title contains "<INCIDENT_KEYWORD>"
+| where TimeGenerated > ago(<TIMESPAN>)
+| extend Severity = tostring(Properties.severity)
+| extend Status = tostring(Properties.status)
+| extend Owner = tostring(Properties.owner.assignedTo)
+| project TimeGenerated, IncidentNumber, Title, Severity, Status, Owner
+| order by TimeGenerated desc"""
 
-  - **Role:** Synthesizer and information aggregator.
-  - **Tools:**
-    - **File Reader Tool:** To read the triaging template.
-    - **Web Search Tool (Tavily/Serper):** To get the latest information on the rule, a specific vulnerability, or a KQL query syntax.
-    - **LLM (Ollama qwen2.5:0.5b):** To process and synthesize all this information.
-  - **Task:** This agent will learn from the template, the consolidated tracker data, and its web searches to create a comprehensive understanding of the alert.
+        # Documentation/final step
+        elif (
+            "document" in desc_lower
+            or "final" in desc_lower
+            or "classification" in desc_lower
+        ):
+            return ""  # No KQL for documentation steps
 
-- **Content Generation Agent:**
+        else:
+            # Generic user activity query
+            return """AuditLogs
+| where TimeGenerated > ago(<TIMESPAN>)
+| where TargetResources[0].userPrincipalName == "<USER_EMAIL>"
+| project TimeGenerated, OperationName, Result, InitiatedBy = tostring(InitiatedBy.user.userPrincipalName), 
+          TargetUser = tostring(TargetResources[0].userPrincipalName)
+| order by TimeGenerated desc"""
 
-  - **Role:** Template and content creator.
-  - **Tools:** The LLM and the knowledge from the **Knowledge & Synthesis Agent**.
-  - **Task:**
-    - It will take the learned information and generate a new, **empty** triaging template based on the provided format. This will be a structured document with placeholders for details to be filled in.
-    - It will generate a detailed, easy-to-understand explanation for each step of the triaging process.
 
----
+class WebLLMEnhancer:
+    """
+    Enhances triaging template steps with:
+    - Clear, descriptive step names
+    - KQL queries from kqlsearch.com or pattern generation
+    - NO hardcoded values (all placeholders)
+    - NO "Input" column in output
+    """
 
-#### 5\. Frontend Walkthrough & Analysis
+    def __init__(self):
+        self.llm = LLM(model="ollama/qwen2.5:0.5b", base_url="http://localhost:11434")
+        self.kql_tool = KQLSearchTool()
 
-- **Dynamic UI (Streamlit):** The Streamlit app will switch from the search view to a step-by-step execution view.
+        try:
+            self.web_search = SerperDevTool()
+        except:
+            self.web_search = None
+            print("âš ï¸ Web search unavailable. Using pattern-based enhancement.")
 
-- **Progress Bar:** A progress bar will show the user's progress through the triaging steps.
+    def enhance_template_steps(self, rule_number: str, original_steps: list) -> list:
+        """
+        Main enhancement pipeline with improved step naming and KQL generation.
+        """
+        print(f"\n{'='*80}")
+        print(f"ðŸŒ WEB + LLM ENHANCEMENT FOR {rule_number}")
+        print(f"{'='*80}")
+        print(f"ðŸ“¥ Input: {len(original_steps)} original steps")
 
-- **Step-by-Step Explanation:**
+        # Run intelligent enhancement
+        enhanced_steps = self._intelligent_enhancement(original_steps, rule_number)
 
-  - For each step, the app will display the easy-to-understand explanation generated by the **Content Generation Agent**.
-  - It will also use the **Prediction & Analysis Agent** to provide additional context.
+        print(f"\n{'='*80}")
+        print(f"âœ… ENHANCEMENT COMPLETE")
+        print(f"   Original steps: {len(original_steps)}")
+        print(f"   Enhanced steps: {len(enhanced_steps)}")
+        print(
+            f"   Steps with KQL: {len([s for s in enhanced_steps if s.get('kql_query')])}"
+        )
+        print(f"{'='*80}\n")
 
-- **Prediction & Analysis Agent:**
+        return enhanced_steps
 
-  - **Role:** Predictive analytics from historical data.
-  - **Tools:**
-    - **Data Analyzer Tool:** To read the `consolidated_INC208308.xlsx` file and the original tracker sheets.
-    - **LLM (Ollama):** To reason about the data.
-  - **Task:**
-    - It will analyze the "resolver comments" from past incidents related to the same rule.
-    - Based on these comments and the current data, it will predict the likelihood of the final output being a **True Positive** or **False Positive** at each step of the triage process.
-    - It will provide a "confidence score" or a brief explanation of how the current step's data (e.g., "IP Reputation - clean") influences the final outcome.
+    def _intelligent_enhancement(self, original_steps: list, rule_number: str) -> list:
+        """
+        LLM-powered enhancement: keeps original names, enhances explanations, generates KQL with LLM.
+        """
+        print(f"\nRunning LLM-POWERED enhancement...")
 
-- **User Interaction:**
+        enhanced = []
 
-  - Each step will have an explanation, a progress update, and a "Next" button.
-  - If a step requires additional input, an input box will be provided (e.g., for a KQL query result).
-  - The generated KQL queries will be provided directly as text in the explanation.
+        for i, step in enumerate(original_steps, 1):
+            raw_name = step.get("step_name", f"Step {i}")
+            original_exp = step.get("explanation", "")
+            original_kql = step.get("kql_query", "")
 
----
+            print(f"\nProcessing Step {i}: {raw_name}")
 
-#### 6\. Finalization & Export
+            # âœ… KEEP ORIGINAL NAME (NO CHANGES)
+            step_name = raw_name
 
-- **Completion:** After the user completes all the steps, the process is finalized.
-- **Template Download:** A button will appear to download the completed triaging template, which is a new file that combines the empty template structure with the user's inputs.
-- **Final Summary:** The app will present a final summary of the findings and the predicted outcome (TP/FP).
+            # ðŸ¤– USE LLM TO ENHANCE EXPLANATION
+            enhanced_exp = self._llm_enhance_explanation(
+                step_name, original_exp, rule_number
+            )
+
+            # ðŸ¤– USE LLM TO GENERATE KQL WITH DETAILED PURPOSE
+            kql_query = self._llm_generate_kql_with_purpose(
+                step_name, enhanced_exp, original_kql, rule_number
+            )
+
+            enhanced_step = {
+                "step_name": step_name,  # âœ… Original name preserved
+                "explanation": enhanced_exp,
+                "input_required": "",  # âœ… Empty (no Input column)
+                "kql_query": kql_query,
+            }
+
+            enhanced.append(enhanced_step)
+            print(f"Enhanced: {step_name}")
+            if kql_query:
+                print(f"KQL generated with purpose ({len(kql_query)} chars)")
+
+        return enhanced
+
+    def _llm_enhance_explanation(
+        self, stepname: str, original_exp: str, rule_number: str
+    ) -> str:
+        """
+        Use LLM to enhance step explanations with detailed, actionable instructions.
+        Keeps the core purpose but makes it more detailed and comprehensive.
+        """
+        if not original_exp or len(original_exp.strip()) < 10:
+            original_exp = f"Complete {stepname} investigation and document findings."
+
+        prompt = f"""
+    You are a cybersecurity expert enhancing investigation step explanations for SOC analysts.
+
+    STEP NAME: {stepname}
+    RULE: {rule_number}
+    ORIGINAL EXPLANATION: {original_exp}
+
+    REQUIREMENTS:
+    1. Make the explanation detailed and actionable (150-300 words)
+    2. Include specific investigation techniques and what to look for
+    3. Mention expected outcomes for both True Positive and False Positive scenarios
+    4. Use clear, professional language suitable for L1/L2 SOC analysts
+    5. Focus on practical investigation steps, not just theory
+    6. Include decision criteria where applicable
+
+    ENHANCED EXPLANATION:
+    """
+
+        try:
+            from crewai import Agent, Task, Crew
+
+            enhancement_agent = Agent(
+                role="SOC Investigation Expert",
+                goal="Create detailed, actionable investigation step explanations",
+                backstory="You are a senior SOC analyst with expertise in security incident investigation procedures. You create clear, detailed instructions that help junior analysts conduct thorough investigations.",
+                llm=self.llm,
+                verbose=False,
+            )
+
+            enhancement_task = Task(
+                description=prompt,
+                expected_output="A detailed, enhanced explanation (150-300 words) with specific investigation techniques and expected outcomes",
+                agent=enhancement_agent,
+            )
+
+            crew = Crew(
+                agents=[enhancement_agent], tasks=[enhancement_task], verbose=False
+            )
+
+            result = crew.kickoff()
+            enhanced_explanation = str(result).strip()
+
+            # Clean up any unwanted formatting
+            enhanced_explanation = re.sub(
+                r"^ENHANCED EXPLANATION:\s*",
+                "",
+                enhanced_explanation,
+                flags=re.IGNORECASE,
+            )
+            enhanced_explanation = re.sub(
+                r"^Enhanced Explanation:\s*",
+                "",
+                enhanced_explanation,
+                flags=re.IGNORECASE,
+            )
+            enhanced_explanation = re.sub(
+                r"```.*?```", "", enhanced_explanation, flags=re.DOTALL
+            )
+            enhanced_explanation = re.sub(
+                r"\*\*", "", enhanced_explanation
+            )  # Remove markdown bold
+            enhanced_explanation = re.sub(
+                r"\*", "", enhanced_explanation
+            )  # Remove markdown emphasis
+
+            if (
+                len(enhanced_explanation) > 50
+                and "complete" not in enhanced_explanation.lower()[:20]
+            ):
+                return enhanced_explanation
+            else:
+                print(
+                    f"LLM enhancement failed for {stepname}, using pattern-based fallback"
+                )
+                return self.enhance_explanation(stepname, original_exp)
+
+        except Exception as e:
+            print(f"LLM enhancement error: {str(e)}")
+            return self.enhance_explanation(stepname, original_exp)
+
+    def _llm_generate_kql_with_purpose(
+        self, stepname: str, explanation: str, existing_kql: str, rule_number: str
+    ) -> str:
+        """
+        Generate KQL queries with detailed purpose and context using LLM.
+        Falls back to pattern-based generation if LLM fails.
+        """
+        # Check if this step needs KQL
+        step_lower = stepname.lower()
+        if any(
+            word in step_lower
+            for word in [
+                "document",
+                "escalat",
+                "final",
+                "classif",
+                "coordinate",
+                "inform",
+            ]
+        ):
+            return ""  # Manual/decision steps don't need KQL
+
+        # If existing KQL is good, clean and return
+        if existing_kql and len(existing_kql.strip()) > 30:
+            return self.clean_kql_placeholders(existing_kql)
+
+        prompt = f"""
+    You are a Microsoft Sentinel KQL expert creating investigation queries for SOC analysts.
+
+    INVESTIGATION STEP: {stepname}
+    RULE CONTEXT: {rule_number}
+    STEP EXPLANATION: {explanation}
+    EXISTING KQL: {existing_kql if existing_kql else "None"}
+
+    REQUIREMENTS:
+    1. Generate a Microsoft Sentinel KQL query that directly supports this investigation step
+    2. Use ONLY these table names: SigninLogs, AuditLogs, IdentityInfo, ThreatIntelligenceIndicator, SecurityIncident, DeviceInfo
+    3. Use placeholders: USEREMAIL, IPADDRESS, DEVICEID, TIMESPAN, INITIATOREMAIL
+    4. Include proper KQL operators: where, extend, project, summarize, join
+    5. Focus on security investigation data relevant to the step
+    6. Make the query comprehensive but efficient
+    7. Include comments explaining the purpose
+
+    OUTPUT FORMAT:
+    // Purpose: [Explain what this query investigates and why]
+    // Expected Results: [What analysts should look for in results]
+    [KQL Query]
+
+    GENERATE KQL:
+    """
+
+        try:
+            from crewai import Agent, Task, Crew
+
+            kql_agent = Agent(
+                role="Microsoft Sentinel KQL Expert",
+                goal="Generate comprehensive KQL queries for security investigations",
+                backstory="You are a Microsoft Sentinel expert specializing in KQL query development for SOC operations. You create efficient, well-documented queries that help analysts investigate security incidents effectively.",
+                llm=self.llm,
+                verbose=False,
+            )
+
+            kql_task = Task(
+                description=prompt,
+                expected_output="A comprehensive KQL query with purpose comments and placeholders",
+                agent=kql_agent,
+            )
+
+            crew = Crew(agents=[kql_agent], tasks=[kql_task], verbose=False)
+
+            result = crew.kickoff()
+            kql_result = str(result).strip()
+
+            # Extract the actual KQL query from the result
+            kql_query = self._extract_kql_from_llm_result(kql_result)
+
+            if kql_query and self._validate_kql_query(kql_query):
+                return self.clean_kql_placeholders(kql_query)
+            else:
+                print(
+                    f"LLM KQL generation failed for {stepname}, using pattern-based fallback"
+                )
+                return self._generate_kql_query(stepname, explanation, existing_kql)
+
+        except Exception as e:
+            print(f"LLM KQL generation error: {str(e)}")
+            return self._generate_kql_query(stepname, explanation, existing_kql)
+
+    def _extract_kql_from_llm_result(self, llm_result: str) -> str:
+        """Extract KQL query from LLM response, handling various formats."""
+        # Remove any markdown code blocks
+        llm_result = re.sub(r"```kql\n?", "", llm_result, flags=re.IGNORECASE)
+        llm_result = re.sub(r"```\n?", "", llm_result)
+
+        # Look for the actual KQL query (should contain table names and operators)
+        lines = llm_result.split("\n")
+        kql_lines = []
+        in_query = False
+
+        for line in lines:
+            line = line.strip()
+            # Skip comment lines and empty lines when not in query
+            if (
+                line.startswith("//")
+                or line.startswith("Purpose:")
+                or line.startswith("Expected Results:")
+            ):
+                continue
+
+            # Check if this line contains KQL keywords
+            kql_keywords = [
+                "SigninLogs",
+                "AuditLogs",
+                "IdentityInfo",
+                "ThreatIntelligenceIndicator",
+                "SecurityIncident",
+                "DeviceInfo",
+                "where",
+                "extend",
+                "project",
+                "summarize",
+                "join",
+            ]
+
+            if any(keyword in line for keyword in kql_keywords):
+                in_query = True
+
+            if in_query and line:
+                kql_lines.append(line)
+            elif in_query and not line:
+                # Empty line might indicate end of query
+                break
+
+        return "\n".join(kql_lines).strip()
+
+    def _validate_kql_query(self, kql: str) -> bool:
+        """Validate that the KQL query contains required elements."""
+        if not kql or len(kql.strip()) < 20:
+            return False
+
+        # Must contain at least one table name
+        table_names = [
+            "SigninLogs",
+            "AuditLogs",
+            "IdentityInfo",
+            "ThreatIntelligenceIndicator",
+            "SecurityIncident",
+            "DeviceInfo",
+        ]
+        if not any(table in kql for table in table_names):
+            return False
+
+        # Must contain at least one KQL operator
+        kql_operators = ["where", "extend", "project", "summarize", "|"]
+        if not any(op in kql for op in kql_operators):
+            return False
+
+        return True
+
+    def _generate_clear_step_name(
+        self, raw_name: str, explanation: str, step_num: int, rule_number: str
+    ) -> str:
+        """
+        Generate CLEAR, DESCRIPTIVE step names based on content.
+        """
+        # Clean raw name
+        clean = re.sub(r"^\d+\.?\d*\s*", "", raw_name)  # Remove numbers
+        clean = re.sub(r"[*#_`]", "", clean)  # Remove markdown
+        clean = clean.strip()
+
+        # If name is clear and descriptive, use it
+        if len(clean) > 10 and clean.lower() not in ["investigation step", "step"]:
+            return clean
+
+        # Otherwise, generate from explanation
+        exp_lower = explanation.lower() if explanation else ""
+
+        # Rule-specific patterns for "New User Assigned to Privileged Role"
+        if "privileged" in rule_number.lower() or "role" in rule_number.lower():
+            if "unauthorized" in exp_lower or "remediation" in exp_lower:
+                return "Execute Remediation Actions"
+            elif "document" in exp_lower and ("2.0" in raw_name or step_num == 2):
+                return "Document Initial Findings"
+            elif "gather" in exp_lower and "user" in exp_lower:
+                return "Gather User Role Assignment Details"
+            elif "username" in exp_lower or "time of assignment" in exp_lower:
+                return "Extract Assignment Metadata"
+            elif "high-risk" in exp_lower or "global admin" in exp_lower:
+                return "Identify High-Risk Role Assignment"
+            elif "sign-in" in exp_lower or "unusual" in exp_lower:
+                return "Analyze User Sign-In Patterns"
+            elif "assigning user" in exp_lower or "legitimate access" in exp_lower:
+                return "Validate Assigning User Permissions"
+            elif "escalat" in exp_lower and "l3" in exp_lower:
+                return "Escalate to L3/IT Team"
+            elif "network" in exp_lower or "edr" in exp_lower or "block" in exp_lower:
+                return "Block Suspicious IP and Reset Credentials"
+            elif "document" in exp_lower or "final" in exp_lower:
+                return "Document Investigation and Actions"
+
+        # Generic patterns
+        if "vip" in exp_lower:
+            return "Verify VIP User Status"
+        elif "application" in exp_lower and "sign" in exp_lower:
+            return "Check Application Sign-In Activity"
+        elif "ip" in exp_lower and "reputation" in exp_lower:
+            return "Check IP Reputation"
+        elif "device" in exp_lower:
+            return "Verify Device Information"
+        elif "mfa" in exp_lower:
+            return "Validate MFA Status"
+        elif "classification" in exp_lower or "assess" in exp_lower:
+            return "Classify Incident"
+        else:
+            return f"Investigation Step {step_num}"
+
+    def _enhance_explanation(self, step_name: str, original_exp: str) -> str:
+        """
+        Create action-focused explanation.
+        """
+        step_lower = step_name.lower()
+
+        # If original is good, use it
+        if (
+            original_exp
+            and len(original_exp) > 50
+            and not original_exp.lower().startswith("complete")
+        ):
+            return original_exp
+
+        # Pattern-based explanations
+        if "remediation" in step_lower or "execute" in step_lower:
+            return "If unauthorized privileged role assignment is confirmed, immediately revoke the role assignment, lock the affected account, reset credentials, and revoke active sessions. Escalate to Incident Response team for forensic investigation and coordinate with Identity team for access review."
+
+        elif "document" in step_lower and "initial" in step_lower:
+            return "Complete initial documentation of the incident including alert timestamp, affected user, assigned role, and assigning user. Record all available metadata to establish investigation timeline and scope."
+
+        elif "gather" in step_lower and "user" in step_lower:
+            return "Collect comprehensive details about all users involved in the role assignment event. Export user information to a separate sheet including account status, department, and recent activity history for further analysis."
+
+        elif "assignment metadata" in step_lower or "extract" in step_lower:
+            return "Extract and document critical assignment metadata: Username, Role Assigned (e.g., Global Admin, Security Admin), Time of Assignment (UTC), Initiator (who performed the assignment), Source IP Address, and Geographic Location. This establishes the core facts of the incident."
+
+        elif "high-risk" in step_lower or "identify" in step_lower:
+            return "Determine if the assigned role is high-risk based on Azure AD role definitions. High-risk roles include Global Administrator, Privileged Role Administrator, Security Administrator, and Exchange Administrator. Document the risk level and potential impact if compromised."
+
+        elif "sign-in" in step_lower or "analyze" in step_lower:
+            return "Query Azure AD sign-in logs for the affected user covering the last 7 days. Look for unusual patterns: multiple failed attempts, sign-ins from new locations, unrecognized devices, impossible travel, or suspicious IP addresses. Known devices with successful MFA typically indicate legitimate activity (False Positive)."
+
+        elif "assigning user" in step_lower or "validate" in step_lower:
+            return "Validate that the user who performed the role assignment (initiator) had legitimate permissions and authority to do so. Check their role memberships, recent activity, and whether their account shows signs of compromise. Authorized assignment by legitimate admin typically indicates False Positive."
+
+        elif "escalat" in step_lower and "l3" in step_lower:
+            return "If investigation reveals suspicious indicators (unauthorized assignment, compromised initiator account, malicious IP, or high-risk role without justification), immediately escalate to L3 SOC team and IT Security for deeper investigation and potential containment actions."
+
+        elif "block" in step_lower or "network" in step_lower or "edr" in step_lower:
+            return "Coordinate with Network and EDR teams to block the detected suspicious source IP address. Inform the affected user to immediately reset their password, ensure password complexity requirements are met, and enable Multi-Factor Authentication (MFA) if not already active."
+
+        elif "document" in step_lower and "investigation" in step_lower:
+            return "After completing all investigation steps, document the full investigation process including: steps taken, findings from each step, evidence collected, timeline of events, classification decision (True/False/Benign Positive), justification for the classification, and any remediation actions required or completed."
+
+        elif "ip reputation" in step_lower:
+            return "Query threat intelligence feeds and geolocation data to verify the reputation of source IP addresses involved in the role assignment. Clean IPs from known corporate ranges typically indicate legitimate activity. Malicious IPs, TOR exit nodes, or VPN services require immediate escalation."
+
+        elif "device" in step_lower:
+            return "Verify device information including device ID, enrollment status, compliance state, and whether it's a known/registered corporate device. Managed, compliant devices typically indicate legitimate activity (False Positive). Unmanaged or non-compliant devices require further investigation."
+
+        elif "mfa" in step_lower:
+            return "Validate Multi-Factor Authentication status for the user at the time of role assignment. Successful MFA completion from a known device strongly suggests legitimate activity (False Positive). Failed MFA or MFA bypass attempts indicate potential compromise (True Positive)."
+
+        elif "classif" in step_lower:
+            return "Based on all investigation findings, classify the incident as True Positive (confirmed unauthorized access), False Positive (legitimate authorized activity), or Benign Positive (authorized but unusual activity). Document the classification with supporting evidence from each investigation step."
+
+        else:
+            return f"Complete {step_name} investigation and document all relevant findings, observations, and evidence collected during this step."
+
+    def _generate_kql_query(
+        self, step_name: str, explanation: str, existing_kql: str
+    ) -> str:
+        """
+        Generate KQL query using KQLSearchTool or patterns.
+        """
+        # If existing KQL is valid, clean and return
+        if existing_kql and len(existing_kql.strip()) > 30:
+            return self._clean_kql_placeholders(existing_kql)
+
+        # Check if step needs KQL
+        step_lower = step_name.lower()
+        if any(
+            word in step_lower
+            for word in [
+                "document",
+                "escalat",
+                "final",
+                "classif",
+                "coordinate",
+                "inform",
+            ]
+        ):
+            return ""  # Manual/decision steps don't need KQL
+
+        # Use KQL tool to generate query
+        search_query = f"{step_name} {explanation}"
+        kql = self.kql_tool.search_kql(search_query)
+
+        return self._clean_kql_placeholders(kql) if kql else ""
+
+    def _clean_kql_placeholders(self, kql: str) -> str:
+        """
+        Ensure KQL uses ONLY placeholders, no hardcoded values.
+        """
+        if not kql:
+            return ""
+
+        # Remove markdown
+        kql = re.sub(r"```[a-z]*\s*\n?", "", kql)
+        kql = re.sub(r"\n?```", "", kql)
+
+        # Replace hardcoded values
+        kql = re.sub(
+            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "<USER_EMAIL>", kql
+        )
+        kql = re.sub(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", "<IP_ADDRESS>", kql)
+        kql = re.sub(r'datetime\(["\'][\d\-:TZ]+["\']\)', "ago(<TIMESPAN>)", kql)
+        kql = re.sub(
+            r'(DeviceId|DeviceName)\s*==\s*"[^"]+"', r'\1 == "<DEVICE_ID>"', kql
+        )
+
+        # Ensure time ranges use placeholders
+        if "TimeGenerated" in kql and "ago(" not in kql:
+            kql = re.sub(
+                r"TimeGenerated\s*>\s*[^\n]+", "TimeGenerated > ago(<TIMESPAN>)", kql
+            )
+
+        # Replace common timespan values with placeholder
+        kql = re.sub(r"ago\(\d+[dhm]\)", "ago(<TIMESPAN>)", kql)
+
+        return kql.strip()

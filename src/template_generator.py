@@ -1,11 +1,3 @@
-"""
-COMPLETE TEMPLATE GENERATION SYSTEM
-Fixes all issues:
-1. Clear step names
-2. Removes Input column
-3. Dynamic KQL query generation
-"""
-
 import pandas as pd
 import re
 from io import BytesIO
@@ -64,7 +56,7 @@ class CompleteTemplateGenerator:
         header_row = {
             "Step": "",
             "Name": rule_number,
-            "Explanation": f"Investigation template - Historical FP: {rule_history.get('fp_rate', 0)}%, TP: {rule_history.get('tp_rate', 0)}%",
+            "Explanation": "",
             "KQL Query": "",
             "Execute": "",
             "Output": "",
@@ -109,7 +101,7 @@ class CompleteTemplateGenerator:
                 "KQL Query": kql_query,
                 "Execute": "",  # For manual checkbox/completion
                 "Output": "",  # For findings
-                "Remarks/Comments": self._generate_remarks(step, rule_history),
+                "Remarks/Comments": "",
             }
 
             template_rows.append(step_row)
@@ -141,32 +133,6 @@ class CompleteTemplateGenerator:
         text = " ".join(text.split())
 
         return text.strip()
-
-    def _generate_remarks(self, step: dict, rule_history: dict) -> str:
-        """Generate remarks with expected outputs and historical context"""
-        remarks = []
-
-        # Expected output
-        expected = step.get("expected_output", "")
-        if expected and expected != "N/A":
-            clean_expected = self._clean_explanation(expected)
-            remarks.append(f"Expected: {clean_expected}")
-
-        # Historical pattern
-        fp_rate = rule_history.get("fp_rate", 50)
-        tp_rate = rule_history.get("tp_rate", 50)
-
-        if fp_rate > 70:
-            remarks.append(f"[Historical: {fp_rate}% FP rate - typically benign]")
-        elif tp_rate > 70:
-            remarks.append(f"[Historical: {tp_rate}% TP rate - investigate thoroughly]")
-
-        # Decision points
-        decision = step.get("decision_point", "")
-        if decision and decision != "N/A":
-            remarks.append(f"Decision: {decision}")
-
-        return " | ".join(remarks) if remarks else ""
 
     def export_to_excel(self, df: pd.DataFrame, rule_number: str) -> BytesIO:
         """Export to professionally formatted Excel"""

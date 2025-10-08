@@ -122,7 +122,7 @@ crew = get_crew()
 
 # --- App Title ---
 st.markdown(
-    '<div class="main-header">🛡️ AI-Powered Security Incident Triaging System</div>',
+    '<div class="main-header">ðŸ›¡ï¸ AI-Powered Security Incident Triaging System</div>',
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -131,12 +131,12 @@ st.markdown(
 
 # --- Sidebar ---
 with st.sidebar:
-    st.header("📊 Navigation")
+    st.header("ðŸ“Š Navigation")
     st.write(f"**Current Step:** {st.session_state.step + 1}/5")
 
     if st.session_state.step > 0:
         st.markdown("---")
-        if st.button("🔄 Start Over"):
+        if st.button("ðŸ”„ Start Over"):
             for key in list(st.session_state.keys()):
                 if key not in ["all_data"]:
                     del st.session_state[key]
@@ -144,16 +144,16 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    st.markdown("### ℹ️ About")
+    st.markdown("### â„¹ï¸ About")
     st.markdown(
         """
     This tool uses AI agents to:
-    - 🔍 Search security alerts
-    - 📊 Export historical data
-    - 📝 Retrieve triaging templates
-    - 🤖 Generate investigation plans
-    - 🎯 Predict outcomes
-    - 📄 Export Excel/CSV templates
+    - ðŸ” Search security alerts
+    - ðŸ“Š Export historical data
+    - ðŸ“ Retrieve triaging templates
+    - ðŸ¤– Generate investigation plans
+    - ðŸŽ¯ Predict outcomes
+    - ðŸ“„ Export Excel/CSV templates
     """
     )
 
@@ -171,15 +171,15 @@ if st.session_state.step == 0:
             st.session_state.all_data = load_tracker_data()
 
             if st.session_state.all_data.empty:
-                st.error("❌ No tracker data found!")
+                st.error("âŒ No tracker data found!")
                 st.info("Please ensure data files exist in `data/` directory.")
                 st.stop()
             else:
                 st.success(
-                    f"✅ Loaded {len(st.session_state.all_data)} incidents from tracker sheets"
+                    f"âœ… Loaded {len(st.session_state.all_data)} incidents from tracker sheets"
                 )
 
-    with st.expander("💡 Example Searches"):
+    with st.expander("ðŸ’¡ Example Searches"):
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             if st.button("Sophos"):
@@ -203,7 +203,7 @@ if st.session_state.step == 0:
     with col1:
         default_value = st.session_state.get("example_query", "")
         search_query = st.text_input(
-            "🔍 Enter keywords to search (rule name, incident number, alert type, etc.)",
+            "ðŸ” Enter keywords to search (rule name, incident number, alert type, etc.)",
             value=default_value,
             placeholder="e.g., Sophos, Atypical Travel, Rule#280, Privileged Role...",
             key="search_input",
@@ -218,7 +218,7 @@ if st.session_state.step == 0:
         )
 
     if search_button and search_query:
-        with st.spinner("🔎 Searching for relevant alerts..."):
+        with st.spinner("ðŸ”Ž Searching for relevant alerts..."):
             try:
                 alerts_list = search_alerts_in_data(
                     st.session_state.all_data, search_query, top_n=5
@@ -229,10 +229,10 @@ if st.session_state.step == 0:
                     st.session_state.step = 1
                     st.rerun()
                 else:
-                    st.warning("⚠️ No relevant alerts found. Try different keywords.")
+                    st.warning("âš ï¸ No relevant alerts found. Try different keywords.")
 
             except Exception as e:
-                st.error(f"❌ Error during search: {str(e)}")
+                st.error(f"âŒ Error during search: {str(e)}")
 
 # ============================================================================
 # STEP 1: SELECT AN ALERT & EXPORT DATA
@@ -285,7 +285,7 @@ elif st.session_state.step == 1:
             with col2:
                 st.markdown("<br>", unsafe_allow_html=True)
                 if st.button(
-                    "📥 Export",
+                    "ðŸ“¥ Export",
                     key=f"export_{idx}",
                     help="Download all incidents for this rule",
                 ):
@@ -299,7 +299,7 @@ elif st.session_state.step == 1:
                         )
 
                         st.download_button(
-                            label="💾 Download Excel",
+                            label="ðŸ’¾ Download Excel",
                             data=excel_data,
                             file_name=f"{rule.replace('#', '_')}_historical_incidents.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -310,7 +310,7 @@ elif st.session_state.step == 1:
 
             with col3:
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("Select →", key=f"select_{idx}", type="primary"):
+                if st.button("Select â†’", key=f"select_{idx}", type="primary"):
                     parts = alert_title.split(" - ")
                     rule = parts[0].strip() if parts else "Unknown"
                     incident = (
@@ -329,7 +329,7 @@ elif st.session_state.step == 1:
 
             st.markdown("---")
 
-    if st.button("← Back to Search"):
+    if st.button("â† Back to Search"):
         st.session_state.step = 0
         st.session_state.alerts = []
         st.rerun()
@@ -359,7 +359,7 @@ elif st.session_state.step == 2:
     with st.spinner("Processing..."):
         try:
             # STEP 1: Find Template
-            status_text.text("🔍 Searching for triaging template...")
+            status_text.text("ðŸ” Searching for triaging template...")
             progress_bar.progress(20, text="Searching for template...")
 
             from src.template_parser import TemplateParser
@@ -371,8 +371,8 @@ elif st.session_state.step == 2:
             template_dir = "data/triaging_templates"
 
             if not os.path.exists(template_dir):
-                st.error(f"❌ Template directory not found: {template_dir}")
-                if st.button("← Go Back"):
+                st.error(f"âŒ Template directory not found: {template_dir}")
+                if st.button("â† Go Back"):
                     st.session_state.step = 1
                     st.rerun()
                 st.stop()
@@ -394,20 +394,20 @@ elif st.session_state.step == 2:
             ]
 
             if not template_files:
-                st.error(f"❌ No template found for {rule_number}")
+                st.error(f"âŒ No template found for {rule_number}")
                 st.info(
-                    "💡 Please ensure a template file exists in data/triaging_templates/"
+                    "ðŸ’¡ Please ensure a template file exists in data/triaging_templates/"
                 )
-                if st.button("← Go Back"):
+                if st.button("â† Go Back"):
                     st.session_state.step = 1
                     st.rerun()
                 st.stop()
 
             template_path = os.path.join(template_dir, template_files[0])
-            st.success(f"✅ Found template: {template_files[0]}")
+            st.success(f"âœ… Found template: {template_files[0]}")
 
             # STEP 2: Parse Template (Get ALL steps)
-            status_text.text("📖 Parsing template steps...")
+            status_text.text("ðŸ“– Parsing template steps...")
             progress_bar.progress(40, text="Parsing template...")
 
             if template_path.endswith(".csv"):
@@ -417,7 +417,7 @@ elif st.session_state.step == 2:
 
             if not original_steps:
                 st.warning(
-                    "⚠️ Template parsing returned no steps. Using fallback generation."
+                    "âš ï¸ Template parsing returned no steps. Using fallback generation."
                 )
                 original_steps = [
                     {
@@ -428,9 +428,9 @@ elif st.session_state.step == 2:
                     }
                 ]
 
-            # ⭐ SHOW WHAT WAS PARSED
+            # â­ SHOW WHAT WAS PARSED
             st.info(
-                f"📋 Successfully parsed {len(original_steps)} steps from template:"
+                f"ðŸ“‹ Successfully parsed {len(original_steps)} steps from template:"
             )
             with st.expander("View Parsed Steps", expanded=False):
                 for i, step in enumerate(original_steps, 1):
@@ -444,12 +444,12 @@ elif st.session_state.step == 2:
                     st.markdown("---")
 
             # STEP 3: Web + LLM Enhancement
-            status_text.text("🌐 Enhancing template with web research + LLM...")
+            status_text.text("ðŸŒ Enhancing template with web research + LLM...")
             progress_bar.progress(60, text="Enhancing with web + LLM...")
 
             enhancer = WebLLMEnhancer()
 
-            # ⭐ CRITICAL FIX: Pass ALL original steps for enhancement
+            # â­ CRITICAL FIX: Pass ALL original steps for enhancement
             enhanced_steps = enhancer.enhance_template_steps(
                 rule_number=rule_number,
                 original_steps=original_steps,  # Pass ALL steps here
@@ -457,7 +457,7 @@ elif st.session_state.step == 2:
 
             if not enhanced_steps or len(enhanced_steps) < len(original_steps):
                 st.warning(
-                    f"⚠️ Enhancement incomplete. Using parsed steps with cleanup."
+                    f"âš ï¸ Enhancement incomplete. Using parsed steps with cleanup."
                 )
                 # Fallback: Use original steps but clean them
                 enhanced_steps = []
@@ -476,10 +476,10 @@ elif st.session_state.step == 2:
                         }
                     )
 
-            st.success(f"✅ Enhanced to {len(enhanced_steps)} steps")
+            st.success(f"âœ… Enhanced to {len(enhanced_steps)} steps")
 
-            # ⭐ SHOW ENHANCEMENT RESULTS
-            st.info("🔍 Enhancement Summary:")
+            # â­ SHOW ENHANCEMENT RESULTS
+            st.info("ðŸ” Enhancement Summary:")
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("Original Steps", len(original_steps))
@@ -490,7 +490,7 @@ elif st.session_state.step == 2:
                 st.metric("Steps with KQL", kql_count)
 
             # STEP 4: Generate Clean Excel Template
-            status_text.text("📊 Generating Excel template...")
+            status_text.text("ðŸ“Š Generating Excel template...")
             progress_bar.progress(80, text="Generating Excel template...")
 
             template_gen = EnhancedTemplateGenerator()
@@ -505,12 +505,12 @@ elif st.session_state.step == 2:
             st.session_state.enhanced_steps = enhanced_steps
             st.session_state.excel_template_data = excel_file
 
-            progress_bar.progress(100, text="✅ Template ready!")
-            status_text.text("✅ Template generation complete!")
+            progress_bar.progress(100, text="âœ… Template ready!")
+            status_text.text("âœ… Template generation complete!")
 
             # STEP 5: Display Preview
             st.markdown("---")
-            st.markdown("### 📋 Generated Template Preview")
+            st.markdown("### ðŸ“‹ Generated Template Preview")
 
             tab1, tab2, tab3 = st.tabs(
                 ["Excel Preview", "Steps Overview", "KQL Queries"]
@@ -561,13 +561,13 @@ elif st.session_state.step == 2:
 
             # STEP 6: Download Options
             st.markdown("---")
-            st.markdown("### 📥 Download Template")
+            st.markdown("### ðŸ“¥ Download Template")
 
             col1, col2, col3 = st.columns(3)
 
             with col1:
                 st.download_button(
-                    label="📊 Download Excel Template",
+                    label="ðŸ“Š Download Excel Template",
                     data=st.session_state.excel_template_data,
                     file_name=f"triaging_template_{rule_number.replace('#', '_')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -585,7 +585,7 @@ elif st.session_state.step == 2:
                     "steps": enhanced_steps,
                 }
                 st.download_button(
-                    label="📄 Download JSON",
+                    label="ðŸ“„ Download JSON",
                     data=json.dumps(json_export, indent=2),
                     file_name=f"triaging_template_{rule_number.replace('#', '_')}.json",
                     mime="application/json",
@@ -603,7 +603,7 @@ elif st.session_state.step == 2:
                 )
                 if kql_export:
                     st.download_button(
-                        label="🔍 Download KQL Queries",
+                        label="ðŸ” Download KQL Queries",
                         data=kql_export,
                         file_name=f"kql_queries_{rule_number.replace('#', '_')}.kql",
                         mime="text/plain",
@@ -611,7 +611,7 @@ elif st.session_state.step == 2:
                     )
                 else:
                     st.button(
-                        label="🔍 No KQL Queries",
+                        label="ðŸ” No KQL Queries",
                         disabled=True,
                         use_container_width=True,
                     )
@@ -622,7 +622,7 @@ elif st.session_state.step == 2:
             col1, col2, col3 = st.columns([1, 2, 1])
 
             with col1:
-                if st.button("← Back to Alerts"):
+                if st.button("â† Back to Alerts"):
                     st.session_state.step = 1
                     st.rerun()
 
@@ -639,11 +639,11 @@ elif st.session_state.step == 2:
         except Exception as e:
             progress_bar.empty()
             status_text.empty()
-            st.error(f"❌ Error: {str(e)}")
+            st.error(f"âŒ Error: {str(e)}")
             with st.expander("View Error Details"):
                 st.code(traceback.format_exc())
 
-            if st.button("← Go Back"):
+            if st.button("â† Go Back"):
                 st.session_state.step = 1
                 st.rerun()
 
@@ -652,7 +652,7 @@ elif st.session_state.step == 2:
 # ============================================================================
 if st.session_state.step == 4:
     st.markdown(
-        '<div class="step-header"><h2>✅ Triaging Complete!</h2></div>',
+        '<div class="step-header"><h2>âœ… Triaging Complete!</h2></div>',
         unsafe_allow_html=True,
     )
 
@@ -661,7 +661,7 @@ if st.session_state.step == 4:
     # Generate Real-Time Prediction
     if "real_time_prediction" not in st.session_state:
         with st.spinner(
-            "🤖 Generating AI prediction based on your triaging comments..."
+            "ðŸ¤– Generating AI prediction based on your triaging comments..."
         ):
             try:
                 real_time_pred = crew.run_real_time_prediction(
@@ -675,7 +675,7 @@ if st.session_state.step == 4:
                 st.error(f"Prediction generation failed: {str(e)}")
                 st.session_state.real_time_prediction = None
 
-    st.markdown("## 📋 Investigation Summary")
+    st.markdown("## ðŸ“‹ Investigation Summary")
 
     for step_name, findings in st.session_state.triaging_output.items():
         with st.expander(f"**{step_name}**", expanded=False):
@@ -683,21 +683,21 @@ if st.session_state.step == 4:
 
     # Real-Time AI Prediction Display
     if st.session_state.get("real_time_prediction"):
-        st.markdown("## 🎯 AI Prediction Based on Your Triaging Comments")
+        st.markdown("## ðŸŽ¯ AI Prediction Based on Your Triaging Comments")
 
         pred = st.session_state.real_time_prediction
 
         # Prediction Type with color coding
         pred_type = pred.get("prediction_type", "Unknown")
         if "false positive" in pred_type.lower():
-            st.success(f"### 🟢 {pred_type}")
+            st.success(f"### ðŸŸ¢ {pred_type}")
         elif "true positive" in pred_type.lower():
-            st.error(f"### 🔴 {pred_type}")
+            st.error(f"### ðŸ”´ {pred_type}")
         else:
-            st.warning(f"### 🟡 {pred_type}")
+            st.warning(f"### ðŸŸ¡ {pred_type}")
 
         # Probability Breakdown
-        st.markdown("### 📊 Classification Probabilities")
+        st.markdown("### ðŸ“Š Classification Probabilities")
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -723,8 +723,8 @@ if st.session_state.step == 4:
 
         with col4:
             conf_level = pred.get("confidence_level", "Low")
-            conf_color = {"High": "🟢", "Medium": "🟡", "Low": "🔴"}.get(
-                conf_level, "⚪"
+            conf_color = {"High": "ðŸŸ¢", "Medium": "ðŸŸ¡", "Low": "ðŸ”´"}.get(
+                conf_level, "âšª"
             )
             st.metric("Confidence", f"{conf_color} {conf_level}")
 
@@ -745,28 +745,28 @@ if st.session_state.step == 4:
 
         # Key Factors
         if pred.get("key_factors"):
-            st.markdown("#### 🔍 Key Factors Supporting This Prediction")
+            st.markdown("#### ðŸ” Key Factors Supporting This Prediction")
             for i, factor in enumerate(pred["key_factors"], 1):
                 st.markdown(f"{i}. {factor}")
 
         # Reasoning
         if pred.get("reasoning"):
-            st.markdown("#### 💡 AI Reasoning")
+            st.markdown("#### ðŸ’¡ AI Reasoning")
             st.info(pred["reasoning"])
 
         # Historical Comparison
         if pred.get("historical_comparison"):
-            st.markdown("#### 📈 Historical Comparison")
+            st.markdown("#### ðŸ“ˆ Historical Comparison")
             st.markdown(pred["historical_comparison"])
 
         # Web Research Findings
         if pred.get("web_research") and pred["web_research"] != "N/A":
-            with st.expander("🌐 Web Research Findings", expanded=False):
+            with st.expander("ðŸŒ Web Research Findings", expanded=False):
                 st.markdown(pred["web_research"])
 
     # Original prediction (if exists)
     if st.session_state.predictions:
-        st.markdown("## 🤖 Initial AI Assessment (Before Triaging)")
+        st.markdown("## ðŸ¤– Initial AI Assessment (Before Triaging)")
 
         final_pred = st.session_state.predictions[0]
 
@@ -794,7 +794,7 @@ if st.session_state.step == 4:
 
     # Display Historical Context
     if st.session_state.rule_history:
-        st.markdown("## 📊 Historical Pattern Summary")
+        st.markdown("## ðŸ“Š Historical Pattern Summary")
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -824,7 +824,7 @@ if st.session_state.step == 4:
 
     # Enhanced Download Section
     st.markdown("---")
-    st.markdown("## 📥 Export Results & Templates")
+    st.markdown("## ðŸ“¥ Export Results & Templates")
 
     # Generate reports
     final_report = generate_completed_template(
@@ -864,13 +864,13 @@ if st.session_state.step == 4:
                 st.session_state.excel_template_data = None
 
     # Download buttons
-    st.markdown("### 📄 Available Downloads")
+    st.markdown("### ðŸ“„ Available Downloads")
 
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         st.download_button(
-            label="📄 Completed Report",
+            label="ðŸ“„ Completed Report",
             data=final_report,
             file_name=f"triaging_report_{st.session_state.selected_alert.get('incident')}.txt",
             mime="text/plain",
@@ -881,7 +881,7 @@ if st.session_state.step == 4:
     with col2:
         if st.session_state.excel_template_data:
             st.download_button(
-                label="📊 Excel Template",
+                label="ðŸ“Š Excel Template",
                 data=st.session_state.excel_template_data,
                 file_name=f"triaging_template_{st.session_state.selected_alert.get('rule').replace('#', '_')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -890,7 +890,7 @@ if st.session_state.step == 4:
             )
         else:
             st.button(
-                "📊 Excel Template",
+                "ðŸ“Š Excel Template",
                 disabled=True,
                 use_container_width=True,
                 help="Excel template generation failed",
@@ -898,7 +898,7 @@ if st.session_state.step == 4:
 
     with col3:
         st.download_button(
-            label="📋 CSV Template",
+            label="ðŸ“‹ CSV Template",
             data=csv_template,
             file_name=f"triaging_template_{st.session_state.selected_alert.get('rule').replace('#', '_')}.csv",
             mime="text/csv",
@@ -918,7 +918,7 @@ if st.session_state.step == 4:
         }
 
         st.download_button(
-            label="📊 JSON Data",
+            label="ðŸ“Š JSON Data",
             data=json.dumps(json_export, indent=2),
             file_name=f"triaging_data_{st.session_state.selected_alert.get('incident')}.json",
             mime="application/json",
@@ -927,7 +927,7 @@ if st.session_state.step == 4:
         )
 
     # Preview tabs
-    with st.expander("👁️ Preview Templates & Reports", expanded=False):
+    with st.expander("ðŸ‘ï¸ Preview Templates & Reports", expanded=False):
         tab1, tab2, tab3 = st.tabs(
             ["Completed Report", "CSV Template", "Excel Preview"]
         )
@@ -942,7 +942,7 @@ if st.session_state.step == 4:
 
         with tab3:
             if st.session_state.excel_template_data:
-                st.success("✅ Excel template generated successfully!")
+                st.success("âœ… Excel template generated successfully!")
                 st.info("Excel template contains:")
                 st.markdown(
                     """
@@ -953,7 +953,7 @@ if st.session_state.step == 4:
                 - **KQL Query** - Full queries when applicable
                 - **Execute** - Empty for manual completion
                 - **Output** - Empty for findings
-                - **Remarks/Comments** - Expected outputs & historical context
+                - **Remarks/Comments** - Empty for manual update
                 """
                 )
 
@@ -970,7 +970,7 @@ if st.session_state.step == 4:
                 st.error("Excel template not available")
 
     st.markdown("---")
-    st.markdown("### 📝 Template Details")
+    st.markdown("### ðŸ“ Template Details")
 
     col1, col2, col3 = st.columns(3)
 
@@ -1001,7 +1001,7 @@ if st.session_state.step == 4:
 
     st.markdown("---")
 
-    if st.button("🔄 Start New Triaging", type="primary", use_container_width=True):
+    if st.button("ðŸ”„ Start New Triaging", type="primary", use_container_width=True):
         for key in list(st.session_state.keys()):
             if key != "all_data":
                 del st.session_state[key]
@@ -1022,7 +1022,7 @@ elif st.session_state.step == 3:
     )
 
     if st.session_state.triaging_plan is None:
-        st.markdown("### 🤖 AI Agents are Analyzing...")
+        st.markdown("### ðŸ¤– AI Agents are Analyzing...")
 
         analysis_status = st.empty()
         analysis_progress = st.progress(0)
@@ -1030,7 +1030,7 @@ elif st.session_state.step == 3:
         with st.spinner("This may take 30-60 seconds..."):
             try:
                 analysis_status.info(
-                    "🧠 AI is learning from historical data and templates..."
+                    "ðŸ§  AI is learning from historical data and templates..."
                 )
                 analysis_progress.progress(20)
 
@@ -1041,7 +1041,7 @@ elif st.session_state.step == 3:
                 )
 
                 analysis_progress.progress(80)
-                analysis_status.info("📝 Generating triaging plan and predictions...")
+                analysis_status.info("ðŸ“ Generating triaging plan and predictions...")
 
                 st.session_state.triaging_plan = result["triaging_plan"]
                 st.session_state.predictions = result["predictions"]
@@ -1052,17 +1052,17 @@ elif st.session_state.step == 3:
                 st.session_state.current_step_index = 0
 
                 analysis_progress.progress(100)
-                analysis_status.success("✅ AI analysis complete!")
+                analysis_status.success("âœ… AI analysis complete!")
 
                 st.rerun()
 
             except Exception as e:
                 analysis_progress.empty()
-                analysis_status.error(f"❌ Error in AI analysis: {str(e)}")
+                analysis_status.error(f"âŒ Error in AI analysis: {str(e)}")
                 with st.expander("View Error Details"):
                     st.code(traceback.format_exc())
 
-                st.warning("⚠️ Using fallback triaging plan...")
+                st.warning("âš ï¸ Using fallback triaging plan...")
                 st.session_state.triaging_plan = crew._create_fallback_steps()
                 st.session_state.predictions = crew._create_minimal_prediction(
                     st.session_state.consolidated_data
@@ -1075,8 +1075,8 @@ elif st.session_state.step == 3:
     total_steps = len(st.session_state.triaging_plan)
 
     if total_steps == 0:
-        st.error("❌ No triaging steps generated. Please try again.")
-        if st.button("← Go Back"):
+        st.error("âŒ No triaging steps generated. Please try again.")
+        if st.button("â† Go Back"):
             st.session_state.step = 2
             st.session_state.triaging_plan = None
             st.rerun()
@@ -1093,7 +1093,7 @@ elif st.session_state.step == 3:
 
         # Display the formatted step
         st.markdown(f"***")
-        st.markdown(f"### {current_step_index + 1}. {current_step.get('step_name')} 🔍")
+        st.markdown(f"### {current_step_index + 1}. {current_step.get('step_name')} ðŸ”")
         st.markdown(f"* **Explanation:** {current_step.get('explanation')}")
         st.markdown(f"* **Input Required:** {current_step.get('input_required')}")
         
@@ -1117,7 +1117,7 @@ elif st.session_state.step == 3:
                 st.markdown(
                     '<div class="progressive-prediction">', unsafe_allow_html=True
                 )
-                st.markdown("### 📊 Progressive Analysis (Updated After Each Step)")
+                st.markdown("### ðŸ“Š Progressive Analysis (Updated After Each Step)")
 
                 col1, col2, col3 = st.columns(3)
 
@@ -1153,7 +1153,7 @@ elif st.session_state.step == 3:
 
         # AI Prediction box
         if st.session_state.predictions:
-            with st.expander("🔮 AI Final Prediction & Guidance", expanded=False):
+            with st.expander("ðŸ”® AI Final Prediction & Guidance", expanded=False):
                 prediction = st.session_state.predictions[0]
 
                 col1, col2 = st.columns(2)
@@ -1177,7 +1177,7 @@ elif st.session_state.step == 3:
         st.markdown("---")
 
         # User input section
-        st.markdown("### ✏️ Your Findings")
+        st.markdown("### âœï¸ Your Findings")
 
         user_input = st.text_area(
             f"Document your findings for this step:",
@@ -1190,12 +1190,12 @@ elif st.session_state.step == 3:
 
         with col1:
             if current_step_index > 0:
-                if st.button("← Previous"):
+                if st.button("â† Previous"):
                     st.session_state.current_step_index -= 1
                     st.rerun()
 
         with col2:
-            if st.button("Next Step →", type="primary"):
+            if st.button("Next Step â†’", type="primary"):
                 if user_input.strip():
                     st.session_state.triaging_output[
                         current_step.get("step_name")
@@ -1203,11 +1203,11 @@ elif st.session_state.step == 3:
                     st.session_state.current_step_index += 1
                     st.rerun()
                 else:
-                    st.warning("⚠️ Please enter your findings before proceeding.")
+                    st.warning("âš ï¸ Please enter your findings before proceeding.")
 
         with col3:
             if st.button(
-                "⏭️ Skip to End", help="Skip remaining steps and go to summary"
+                "â­ï¸ Skip to End", help="Skip remaining steps and go to summary"
             ):
                 for remaining_step in st.session_state.triaging_plan[
                     current_step_index:

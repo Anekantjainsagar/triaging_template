@@ -20,13 +20,13 @@ class KQLSearchTool:
         try:
             # Try web search for KQL examples
             search_query = f"{query} KQL query Azure Sentinel Microsoft Defender"
-            print(f"🔍 Searching KQL for: {search_query}")
+            print(f"ðŸ” Searching KQL for: {search_query}")
 
             # Pattern-based KQL generation as reliable fallback
             return self._generate_kql_by_pattern(query)
 
         except Exception as e:
-            print(f"⚠️ KQL search failed: {str(e)}, using pattern generation")
+            print(f"âš ï¸ KQL search failed: {str(e)}, using pattern generation")
             return self._generate_kql_by_pattern(query)
 
     def _generate_kql_by_pattern(self, step_description: str) -> str:
@@ -200,22 +200,22 @@ class WebLLMEnhancer:
             self.web_search = SerperDevTool()
         except:
             self.web_search = None
-            print("⚠️ Web search unavailable. Using pattern-based enhancement.")
+            print("âš ï¸ Web search unavailable. Using pattern-based enhancement.")
 
     def enhance_template_steps(self, rule_number: str, original_steps: list) -> list:
         """
         Main enhancement pipeline with improved step naming and KQL generation.
         """
         print(f"\n{'='*80}")
-        print(f"🌐 WEB + LLM ENHANCEMENT FOR {rule_number}")
+        print(f"ðŸŒ WEB + LLM ENHANCEMENT FOR {rule_number}")
         print(f"{'='*80}")
-        print(f"📥 Input: {len(original_steps)} original steps")
+        print(f"ðŸ“¥ Input: {len(original_steps)} original steps")
 
         # Run intelligent enhancement
         enhanced_steps = self._intelligent_enhancement(original_steps, rule_number)
 
         print(f"\n{'='*80}")
-        print(f"✅ ENHANCEMENT COMPLETE")
+        print(f"âœ… ENHANCEMENT COMPLETE")
         print(f"   Original steps: {len(original_steps)}")
         print(f"   Enhanced steps: {len(enhanced_steps)}")
         print(
@@ -229,7 +229,7 @@ class WebLLMEnhancer:
         """
         Enhanced processing with clear step names and KQL queries.
         """
-        print(f"\n⚙️ Running INTELLIGENT enhancement...")
+        print(f"\nâš™ï¸ Running INTELLIGENT enhancement...")
 
         enhanced = []
 
@@ -237,15 +237,15 @@ class WebLLMEnhancer:
             raw_name = step.get("step_name", f"Step {i}")
             original_exp = step.get("explanation", "")
 
-            # 🔧 GENERATE CLEAR STEP NAME
+            # ðŸ”§ GENERATE CLEAR STEP NAME
             clean_name = self._generate_clear_step_name(
                 raw_name, original_exp, i, rule_number
             )
 
-            # 🔧 ENHANCE EXPLANATION
+            # ðŸ”§ ENHANCE EXPLANATION
             enhanced_exp = self._enhance_explanation(clean_name, original_exp)
 
-            # 🔧 GENERATE KQL QUERY
+            # ðŸ”§ GENERATE KQL QUERY
             kql_query = self._generate_kql_query(
                 clean_name, original_exp, step.get("kql_query", "")
             )
@@ -253,56 +253,34 @@ class WebLLMEnhancer:
             enhanced_step = {
                 "step_name": clean_name,
                 "explanation": enhanced_exp,
-                "input_required": "",  # ✅ REMOVED - will not appear in Excel
+                "input_required": "",  # âœ… REMOVED - will not appear in Excel
                 "kql_query": kql_query,
             }
 
             enhanced.append(enhanced_step)
-            print(f"✅ Enhanced step {i}: {clean_name}")
+            print(f"âœ… Enhanced step {i}: {clean_name}")
             if kql_query:
-                print(f"   📊 KQL query added ({len(kql_query)} chars)")
+                print(f"   ðŸ“Š KQL query added ({len(kql_query)} chars)")
 
         return enhanced
 
     def _generate_clear_step_name(
         self, raw_name: str, explanation: str, step_num: int, rule_number: str
     ) -> str:
-        """Generate CLEAR step names based on template patterns"""
-
+        """
+        Generate CLEAR, DESCRIPTIVE step names based on content.
+        """
         # Clean raw name
-        clean = re.sub(r"^\d+\.?\d*\s*", "", raw_name)
-        clean = re.sub(r"[*#_`]", "", clean)
+        clean = re.sub(r"^\d+\.?\d*\s*", "", raw_name)  # Remove numbers
+        clean = re.sub(r"[*#_`]", "", clean)  # Remove markdown
         clean = clean.strip()
 
-        # If raw name is already clear (not just a number), use it
-        if clean and len(clean) > 3 and not clean.replace(".", "").isdigit():
+        # If name is clear and descriptive, use it
+        if len(clean) > 10 and clean.lower() not in ["investigation step", "step"]:
             return clean
 
+        # Otherwise, generate from explanation
         exp_lower = explanation.lower() if explanation else ""
-
-        # Passwordless authentication specific patterns
-        if "passwordless" in rule_number.lower():
-            if "vip" in exp_lower and "cross verify" in exp_lower:
-                return "Verify VIP User Status"
-            elif "application" in exp_lower and "without sign in" in exp_lower:
-                return "Check Application Sign-In Attempts"
-            elif "application" in exp_lower and "critical" in exp_lower:
-                return "Assess Critical Application Usage"
-            elif "no critical" in exp_lower and "false positive" in exp_lower:
-                return "Close as False Positive (No Critical Apps)"
-            elif (
-                "critical application found" in exp_lower
-                and "true positive" in exp_lower
-            ):
-                return "Escalate as True Positive (Critical App Found)"
-            elif "legitimate" in exp_lower and "biometric" in exp_lower:
-                return "Validate Passwordless Authentication Method"
-            elif "legitimate" in exp_lower and "false positive" in exp_lower:
-                return "Close as False Positive (Legitimate Auth)"
-            elif "unauthorized" in exp_lower and "locking" in exp_lower:
-                return "Execute Remediation Actions"
-            elif "monitoring" in exp_lower and "future" in exp_lower:
-                return "Enhance Future Monitoring"
 
         # Rule-specific patterns for "New User Assigned to Privileged Role"
         if "privileged" in rule_number.lower() or "role" in rule_number.lower():
