@@ -1,49 +1,70 @@
+"""
+COMPLETE TEMPLATE GENERATION SYSTEM
+Fixes all issues:
+1. Clear step names
+2. Removes Input column
+3. Dynamic KQL query generation
+"""
+
 import pandas as pd
 import re
 from io import BytesIO
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
 
 
-class EnhancedTemplateGenerator:
+class CompleteTemplateGenerator:
     """
-    Generates CLEAN Excel templates with NO HARDCODED DATA.
-    All KQL queries use placeholders like <USER_EMAIL>, <IP_ADDRESS>, <TIMESPAN>.
+    Complete template generator with:
+    - Intelligent step naming
+    - Dynamic KQL generation
+    - No Input column
+    - Clean formatting
     """
 
-    def __init__(self):
+    def __init__(self, kql_generator=None, step_name_generator=None):
+        # Import generators
+        from src.kql_generation import DynamicKQLGenerator
+        from src.step_name import IntelligentStepNameGenerator
+
+        self.kql_gen = kql_generator or DynamicKQLGenerator()
+        self.name_gen = step_name_generator or IntelligentStepNameGenerator()
+
+        # Updated columns - NO INPUT COLUMN
         self.template_columns = [
             "Step",
             "Name",
             "Explanation",
-            "Input",
             "KQL Query",
             "Execute",
             "Output",
             "Remarks/Comments",
         ]
 
-    def generate_clean_template(
-        self, rule_number: str, enhanced_steps: list
+    def generate_template(
+        self, rule_number: str, parsed_steps: list, rule_history: dict
     ) -> pd.DataFrame:
         """
-        Generate clean Excel template from web-enhanced steps.
+        Main generation function
 
         Args:
-            rule_number: Rule identifier (e.g., "Rule#183")
-            enhanced_steps: List of steps enhanced by web research + LLM
+            rule_number: Rule identifier (e.g., "Rule#014")
+            parsed_steps: Steps from template parser
+            rule_history: Historical data for this rule
 
         Returns:
-            DataFrame ready for Excel export
+            Clean DataFrame ready for Excel export
         """
+        print(f"\n{'='*80}")
+        print(f"GENERATING TEMPLATE FOR {rule_number}")
+        print(f"{'='*80}")
+
         template_rows = []
 
-        # Add rule header row
+        # Header row
         header_row = {
             "Step": "",
             "Name": rule_number,
-            "Explanation": "Investigation template generated from historical analysis and web research",
-            "Input": "",
+            "Explanation": f"Investigation template - Historical FP: {rule_history.get('fp_rate', 0)}%, TP: {rule_history.get('tp_rate', 0)}%",
             "KQL Query": "",
             "Execute": "",
             "Output": "",
@@ -51,170 +72,122 @@ class EnhancedTemplateGenerator:
         }
         template_rows.append(header_row)
 
-        # Add each investigation step
-        for i, step in enumerate(enhanced_steps, 1):
-            step_row = self._create_clean_step_row(i, step)
+        # Process each step
+        for i, step in enumerate(parsed_steps, 1):
+            print(f"\n--- Processing Step {i} ---")
+
+            # 1. Generate clear step name
+            raw_name = step.get("step_name", f"Step {i}")
+            explanation = step.get("explanation", "")
+
+            clear_name = self.name_gen.generate_step_name(
+                raw_name=raw_name,
+                explanation=explanation,
+                step_num=i,
+                context=rule_number,
+            )
+            print(f"✅ Step Name: {clear_name}")
+
+            # 2. Generate KQL query
+            kql_query = self.kql_gen.generate_kql_query(
+                step_name=clear_name, explanation=explanation, context=rule_number
+            )
+
+            if kql_query:
+                print(f"✅ KQL Generated: {len(kql_query)} chars")
+            else:
+                print("⚠️ No KQL query (documentation step)")
+
+            # 3. Create clean explanation
+            clean_explanation = self._clean_explanation(explanation)
+
+            # 4. Build row (NO INPUT COLUMN)
+            step_row = {
+                "Step": i,
+                "Name": clear_name,
+                "Explanation": clean_explanation,
+                "KQL Query": kql_query,
+                "Execute": "",  # For manual checkbox/completion
+                "Output": "",  # For findings
+                "Remarks/Comments": self._generate_remarks(step, rule_history),
+            }
+
             template_rows.append(step_row)
 
+        print(f"\n✅ Generated {len(template_rows)-1} investigation steps")
         return pd.DataFrame(template_rows)
 
-    def _create_clean_step_row(self, step_num: int, step: dict) -> dict:
-        """
-        Create a CLEAN step row with NO HARDCODED VALUES.
-
-        Step structure from LLM/Web enhancement:
-        {
-            "step_name": "Check User Sign-In Logs",
-            "explanation": "Query Azure AD sign-in logs...",
-            "input_required": "User principal name (email), Time range",
-            "kql_query": "SigninLogs | where UserPrincipalName == '<USER_EMAIL>'...",
-            "expected_output": "Clean IP, Known device, MFA satisfied"
-        }
-        """
-        step_name = step.get("step_name", f"Investigation Step {step_num}")
-        explanation = step.get("explanation", "")
-        input_required = step.get("input_required", "")
-        kql_query = step.get("kql_query", "")
-
-        # Clean step name (remove markdown, numbers, emojis)
-        clean_name = self._clean_step_name(step_name)
-
-        # Clean explanation (remove markdown, keep concise)
-        clean_explanation = self._clean_text(explanation)
-
-        # Clean input requirements
-        clean_input = self._clean_text(input_required)
-
-        # Clean KQL query (ensure NO hardcoded values)
-        clean_kql = self._ensure_parameterized_kql(kql_query)
-
-        return {
-            "Step": step_num,
-            "Name": clean_name,
-            "Explanation": clean_explanation,
-            "Input": clean_input,
-            "KQL Query": clean_kql,
-            "Execute": "",  # Empty for manual filling
-            "Output": "",  # Empty for manual filling
-            "Remarks/Comments": "",  # Empty for manual notes
-        }
-
-    def _clean_step_name(self, step_name: str) -> str:
-        """Clean step name - remove ALL formatting, keep action-focused text"""
-        if not step_name:
-            return "Investigation Step"
+    def _clean_explanation(self, explanation: str) -> str:
+        """Clean explanation text"""
+        if not explanation:
+            return "Complete this investigation step and document findings"
 
         # Remove markdown
-        clean = re.sub(r"\*+", "", step_name)
-        clean = re.sub(r"#+", "", clean)
-        clean = re.sub(r"[📋✅📊📂🔍🔎⚠️🚨]", "", clean)  # Remove emojis
+        text = re.sub(r"\*\*\*+", "", explanation)
+        text = re.sub(r"\*\*", "", text)
+        text = re.sub(r"\*", "", text)
+        text = re.sub(r"#+\s*", "", text)
+        text = re.sub(r"`", "", text)
 
-        # Remove numbering
-        clean = re.sub(r"^Step\s*\d+:?\s*", "", clean, flags=re.IGNORECASE)
-        clean = re.sub(r"^\d+\.\s*", "", clean)
-
-        # Remove verbose prefixes
-        clean = re.sub(
-            r"^(Please\s+)?(Perform\s+)?(Complete\s+)?", "", clean, flags=re.IGNORECASE
-        )
-
-        # Clean whitespace
-        clean = " ".join(clean.strip().split())
-
-        return clean if clean else "Investigation Step"
-
-    def _clean_text(self, text: str) -> str:
-        """Remove ALL markdown and formatting, keep plain text"""
-        if not text:
-            return ""
-
-        # Remove markdown
-        clean_text = re.sub(r"\*\*\*+", "", text)
-        clean_text = re.sub(r"\*\*", "", clean_text)
-        clean_text = re.sub(r"\*", "", clean_text)
-        clean_text = re.sub(r"#+\s*", "", clean_text)
-        clean_text = re.sub(r"```[a-z]*\n", "", clean_text)
-        clean_text = re.sub(r"\n```", "", clean_text)
-        clean_text = re.sub(r"`([^`]+)`", r"\1", clean_text)
-
-        # Remove common verbose prefixes
-        clean_text = re.sub(
-            r"^(Explanation:|Description:|Instructions:)\s*",
+        # Remove prefixes
+        text = re.sub(
+            r"^(Explanation:|Instructions:|Description:)\s*",
             "",
-            clean_text,
+            text,
             flags=re.IGNORECASE,
         )
 
         # Clean whitespace
-        clean_text = re.sub(r"\s+", " ", clean_text)
-        clean_text = clean_text.strip()
+        text = " ".join(text.split())
 
-        return clean_text
+        return text.strip()
 
-    def _ensure_parameterized_kql(self, kql: str) -> str:
-        """
-        CRITICAL: Ensure KQL query has NO HARDCODED VALUES.
-        Replace any hardcoded data with placeholders.
-        """
-        if not kql or kql.strip() == "" or kql.strip().upper() == "N/A":
-            return ""
+    def _generate_remarks(self, step: dict, rule_history: dict) -> str:
+        """Generate remarks with expected outputs and historical context"""
+        remarks = []
 
-        # Remove markdown code blocks
-        clean_kql = re.sub(r"```[a-z]*\s*\n?", "", kql)
-        clean_kql = re.sub(r"\n?```", "", clean_kql)
+        # Expected output
+        expected = step.get("expected_output", "")
+        if expected and expected != "N/A":
+            clean_expected = self._clean_explanation(expected)
+            remarks.append(f"Expected: {clean_expected}")
 
-        # Replace any hardcoded emails with placeholder
-        clean_kql = re.sub(
-            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "<USER_EMAIL>", clean_kql
-        )
+        # Historical pattern
+        fp_rate = rule_history.get("fp_rate", 50)
+        tp_rate = rule_history.get("tp_rate", 50)
 
-        # Replace any hardcoded IPs with placeholder
-        clean_kql = re.sub(
-            r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", "<IP_ADDRESS>", clean_kql
-        )
+        if fp_rate > 70:
+            remarks.append(f"[Historical: {fp_rate}% FP rate - typically benign]")
+        elif tp_rate > 70:
+            remarks.append(f"[Historical: {tp_rate}% TP rate - investigate thoroughly]")
 
-        # Replace any hardcoded device names with placeholder
-        clean_kql = re.sub(
-            r'(DeviceId|DeviceName)\s*==\s*"[^"]+"', r'\1 == "<DEVICE_ID>"', clean_kql
-        )
+        # Decision points
+        decision = step.get("decision_point", "")
+        if decision and decision != "N/A":
+            remarks.append(f"Decision: {decision}")
 
-        # Ensure time ranges use placeholders
-        if "ago(" in clean_kql and "d)" in clean_kql:
-            # Already parameterized, keep as is
-            pass
-        elif "TimeGenerated" in clean_kql and "ago" not in clean_kql:
-            # Add ago() if missing
-            clean_kql = re.sub(
-                r'(TimeGenerated\s*>\s*)["\'][\d\-:TZ]+["\']',
-                r"\1ago(<TIMESPAN>)",
-                clean_kql,
-            )
-
-        # Clean up whitespace but preserve line structure
-        lines = [line.strip() for line in clean_kql.split("\n") if line.strip()]
-        clean_kql = "\n".join(lines)
-
-        return clean_kql.strip()
+        return " | ".join(remarks) if remarks else ""
 
     def export_to_excel(self, df: pd.DataFrame, rule_number: str) -> BytesIO:
-        """Export DataFrame to professionally formatted Excel"""
+        """Export to professionally formatted Excel"""
         output = BytesIO()
 
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             df.to_excel(writer, sheet_name="Triaging_Template", index=False)
 
-            # Format the worksheet
             workbook = writer.book
             worksheet = writer.sheets["Triaging_Template"]
-            self._format_excel_worksheet(worksheet, df)
+
+            # Format worksheet
+            self._format_worksheet(worksheet, df)
 
         output.seek(0)
         return output
 
-    def _format_excel_worksheet(self, worksheet, df):
-        """Apply professional formatting to Excel worksheet"""
+    def _format_worksheet(self, worksheet, df):
+        """Apply professional Excel formatting"""
 
-        # Header formatting
+        # Header style
         header_font = Font(bold=True, color="FFFFFF", size=11)
         header_fill = PatternFill(
             start_color="366092", end_color="366092", fill_type="solid"
@@ -230,16 +203,15 @@ class EnhancedTemplateGenerator:
             cell.fill = header_fill
             cell.alignment = header_alignment
 
-        # Column widths
+        # Column widths (UPDATED - no Input column)
         column_widths = {
             "A": 8,  # Step
             "B": 35,  # Name
             "C": 50,  # Explanation
-            "D": 30,  # Input
-            "E": 60,  # KQL Query (wider for full queries)
-            "F": 12,  # Execute
-            "G": 12,  # Output
-            "H": 12,  # Remarks/Comments
+            "D": 65,  # KQL Query (wider!)
+            "E": 12,  # Execute
+            "F": 25,  # Output
+            "G": 40,  # Remarks/Comments
         }
 
         for col_letter, width in column_widths.items():
@@ -267,7 +239,7 @@ class EnhancedTemplateGenerator:
                         start_color="F9F9F9", end_color="F9F9F9", fill_type="solid"
                     )
 
-        # Highlight header row (rule description)
+        # Highlight rule header row
         for col_idx in range(1, len(df.columns) + 1):
             cell = worksheet.cell(row=2, column=col_idx)
             cell.fill = PatternFill(
@@ -275,5 +247,71 @@ class EnhancedTemplateGenerator:
             )
             cell.font = Font(bold=True, size=11)
 
-        # Freeze header row
+        # KQL Query column - code font
+        kql_col_idx = list(df.columns).index("KQL Query") + 1
+        for row_idx in range(3, len(df) + 2):
+            cell = worksheet.cell(row=row_idx, column=kql_col_idx)
+            cell.font = Font(name="Consolas", size=9)
+            cell.alignment = Alignment(
+                vertical="top", wrap_text=True, horizontal="left"
+            )
+
+        # Freeze header
         worksheet.freeze_panes = "A2"
+
+
+# Integration wrapper for existing codebase
+class EnhancedTemplateGenerator:
+    """
+    Wrapper to maintain compatibility with existing code
+    Replaces the old template_generator.py
+    """
+
+    def __init__(self):
+        from src.kql_generation import DynamicKQLGenerator
+        from src.step_name import IntelligentStepNameGenerator
+
+        self.kql_gen = DynamicKQLGenerator()
+        self.name_gen = IntelligentStepNameGenerator()
+        self.generator = CompleteTemplateGenerator(self.kql_gen, self.name_gen)
+
+        # Keep old column names for compatibility
+        self.template_columns = [
+            "Step",
+            "Name",
+            "Explanation",
+            "KQL Query",
+            "Execute",
+            "Output",
+            "Remarks/Comments",
+        ]
+
+    def generate_clean_template(
+        self, rule_number: str, enhanced_steps: list
+    ) -> pd.DataFrame:
+        """
+        Generate clean template (compatibility wrapper)
+
+        Args:
+            rule_number: Rule identifier
+            enhanced_steps: Steps from web_llm_enhancer
+
+        Returns:
+            DataFrame with clean template
+        """
+        # Get rule history
+        from src.utils import read_all_tracker_sheets, consolidate_rule_data
+
+        try:
+            all_data = read_all_tracker_sheets("data")
+            rule_history = consolidate_rule_data(all_data, rule_number)
+        except:
+            rule_history = {"fp_rate": 50, "tp_rate": 50, "total_incidents": 0}
+
+        return self.generator.generate_template(
+            rule_number, enhanced_steps, rule_history
+        )
+
+    def export_to_excel(self, df: pd.DataFrame, rule_number: str) -> BytesIO:
+        """Export to Excel (compatibility wrapper)"""
+        return self.generator.export_to_excel(df, rule_number)
