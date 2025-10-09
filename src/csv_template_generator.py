@@ -5,8 +5,7 @@ import re
 
 class CSVTemplateGenerator:
     """
-    Generates clean CSV templates for manual triaging with all details.
-    Ensures KQL queries and expected outputs are properly included.
+    ✅ FIXED: Generates clean CSV templates with proper logic
     """
 
     def __init__(self):
@@ -46,7 +45,7 @@ class CSVTemplateGenerator:
     def _create_step_row(self, sr_no: int, step: dict, rule_history: dict) -> list:
         """Create a CONCISE, CLEAR step row"""
         step_name = step.get("step_name", f"Step {sr_no}")
-        explanation = step.get("explanation", "")  # â­ Instructions
+        explanation = step.get("explanation", "")
         input_required = step.get("input_required", "")
         expected_output = step.get("expected_output", "")
         kql_query = step.get("kql_query", "")
@@ -58,12 +57,14 @@ class CSVTemplateGenerator:
             explanation, expected_output, kql_query, rule_history
         )
 
-        return [sr_no, clean_name, "", instructions]  # â­ INPUT details EMPTY
+        return [sr_no, clean_name, "", instructions]  # INPUT details EMPTY
 
     def _build_concise_instructions(
         self, explanation: str, expected_output: str, kql_query: str, rule_history: dict
     ) -> str:
-        """Build CONCISE instructions - focus on action and expected result"""
+        """
+        ✅ FIXED: Build CONCISE instructions with proper if-elif-else logic
+        """
         parts = []
 
         # 1. Action (from explanation, first sentence only)
@@ -76,34 +77,42 @@ class CSVTemplateGenerator:
         # 2. Expected finding (SHORT version)
         if expected_output:
             clean_exp = self._clean_text(expected_output)
-            # Extract just the key finding - FIXED to handle missing splits
+
+            # ✅ FIXED: Proper if-elif-else logic
             if "typically" in clean_exp.lower():
                 split_parts = clean_exp.split("typically", 1)
-                if len(split_parts) > 1:  # Check if split actually produced 2 parts
-                    finding = split_parts[1]
-                    finding = finding.split(".", 1)[0].strip(": ")
+                if len(split_parts) > 1:
+                    finding = split_parts[1].split(".", 1)[0].strip(": ")
                     parts.append(f"Expected: {finding}")
                 else:
-                    # Fallback if split didn't work as expected
-                    parts.append(f"Expected: {clean_exp}")
-
-            parts.append(f"Expected: {clean_exp}")
+                    # Fallback if split didn't work
+                    parts.append(f"Expected: {clean_exp[:60]}...")
+            elif len(clean_exp) > 80:
+                # Truncate long outputs
+                parts.append(f"Expected: {clean_exp[:75]}...")
+            else:
+                parts.append(f"Expected: {clean_exp}")
 
         # 3. KQL (one-liner if present)
         if kql_query and kql_query.strip():
             clean_kql = self._clean_kql_for_csv(kql_query)
             if clean_kql:
-                parts.append(f"Query: {clean_kql}")
+                # Truncate very long queries
+                if len(clean_kql) > 150:
+                    parts.append(f"Query: {clean_kql[:145]}...")
+                else:
+                    parts.append(f"Query: {clean_kql}")
 
         # 4. Historical context (ONE metric only)
         fp_rate = rule_history.get("fp_rate", 50)
         if fp_rate > 70:
             parts.append(f"[{fp_rate}% FP rate]")
         elif fp_rate < 30:
-            parts.append(f"[{fp_rate}% FP - investigate carefully]")
+            tp_rate = 100 - fp_rate
+            parts.append(f"[High TP risk - {tp_rate}% TP rate]")
 
-        # Join with " | " separator (max 3 parts)
-        return " | ".join(parts) if parts else "Investigate and document"
+        # Join with " | " separator (max 3 parts to keep readable)
+        return " | ".join(parts[:3]) if parts else "Investigate and document"
 
     def _clean_text(self, text: str) -> str:
         """Clean text - remove ALL formatting, keep content only"""

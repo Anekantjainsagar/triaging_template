@@ -23,21 +23,21 @@ class TriagingCrew:
                 "step_name": "Check Threat Intelligence",
                 "explanation": "Query threat intelligence sources for IP reputation and known malicious indicators. Clean reputation indicates FP.",
                 "kql_query": "",
-                "expected_output": "Typically shows: Clean IP, No threats. If found â†’ False Positive.",
+                "expected_output": "Typically shows: Clean IP, No threats. If found → False Positive.",
                 "user_input_required": True,
             },
             {
                 "step_name": "Review User Activity",
                 "explanation": "Check user sign-in history and behavior patterns. Consistent with normal activity indicates FP.",
                 "kql_query": "",
-                "expected_output": "Typically shows: Known devices, Normal patterns. If found â†’ False Positive.",
+                "expected_output": "Typically shows: Known devices, Normal patterns. If found → False Positive.",
                 "user_input_required": True,
             },
             {
                 "step_name": "Verify MFA Status",
                 "explanation": "Confirm multi-factor authentication completion. Successful MFA indicates legitimate access.",
                 "kql_query": "",
-                "expected_output": "Typically shows: MFA successful. If found â†’ False Positive.",
+                "expected_output": "Typically shows: MFA successful. If found → False Positive.",
                 "user_input_required": True,
             },
             {
@@ -73,11 +73,11 @@ class TriagingCrew:
             # Find template file with better error handling
             template_dir = "data/triaging_templates"
 
-            print(f"\nðŸ” Looking for template for: {rule_number}")
-            print(f"ðŸ“ Template directory: {template_dir}")
+            print(f"\n🔍 Looking for template for: {rule_number}")
+            print(f"📁 Template directory: {template_dir}")
 
             if not os.path.exists(template_dir):
-                print(f"âŒ Template directory does not exist!")
+                print(f"❌ Template directory does not exist!")
                 triaging_plan = self._create_fallback_steps()
             else:
                 # Extract rule number
@@ -88,11 +88,11 @@ class TriagingCrew:
                     else rule_number.replace("#", "").strip()
                 )
 
-                print(f"ðŸ”¢ Extracted rule number: {rule_num}")
+                print(f"🔢 Extracted rule number: {rule_num}")
 
                 # List all files in directory
                 all_files = os.listdir(template_dir)
-                print(f"ðŸ“„ Files in template directory: {all_files}")
+                print(f"📄 Files in template directory: {all_files}")
 
                 # Find matching template
                 template_files = [
@@ -101,11 +101,11 @@ class TriagingCrew:
                     if rule_num in f and (f.endswith(".csv") or f.endswith(".xlsx"))
                 ]
 
-                print(f"âœ… Matching templates found: {template_files}")
+                print(f"✅ Matching templates found: {template_files}")
 
                 if template_files:
                     template_path = os.path.join(template_dir, template_files[0])
-                    print(f"ðŸ“– Using template: {template_path}")
+                    print(f"📋 Using template: {template_path}")
 
                     try:
                         if template_path.endswith(".csv"):
@@ -114,12 +114,12 @@ class TriagingCrew:
                             triaging_plan = parser.parse_excel_template(template_path)
 
                         print(
-                            f"âœ… Successfully parsed {len(triaging_plan)} steps from template"
+                            f"✅ Successfully parsed {len(triaging_plan)} steps from template"
                         )
 
                         # Print first step as verification
                         if triaging_plan:
-                            print(f"\nðŸ“‹ First step preview:")
+                            print(f"\n📋 First step preview:")
                             print(
                                 f"   Name: {triaging_plan[0].get('step_name', 'N/A')}"
                             )
@@ -128,15 +128,13 @@ class TriagingCrew:
                             )
 
                     except Exception as parse_error:
-                        print(f"âŒ Template parsing failed: {str(parse_error)}")
+                        print(f"❌ Template parsing failed: {str(parse_error)}")
                         import traceback
 
                         traceback.print_exc()
                         triaging_plan = self._create_fallback_steps()
                 else:
-                    print(
-                        f"âš ï¸ No template found for rule {rule_num}, using fallback"
-                    )
+                    print(f"⚠️ No template found for rule {rule_num}, using fallback")
                     triaging_plan = self._create_fallback_steps()
 
             # ========== AI PREDICTION (OPTIONAL) ==========
@@ -172,7 +170,7 @@ class TriagingCrew:
             }
 
         except Exception as e:
-            print(f"\nâŒ Critical error in analysis: {str(e)}")
+            print(f"\n❌ Critical error in analysis: {str(e)}")
             import traceback
 
             traceback.print_exc()
@@ -353,9 +351,7 @@ Justification: {data.get('justification', 'N/A')}
 
             # If parsing failed or returned None, use fallback
             if parsed_prediction is None:
-                print(
-                    "âš ï¸ AI prediction parsing failed. Using keyword-based fallback."
-                )
+                print("⚠️ AI prediction parsing failed. Using keyword-based fallback.")
                 return self._create_fallback_prediction(triaging_comments, rule_history)
 
             print("\n" + "=" * 80)
@@ -365,7 +361,7 @@ Justification: {data.get('justification', 'N/A')}
             return parsed_prediction
 
         except Exception as e:
-            print(f"\nâš ï¸ Error in AI prediction: {str(e)}")
+            print(f"\n⚠️ Error in AI prediction: {str(e)}")
             print("Using keyword-based fallback prediction...")
             import traceback
 
@@ -379,7 +375,9 @@ Justification: {data.get('justification', 'N/A')}
             return self._create_fallback_prediction(triaging_comments, rule_history)
 
     def _parse_real_time_prediction(self, output: str) -> dict:
-        """Parse real-time prediction output - FIXED VERSION."""
+        """
+        ✅ FIXED: More flexible parsing with multiple regex patterns
+        """
         import re
 
         # Default to unknown
@@ -404,16 +402,45 @@ Justification: {data.get('justification', 'N/A')}
         if pred_type_match:
             prediction["prediction_type"] = pred_type_match.group(1).strip()
 
-        # Extract percentages - FIXED to handle multiple formats
-        fp_match = re.search(
-            r"False Positive[^:]*:\s*(\d+(?:\.\d+)?)%", output, re.IGNORECASE
-        )
-        tp_match = re.search(
-            r"True Positive[^:]*:\s*(\d+(?:\.\d+)?)%", output, re.IGNORECASE
-        )
-        bp_match = re.search(
-            r"Benign Positive[^:]*:\s*(\d+(?:\.\d+)?)%", output, re.IGNORECASE
-        )
+        # ✅ FIXED: Try multiple formats for percentages
+        fp_patterns = [
+            r"False Positive[^:]*:\s*(\d+(?:\.\d+)?)%",
+            r"FP[^:]*:\s*(\d+(?:\.\d+)?)%",
+            r"false_positive_likelihood[^:]*:\s*(\d+(?:\.\d+)?)%",
+            r"False Positive Likelihood[^:]*:\s*(\d+(?:\.\d+)?)%",
+        ]
+
+        tp_patterns = [
+            r"True Positive[^:]*:\s*(\d+(?:\.\d+)?)%",
+            r"TP[^:]*:\s*(\d+(?:\.\d+)?)%",
+            r"true_positive_likelihood[^:]*:\s*(\d+(?:\.\d+)?)%",
+            r"True Positive Likelihood[^:]*:\s*(\d+(?:\.\d+)?)%",
+        ]
+
+        bp_patterns = [
+            r"Benign Positive[^:]*:\s*(\d+(?:\.\d+)?)%",
+            r"BP[^:]*:\s*(\d+(?:\.\d+)?)%",
+            r"benign_positive_likelihood[^:]*:\s*(\d+(?:\.\d+)?)%",
+        ]
+
+        # Try each pattern
+        fp_match = None
+        for pattern in fp_patterns:
+            fp_match = re.search(pattern, output, re.IGNORECASE)
+            if fp_match:
+                break
+
+        tp_match = None
+        for pattern in tp_patterns:
+            tp_match = re.search(pattern, output, re.IGNORECASE)
+            if tp_match:
+                break
+
+        bp_match = None
+        for pattern in bp_patterns:
+            bp_match = re.search(pattern, output, re.IGNORECASE)
+            if bp_match:
+                break
 
         if fp_match:
             prediction["false_positive_likelihood"] = int(float(fp_match.group(1)))
@@ -432,7 +459,7 @@ Justification: {data.get('justification', 'N/A')}
         # If percentages don't add up to ~100, recalculate
         if total_pct < 90 or total_pct > 110:
             print(
-                f"âš ï¸ Invalid percentages detected (total: {total_pct}%). Using fallback calculation."
+                f"⚠️ Invalid percentages detected (total: {total_pct}%). Using fallback calculation."
             )
             return None  # Signal to use fallback
 
@@ -448,11 +475,11 @@ Justification: {data.get('justification', 'N/A')}
         # Fix mismatched prediction type
         if highest_pct == prediction["false_positive_likelihood"]:
             if "false" not in pred_type_lower:
-                print("âš ï¸ Prediction type mismatch! Correcting to False Positive")
+                print("⚠️ Prediction type mismatch! Correcting to False Positive")
                 prediction["prediction_type"] = "False Positive"
         elif highest_pct == prediction["true_positive_likelihood"]:
             if "true" not in pred_type_lower or "false" in pred_type_lower:
-                print("âš ï¸ Prediction type mismatch! Correcting to True Positive")
+                print("⚠️ Prediction type mismatch! Correcting to True Positive")
                 prediction["prediction_type"] = "True Positive"
 
         # Extract confidence level
@@ -471,8 +498,8 @@ Justification: {data.get('justification', 'N/A')}
         if factors_section:
             factors_text = factors_section.group(1)
             factors = re.findall(r"[\d]+\.\s*(.+?)(?:\n|$)", factors_text)
-            prediction["key_factors"] = [
-                f.strip() for f in factors if f.strip()
+            prediction["key_factors"] = [f.strip() for f in factors if f.strip()][
+                :5
             ]  # Limit to 5
 
         # Extract historical comparison
@@ -517,7 +544,7 @@ Justification: {data.get('justification', 'N/A')}
         print("\n" + "=" * 80)
         print("RUNNING FALLBACK PREDICTION (Keyword-Based)")
         print("=" * 80)
-        print(f"Analyzing comments: {all_comments}...")
+        print(f"Analyzing comments: {all_comments[:100]}...")
 
         # Strong FP indicators (high confidence)
         strong_fp_keywords = {
@@ -563,13 +590,13 @@ Justification: {data.get('justification', 'N/A')}
             if keyword in all_comments:
                 fp_score += weight
                 fp_matches.append(keyword)
-                print(f"âœ… Found FP indicator: '{keyword}' (weight: {weight})")
+                print(f"✅ Found FP indicator: '{keyword}' (weight: {weight})")
 
         for keyword, weight in strong_tp_keywords.items():
             if keyword in all_comments:
                 tp_score += weight
                 tp_matches.append(keyword)
-                print(f"âš ï¸ Found TP indicator: '{keyword}' (weight: {weight})")
+                print(f"⚠️ Found TP indicator: '{keyword}' (weight: {weight})")
 
         print(f"\nScore - FP: {fp_score}, TP: {tp_score}")
 
@@ -634,7 +661,7 @@ Justification: {data.get('justification', 'N/A')}
         else:
             pred_type = "Requires Further Investigation"
 
-        print(f"\nâœ… FINAL PREDICTION: {pred_type}")
+        print(f"\n✅ FINAL PREDICTION: {pred_type}")
         print(f"   FP: {fp_likelihood}%, TP: {tp_likelihood}%")
         print(f"   Confidence: {confidence}")
         print("=" * 80 + "\n")

@@ -6,33 +6,33 @@ from typing import List, Dict
 class TemplateParser:
     def parse_csv_template(self, csv_path: str) -> List[Dict]:
         """Parse CSV template and extract ALL steps"""
-        print(f"\nðŸ“– Parsing CSV template: {csv_path}")
+        print(f"\n📋 Parsing CSV template: {csv_path}")
 
         df = None
         for encoding in ["utf-8", "latin1", "cp1252"]:
             try:
                 df = pd.read_csv(csv_path, encoding=encoding)
-                print(f"âœ… Successfully read CSV with {encoding} encoding")
+                print(f"✅ Successfully read CSV with {encoding} encoding")
                 break
             except:
                 continue
 
         if df is None:
-            print("âŒ Could not read CSV")
+            print("❌ Could not read CSV")
             return []
 
         return self._extract_steps(df)
 
     def parse_excel_template(self, excel_path: str) -> List[Dict]:
         """Parse Excel template and extract ALL steps"""
-        print(f"\nðŸ“– Parsing Excel template: {excel_path}")
+        print(f"\n📋 Parsing Excel template: {excel_path}")
 
         try:
             df = pd.read_excel(excel_path, engine="openpyxl")
-            print(f"âœ… Successfully read Excel file")
+            print(f"✅ Successfully read Excel file")
             return self._extract_steps(df)
         except Exception as e:
-            print(f"âŒ Failed to read Excel: {str(e)}")
+            print(f"❌ Failed to read Excel: {str(e)}")
             return []
 
     def _extract_steps(self, df: pd.DataFrame) -> List[Dict]:
@@ -43,8 +43,8 @@ class TemplateParser:
         # Clean column names
         df.columns = df.columns.str.strip()
 
-        print(f"\nðŸ“Š DataFrame columns: {list(df.columns)}")
-        print(f"ðŸ“¢ DataFrame shape: {df.shape} (rows x columns)")
+        print(f"\n📊 DataFrame columns: {list(df.columns)}")
+        print(f"📏 DataFrame shape: {df.shape} (rows x columns)")
 
         # Identify columns (flexible matching)
         step_col = self._find_column(
@@ -54,14 +54,16 @@ class TemplateParser:
             df, ["Instructions", "Explanation", "Description"]
         )
         input_col = self._find_column(df, ["INPUT details", "Input", "Input Required"])
+        kql_col = self._find_column(df, ["KQL Query", "Query", "KQL"])
 
-        print(f"âœ… Mapped columns:")
+        print(f"✅ Mapped columns:")
         print(f"   Step: {step_col}")
         print(f"   Explanation: {explanation_col}")
         print(f"   Input: {input_col}")
+        print(f"   KQL: {kql_col}")
 
         if not step_col:
-            print("âŒ Could not find step column - trying fallback...")
+            print("❌ Could not find step column - trying fallback...")
             return self._extract_from_first_column(df)
 
         steps = []
@@ -74,7 +76,7 @@ class TemplateParser:
             if not step_name or step_name == "nan" or len(step_name) < 2:
                 continue
 
-            # Skip obvious metadata/header rows
+            # ✅ FIXED: Only skip OBVIOUS metadata rows
             if self._is_metadata_row(step_name):
                 skipped_rows.append(f"Row {idx}: {step_name} (metadata)")
                 continue
@@ -84,68 +86,70 @@ class TemplateParser:
                 str(row.get(explanation_col, "")).strip() if explanation_col else ""
             )
             input_details = str(row.get(input_col, "")).strip() if input_col else ""
+            kql_query = str(row.get(kql_col, "")).strip() if kql_col else ""
 
             # Clean 'nan' values
             if explanation == "nan":
                 explanation = ""
             if input_details == "nan":
                 input_details = ""
+            if kql_query == "nan":
+                kql_query = ""
 
-            # â­ CRITICAL: Accept ALL remaining rows as investigation steps
+            # ✅ KEEP ORIGINAL STEP NAME (just basic cleanup)
+            clean_step_name = self._clean_step_name_only(step_name)
+
             # Build step dictionary
             step = {
-                "step_name": step_name,
-                "explanation": (
-                    explanation
-                    if explanation
-                    else f"Complete {step_name} and document findings"
-                ),
+                "step_name": clean_step_name,  # ✅ ORIGINAL NAME PRESERVED
+                "explanation": explanation,  # ✅ ORIGINAL EXPLANATION PRESERVED
                 "input_required": self._extract_inputs(step_name, explanation),
-                "kql_query": "",  # Will be filled by web enhancement
+                "kql_query": self._basic_kql_cleanup(
+                    kql_query
+                ),  # ✅ BASIC CLEANUP ONLY
             }
 
-            print(f"\nðŸ“‹ Extracted Step {len(steps) + 1}: {step_name}")
+            print(f"\n📋 Extracted Step {len(steps) + 1}: {clean_step_name}")
             if explanation:
                 print(f"   Has explanation: {explanation[:60]}...")
+            if kql_query:
+                print(f"   Has KQL query: {len(kql_query)} chars")
             steps.append(step)
 
         # Report skipped rows
         if skipped_rows:
-            print(f"\nâ­ï¸ Skipped {len(skipped_rows)} metadata rows:")
+            print(f"\n⏭️ Skipped {len(skipped_rows)} metadata rows:")
             for skipped in skipped_rows[:3]:  # Show first 3
                 print(f"   {skipped}")
 
-        print(f"\nâœ… Total investigation steps extracted: {len(steps)}")
+        print(f"\n✅ Total investigation steps extracted: {len(steps)}")
 
-        # â­ VALIDATION: Warn if too few steps
+        # ✅ VALIDATION: Warn if too few steps
         if len(steps) < 3:
             print(
-                f"âš ï¸ WARNING: Only {len(steps)} steps found. Template may be incomplete."
+                f"⚠️ WARNING: Only {len(steps)} steps found. Template may be incomplete."
             )
 
         return steps
 
     def _is_metadata_row(self, step_name: str) -> bool:
         """
-        Check if row is metadata (not an investigation step).
-        Only skip OBVIOUS metadata - be conservative.
+        ✅ FIXED: Only skip OBVIOUS metadata - be very conservative.
         """
         step_lower = step_name.lower().strip()
 
-        # Skip only clear metadata
+        # ✅ ONLY skip these exact patterns
         metadata_patterns = [
-            r"^rule\s*#?\d+",  # "Rule#183" or "Rule 183"
-            r"^incident\s*number",
-            r"^reported\s*time",
-            r"^username",
-            r"^vip\s*users?\s*list",
-            r"^historical\s*data",
-            r"^false\s*positive\s*rate",
+            r"^rule\s*#?\d+\s*-",  # "Rule#183 - " (only with dash)
+            r"^incident\s*number\s*:",  # "Incident Number:"
+            r"^reported\s*time\s*:",  # "Reported Time:"
+            r"^username\s*:",  # "Username:"
+            r"^vip\s*users?\s*list",  # "VIP Users List"
+            r"^sr\.?\s*no\.?\s*$",  # Just "Sr.No." or "Sr No"
+            r"^step\s*$",  # Just the word "Step"
+            r"^inputs?\s*required\s*$",  # Column header
+            r"^instructions?\s*$",  # Column header
             r"^\s*$",  # Empty
-            r"^sr\.?\s*no\.?$",  # Just "Sr.No." or "Sr No"
-            r"^step$",  # Just the word "Step"
-            r"^inputs?\s*required$",  # Just column header
-            r"^instructions?$",  # Just column header
         ]
 
         for pattern in metadata_patterns:
@@ -154,9 +158,39 @@ class TemplateParser:
 
         return False
 
+    def _clean_step_name_only(self, step_name: str) -> str:
+        """
+        ✅ MINIMAL cleaning - preserve original name as much as possible
+        """
+        # Remove only leading numbers like "1. " or "Step 1: "
+        clean = re.sub(r"^\d+\.?\s*", "", step_name)
+        clean = re.sub(r"^Step\s*\d+:?\s*", "", clean, flags=re.IGNORECASE)
+
+        # Remove excessive whitespace
+        clean = " ".join(clean.split())
+
+        return clean.strip() if clean else step_name
+
+    def _basic_kql_cleanup(self, kql: str) -> str:
+        """
+        ✅ BASIC cleanup only - preserve the query structure
+        """
+        if not kql or kql.strip().upper() in ["N/A", "NA", ""]:
+            return ""
+
+        # Remove markdown code blocks only
+        kql = re.sub(r"```[a-z]*\s*\n?", "", kql)
+        kql = re.sub(r"\n?```", "", kql)
+
+        # Clean excessive whitespace but preserve line breaks
+        lines = [line.strip() for line in kql.split("\n") if line.strip()]
+        kql = "\n".join(lines)
+
+        return kql.strip()
+
     def _extract_from_first_column(self, df: pd.DataFrame) -> List[Dict]:
         """Fallback: Extract from first column if column detection fails"""
-        print("âš ï¸ Using fallback extraction from first column...")
+        print("⚠️ Using fallback extraction from first column...")
 
         steps = []
         first_col = df.columns[0]
@@ -168,14 +202,14 @@ class TemplateParser:
                 if not self._is_metadata_row(value):
                     steps.append(
                         {
-                            "step_name": value,
-                            "explanation": f"Complete {value} and document findings",
+                            "step_name": self._clean_step_name_only(value),
+                            "explanation": "",  # Will be enhanced later
                             "input_required": "Investigation data",
                             "kql_query": "",
                         }
                     )
 
-        print(f"âœ… Fallback extracted {len(steps)} steps")
+        print(f"✅ Fallback extracted {len(steps)} steps")
         return steps
 
     def _extract_inputs(self, step_name: str, explanation: str) -> str:
