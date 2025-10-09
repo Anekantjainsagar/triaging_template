@@ -213,9 +213,7 @@ if st.session_state.step == 0:
 
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        search_button = st.button(
-            "Search Alerts", type="primary", use_container_width=True
-        )
+        search_button = st.button("Search Alerts", type="primary", width="stretch")
 
     if search_button and search_query:
         with st.spinner("ðŸ”Ž Searching for relevant alerts..."):
@@ -229,7 +227,9 @@ if st.session_state.step == 0:
                     st.session_state.step = 1
                     st.rerun()
                 else:
-                    st.warning("âš ï¸ No relevant alerts found. Try different keywords.")
+                    st.warning(
+                        "âš ï¸ No relevant alerts found. Try different keywords."
+                    )
 
             except Exception as e:
                 st.error(f"âŒ Error during search: {str(e)}")
@@ -517,7 +517,7 @@ elif st.session_state.step == 2:
             )
 
             with tab1:
-                st.dataframe(template_df, use_container_width=True, height=400)
+                st.dataframe(template_df, width="stretch", height=400)
 
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -571,7 +571,7 @@ elif st.session_state.step == 2:
                     data=st.session_state.excel_template_data,
                     file_name=f"triaging_template_{rule_number.replace('#', '_')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True,
+                    width="stretch",
                     type="primary",
                 )
 
@@ -589,7 +589,7 @@ elif st.session_state.step == 2:
                     data=json.dumps(json_export, indent=2),
                     file_name=f"triaging_template_{rule_number.replace('#', '_')}.json",
                     mime="application/json",
-                    use_container_width=True,
+                    width="stretch",
                 )
 
             with col3:
@@ -607,13 +607,13 @@ elif st.session_state.step == 2:
                         data=kql_export,
                         file_name=f"kql_queries_{rule_number.replace('#', '_')}.kql",
                         mime="text/plain",
-                        use_container_width=True,
+                        width="stretch",
                     )
                 else:
                     st.button(
                         label="ðŸ” No KQL Queries",
                         disabled=True,
-                        use_container_width=True,
+                        width="stretch",
                     )
 
             st.markdown("---")
@@ -627,9 +627,7 @@ elif st.session_state.step == 2:
                     st.rerun()
 
             with col3:
-                if st.button(
-                    "Start New Search", type="primary", use_container_width=True
-                ):
+                if st.button("Start New Search", type="primary", width="stretch"):
                     for key in list(st.session_state.keys()):
                         if key != "all_data":
                             del st.session_state[key]
@@ -874,7 +872,7 @@ if st.session_state.step == 4:
             data=final_report,
             file_name=f"triaging_report_{st.session_state.selected_alert.get('incident')}.txt",
             mime="text/plain",
-            use_container_width=True,
+            width="stretch",
             help="Download the completed investigation report with all findings",
         )
 
@@ -885,14 +883,14 @@ if st.session_state.step == 4:
                 data=st.session_state.excel_template_data,
                 file_name=f"triaging_template_{st.session_state.selected_alert.get('rule').replace('#', '_')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
                 help="Download professionally formatted Excel template with all investigation steps, KQL queries, and expected outputs",
             )
         else:
             st.button(
                 "ðŸ“Š Excel Template",
                 disabled=True,
-                use_container_width=True,
+                width="stretch",
                 help="Excel template generation failed",
             )
 
@@ -902,7 +900,7 @@ if st.session_state.step == 4:
             data=csv_template,
             file_name=f"triaging_template_{st.session_state.selected_alert.get('rule').replace('#', '_')}.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             help="Download CSV template with all investigation details for manual use",
         )
 
@@ -922,7 +920,7 @@ if st.session_state.step == 4:
             data=json.dumps(json_export, indent=2),
             file_name=f"triaging_data_{st.session_state.selected_alert.get('incident')}.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
             help="Download structured data in JSON format for integration",
         )
 
@@ -936,9 +934,7 @@ if st.session_state.step == 4:
             st.text(final_report)
 
         with tab2:
-            st.text(
-                csv_template
-            )
+            st.text(csv_template)
 
         with tab3:
             if st.session_state.excel_template_data:
@@ -1001,7 +997,7 @@ if st.session_state.step == 4:
 
     st.markdown("---")
 
-    if st.button("ðŸ”„ Start New Triaging", type="primary", use_container_width=True):
+    if st.button("ðŸ”„ Start New Triaging", type="primary", width="stretch"):
         for key in list(st.session_state.keys()):
             if key != "all_data":
                 del st.session_state[key]
@@ -1093,19 +1089,23 @@ elif st.session_state.step == 3:
 
         # Display the formatted step
         st.markdown(f"***")
-        st.markdown(f"### {current_step_index + 1}. {current_step.get('step_name')} ðŸ”")
+        st.markdown(
+            f"### {current_step_index + 1}. {current_step.get('step_name')} ðŸ”"
+        )
         st.markdown(f"* **Explanation:** {current_step.get('explanation')}")
         st.markdown(f"* **Input Required:** {current_step.get('input_required')}")
-        
-        kql_query = current_step.get('kql_query')
-        if kql_query and kql_query.strip() != 'N/A':
+
+        kql_query = current_step.get("kql_query")
+        if kql_query and kql_query.strip() != "N/A":
             st.markdown(f"* **KQL Query:**")
-            st.code(kql_query, language='kql')
+            st.code(kql_query, language="kql")
         else:
             st.markdown(f"* **KQL Query:** N/A")
-            
+
         st.markdown(f"* **Expected Output:** {current_step.get('expected_output')}")
-        st.markdown(f"* **Decision Point:** {current_step.get('decision_point', 'N/A')}")
+        st.markdown(
+            f"* **Decision Point:** {current_step.get('decision_point', 'N/A')}"
+        )
         st.markdown(f"***")
 
         # Progressive Prediction Display
@@ -1197,9 +1197,9 @@ elif st.session_state.step == 3:
         with col2:
             if st.button("Next Step â†’", type="primary"):
                 if user_input.strip():
-                    st.session_state.triaging_output[
-                        current_step.get("step_name")
-                    ] = user_input
+                    st.session_state.triaging_output[current_step.get("step_name")] = (
+                        user_input
+                    )
                     st.session_state.current_step_index += 1
                     st.rerun()
                 else:
