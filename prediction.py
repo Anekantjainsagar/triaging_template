@@ -11,7 +11,7 @@ load_dotenv()
 
 # Page configuration
 st.set_page_config(
-    page_title="Privileged Role Investigation Analyzer", page_icon="🔐", layout="wide"
+    page_title="True/False Positive Analyzer", page_icon="🔐", layout="wide"
 )
 
 # Custom CSS for better styling
@@ -478,10 +478,9 @@ def main():
     final_api_key = os.getenv("GOOGLE_API_KEY")
 
     st.markdown(
-        "<h1 class='main-header'>🔐 Privileged Role Investigation Analyzer</h1>",
+        "<h1 class='main-header'>🔐 True/False Positive Analyzer</h1>",
         unsafe_allow_html=True,
     )
-    st.markdown("**AI-Powered Security Assessment with Pattern Recognition**")
 
     # File upload
     st.subheader("📁 Upload Investigation Data")
