@@ -52,10 +52,12 @@ class TriagingCrew:
     def run_analysis_phase(
         self, consolidated_data: dict, template_content: str, rule_number: str
     ):
-        """Run analysis with DETERMINISTIC parsing + AI enhancement"""
+        """
+        ✅ FIXED: Use parsed steps DIRECTLY (no regeneration)
+        """
         try:
             print("\n" + "=" * 80)
-            print("Starting AI-Powered Analysis...")
+            print("Starting Analysis Phase...")
             print("=" * 80)
 
             # Get historical data
@@ -64,20 +66,17 @@ class TriagingCrew:
             all_data = read_all_tracker_sheets("data")
             rule_history = consolidate_rule_data(all_data, rule_number)
 
-            # ========== DETERMINISTIC PARSING ==========
+            # ========== STEP 1: PARSE TEMPLATE (GET ORIGINAL STEPS) ==========
             from src.template_parser import TemplateParser
             import os
 
             parser = TemplateParser()
-
-            # Find template file with better error handling
             template_dir = "data/triaging_templates"
 
-            print(f"\n🔍 Looking for template for: {rule_number}")
-            print(f"📁 Template directory: {template_dir}")
+            print(f"\n🔍 Looking for template: {rule_number}")
 
             if not os.path.exists(template_dir):
-                print(f"❌ Template directory does not exist!")
+                print(f"❌ Template directory missing!")
                 triaging_plan = self._create_fallback_steps()
             else:
                 # Extract rule number
@@ -88,58 +87,52 @@ class TriagingCrew:
                     else rule_number.replace("#", "").strip()
                 )
 
-                print(f"🔢 Extracted rule number: {rule_num}")
-
-                # List all files in directory
+                # Find template
                 all_files = os.listdir(template_dir)
-                print(f"📄 Files in template directory: {all_files}")
-
-                # Find matching template
                 template_files = [
                     f
                     for f in all_files
                     if rule_num in f and (f.endswith(".csv") or f.endswith(".xlsx"))
                 ]
 
-                print(f"✅ Matching templates found: {template_files}")
-
                 if template_files:
                     template_path = os.path.join(template_dir, template_files[0])
-                    print(f"📋 Using template: {template_path}")
+                    print(f"📋 Using: {template_path}")
 
                     try:
+                        # ✅ PARSE ORIGINAL STEPS (NO MODIFICATION)
                         if template_path.endswith(".csv"):
-                            triaging_plan = parser.parse_csv_template(template_path)
-                        else:  # Excel
-                            triaging_plan = parser.parse_excel_template(template_path)
+                            original_steps = parser.parse_csv_template(template_path)
+                        else:
+                            original_steps = parser.parse_excel_template(template_path)
 
-                        print(
-                            f"✅ Successfully parsed {len(triaging_plan)} steps from template"
+                        print(f"✅ Parsed {len(original_steps)} original steps")
+
+                        # ✅ ENHANCE ONLY EXPLANATIONS (PRESERVE NAMES & KQL)
+                        from src.web_llm_enhancer import WebLLMEnhancer
+
+                        enhancer = WebLLMEnhancer()
+
+                        triaging_plan = enhancer.enhance_template_steps(
+                            rule_number=rule_number, original_steps=original_steps
                         )
 
-                        # Print first step as verification
-                        if triaging_plan:
-                            print(f"\n📋 First step preview:")
-                            print(
-                                f"   Name: {triaging_plan[0].get('step_name', 'N/A')}"
-                            )
-                            print(
-                                f"   Has KQL: {'Yes' if triaging_plan[0].get('kql_query') else 'No'}"
-                            )
+                        print(f"✅ Enhanced {len(triaging_plan)} steps")
 
-                    except Exception as parse_error:
-                        print(f"❌ Template parsing failed: {str(parse_error)}")
-                        import traceback
-
-                        traceback.print_exc()
-                        triaging_plan = self._create_fallback_steps()
+                    except Exception as e:
+                        print(f"❌ Enhancement failed: {str(e)}")
+                        # Use original steps as fallback
+                        triaging_plan = (
+                            original_steps
+                            if original_steps
+                            else self._create_fallback_steps()
+                        )
                 else:
-                    print(f"⚠️ No template found for rule {rule_num}, using fallback")
+                    print(f"⚠️ No template for {rule_num}")
                     triaging_plan = self._create_fallback_steps()
 
-            # ========== AI PREDICTION (OPTIONAL) ==========
+            # ========== STEP 2: AI PREDICTION (OPTIONAL) ==========
             prediction_agent = self.agents.prediction_analysis_agent()
-
             data_summary = self._create_data_summary(consolidated_data)
             data_summary += f"\n\nHistorical: {rule_history.get('total_incidents', 0)} incidents, {rule_history.get('fp_rate', 0)}% FP"
 
@@ -153,7 +146,7 @@ class TriagingCrew:
                 agents=[prediction_agent],
                 tasks=[prediction_task],
                 process=Process.sequential,
-                verbose=False,  # Disable verbose to reduce noise
+                verbose=False,
             )
 
             result = crew.kickoff()
@@ -163,17 +156,18 @@ class TriagingCrew:
             )
 
             return {
-                "triaging_plan": triaging_plan,
+                "triaging_plan": triaging_plan,  # ✅ DIRECT FROM TEMPLATE
                 "predictions": predictions,
                 "progressive_predictions": progressive_predictions,
                 "rule_history": rule_history,
             }
 
         except Exception as e:
-            print(f"\n❌ Critical error in analysis: {str(e)}")
+            print(f"\n❌ Critical error: {str(e)}")
             import traceback
 
             traceback.print_exc()
+
             return {
                 "triaging_plan": self._create_fallback_steps(),
                 "predictions": self._create_minimal_prediction(consolidated_data),
