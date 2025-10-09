@@ -522,6 +522,10 @@ def main():
                 if not final_api_key:
                     st.error("❌ Some error occured")
                 elif username:
+                    if not any(df.astype(str).apply(lambda x: x.str.contains(username, case=False, na=False)).any()):
+                        st.error(f"❌ The email/username '{username}' does not exist in the uploaded document.")
+                        st.stop()
+
                     with st.spinner(
                         f"🤖 AI analyzing investigation patterns for {username}..."
                     ):
