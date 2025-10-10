@@ -1482,7 +1482,9 @@ Now analyze the investigation data and provide comprehensive MITRE ATT&CK mappin
             techniques_with_subtechniques = sum(
                 1
                 for t in techniques_observed
-                if t.get("sub_technique") and t.get("sub_technique") != "N/A"
+                if t.get("sub_technique")
+                and t.get("sub_technique") != "N/A"
+                and t.get("sub_technique").strip()
             )
 
             coverage = {
@@ -1490,6 +1492,15 @@ Now analyze the investigation data and provide comprehensive MITRE ATT&CK mappin
                 "techniques_with_sub_techniques": techniques_with_subtechniques,
                 "sub_technique_percentage": f"{(techniques_with_subtechniques/total_techniques*100) if total_techniques > 0 else 0:.1f}%",
                 "techniques_requiring_sub_techniques": [],
+                "quality_score": (
+                    "Excellent"
+                    if techniques_with_subtechniques / total_techniques >= 0.8
+                    else (
+                        "Good"
+                        if techniques_with_subtechniques / total_techniques >= 0.6
+                        else "Needs Improvement"
+                    )
+                ),
             }
 
             # Identify techniques that should have sub-techniques
@@ -1503,12 +1514,18 @@ Now analyze the investigation data and provide comprehensive MITRE ATT&CK mappin
                     and technique_name in self.mitre_data[tactic]
                 ):
                     available_subtechniques = self.mitre_data[tactic][technique_name]
-                    if available_subtechniques and not technique.get("sub_technique"):
+                    if available_subtechniques and (
+                        not technique.get("sub_technique")
+                        or technique.get("sub_technique") == "N/A"
+                    ):
                         coverage["techniques_requiring_sub_techniques"].append(
                             {
                                 "technique": technique_name,
                                 "technique_id": technique.get("technique_id"),
-                                "available_sub_techniques": available_subtechniques,
+                                "tactic": tactic,
+                                "available_sub_techniques": available_subtechniques[
+                                    :3
+                                ],  # Show only first 3
                             }
                         )
 
