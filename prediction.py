@@ -15,7 +15,7 @@ load_dotenv()
 # Page configuration
 st.set_page_config(
     page_title="True/False Positive Analyzer with MITRE ATT&CK",
-    page_icon="🔐",
+    page_icon="🔒",
     layout="wide",
 )
 
@@ -85,131 +85,86 @@ st.markdown(
         border-left: 3px solid #3b82f6;
         margin: 0.5rem 0;
     }
+    
+    /* MITRE Matrix Styles */
+    .mitre-matrix-container {
+        overflow-x: auto;
+        margin: 2rem 0;
+    }
+    .mitre-matrix {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 1200px;
+        font-size: 0.75rem;
+    }
+    .mitre-matrix th {
+        background-color: #1e3a8a;
+        color: white;
+        padding: 0.5rem;
+        text-align: center;
+        font-weight: bold;
+        border: 1px solid #1e40af;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    .mitre-matrix td {
+        padding: 0.25rem 0.5rem;
+        border: 1px solid #e5e7eb;
+        vertical-align: top;
+        background-color: #f9fafb;
+        min-height: 80px;
+        font-size: 0.7rem;
+    }
+    .technique-cell {
+        cursor: pointer;
+        transition: all 0.2s;
+        margin: 2px 0;
+        padding: 4px 6px;
+        border-radius: 3px;
+        font-size: 0.7rem;
+        line-height: 1.2;
+    }
+    .technique-cell:hover {
+        transform: scale(1.02);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .severity-red {
+        background-color: #dc2626;
+        color: white;
+        font-weight: bold;
+    }
+    .severity-amber {
+        background-color: #f59e0b;
+        color: white;
+        font-weight: bold;
+    }
+    .severity-green {
+        background-color: #10b981;
+        color: white;
+        font-weight: bold;
+    }
+    .severity-none {
+        background-color: transparent;
+        color: #6b7280;
+    }
+    .technique-id {
+        font-size: 0.65rem;
+        opacity: 0.8;
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 
-def create_attack_timeline_chart(timeline_data: list) -> go.Figure:
-    """Create enhanced interactive attack timeline visualization"""
-
-    if not timeline_data:
-        return None
-
-    fig = go.Figure()
-
-    # Color mapping
-    color_map = {"RED": "#dc2626", "AMBER": "#f59e0b", "GREEN": "#10b981"}
-
-    # Sort timeline by stage number
-    sorted_timeline = sorted(timeline_data, key=lambda x: x.get("stage", 0))
-
-    stages = []
-    tactics = []
-    techniques = []
-    colors = []
-    descriptions = []
-    timestamps = []
-    subtechniques = []
-
-    for event in sorted_timeline:
-        stage_num = event.get("stage", 0)
-        stages.append(stage_num)
-        tactics.append(event.get("tactic", "Unknown"))
-
-        # Extract technique name and sub-technique
-        technique_full = event.get("technique", "Unknown")
-        technique_parts = technique_full.split(":")
-        technique_name = technique_parts[0].strip()
-        subtechnique_name = (
-            technique_parts[1].strip() if len(technique_parts) > 1 else ""
-        )
-
-        techniques.append(technique_name)
-        subtechniques.append(subtechnique_name)
-        colors.append(color_map.get(event.get("severity", "GREEN"), "#6b7280"))
-        descriptions.append(event.get("description", ""))
-        timestamps.append(event.get("timestamp", ""))
-
-    # Create the main timeline trace
-    fig.add_trace(
-        go.Scatter(
-            x=stages,
-            y=tactics,
-            mode="markers+lines+text",
-            marker=dict(
-                size=25,
-                color=colors,
-                line=dict(width=3, color="white"),
-                symbol="circle",
-            ),
-            line=dict(width=4, color="#6b7280", dash="dot"),
-            text=[f"Stage {s}" for s in stages],
-            textposition="top center",
-            textfont=dict(size=12, color="white"),
-            hovertemplate=(
-                "<b>Stage %{x}</b><br>"
-                "<b>Tactic:</b> %{y}<br>"
-                "<b>Technique:</b> %{customdata[0]}<br>"
-                "<b>Sub-Technique:</b> %{customdata[1]}<br>"
-                "<b>Time:</b> %{customdata[2]}<br>"
-                "<b>Description:</b> %{customdata[3]}"
-                "<extra></extra>"
-            ),
-            customdata=list(zip(techniques, subtechniques, timestamps, descriptions)),
-            name="Attack Progression",
-        )
-    )
-
-    # Add technique labels below
-    fig.add_trace(
-        go.Scatter(
-            x=stages,
-            y=[0] * len(stages),  # Place at bottom
-            mode="text",
-            text=techniques,
-            textposition="bottom center",
-            textfont=dict(size=10, color="#9ca3af"),
-            showlegend=False,
-            hoverinfo="skip",
-        )
-    )
-
-    fig.update_layout(
-        title={
-            "text": "⏱️ Attack Timeline & Progression",
-            "font": {"size": 22, "color": "white"},
-        },
-        xaxis={
-            "title": "Attack Sequence",
-            "showgrid": True,
-            "gridcolor": "#374151",
-            "dtick": 1,
-        },
-        yaxis={
-            "title": "MITRE ATT&CK Tactic",
-            "showgrid": True,
-            "gridcolor": "#374151",
-        },
-        height=550,
-        template="plotly_dark",
-        showlegend=True,
-        hovermode="closest",
-        plot_bgcolor="#1f2937",
-        paper_bgcolor="#111827",
-    )
-
-    return fig
-
-
-def create_mitre_heatmap(techniques_data: list) -> go.Figure:
-    """Create enhanced MITRE ATT&CK heatmap visualization with sub-techniques"""
+def create_mitre_attack_matrix(techniques_data: list) -> str:
+    """Create MITRE ATT&CK matrix visualization in tabular format"""
 
     if not techniques_data:
-        return None
+        return "<p>No technique data available</p>"
 
-    # MITRE ATT&CK Tactics in order
+    # Define all 14 MITRE ATT&CK tactics
     tactics = [
         "Reconnaissance",
         "Resource Development",
@@ -227,115 +182,215 @@ def create_mitre_heatmap(techniques_data: list) -> go.Figure:
         "Impact",
     ]
 
-    # Create matrix with sub-technique tracking
-    tactic_data = {
-        tactic: {
-            "RED": 0,
-            "AMBER": 0,
-            "GREEN": 0,
-            "SUBTECHNIQUES": 0,
-            "TOTAL": 0,
-            "COVERAGE": 0,
-        }
-        for tactic in tactics
-    }
+    # Organize techniques by tactic
+    tactic_techniques = {tactic: [] for tactic in tactics}
 
-    # Count techniques and sub-techniques per tactic
     for technique in techniques_data:
         tactic = technique.get("tactic", "")
-        severity = technique.get("severity", "GREEN")
-        has_subtechnique = bool(
-            technique.get("sub_technique")
-            and technique.get("sub_technique") != "N/A"
-            and technique.get("sub_technique").strip()
-        )
+        if tactic in tactic_techniques:
+            tactic_techniques[tactic].append(technique)
 
-        if tactic in tactic_data:
-            tactic_data[tactic][severity] += 1
-            tactic_data[tactic]["TOTAL"] += 1
-            if has_subtechnique:
-                tactic_data[tactic]["SUBTECHNIQUES"] += 1
+    # Build HTML table
+    html = '<div class="mitre-matrix-container">'
+    html += '<table class="mitre-matrix">'
 
-    # Calculate coverage percentage for each tactic
+    # Header row
+    html += "<tr>"
     for tactic in tactics:
-        total = tactic_data[tactic]["TOTAL"]
-        if total > 0:
-            tactic_data[tactic]["COVERAGE"] = (
-                tactic_data[tactic]["SUBTECHNIQUES"] / total
-            ) * 100
+        html += f"<th>{tactic}</th>"
+    html += "</tr>"
 
-    # Prepare data for stacked bar chart
-    red_counts = [tactic_data[t]["RED"] for t in tactics]
-    amber_counts = [tactic_data[t]["AMBER"] for t in tactics]
-    green_counts = [tactic_data[t]["GREEN"] for t in tactics]
-    coverage_pct = [tactic_data[t]["COVERAGE"] for t in tactics]
+    # Find max techniques in any tactic
+    max_techniques = max(
+        [len(techniques) for techniques in tactic_techniques.values()] or [0]
+    )
 
-    # Create figure with secondary y-axis
+    # Build rows
+    for row_idx in range(max_techniques):
+        html += "<tr>"
+        for tactic in tactics:
+            techniques = tactic_techniques[tactic]
+
+            if row_idx < len(techniques):
+                tech = techniques[row_idx]
+                technique_name = tech.get("technique", "Unknown")
+                technique_id = tech.get("technique_id", "")
+                sub_technique = tech.get("sub_technique", "")
+                sub_technique_id = tech.get("sub_technique_id", "")
+                severity = tech.get("severity", "GREEN").upper()
+                confidence = tech.get("confidence", 0)
+
+                # Determine severity class
+                severity_class = (
+                    f"severity-{severity.lower()}"
+                    if severity in ["RED", "AMBER", "GREEN"]
+                    else "severity-none"
+                )
+
+                # Build cell content
+                cell_content = f'<div class="technique-cell {severity_class}">'
+                cell_content += f"<div><strong>{technique_name}</strong></div>"
+                cell_content += f'<div class="technique-id">{technique_id}</div>'
+
+                if sub_technique and sub_technique != "N/A":
+                    cell_content += f'<div style="font-size: 0.65rem; margin-top: 2px;">↳ {sub_technique}</div>'
+                    if sub_technique_id:
+                        cell_content += (
+                            f'<div class="technique-id">{sub_technique_id}</div>'
+                        )
+
+                cell_content += f'<div style="font-size: 0.6rem; margin-top: 2px;">Confidence: {confidence}%</div>'
+                cell_content += "</div>"
+
+                html += f"<td>{cell_content}</td>"
+            else:
+                html += "<td></td>"
+
+        html += "</tr>"
+
+    html += "</table>"
+    html += "</div>"
+
+    # Add legend
+    html += """
+    <div style="margin-top: 1rem; padding: 1rem; background-color: #f3f4f6; border-radius: 0.5rem;">
+        <strong>Legend:</strong>
+        <span style="display: inline-block; margin-left: 1rem;">
+            <span style="background-color: #dc2626; color: white; padding: 2px 8px; border-radius: 3px; margin: 0 5px;">RED</span> Confirmed
+        </span>
+        <span style="display: inline-block; margin-left: 1rem;">
+            <span style="background-color: #f59e0b; color: white; padding: 2px 8px; border-radius: 3px; margin: 0 5px;">AMBER</span> Likely
+        </span>
+        <span style="display: inline-block; margin-left: 1rem;">
+            <span style="background-color: #10b981; color: white; padding: 2px 8px; border-radius: 3px; margin: 0 5px;">GREEN</span> Predicted
+        </span>
+    </div>
+    """
+
+    return html
+
+
+def create_attack_timeline_chart(timeline_data: list) -> go.Figure:
+    """Create interactive attack timeline visualization"""
+
+    if not timeline_data:
+        return None
+
     fig = go.Figure()
 
-    # Add stacked bars for techniques
-    fig.add_trace(
-        go.Bar(
-            name="Confirmed (RED)",
-            x=tactics,
-            y=red_counts,
-            marker_color="#dc2626",
-            hovertemplate="<b>%{x}</b><br>Confirmed: %{y}<extra></extra>",
-        )
-    )
+    # Color mapping
+    color_map = {"RED": "#dc2626", "AMBER": "#f59e0b", "GREEN": "#10b981"}
 
-    fig.add_trace(
-        go.Bar(
-            name="Likely (AMBER)",
-            x=tactics,
-            y=amber_counts,
-            marker_color="#f59e0b",
-            hovertemplate="<b>%{x}</b><br>Likely: %{y}<extra></extra>",
-        )
-    )
+    stages = []
+    timestamps = []
+    techniques = []
+    colors = []
+    descriptions = []
 
-    fig.add_trace(
-        go.Bar(
-            name="Predicted (GREEN)",
-            x=tactics,
-            y=green_counts,
-            marker_color="#10b981",
-            hovertemplate="<b>%{x}</b><br>Predicted: %{y}<extra></extra>",
-        )
-    )
+    for event in timeline_data:
+        stages.append(event.get("tactic", "Unknown"))
+        timestamps.append(event.get("timestamp", ""))
+        techniques.append(event.get("technique", "Unknown"))
+        colors.append(color_map.get(event.get("severity", "GREEN"), "#6b7280"))
+        descriptions.append(event.get("description", ""))
 
-    # Add line for sub-technique coverage
     fig.add_trace(
         go.Scatter(
-            name="Sub-Technique Coverage %",
-            x=tactics,
-            y=coverage_pct,
-            yaxis="y2",
-            mode="lines+markers",
-            line=dict(color="#3b82f6", width=3),
-            marker=dict(size=10, color="#3b82f6", line=dict(width=2, color="white")),
-            hovertemplate="<b>%{x}</b><br>Coverage: %{y:.1f}%<extra></extra>",
+            x=list(range(len(stages))),
+            y=stages,
+            mode="markers+lines+text",
+            marker=dict(size=20, color=colors, line=dict(width=2, color="white")),
+            line=dict(width=3, color="#6b7280"),
+            text=techniques,
+            textposition="top center",
+            hovertemplate="<b>%{y}</b><br>%{text}<br>%{customdata}<extra></extra>",
+            customdata=descriptions,
         )
     )
 
     fig.update_layout(
-        title={
-            "text": "MITRE ATT&CK Coverage Map with Sub-Technique Analysis",
-            "font": {"size": 20},
-        },
-        xaxis={"title": "MITRE ATT&CK Tactics", "tickangle": -45},
-        yaxis={"title": "Number of Techniques", "side": "left"},
-        yaxis2={
-            "title": "Sub-Technique Coverage (%)",
-            "overlaying": "y",
-            "side": "right",
-            "range": [0, 100],
-        },
-        barmode="stack",
-        height=600,
+        title="Attack Timeline & Progression",
+        xaxis_title="Attack Sequence",
+        yaxis_title="MITRE ATT&CK Tactic",
+        height=500,
         template="plotly_dark",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        hovermode="x unified",
+        showlegend=False,
+    )
+
+    return fig
+
+
+def create_mitre_heatmap(techniques_data: list) -> go.Figure:
+    """Create MITRE ATT&CK heatmap visualization with sub-techniques"""
+
+    if not techniques_data:
+        return None
+
+    # MITRE ATT&CK Tactics
+    tactics = [
+        "Reconnaissance",
+        "Resource Development",
+        "Initial Access",
+        "Execution",
+        "Persistence",
+        "Privilege Escalation",
+        "Defense Evasion",
+        "Credential Access",
+        "Discovery",
+        "Lateral Movement",
+        "Collection",
+        "Command and Control",
+        "Exfiltration",
+        "Impact",
+    ]
+
+    # Create matrix - now tracking sub-techniques separately
+    tactic_counts = {
+        tactic: {"RED": 0, "AMBER": 0, "GREEN": 0, "SUBTECHNIQUES": 0}
+        for tactic in tactics
+    }
+
+    for technique in techniques_data:
+        tactic = technique.get("tactic", "")
+        severity = technique.get("severity", "GREEN")
+        has_subtechnique = bool(
+            technique.get("sub_technique") and technique.get("sub_technique") != "N/A"
+        )
+
+        if tactic in tactic_counts:
+            tactic_counts[tactic][severity] += 1
+            if has_subtechnique:
+                tactic_counts[tactic]["SUBTECHNIQUES"] += 1
+
+    # Prepare data for heatmap
+    red_counts = [tactic_counts[t]["RED"] for t in tactics]
+    amber_counts = [tactic_counts[t]["AMBER"] for t in tactics]
+    green_counts = [tactic_counts[t]["GREEN"] for t in tactics]
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Bar(name="Confirmed (RED)", x=tactics, y=red_counts, marker_color="#dc2626")
+    )
+
+    fig.add_trace(
+        go.Bar(name="Likely (AMBER)", x=tactics, y=amber_counts, marker_color="#f59e0b")
+    )
+
+    fig.add_trace(
+        go.Bar(
+            name="Predicted (GREEN)", x=tactics, y=green_counts, marker_color="#10b981"
+        )
+    )
+
+    fig.update_layout(
+        title="MITRE ATT&CK Coverage Map (Including Sub-Techniques)",
+        xaxis_title="Tactics",
+        yaxis_title="Number of Techniques",
+        barmode="stack",
+        height=500,
+        template="plotly_dark",
+        xaxis={"tickangle": -45},
     )
 
     return fig
@@ -375,114 +430,76 @@ def create_subtechnique_coverage_chart(coverage_data: dict) -> go.Figure:
 
 
 def create_attack_path_sankey(attack_paths: list) -> go.Figure:
-    """Create enhanced Sankey diagram for attack path visualization"""
+    """Create Sankey diagram for attack path visualization"""
 
     if not attack_paths:
         return None
 
-    # Collect all stages and create links
-    all_nodes = []
+    # Extract paths
+    all_stages = []
     links = []
-    node_colors = []
 
     for path in attack_paths:
         stages = path.get("stages", [])
         for i, stage in enumerate(stages):
-            stage_name = stage.get("stage", "Unknown")
-            techniques = stage.get("techniques", [])
-
-            # Create node label with techniques
-            node_label = f"{stage_name}\n{'• ' + techniques[0] if techniques else ''}"
-
-            if node_label not in all_nodes:
-                all_nodes.append(node_label)
-                # Color based on status
-                status_color = {
-                    "CONFIRMED": "#dc2626",
-                    "LIKELY": "#f59e0b",
-                    "PREDICTED": "#10b981",
-                }
-                node_colors.append(
-                    status_color.get(stage.get("status", "PREDICTED"), "#6b7280")
-                )
+            all_stages.append(stage.get("stage", "Unknown"))
 
             if i < len(stages) - 1:
-                next_stage = stages[i + 1]
-                next_label = f"{next_stage.get('stage', 'Unknown')}\n{'• ' + next_stage.get('techniques', [''])[0] if next_stage.get('techniques') else ''}"
-
-                if next_label not in all_nodes:
-                    all_nodes.append(next_label)
-                    status_color = {
-                        "CONFIRMED": "#dc2626",
-                        "LIKELY": "#f59e0b",
-                        "PREDICTED": "#10b981",
-                    }
-                    node_colors.append(
-                        status_color.get(
-                            next_stage.get("status", "PREDICTED"), "#6b7280"
-                        )
-                    )
-
                 links.append(
                     {
-                        "source": all_nodes.index(node_label),
-                        "target": all_nodes.index(next_label),
-                        "value": 10,
+                        "source": stage.get("stage", "Unknown"),
+                        "target": stages[i + 1].get("stage", "Unknown"),
                         "color": stage.get("color", "green"),
                     }
                 )
 
-    # Prepare link data
-    source_indices = [link["source"] for link in links]
-    target_indices = [link["target"] for link in links]
-    values = [link["value"] for link in links]
+    # Create unique nodes
+    unique_stages = list(set(all_stages))
+    stage_indices = {stage: idx for idx, stage in enumerate(unique_stages)}
+
+    # Map links
+    source_indices = []
+    target_indices = []
+    values = []
+    colors = []
 
     color_map = {
-        "RED": "rgba(220, 38, 38, 0.5)",
-        "AMBER": "rgba(245, 158, 11, 0.5)",
-        "GREEN": "rgba(16, 185, 129, 0.5)",
-        "green": "rgba(16, 185, 129, 0.5)",
-        "amber": "rgba(245, 158, 11, 0.5)",
-        "red": "rgba(220, 38, 38, 0.5)",
+        "RED": "rgba(220, 38, 38, 0.4)",
+        "AMBER": "rgba(245, 158, 11, 0.4)",
+        "GREEN": "rgba(16, 185, 129, 0.4)",
     }
-    link_colors = [
-        color_map.get(link["color"].upper(), "rgba(107, 114, 128, 0.5)")
-        for link in links
-    ]
+
+    for link in links:
+        if link["source"] in stage_indices and link["target"] in stage_indices:
+            source_indices.append(stage_indices[link["source"]])
+            target_indices.append(stage_indices[link["target"]])
+            values.append(1)
+            colors.append(
+                color_map.get(link["color"].upper(), "rgba(107, 114, 128, 0.4)")
+            )
 
     fig = go.Figure(
         data=[
             go.Sankey(
                 node=dict(
-                    pad=20,
-                    thickness=30,
-                    line=dict(color="white", width=2),
-                    label=all_nodes,
-                    color=node_colors,
-                    customdata=all_nodes,
-                    hovertemplate="<b>%{label}</b><br>Stage in attack chain<extra></extra>",
+                    pad=15,
+                    thickness=20,
+                    line=dict(color="black", width=0.5),
+                    label=unique_stages,
+                    color="#667eea",
                 ),
                 link=dict(
                     source=source_indices,
                     target=target_indices,
                     value=values,
-                    color=link_colors,
-                    hovertemplate="<b>%{source.label}</b> → <b>%{target.label}</b><extra></extra>",
+                    color=colors,
                 ),
             )
         ]
     )
 
     fig.update_layout(
-        title={
-            "text": "🔄 Attack Path Flow Diagram",
-            "font": {"size": 22, "color": "white"},
-        },
-        height=650,
-        template="plotly_dark",
-        font=dict(size=12, color="white"),
-        plot_bgcolor="#1f2937",
-        paper_bgcolor="#111827",
+        title="Attack Path Flow Diagram", height=600, template="plotly_dark"
     )
 
     return fig
@@ -521,32 +538,25 @@ def display_mitre_analysis(mitre_data: dict, username: str):
 
     st.markdown("---")
 
-    # Geographic Risk Alert
-    if "High-risk country" in overall.get("geographic_threat_indicator", ""):
-        st.error(
-            f"⚠️ **HIGH-RISK GEOGRAPHIC INDICATOR:** {overall.get('geographic_threat_indicator')}"
+    # MITRE ATT&CK Matrix Visualization
+    techniques_data = mitre_data.get("mitre_techniques_observed", [])
+    if techniques_data:
+        st.markdown("### 🗺️ MITRE ATT&CK Matrix Visualization")
+        st.info(
+            "💡 This matrix shows the attack techniques mapped across all 14 MITRE ATT&CK tactics, color-coded by severity"
         )
+
+        matrix_html = create_mitre_attack_matrix(techniques_data)
+        st.markdown(matrix_html, unsafe_allow_html=True)
+
         st.markdown("---")
 
-    # Attack Chain Narrative (MOVED TO TOP)
-    st.markdown("### 📖 Attack Chain Narrative")
-    st.markdown(
-        f"""
-    <div class="attack-chain-box">
-    {mitre_data.get("attack_chain_narrative", "No narrative available")}
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown("---")
-
-    # Sub-Technique Coverage Metrics (NOW AFTER NARRATIVE)
+    # Sub-Technique Coverage Metrics
     coverage_data = mitre_data.get("sub_technique_coverage", {})
     if coverage_data:
         st.markdown("### 📊 Sub-Technique Coverage Metrics")
 
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
 
         with col1:
             st.metric(
@@ -562,30 +572,35 @@ def display_mitre_analysis(mitre_data: dict, username: str):
         with col3:
             st.metric("Coverage", coverage_data.get("sub_technique_percentage", "0%"))
 
-        with col4:
-            quality = coverage_data.get("quality_score", "N/A")
-            quality_color = (
-                "🟢" if quality == "Excellent" else "🟡" if quality == "Good" else "🔴"
-            )
-            st.metric("Quality", f"{quality_color} {quality}")
-
         # Coverage pie chart
         coverage_chart = create_subtechnique_coverage_chart(coverage_data)
         if coverage_chart:
-            st.plotly_chart(coverage_chart, use_container_width=True)
+            st.plotly_chart(coverage_chart, width="stretch")
 
         # Show techniques requiring sub-techniques
         if coverage_data.get("techniques_requiring_sub_techniques"):
             with st.expander("⚠️ Techniques That Could Have Sub-Techniques"):
                 for tech in coverage_data["techniques_requiring_sub_techniques"]:
-                    st.warning(
-                        f"**{tech['technique']}** ({tech['technique_id']}) - Tactic: {tech.get('tactic', 'N/A')}"
-                    )
+                    st.warning(f"**{tech['technique']}** ({tech['technique_id']})")
                     st.write(
-                        f"Available sub-techniques: {', '.join(tech['available_sub_techniques'])}"
+                        f"Available sub-techniques: {', '.join(tech['available_sub_techniques'][:5])}"
                     )
 
         st.markdown("---")
+
+    # Geographic Risk Alert
+    if "High-risk country" in overall.get("geographic_threat_indicator", ""):
+        st.error(
+            f"⚠️ **HIGH-RISK GEOGRAPHIC INDICATOR:** {overall.get('geographic_threat_indicator')}"
+        )
+        st.markdown("---")
+
+    # Attack Chain Narrative
+    st.markdown("### 📖 Attack Chain Narrative")
+    narrative_text = mitre_data.get("attack_chain_narrative", "No narrative available")
+    st.info(narrative_text)
+
+    st.markdown("---")
 
     # Attack Timeline Visualization
     timeline_data = mitre_data.get("attack_timeline", [])
@@ -593,17 +608,16 @@ def display_mitre_analysis(mitre_data: dict, username: str):
         st.markdown("### ⏱️ Attack Timeline Visualization")
         timeline_fig = create_attack_timeline_chart(timeline_data)
         if timeline_fig:
-            st.plotly_chart(timeline_fig, use_container_width=True)
+            st.plotly_chart(timeline_fig, width="stretch")
 
     st.markdown("---")
 
     # MITRE Techniques Coverage
-    techniques_data = mitre_data.get("mitre_techniques_observed", [])
     if techniques_data:
-        st.markdown("### 🗺️ MITRE ATT&CK Coverage Map")
+        st.markdown("### 📊 MITRE ATT&CK Coverage Map")
         heatmap_fig = create_mitre_heatmap(techniques_data)
         if heatmap_fig:
-            st.plotly_chart(heatmap_fig, use_container_width=True)
+            st.plotly_chart(heatmap_fig, width="stretch")
 
     st.markdown("---")
 
@@ -613,90 +627,59 @@ def display_mitre_analysis(mitre_data: dict, username: str):
         st.markdown("### 🔄 Attack Path Flow Diagram")
         sankey_fig = create_attack_path_sankey(attack_paths)
         if sankey_fig:
-            st.plotly_chart(sankey_fig, use_container_width=True)
+            st.plotly_chart(sankey_fig, width="stretch")
 
     st.markdown("---")
 
-    # Observed MITRE Techniques with Sub-Techniques (FIXED - NO HTML)
+    # Observed MITRE Techniques with Sub-Techniques
     if techniques_data:
-        st.markdown("### 🎯 Observed MITRE ATT&CK Techniques & Sub-Techniques")
+        st.markdown("### 🎯 Detailed Technique Analysis")
 
         for idx, technique in enumerate(techniques_data, 1):
             severity = technique.get("severity", "GREEN").upper()
 
             if severity == "RED":
-                emoji = "🔴"
-                severity_label = "CRITICAL"
+                st.error(f"**🔴 Confirmed Technique #{idx}**")
             elif severity == "AMBER":
-                emoji = "🟠"
-                severity_label = "HIGH"
+                st.warning(f"**🟠 Likely Technique #{idx}**")
             else:
-                emoji = "🟢"
-                severity_label = "MEDIUM"
+                st.success(f"**🟢 Predicted Technique #{idx}**")
 
-            # Check if sub-technique exists
-            has_subtechnique = bool(
-                technique.get("sub_technique")
-                and technique.get("sub_technique") != "N/A"
-                and technique.get("sub_technique").strip()
-            )
+            col1, col2 = st.columns([2, 1])
 
-            # Build technique display
-            technique_display = f"{technique.get('technique', 'Unknown')} ({technique.get('technique_id', 'N/A')})"
-
-            # Create container for each technique
-            with st.container():
-                # Header row with technique name and severity
-                col1, col2 = st.columns([4, 1])
-
-                with col1:
-                    st.markdown(f"#### {emoji} Technique #{idx}: {technique_display}")
-
-                with col2:
-                    st.markdown(f"**{emoji} {severity_label}**")
-
-                # Tactic information
-                st.markdown(
-                    f"**🎯 Tactic:** {technique.get('tactic', 'N/A')} ({technique.get('tactic_id', 'N/A')})"
+            with col1:
+                st.write(
+                    f"**Technique:** {technique.get('technique', 'Unknown')} ({technique.get('technique_id', 'N/A')})"
+                )
+                st.write(
+                    f"**Tactic:** {technique.get('tactic', 'N/A')} ({technique.get('tactic_id', 'N/A')})"
                 )
 
-                # Display sub-technique if available
-                if has_subtechnique:
+                # Show sub-technique
+                if (
+                    technique.get("sub_technique")
+                    and technique.get("sub_technique") != "N/A"
+                ):
                     st.info(
-                        f"""
-**Sub-Technique:** {technique.get('sub_technique', 'N/A')} ({technique.get('sub_technique_id', 'N/A')})
-
-*{technique.get('sub_technique_justification', 'No justification provided')}*
-                    """
+                        f"**Sub-Technique:** {technique.get('sub_technique', 'N/A')} ({technique.get('sub_technique_id', 'N/A')})"
+                    )
+                    st.caption(
+                        f"_{technique.get('sub_technique_justification', 'No justification provided')}_"
                     )
 
-                # Two column layout for details
-                col1, col2 = st.columns(2)
+            with col2:
+                st.metric("Confidence", f"{technique.get('confidence', 0)}%")
+                st.write(f"**Timestamp:** {technique.get('timestamp', 'N/A')}")
 
-                with col1:
-                    st.markdown(f"**📊 Confidence:** {technique.get('confidence', 0)}%")
-                    st.markdown(
-                        f"**⏰ Timestamp:** {technique.get('timestamp', 'N/A')}"
-                    )
+            st.write(f"**Evidence:** {technique.get('evidence', 'No evidence')}")
+            st.write(f"**Indicators:** {', '.join(technique.get('indicators', []))}")
 
-                with col2:
-                    indicators = technique.get("indicators", [])
-                    if indicators:
-                        st.markdown(f"**🚨 Indicators:**")
-                        for indicator in indicators:
-                            st.markdown(f"  • {indicator}")
+            st.markdown("---")
 
-                # Evidence section (full width)
-                st.markdown(
-                    f"**🔬 Evidence:** {technique.get('evidence', 'No evidence')}"
-                )
-
-                st.markdown("---")
-
-    # Predicted Next Steps with Sub-Techniques
+    # Predicted Next Steps
     predicted_steps = mitre_data.get("predicted_next_steps", [])
     if predicted_steps:
-        st.markdown("### 🔮 Predicted Next Attacker Moves (with Sub-Techniques)")
+        st.markdown("### 🔮 Predicted Next Attacker Moves")
 
         for idx, step in enumerate(predicted_steps, 1):
             likelihood = step.get("likelihood", "Unknown")
@@ -711,62 +694,72 @@ def display_mitre_analysis(mitre_data: dict, username: str):
             col1, col2 = st.columns(2)
 
             with col1:
-                st.markdown(f"**Tactic:** {step.get('tactic', 'N/A')}")
-                st.markdown(
+                st.write(f"**Tactic:** {step.get('tactic', 'N/A')}")
+                st.write(
                     f"**Technique:** {step.get('technique', 'N/A')} ({step.get('technique_id', 'N/A')})"
                 )
 
-                # Show sub-technique if available
+                # Show sub-technique
                 if step.get("sub_technique"):
-                    st.markdown(
-                        f"**Sub-Technique:** :blue[{step.get('sub_technique', 'N/A')} ({step.get('sub_technique_id', 'N/A')})]"
+                    st.info(
+                        f"**Sub-Technique:** {step.get('sub_technique', 'N/A')} ({step.get('sub_technique_id', 'N/A')})"
                     )
 
-                st.markdown(f"**Description:** {step.get('description', 'N/A')}")
+                st.write(f"**Description:** {step.get('description', 'N/A')}")
 
             with col2:
-                st.markdown(f"**Rationale:** {step.get('rationale', 'N/A')}")
-                st.markdown(
+                st.write(f"**Rationale:** {step.get('rationale', 'N/A')}")
+                st.write(
                     f"**Indicators to Watch:** {', '.join(step.get('indicators_to_watch', []))}"
                 )
-                st.markdown(
+                st.write(
                     f"**Preventive Action:** {step.get('recommended_preventive_action', 'N/A')}"
                 )
 
-    st.markdown("---")
+            st.markdown("---")
 
     # Threat Actor Profile
     threat_profile = mitre_data.get("threat_actor_profile", {})
     if threat_profile:
         st.markdown("### 👤 Threat Actor Profile")
 
-        preferred_subtechniques = threat_profile.get("preferred_sub_techniques", [])
-        subtechniques_html = ""
-        if preferred_subtechniques:
-            subtechniques_html = f"<p><strong>Preferred Sub-Techniques:</strong> {', '.join(preferred_subtechniques)}</p>"
+        col1, col2 = st.columns(2)
 
-        st.markdown(
-            f"""
-        <div class="mitre-card">
-            <h3>Threat Intelligence Assessment</h3>
-            <p><strong>Sophistication Level:</strong> {threat_profile.get('sophistication_level', 'Unknown')}</p>
-            <p><strong>Likely Motivation:</strong> {threat_profile.get('likely_motivation', 'Unknown')}</p>
-            <p><strong>Probable Attribution:</strong> {threat_profile.get('probable_attribution', 'Unknown')}</p>
-            <p><strong>Geographic Indicators:</strong> {', '.join(threat_profile.get('geographic_indicators', []))}</p>
-            <p><strong>Tactics Signature:</strong> {threat_profile.get('tactics_signature', 'Unknown')}</p>
-            <p><strong>Similar Campaigns:</strong> {', '.join(threat_profile.get('similar_campaigns', []))}</p>
-            {subtechniques_html}
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
+        with col1:
+            st.write(
+                f"**Sophistication Level:** {threat_profile.get('sophistication_level', 'Unknown')}"
+            )
+            st.write(
+                f"**Likely Motivation:** {threat_profile.get('likely_motivation', 'Unknown')}"
+            )
+            st.write(
+                f"**Probable Attribution:** {threat_profile.get('probable_attribution', 'Unknown')}"
+            )
+
+        with col2:
+            st.write(
+                f"**Geographic Indicators:** {', '.join(threat_profile.get('geographic_indicators', []))}"
+            )
+            st.write(
+                f"**Tactics Signature:** {threat_profile.get('tactics_signature', 'Unknown')}"
+            )
+
+        if threat_profile.get("similar_campaigns"):
+            st.write(
+                f"**Similar Campaigns:** {', '.join(threat_profile.get('similar_campaigns', []))}"
+            )
+
+        if threat_profile.get("preferred_sub_techniques"):
+            st.info(
+                f"**Preferred Sub-Techniques:** {', '.join(threat_profile.get('preferred_sub_techniques', []))}"
+            )
 
     st.markdown("---")
 
-    # Defensive Recommendations with Sub-Techniques
+    # Defensive Recommendations
     recommendations = mitre_data.get("defensive_recommendations", [])
     if recommendations:
-        st.markdown("### 🛡️ Defensive Recommendations (MITRE Mitigations)")
+        st.markdown("### 🛡️ Defensive Recommendations")
 
         for idx, rec in enumerate(recommendations, 1):
             priority = rec.get("priority", "MEDIUM").upper()
@@ -779,42 +772,76 @@ def display_mitre_analysis(mitre_data: dict, username: str):
                 st.info(f"**📋 {priority} #{idx}:** {rec.get('recommendation', 'N/A')}")
 
             with st.expander("View Details"):
-                st.markdown(
-                    f"**MITRE Mitigation:** {rec.get('mitre_mitigation', 'N/A')}"
-                )
-                st.markdown(
+                st.write(f"**MITRE Mitigation:** {rec.get('mitre_mitigation', 'N/A')}")
+                st.write(
                     f"**Mapped Techniques:** {', '.join(rec.get('mapped_techniques', []))}"
                 )
 
-                # Show sub-techniques if available
                 if rec.get("mapped_sub_techniques"):
-                    st.markdown(
-                        f"**Mapped Sub-Techniques:** :blue[{', '.join(rec.get('mapped_sub_techniques', []))}]"
+                    st.info(
+                        f"**Mapped Sub-Techniques:** {', '.join(rec.get('mapped_sub_techniques', []))}"
                     )
 
-                st.markdown(
+                st.write(
                     f"**Implementation Complexity:** {rec.get('implementation_complexity', 'N/A')}"
                 )
-                st.markdown(
+                st.write(
                     f"**Estimated Effectiveness:** {rec.get('estimated_effectiveness', 'N/A')}"
                 )
 
     st.markdown("---")
 
-    # Final Summary Section (Optional - you can keep or remove)
-    st.markdown("### 📊 Analysis Complete")
-    st.success(
-        f"""
-✅ **Analysis completed for user:** {username}
+    # Detection Gaps
+    detection_gaps = mitre_data.get("detection_gaps", [])
+    if detection_gaps:
+        st.markdown("### 🔍 Detection Gaps")
 
-**Summary:**
-- Total Techniques Mapped: {coverage_data.get('total_techniques_mapped', 0)}
-- Sub-Techniques Identified: {coverage_data.get('techniques_with_sub_techniques', 0)}
-- Coverage Quality: {coverage_data.get('quality_score', 'N/A')}
-- Attack Sophistication: {overall.get('threat_sophistication', 'Unknown')}
-- Confidence Level: {overall.get('attack_confidence', 0)}%
-    """
-    )
+        for idx, gap in enumerate(detection_gaps, 1):
+            risk_level = gap.get("risk_level", "MEDIUM").upper()
+
+            if risk_level in ["HIGH", "CRITICAL"]:
+                st.error(f"**Gap #{idx}: {gap.get('gap_description', 'Unknown')}**")
+            elif risk_level == "MEDIUM":
+                st.warning(f"**Gap #{idx}: {gap.get('gap_description', 'Unknown')}**")
+            else:
+                st.info(f"**Gap #{idx}: {gap.get('gap_description', 'Unknown')}**")
+
+            st.write(
+                f"**Affected Techniques:** {', '.join(gap.get('affected_techniques', []))}"
+            )
+
+            if gap.get("affected_sub_techniques"):
+                st.info(
+                    f"**Affected Sub-Techniques:** {', '.join(gap.get('affected_sub_techniques', []))}"
+                )
+
+            st.write(f"**Risk Level:** {risk_level}")
+            st.write(
+                f"**Recommended Detection:** {gap.get('recommended_detection', 'N/A')}"
+            )
+            st.write(f"**MITRE Data Source:** {gap.get('mitre_data_source', 'N/A')}")
+
+            st.markdown("---")
+
+    # MITRE Navigator Export
+    navigator_layer = mitre_data.get("mitre_navigator_layer", {})
+    if navigator_layer:
+        st.markdown("### 📊 MITRE ATT&CK Navigator Layer")
+        st.info(
+            "💡 Download this layer to import into MITRE ATT&CK Navigator for interactive visualization"
+        )
+
+        navigator_json = json.dumps(navigator_layer, indent=2)
+        st.download_button(
+            label="📥 Download MITRE Navigator Layer (JSON)",
+            data=navigator_json,
+            file_name=f"mitre_navigator_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json",
+            width="stretch",
+        )
+
+        with st.expander("Preview Navigator Layer"):
+            st.json(navigator_layer)
 
 
 def display_analysis_results(analysis: dict, username: str):
@@ -915,32 +942,29 @@ def display_analysis_results(analysis: dict, username: str):
             severity = finding.get("severity", "Unknown").upper()
 
             if severity == "CRITICAL":
-                css_class = "risk-critical"
-                emoji = "🔴"
+                st.error(
+                    f"**🔴 Finding #{idx}: {finding.get('category', 'Unknown Category')} (CRITICAL)**"
+                )
             elif severity == "HIGH":
-                css_class = "risk-high"
-                emoji = "🟠"
+                st.warning(
+                    f"**🟠 Finding #{idx}: {finding.get('category', 'Unknown Category')} (HIGH)**"
+                )
             elif severity == "MEDIUM":
-                css_class = "risk-medium"
-                emoji = "🟡"
+                st.info(
+                    f"**🟡 Finding #{idx}: {finding.get('category', 'Unknown Category')} (MEDIUM)**"
+                )
             else:
-                css_class = "risk-low"
-                emoji = "🟢"
+                st.success(
+                    f"**🟢 Finding #{idx}: {finding.get('category', 'Unknown Category')} (LOW)**"
+                )
 
-            st.markdown(
-                f"""
-            <div class="{css_class}">
-                <h4>{emoji} Finding #{idx}: {finding.get('category', 'Unknown Category')} ({severity})</h4>
-                <p><strong>📍 Step Reference:</strong> {finding.get('step_reference', 'N/A')}</p>
-                <p><strong>📝 Details:</strong> {finding.get('details', 'No details provided')}</p>
-                <p><strong>🔬 Evidence:</strong> {finding.get('evidence', 'No evidence provided')}</p>
-                <p><strong>⚠️ Impact:</strong> {finding.get('impact', 'No impact assessment')}</p>
-            </div>
-            """,
-                unsafe_allow_html=True,
+            st.write(f"**🔍 Step Reference:** {finding.get('step_reference', 'N/A')}")
+            st.write(f"**📝 Details:** {finding.get('details', 'No details provided')}")
+            st.write(
+                f"**🔬 Evidence:** {finding.get('evidence', 'No evidence provided')}"
             )
-
-        st.markdown("---")
+            st.write(f"**⚠️ Impact:** {finding.get('impact', 'No impact assessment')}")
+            st.markdown("---")
 
     # Recommendations
     if "recommendations" in initial and initial["recommendations"]:
@@ -960,7 +984,7 @@ def main():
     final_api_key = os.getenv("GOOGLE_API_KEY")
 
     st.markdown(
-        "<h1 class='main-header'>🔐 True/False Positive Analyzer with MITRE ATT&CK</h1>",
+        "<h1 class='main-header'>🔒 True/False Positive Analyzer with MITRE ATT&CK</h1>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -1203,27 +1227,25 @@ PRIORITY: {exec_summary.get('investigation_priority', 'N/A')}
         This advanced security investigation tool provides:
         
         - **Automated Classification**: AI-powered TRUE/FALSE POSITIVE detection
+        - **MITRE ATT&CK Matrix**: Visual matrix showing techniques across all 14 tactics
         - **MITRE ATT&CK Mapping**: Complete attack chain reconstruction using MITRE framework
         - **Sub-Technique Analysis**: Detailed sub-technique identification for precise threat mapping
         - **Geographic Risk Analysis**: Automatic detection of high-risk countries (Russia, China, etc.)
         - **Attack Prediction**: AI-powered prediction of attacker's next moves with specific sub-techniques
-        - **Interactive Visualizations**: Timeline, heatmaps, and flow diagrams
+        - **Interactive Visualizations**: Timeline, heatmaps, matrix, and flow diagrams
         - **Threat Intelligence**: Actor profiling and attribution analysis
         - **Actionable Recommendations**: Prioritized defensive measures with MITRE mitigations
         - **Sub-Technique Coverage Tracking**: Metrics showing the depth of analysis
         
         **Key Features**:
+        - ✅ **MITRE Matrix View**: Tabular visualization matching the official MITRE ATT&CK website
+        - ✅ **Color-Coded Severity**: RED (Confirmed), AMBER (Likely), GREEN (Predicted)
         - ✅ **Sub-Technique Mapping**: Every technique is mapped to specific sub-techniques based on evidence
         - ✅ **Coverage Metrics**: Track how many techniques have detailed sub-technique analysis
         - ✅ **Navigator Export**: MITRE ATT&CK Navigator layers include both parent and sub-techniques
         - ✅ **Evidence-Based**: All sub-techniques are justified with specific evidence from investigation
         
         **High-Risk Country Detection**: Access from Russia, China, North Korea, Iran, Syria, Belarus, Venezuela, Cuba, or Afghanistan automatically triggers TRUE POSITIVE classification.
-        
-        **Sub-Technique Examples**:
-        - Valid Accounts → Cloud Accounts (T1078.004)
-        - Account Manipulation → Additional Cloud Roles (T1098.003)
-        - Exfiltration Over Web Service → Exfiltration to Cloud Storage (T1567.002)
         """
         )
 

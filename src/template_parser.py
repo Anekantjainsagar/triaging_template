@@ -5,11 +5,18 @@ from typing import List, Dict
 
 class TemplateParser:
     """
-    ✅ FIXED: DIRECT extraction with ZERO modification
+    ✅ ULTRA-STRICT PARSER - Reads from CORRECT source columns
+
+    Based on your template structure:
+    - Sr.No. = Step number
+    - Inputs Required = ORIGINAL step name (THIS IS WHAT WE WANT!)
+    - INPUT details = Input data
+    - Instructions = Explanation
+    - (Name column is IGNORED - it's generated, not original)
     """
 
     def parse_csv_template(self, csv_path: str) -> List[Dict]:
-        """Parse CSV and return EXACT steps as-is"""
+        """Parse CSV with ZERO modification"""
         print(f"\n📋 Parsing CSV: {csv_path}")
 
         df = None
@@ -25,159 +32,115 @@ class TemplateParser:
             print("❌ Could not read CSV")
             return []
 
-        return self._extract_steps_direct(df)
+        return self._extract_from_original_template(df)
 
     def parse_excel_template(self, excel_path: str) -> List[Dict]:
-        """Parse Excel and return EXACT steps as-is"""
+        """Parse Excel with ZERO modification"""
         print(f"\n📋 Parsing Excel: {excel_path}")
 
         try:
             df = pd.read_excel(excel_path, engine="openpyxl")
             print(f"✅ Read Excel successfully")
-            return self._extract_steps_direct(df)
+            return self._extract_from_original_template(df)
         except Exception as e:
             print(f"❌ Failed: {str(e)}")
             return []
 
-    def _extract_steps_direct(self, df: pd.DataFrame) -> List[Dict]:
+    def _extract_from_original_template(self, df: pd.DataFrame) -> List[Dict]:
         """
-        ✅ EXTRACT STEPS EXACTLY AS THEY ARE - NO MODIFICATIONS
+        ✅ EXTRACT FROM ORIGINAL TEMPLATE STRUCTURE
+
+        Your template has these columns:
+        - Sr.No. = Step number
+        - Inputs Required = THE REAL STEP NAME (what we want!)
+        - INPUT details = Input data
+        - Instructions = Explanation
         """
         df.columns = df.columns.str.strip()
 
-        print(f"\n📊 Columns: {list(df.columns)}")
-        print(f"📏 Shape: {df.shape}")
+        print(f"\n📊 Columns found: {list(df.columns)}")
+        print(f"📏 Total rows: {len(df)}")
 
-        # Find columns (flexible matching)
-        step_col = self._find_column(
-            df, ["Inputs Required", "Step Name", "Step", "Name", "Sr.No."]
-        )
-        explanation_col = self._find_column(
-            df, ["Instructions", "Explanation", "Description"]
-        )
-        input_col = self._find_column(df, ["INPUT details", "Input", "Input Required"])
-        kql_col = self._find_column(df, ["KQL Query", "Query", "KQL"])
+        # Map to YOUR template structure
+        step_name_col = "Inputs Required"  # ✅ THIS is the original step name!
+        explanation_col = "Instructions"
+        input_col = "INPUT details"
+        kql_col = None  # Your template doesn't have KQL in original
 
-        if not step_col:
-            print("❌ No step column found")
+        # Check if columns exist
+        if step_name_col not in df.columns:
+            print(f"❌ Column '{step_name_col}' not found!")
+            print(f"Available columns: {list(df.columns)}")
             return []
 
-        print(
-            f"✅ Mapped - Step: {step_col}, Explanation: {explanation_col}, Input: {input_col}, KQL: {kql_col}"
-        )
+        print(f"\n✅ Using columns:")
+        print(f"   Step Name: '{step_name_col}'")
+        print(f"   Explanation: '{explanation_col}'")
+        print(f"   Input: '{input_col}'")
 
         steps = []
-        skipped = []
 
         for idx, row in df.iterrows():
-            step_name = str(row.get(step_col, "")).strip()
-
-            # Skip empty
-            if not step_name or step_name == "nan" or len(step_name) < 2:
-                continue
-
-            # Skip only OBVIOUS metadata
-            if self._is_metadata_row(step_name):
-                skipped.append(f"Row {idx}: {step_name}")
-                continue
-
-            # ✅ EXTRACT EXACTLY AS-IS
+            # Get ORIGINAL step name from "Inputs Required" column
+            original_step_name = str(row.get(step_name_col, "")).strip()
             explanation = (
-                str(row.get(explanation_col, "")).strip() if explanation_col else ""
+                str(row.get(explanation_col, "")).strip()
+                if explanation_col in df.columns
+                else ""
             )
-            input_details = str(row.get(input_col, "")).strip() if input_col else ""
-            kql_query = str(row.get(kql_col, "")).strip() if kql_col else ""
+            input_details = (
+                str(row.get(input_col, "")).strip() if input_col in df.columns else ""
+            )
 
-            # Clean 'nan' strings
+            # Skip empty rows
+            if (
+                not original_step_name
+                or original_step_name == "nan"
+                or len(original_step_name) < 2
+            ):
+                continue
+
+            # Skip metadata headers
+            if self._is_metadata_header(original_step_name):
+                print(f"⏭️ Skipping metadata: {original_step_name}")
+                continue
+
+            # Clean 'nan' strings only
             if explanation == "nan":
                 explanation = ""
             if input_details == "nan":
                 input_details = ""
-            if kql_query == "nan":
-                kql_query = ""
 
-            # ✅ MINIMAL CLEANUP - PRESERVE ORIGINAL
-            clean_step_name = self._minimal_cleanup(step_name)
-            clean_explanation = self._minimal_cleanup(explanation)
-            clean_kql = self._minimal_kql_cleanup(kql_query)
-
-            # ✅ STORE EXACTLY AS-IS
+            # ✅ STORE EXACT ORIGINAL
             step = {
-                "step_name": clean_step_name,  # Original name preserved
-                "explanation": clean_explanation,  # Original explanation preserved
-                "input_required": (
-                    input_details if input_details else "Investigation data"
-                ),
-                "kql_query": clean_kql,  # Original KQL preserved
+                "step_name": original_step_name,  # ✅ FROM "Inputs Required" - THE REAL NAME!
+                "explanation": explanation,  # ✅ FROM "Instructions"
+                "input_required": input_details,  # ✅ FROM "INPUT details"
+                "kql_query": "",  # Empty - KQL will be added by enhancer
             }
 
-            print(f"\n✅ Extracted Step {len(steps) + 1}: {clean_step_name}")
+            print(f"\n✅ Step {len(steps) + 1}: '{original_step_name}'")
             if explanation:
-                print(f"   Explanation: {explanation[:60]}...")
-            if kql_query:
-                print(f"   KQL: {len(kql_query)} chars")
+                print(f"   Explanation: {explanation[:80]}...")
 
             steps.append(step)
 
         print(f"\n✅ EXTRACTED {len(steps)} ORIGINAL STEPS")
-        if skipped:
-            print(f"⏭️ Skipped {len(skipped)} metadata rows")
-
         return steps
 
-    def _is_metadata_row(self, step_name: str) -> bool:
-        """Identify ONLY metadata rows (be conservative)"""
-        step_lower = step_name.lower().strip()
+    def _is_metadata_header(self, text: str) -> bool:
+        """Skip only obvious metadata headers"""
+        text_lower = text.lower().strip()
 
-        # Only skip these EXACT patterns
-        skip_patterns = [
-            r"^rule\s*#?\d+\s*-",  # "Rule#183 - "
-            r"^incident\s*number",
-            r"^reported\s*time",
-            r"^username\s*:",
-            r"^vip\s*users?\s*list",
-            r"^sr\.?\s*no\.?\s*$",
-            r"^step\s*$",
-            r"^inputs?\s*required\s*$",
-            r"^instructions?\s*$",
+        metadata_patterns = [
+            text_lower.startswith("rule#"),
+            text_lower.startswith("rule #"),
+            text_lower.startswith("incident"),
+            text_lower.startswith("reported time"),
+            text_lower == "sr.no.",
+            text_lower == "inputs required",
+            text_lower == "instructions",
+            text_lower == "input details",
         ]
 
-        return any(re.match(pattern, step_lower) for pattern in skip_patterns)
-
-    def _minimal_cleanup(self, text: str) -> str:
-        """MINIMAL cleanup - preserve original as much as possible"""
-        if not text:
-            return text
-
-        # Remove ONLY leading numbers
-        text = re.sub(r"^\d+\.?\s*", "", text)
-        text = re.sub(r"^Step\s*\d+:?\s*", "", text, flags=re.IGNORECASE)
-
-        # Remove excessive whitespace
-        text = " ".join(text.split())
-
-        return text.strip()
-
-    def _minimal_kql_cleanup(self, kql: str) -> str:
-        """MINIMAL KQL cleanup - preserve structure"""
-        if not kql or kql.strip().upper() in ["N/A", "NA", ""]:
-            return ""
-
-        # Remove ONLY code blocks
-        kql = re.sub(r"```[a-z]*\s*\n?", "", kql)
-        kql = re.sub(r"\n?```", "", kql)
-
-        # Preserve structure
-        lines = [line.rstrip() for line in kql.split("\n") if line.strip()]
-        kql = "\n".join(lines)
-
-        return kql.strip()
-
-    def _find_column(self, df: pd.DataFrame, possible_names: List[str]) -> str:
-        """Find column by name matching"""
-        for col in df.columns:
-            col_lower = col.lower().strip()
-            for possible in possible_names:
-                if possible.lower() in col_lower:
-                    return col
-        return None
+        return any(metadata_patterns)
