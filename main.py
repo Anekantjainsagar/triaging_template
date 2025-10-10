@@ -579,7 +579,7 @@ elif st.session_state.step == 2:
             )
 
             with tab1:
-                st.dataframe(template_df, use_container_width=True, height=400)
+                st.dataframe(template_df, width="stretch", height=400)
 
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -772,7 +772,7 @@ elif st.session_state.step == 2:
                     data=st.session_state.excel_template_data,
                     file_name=f"triaging_template_{rule_number.replace('#', '_')}_enhanced.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True,
+                    width="stretch",
                     type="primary",
                 )
 
@@ -796,7 +796,7 @@ elif st.session_state.step == 2:
                     data=json.dumps(json_export, indent=2),
                     file_name=f"triaging_template_{rule_number.replace('#', '_')}_validated.json",
                     mime="application/json",
-                    use_container_width=True,
+                    width="stretch",
                 )
 
             with col3:
@@ -814,12 +814,10 @@ elif st.session_state.step == 2:
                         data=kql_export,
                         file_name=f"kql_queries_{rule_number.replace('#', '_')}_validated.kql",
                         mime="text/plain",
-                        use_container_width=True,
+                        width="stretch",
                     )
                 else:
-                    st.button(
-                        "🔍 No KQL Queries", disabled=True, use_container_width=True
-                    )
+                    st.button("🔍 No KQL Queries", disabled=True, width="stretch")
 
             st.markdown("---")
 
@@ -901,9 +899,7 @@ elif st.session_state.step == 2:
                     st.rerun()
 
             with col3:
-                if st.button(
-                    "🔄 Start New Search", type="primary", use_container_width=True
-                ):
+                if st.button("🔄 Start New Search", type="primary", width="stretch"):
                     for key in list(st.session_state.keys()):
                         if key != "all_data":
                             del st.session_state[key]
