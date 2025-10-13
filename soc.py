@@ -8,8 +8,8 @@ os.environ["CREWAI_TELEMETRY"] = "false"
 
 from config.styles import apply_custom_css
 from components.alert_analysis import display_alert_analysis_tab
-from components.historical_analysis import display_historical_analysis_tab
 from components.predictions_page import display_predictions_page
+from components.historical_analysis import display_historical_analysis_tab
 
 
 # Suppress the execution traces prompt
@@ -233,19 +233,8 @@ def main():
                 st.session_state.selected_rule_data = None
                 st.rerun()
 
-            st.markdown("### 🔍 Threat Intelligence")
-            st.info(
-                "AI-powered analysis using Ollama for threat intelligence and MITRE ATT&CK mapping."
-            )
+            st.markdown("---")
 
-        # Info for predictions page
-        else:
-            st.markdown("### 📊 MITRE ATT&CK Analysis")
-            st.info(
-                "Upload investigation data to perform advanced threat analysis with MITRE ATT&CK framework integration."
-            )
-
-        st.markdown("---")
         st.caption("© 2025 SOC Intelligence Dashboard")
 
     # Route to appropriate page
