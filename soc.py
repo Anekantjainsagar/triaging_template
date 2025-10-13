@@ -9,6 +9,7 @@ os.environ["CREWAI_TELEMETRY"] = "false"
 from config.styles import apply_custom_css
 from components.alert_analysis import display_alert_analysis_tab
 from components.historical_analysis import display_historical_analysis_tab
+from components.predictions_page import display_predictions_page
 
 
 # Suppress the execution traces prompt
@@ -56,10 +57,10 @@ def initialize_analyzer():
         if analyzer.load_and_process_data():
             return analyzer, alert_analyzer
         else:
-            return None, None, None
+            return None, None
     except Exception as e:
         st.error(f"Error initializing analyzer: {e}")
-        return None, None, None
+        return None, None
 
 
 def display_rule_suggestion(rule_data, index):
@@ -80,8 +81,8 @@ def display_rule_suggestion(rule_data, index):
     )
 
 
-def main():
-    """Main Streamlit application"""
+def display_soc_dashboard():
+    """Display the main SOC Dashboard page"""
 
     # Header
     st.title("🛡️ SOC Intelligence Dashboard")
@@ -98,8 +99,6 @@ def main():
         st.session_state.selected_rule_data = None
     if "analyzer" not in st.session_state:
         st.session_state.analyzer = None
-    if "analysis_engine" not in st.session_state:
-        st.session_state.analysis_engine = None
     if "alert_analyzer" not in st.session_state:
         st.session_state.alert_analyzer = None
 
@@ -118,42 +117,6 @@ def main():
                 )
                 st.stop()
 
-    # Sidebar with system info
-    with st.sidebar:
-        st.markdown("### 📋 System Information")
-
-        if st.session_state.analyzer and st.session_state.analyzer.df is not None:
-            total_records = len(st.session_state.analyzer.df)
-            unique_rules = (
-                st.session_state.analyzer.df["RULE"].nunique()
-                if "RULE" in st.session_state.analyzer.df.columns
-                else 0
-            )
-
-            st.metric("Total Records", f"{total_records:,}")
-            st.metric("Unique Rules", unique_rules)
-
-            if "source_file" in st.session_state.analyzer.df.columns:
-                sources = st.session_state.analyzer.df["source_file"].nunique()
-                st.metric("Data Sources", sources)
-
-        st.markdown("### 🔧 Actions")
-        if st.button("🔄 Refresh System", help="Reload data and reinitialize"):
-            st.session_state.analyzer = None
-            st.session_state.analysis_engine = None
-            st.session_state.alert_analyzer = None
-            st.rerun()
-
-        if st.button("🗑️ Clear Selection", help="Clear current selection"):
-            st.session_state.current_suggestions = []
-            st.session_state.selected_rule_data = None
-            st.rerun()
-
-        st.markdown("### 🔍 Threat Intelligence")
-        st.info(
-            "AI-powered analysis using Ollama for threat intelligence and MITRE ATT&CK mapping."
-        )
-
     # Main search interface
     st.markdown("### 🔍 Rule Search & Analysis")
 
@@ -162,7 +125,7 @@ def main():
         placeholder="Type rule name or keywords...",
     )
 
-    if st.button("🔍 Search Rules", width="stretch") and user_query:
+    if st.button("🔎 Search Rules", width="stretch") and user_query:
         with st.spinner(f"🔍 Searching for: '{user_query}'"):
             suggestions = st.session_state.analyzer.get_rule_suggestions(
                 user_query, top_k=5
@@ -218,6 +181,78 @@ def main():
 
         with tab2:
             display_historical_analysis_tab(data_df)
+
+
+def main():
+    """Main Streamlit application with sidebar navigation"""
+
+    # Sidebar navigation
+    with st.sidebar:
+        st.title("🛡️ SOC Hub")
+        st.markdown("---")
+
+        # Navigation
+        page = st.radio(
+            "Navigation",
+            ["🏠 Dashboard", "🔮 Predictions & MITRE"],
+            label_visibility="collapsed",
+        )
+
+        st.markdown("---")
+
+        # System info for dashboard page
+        if page == "🏠 Dashboard":
+            st.markdown("### 📋 System Information")
+
+            if (
+                st.session_state.get("analyzer")
+                and st.session_state.analyzer.df is not None
+            ):
+                total_records = len(st.session_state.analyzer.df)
+                unique_rules = (
+                    st.session_state.analyzer.df["RULE"].nunique()
+                    if "RULE" in st.session_state.analyzer.df.columns
+                    else 0
+                )
+
+                st.metric("Total Records", f"{total_records:,}")
+                st.metric("Unique Rules", unique_rules)
+
+                if "source_file" in st.session_state.analyzer.df.columns:
+                    sources = st.session_state.analyzer.df["source_file"].nunique()
+                    st.metric("Data Sources", sources)
+
+            st.markdown("### 🔧 Actions")
+            if st.button("🔄 Refresh System", help="Reload data and reinitialize"):
+                st.session_state.analyzer = None
+                st.session_state.alert_analyzer = None
+                st.rerun()
+
+            if st.button("🗑️ Clear Selection", help="Clear current selection"):
+                st.session_state.current_suggestions = []
+                st.session_state.selected_rule_data = None
+                st.rerun()
+
+            st.markdown("### 🔍 Threat Intelligence")
+            st.info(
+                "AI-powered analysis using Ollama for threat intelligence and MITRE ATT&CK mapping."
+            )
+
+        # Info for predictions page
+        else:
+            st.markdown("### 📊 MITRE ATT&CK Analysis")
+            st.info(
+                "Upload investigation data to perform advanced threat analysis with MITRE ATT&CK framework integration."
+            )
+
+        st.markdown("---")
+        st.caption("© 2025 SOC Intelligence Dashboard")
+
+    # Route to appropriate page
+    if page == "🏠 Dashboard":
+        display_soc_dashboard()
+    else:
+        display_predictions_page()
 
 
 if __name__ == "__main__":

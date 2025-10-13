@@ -58,7 +58,7 @@ def display_alert_analysis_tab(rule_name: str, alert_analyzer):
                 data=analysis,
                 file_name=f"threat_analysis_{rule_name[:30]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                 mime="text/markdown",
-                use_container_width=True,
+                width="stretch",
             )
 
     except Exception as e:
