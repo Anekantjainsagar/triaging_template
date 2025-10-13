@@ -15,7 +15,7 @@ class DataReadingTool(BaseTool):
     def _run(self, query: str = "") -> str:
         """Read all tracker sheets and return data as JSON string."""
         try:
-            from src.utils import read_all_tracker_sheets
+            from routes.src.utils import read_all_tracker_sheets
 
             df = read_all_tracker_sheets("data")
 
@@ -38,7 +38,7 @@ class AlertSearchTool(BaseTool):
     def _run(self, query: str) -> str:
         """Search for alerts matching the query."""
         try:
-            from src.utils import read_all_tracker_sheets, search_alerts_in_data
+            from routes.src.utils import read_all_tracker_sheets, search_alerts_in_data
 
             df = read_all_tracker_sheets("data")
 
@@ -63,7 +63,10 @@ class IncidentConsolidationTool(BaseTool):
     def _run(self, incident_id: str) -> str:
         """Consolidate data for a specific incident."""
         try:
-            from src.utils import read_all_tracker_sheets, consolidate_incident_data
+            from routes.src.utils import (
+                read_all_tracker_sheets,
+                consolidate_incident_data,
+            )
             import json
 
             df = read_all_tracker_sheets("data")
@@ -89,7 +92,7 @@ class TemplateRetrievalTool(BaseTool):
     def _run(self, rule_number: str) -> str:
         """Retrieve template for a rule."""
         try:
-            from src.utils import get_triaging_template
+            from routes.src.utils import get_triaging_template
 
             template = get_triaging_template(rule_number)
             return template

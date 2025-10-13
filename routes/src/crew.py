@@ -1,7 +1,7 @@
 import re
 from crewai import Crew, Process
-from src.tasks import TriagingTasks
-from src.agents import TriagingAgents
+from routes.src.tasks import TriagingTasks
+from routes.src.agents import TriagingAgents
 
 
 class TriagingCrew:
@@ -61,13 +61,13 @@ class TriagingCrew:
             print("=" * 80)
 
             # Get historical data
-            from src.utils import read_all_tracker_sheets, consolidate_rule_data
+            from routes.src.utils import read_all_tracker_sheets, consolidate_rule_data
 
             all_data = read_all_tracker_sheets("data")
             rule_history = consolidate_rule_data(all_data, rule_number)
 
             # ========== STEP 1: PARSE TEMPLATE (GET ORIGINAL STEPS) ==========
-            from src.template_parser import TemplateParser
+            from routes.src.template_parser import TemplateParser
             import os
 
             parser = TemplateParser()
@@ -109,7 +109,7 @@ class TriagingCrew:
                         print(f"✅ Parsed {len(original_steps)} original steps")
 
                         # ✅ ENHANCE ONLY EXPLANATIONS (PRESERVE NAMES & KQL)
-                        from src.web_llm_enhancer import WebLLMEnhancer
+                        from routes.src.web_llm_enhancer import WebLLMEnhancer
 
                         enhancer = WebLLMEnhancer()
 
@@ -313,7 +313,7 @@ Justification: {data.get('justification', 'N/A')}
             print("=" * 80)
 
             # Get historical data
-            from src.utils import read_all_tracker_sheets, consolidate_rule_data
+            from routes.src.utils import read_all_tracker_sheets, consolidate_rule_data
 
             all_data = read_all_tracker_sheets("data")
             rule_history = consolidate_rule_data(all_data, rule_number)
@@ -362,7 +362,7 @@ Justification: {data.get('justification', 'N/A')}
             traceback.print_exc()
 
             # Return fallback prediction
-            from src.utils import read_all_tracker_sheets, consolidate_rule_data
+            from routes.src.utils import read_all_tracker_sheets, consolidate_rule_data
 
             all_data = read_all_tracker_sheets("data")
             rule_history = consolidate_rule_data(all_data, rule_number)

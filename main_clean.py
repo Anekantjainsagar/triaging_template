@@ -5,8 +5,8 @@ import pandas as pd
 import traceback
 
 # Existing imports
-from src.crew import TriagingCrew
-from src.utils import (
+from routes.src.crew import TriagingCrew
+from routes.src.utils import (
     read_all_tracker_sheets,
     search_alerts_in_data,
     export_rule_incidents_to_excel,
@@ -14,10 +14,10 @@ from src.utils import (
 )
 
 # NEW IMPORTS - Add these
-from src.template_parser import TemplateParser
-from src.web_llm_enhancer import WebLLMEnhancer
-from src.template_generator import EnhancedTemplateGenerator
-from src.csv_template_generator import generate_blank_triaging_template_csv
+from routes.src.template_parser import TemplateParser
+from routes.src.web_llm_enhancer import WebLLMEnhancer
+from routes.src.template_generator import EnhancedTemplateGenerator
+from routes.src.csv_template_generator import generate_blank_triaging_template_csv
 
 from config.triaging_styles import main_header_style
 

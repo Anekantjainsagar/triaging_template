@@ -1,6 +1,5 @@
 import os
 import re
-import pickle
 import warnings
 import pandas as pd
 from typing import Dict, List
@@ -10,11 +9,8 @@ warnings.filterwarnings("ignore")
 # NLP and ML imports
 try:
     import nltk
-    from nltk.corpus import stopwords
     from sklearn.cluster import KMeans
     from nltk.stem import WordNetLemmatizer
-    from nltk.tokenize import word_tokenize
-    from sklearn.metrics.pairwise import cosine_similarity
     from sklearn.feature_extraction.text import TfidfVectorizer
 
     nltk.download("punkt", quiet=True)

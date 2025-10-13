@@ -8,8 +8,8 @@ import json
 import traceback
 
 # Existing imports
-from src.crew import TriagingCrew
-from src.utils import (
+from routes.src.crew import TriagingCrew
+from routes.src.utils import (
     read_all_tracker_sheets,
     search_alerts_in_data,
     export_rule_incidents_to_excel,
@@ -17,10 +17,10 @@ from src.utils import (
 )
 
 # NEW IMPORTS - Add these
-from src.template_parser import TemplateParser
-from src.web_llm_enhancer import WebLLMEnhancer
-from src.template_generator import EnhancedTemplateGenerator
-from src.csv_template_generator import generate_blank_triaging_template_csv
+from routes.src.template_parser import TemplateParser
+from routes.src.web_llm_enhancer import WebLLMEnhancer
+from routes.src.template_generator import EnhancedTemplateGenerator
+from routes.src.csv_template_generator import generate_blank_triaging_template_csv
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -227,9 +227,7 @@ if st.session_state.step == 0:
                     st.session_state.step = 1
                     st.rerun()
                 else:
-                    st.warning(
-                        "⚠️ No relevant alerts found. Try different keywords."
-                    )
+                    st.warning("⚠️ No relevant alerts found. Try different keywords.")
 
             except Exception as e:
                 st.error(f"❌ Error during search: {str(e)}")
@@ -1114,7 +1112,7 @@ if st.session_state.step == 4:
     if st.session_state.excel_template_data is None:
         with st.spinner("Generating Excel template..."):
             try:
-                from src.template_generator import TriagingTemplateGenerator
+                from routes.src.template_generator import TriagingTemplateGenerator
 
                 template_gen = TriagingTemplateGenerator()
 
@@ -1361,9 +1359,7 @@ elif st.session_state.step == 3:
 
         # Display the formatted step
         st.markdown(f"***")
-        st.markdown(
-            f"### {current_step_index + 1}. {current_step.get('step_name')} 🔍"
-        )
+        st.markdown(f"### {current_step_index + 1}. {current_step.get('step_name')} 🔍")
         st.markdown(f"* **Explanation:** {current_step.get('explanation')}")
         st.markdown(f"* **Input Required:** {current_step.get('input_required')}")
 

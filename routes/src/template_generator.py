@@ -8,8 +8,8 @@ class CompleteTemplateGenerator:
 
     def __init__(self, kql_generator=None, step_name_generator=None):
         # Import generators
-        from src.kql_generation import DynamicKQLGenerator
-        from src.step_name import IntelligentStepNameGenerator
+        from routes.src.kql_generation import DynamicKQLGenerator
+        from routes.src.step_name import IntelligentStepNameGenerator
 
         self.kql_gen = kql_generator or DynamicKQLGenerator()
         self.name_gen = step_name_generator or IntelligentStepNameGenerator()
@@ -223,8 +223,8 @@ class CompleteTemplateGenerator:
 class EnhancedTemplateGenerator:
 
     def __init__(self):
-        from src.kql_generation import DynamicKQLGenerator
-        from src.step_name import IntelligentStepNameGenerator
+        from routes.src.kql_generation import DynamicKQLGenerator
+        from routes.src.step_name import IntelligentStepNameGenerator
 
         self.kql_gen = DynamicKQLGenerator()
         self.name_gen = IntelligentStepNameGenerator()
@@ -255,7 +255,7 @@ class EnhancedTemplateGenerator:
             DataFrame with clean template
         """
         # Get rule history
-        from src.utils import read_all_tracker_sheets, consolidate_rule_data
+        from routes.src.utils import read_all_tracker_sheets, consolidate_rule_data
 
         try:
             all_data = read_all_tracker_sheets("data")
