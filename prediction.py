@@ -5,7 +5,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 # Import backend
-from predictions_backend import InvestigationAnalyzer, parse_excel_data
+from backend.predictions_backend import InvestigationAnalyzer, parse_excel_data
 
 load_dotenv()
 
@@ -262,7 +262,7 @@ def create_complete_mitre_matrix(
     Create complete MITRE ATT&CK matrix with ALL techniques shown in grey,
     then highlight observed (RED/AMBER/GREEN) and predicted (BLUE) techniques.
     """
-    from predictions_backend import MITREAttackAnalyzer
+    from backend.predictions_backend import MITREAttackAnalyzer
 
     # Get the complete MITRE data structure
     temp_analyzer = MITREAttackAnalyzer(api_key="dummy")

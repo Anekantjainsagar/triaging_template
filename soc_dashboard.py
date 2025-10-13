@@ -26,8 +26,8 @@ class SuppressOutput:
 
 
 try:
-    from alert_analysis.analyzer_backend import SecurityAlertAnalyzerCrew
-    from alert_analysis.soc_analyzer import IntelligentSOCAnalyzer
+    from backend.analyzer_backend import SecurityAlertAnalyzerCrew
+    from backend.soc_analyzer import IntelligentSOCAnalyzer
 except ImportError:
     st.error("Please make sure required files are in the correct directory")
     st.stop()
@@ -211,9 +211,7 @@ def main():
         )
 
         # Create tabs for different analysis sections
-        tab1, tab2 = st.tabs(
-            ["🤖 AI Threat Analysis", "📊 Historical Analysis"]
-        )
+        tab1, tab2 = st.tabs(["🤖 AI Threat Analysis", "📊 Historical Analysis"])
 
         with tab1:
             display_alert_analysis_tab(rule_name, st.session_state.alert_analyzer)
