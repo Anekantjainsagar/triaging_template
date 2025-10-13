@@ -1,5 +1,5 @@
 import streamlit as st
-from config.triaging_styles import main_header_style
+from frontend.config.triaging_styles import main_header_style
 from api_client.search_alert_api_client import get_api_client
 
 # Import frontend step components

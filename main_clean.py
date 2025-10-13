@@ -19,7 +19,7 @@ from routes.src.web_llm_enhancer import WebLLMEnhancer
 from routes.src.template_generator import EnhancedTemplateGenerator
 from routes.src.csv_template_generator import generate_blank_triaging_template_csv
 
-from config.triaging_styles import main_header_style
+from frontend.config.triaging_styles import main_header_style
 
 # Imports for the individual steps
 from components.triaging.step0_search import show_page as step0_search

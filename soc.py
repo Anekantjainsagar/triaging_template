@@ -6,7 +6,7 @@ import streamlit as st
 # Suppress CrewAI traces globally
 os.environ["CREWAI_TELEMETRY"] = "false"
 
-from config.styles import apply_custom_css
+from frontend.config.styles import apply_custom_css
 from components.alert_analysis import display_alert_analysis_tab
 from components.predictions_page import display_predictions_page
 from components.historical_analysis import display_historical_analysis_tab

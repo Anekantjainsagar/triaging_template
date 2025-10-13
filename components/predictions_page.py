@@ -5,9 +5,12 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 # Import backend
-from config.styles import apply_predictions_css
+from frontend.config.styles import apply_predictions_css
 from backend.predictions_backend import InvestigationAnalyzer, parse_excel_data
-from utils.predictions.display_utils import display_mitre_analysis, display_analysis_results
+from frontend.utils.predictions.display_utils import (
+    display_mitre_analysis,
+    display_analysis_results,
+)
 
 load_dotenv()
 

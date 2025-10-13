@@ -1,7 +1,7 @@
 import json
 import streamlit as st
 from datetime import datetime
-from utils.predictions.mitre_utils import create_complete_mitre_matrix
+from frontend.utils.predictions.mitre_utils import create_complete_mitre_matrix
 
 
 def display_metric_with_info(label: str, value: str, info_text: str, col):
