@@ -4,6 +4,17 @@ from typing import List, Dict
 
 
 class TemplateParser:
+    """
+    ✅ ULTRA-STRICT PARSER - Reads from CORRECT source columns
+
+    Based on your template structure:
+    - Sr.No. = Step number
+    - Inputs Required = ORIGINAL step name (THIS IS WHAT WE WANT!)
+    - INPUT details = Input data
+    - Instructions = Explanation
+    - (Name column is IGNORED - it's generated, not original)
+    """
+
     def parse_csv_template(self, csv_path: str) -> List[Dict]:
         """Parse CSV with ZERO modification"""
         print(f"\n📋 Parsing CSV: {csv_path}")

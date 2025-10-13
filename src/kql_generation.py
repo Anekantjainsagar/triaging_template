@@ -315,3 +315,34 @@ Generate KQL query:"""
 
         return kql.strip()
 
+
+# Example usage
+if __name__ == "__main__":
+    generator = DynamicKQLGenerator()
+
+    # Test cases
+    test_cases = [
+        (
+            "Check Role Assignment",
+            "Query Azure AD for privileged role assignments in last 7 days",
+            "Rule#014",
+        ),
+        (
+            "Analyze User Sign-Ins",
+            "Review sign-in patterns for suspicious activity",
+            "Rule#014",
+        ),
+        (
+            "Validate Initiator Permissions",
+            "Check if assigning user had legitimate access",
+            "Rule#014",
+        ),
+    ]
+
+    for step_name, explanation, context in test_cases:
+        print(f"\n{'='*80}")
+        kql = generator.generate_kql_query(step_name, explanation, context)
+        if kql:
+            print(f"\nGenerated KQL:\n{kql}")
+        else:
+            print("No query generated")

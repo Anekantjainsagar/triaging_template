@@ -321,7 +321,8 @@ def search_alerts_in_data(df: pd.DataFrame, query: str, top_n: int = 5) -> list:
         incident = str(row.get("incident_no", "N/A"))
 
         if rule not in seen_rules:
-            results.append(rule)
+            alert_key = f"{rule} - Incident {incident}"
+            results.append(alert_key)
             seen_rules.add(rule)
 
         if len(results) >= top_n:
