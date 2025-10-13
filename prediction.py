@@ -1,11 +1,8 @@
 import os
 import json
-import pandas as pd
 import streamlit as st
-import plotly.express as px
 from datetime import datetime
 from dotenv import load_dotenv
-import plotly.graph_objects as go
 
 # Import backend
 from predictions_backend import InvestigationAnalyzer, parse_excel_data
@@ -144,13 +141,40 @@ st.markdown(
         color: white;
         font-weight: bold;
     }
-    .severity-none {
-        background-color: transparent;
-        color: #6b7280;
+    .severity-blue {
+        background-color: #3b82f6;
+        color: white;
+        font-weight: bold;
+    }
+    .severity-grey {
+        background-color: #9ca3af;
+        color: white;
     }
     .technique-id {
         font-size: 0.65rem;
         opacity: 0.8;
+    }
+    .info-tooltip {
+        background-color: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin: 1rem 0;
+        font-size: 0.9rem;
+    }
+    .timeline-item {
+        background-color: #f8fafc;
+        border-left: 3px solid #3b82f6;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-radius: 0 0.5rem 0.5rem 0;
+    }
+    .procedure-box {
+        background-color: #fef3c7;
+        border: 1px solid #fbbf24;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin: 0.5rem 0;
     }
     </style>
     """,
@@ -158,11 +182,95 @@ st.markdown(
 )
 
 
-def create_mitre_attack_matrix(techniques_data: list) -> str:
-    """Create MITRE ATT&CK matrix visualization in tabular format"""
+def get_mitre_technique_ids():
+    """
+    Returns a mapping of technique names to their actual MITRE ATT&CK IDs.
+    This should ideally be loaded from the official MITRE ATT&CK JSON/STIX data.
+    """
+    return {
+        # Initial Access
+        "Valid Accounts": "T1078",
+        "Phishing": "T1566",
+        "External Remote Services": "T1133",
+        "Exploit Public-Facing Application": "T1190",
+        # Persistence
+        "Account Manipulation": "T1098",
+        "Create Account": "T1136",
+        "Valid Accounts": "T1078",
+        # Privilege Escalation
+        "Account Manipulation": "T1098",
+        "Valid Accounts": "T1078",
+        "Abuse Elevation Control Mechanism": "T1548",
+        # Defense Evasion
+        "Impair Defenses": "T1562",
+        "Valid Accounts": "T1078",
+        "Modify Authentication Process": "T1556",
+        # Credential Access
+        "Brute Force": "T1110",
+        "Multi-Factor Authentication Interception": "T1111",
+        "OS Credential Dumping": "T1003",
+        "Steal Application Access Token": "T1528",
+        # Discovery
+        "Account Discovery": "T1087",
+        "Cloud Infrastructure Discovery": "T1580",
+        "Cloud Service Discovery": "T1526",
+        "Cloud Storage Object Discovery": "T1530",
+        # Lateral Movement
+        "Remote Services": "T1021",
+        "Use Alternate Authentication Material": "T1550",
+        # Collection
+        "Data from Cloud Storage": "T1530",
+        "Email Collection": "T1114",
+        # Exfiltration
+        "Exfiltration Over Web Service": "T1567",
+        "Transfer Data to Cloud Account": "T1537",
+        # Impact
+        "Data Encrypted for Impact": "T1486",
+        "Account Access Removal": "T1531",
+    }
 
-    if not techniques_data:
-        return "<p>No technique data available</p>"
+
+def get_mitre_subtechnique_ids():
+    """
+    Returns a mapping of sub-technique names to their IDs.
+    Format: "Parent Technique > Sub-technique": "T####.###"
+    """
+    return {
+        # Valid Accounts sub-techniques
+        "Valid Accounts > Default Accounts": "T1078.001",
+        "Valid Accounts > Domain Accounts": "T1078.002",
+        "Valid Accounts > Local Accounts": "T1078.003",
+        "Valid Accounts > Cloud Accounts": "T1078.004",
+        # Account Manipulation sub-techniques
+        "Account Manipulation > Additional Cloud Credentials": "T1098.001",
+        "Account Manipulation > Additional Email Delegate Permissions": "T1098.002",
+        "Account Manipulation > Additional Cloud Roles": "T1098.003",
+        "Account Manipulation > SSH Authorized Keys": "T1098.004",
+        "Account Manipulation > Device Registration": "T1098.005",
+        # Exfiltration Over Web Service
+        "Exfiltration Over Web Service > Exfiltration to Code Repository": "T1567.001",
+        "Exfiltration Over Web Service > Exfiltration to Cloud Storage": "T1567.002",
+        "Exfiltration Over Web Service > Exfiltration to Text Storage Sites": "T1567.003",
+        # Add more as needed...
+    }
+
+
+def create_complete_mitre_matrix(
+    techniques_data: list, predicted_steps: list = None
+) -> str:
+    """
+    Create complete MITRE ATT&CK matrix with ALL techniques shown in grey,
+    then highlight observed (RED/AMBER/GREEN) and predicted (BLUE) techniques.
+    """
+    from predictions_backend import MITREAttackAnalyzer
+
+    # Get the complete MITRE data structure
+    temp_analyzer = MITREAttackAnalyzer(api_key="dummy")
+    mitre_full_data = temp_analyzer.mitre_data
+
+    # Get technique ID mappings
+    technique_ids = get_mitre_technique_ids()
+    subtechnique_ids = get_mitre_subtechnique_ids()
 
     # Define all 14 MITRE ATT&CK tactics
     tactics = [
@@ -182,28 +290,77 @@ def create_mitre_attack_matrix(techniques_data: list) -> str:
         "Impact",
     ]
 
-    # Organize techniques by tactic
+    # Create lookup for observed/predicted techniques by name
+    observed_map = {}
+    for tech in techniques_data:
+        key = f"{tech.get('tactic')}||{tech.get('technique')}"
+        observed_map[key] = {
+            "severity": tech.get("severity", "GREY"),
+            "confidence": tech.get("confidence", 0),
+            "type": "observed",
+            "sub_technique": tech.get("sub_technique", ""),
+            "sub_technique_id": tech.get("sub_technique_id", ""),
+        }
+
+    predicted_map = {}
+    if predicted_steps:
+        for pred in predicted_steps:
+            key = f"{pred.get('tactic')}||{pred.get('technique')}"
+            predicted_map[key] = {
+                "severity": "BLUE",
+                "confidence": 0,
+                "type": "predicted",
+                "sub_technique": pred.get("sub_technique", ""),
+                "sub_technique_id": pred.get("sub_technique_id", ""),
+            }
+
+    # Build complete technique list with ALL MITRE techniques
     tactic_techniques = {tactic: [] for tactic in tactics}
 
-    for technique in techniques_data:
-        tactic = technique.get("tactic", "")
-        if tactic in tactic_techniques:
-            tactic_techniques[tactic].append(technique)
+    for tactic in tactics:
+        if tactic not in mitre_full_data:
+            continue
 
-    # Build HTML table
+        for technique_name, sub_techniques_list in mitre_full_data[tactic].items():
+            lookup_key = f"{tactic}||{technique_name}"
+
+            # Check if observed or predicted
+            if lookup_key in observed_map:
+                status = observed_map[lookup_key]
+            elif lookup_key in predicted_map:
+                status = predicted_map[lookup_key]
+            else:
+                status = {"severity": "GREY", "confidence": 0, "type": "default"}
+
+            # Get technique ID
+            tech_id = technique_ids.get(technique_name, "T????")
+
+            tech_data = {
+                "technique": technique_name,
+                "technique_id": tech_id,
+                "sub_technique": status.get("sub_technique", ""),
+                "sub_technique_id": status.get("sub_technique_id", ""),
+                "severity": status.get("severity", "GREY"),
+                "confidence": status.get("confidence", 0),
+                "type": status.get("type", "default"),
+                "has_subtechniques": len(sub_techniques_list) > 0,
+                "subtechniques_list": sub_techniques_list,
+            }
+
+            tactic_techniques[tactic].append(tech_data)
+
+    # Build HTML
     html = '<div class="mitre-matrix-container">'
     html += '<table class="mitre-matrix">'
 
-    # Header row
+    # Header
     html += "<tr>"
     for tactic in tactics:
-        html += f"<th>{tactic}</th>"
+        html += f"<th>{tactic}<br/><span style='font-size:0.8em;'>({len(tactic_techniques[tactic])} techniques)</span></th>"
     html += "</tr>"
 
-    # Find max techniques in any tactic
-    max_techniques = max(
-        [len(techniques) for techniques in tactic_techniques.values()] or [0]
-    )
+    # Find max techniques
+    max_techniques = max([len(techs) for techs in tactic_techniques.values()] or [1])
 
     # Build rows
     for row_idx in range(max_techniques):
@@ -213,56 +370,70 @@ def create_mitre_attack_matrix(techniques_data: list) -> str:
 
             if row_idx < len(techniques):
                 tech = techniques[row_idx]
-                technique_name = tech.get("technique", "Unknown")
-                technique_id = tech.get("technique_id", "")
-                sub_technique = tech.get("sub_technique", "")
-                sub_technique_id = tech.get("sub_technique_id", "")
-                severity = tech.get("severity", "GREEN").upper()
-                confidence = tech.get("confidence", 0)
 
-                # Determine severity class
-                severity_class = (
-                    f"severity-{severity.lower()}"
-                    if severity in ["RED", "AMBER", "GREEN"]
-                    else "severity-none"
-                )
+                # Determine color
+                severity = tech["severity"].upper()
+                tech_type = tech["type"]
 
-                # Build cell content
-                cell_content = f'<div class="technique-cell {severity_class}">'
-                cell_content += f"<div><strong>{technique_name}</strong></div>"
-                cell_content += f'<div class="technique-id">{technique_id}</div>'
+                if tech_type == "predicted":
+                    color_class = "severity-blue"
+                elif severity == "RED":
+                    color_class = "severity-red"
+                elif severity == "AMBER":
+                    color_class = "severity-amber"
+                elif severity == "GREEN":
+                    color_class = "severity-green"
+                else:
+                    color_class = "severity-grey"
 
-                if sub_technique and sub_technique != "N/A":
-                    cell_content += f'<div style="font-size: 0.65rem; margin-top: 2px;">↳ {sub_technique}</div>'
-                    if sub_technique_id:
-                        cell_content += (
-                            f'<div class="technique-id">{sub_technique_id}</div>'
-                        )
+                # Build cell
+                cell = f'<div class="technique-cell {color_class}">'
+                cell += f'<strong>{tech["technique"]}</strong><br/>'
+                cell += f'<span class="technique-id">{tech["technique_id"]}</span>'
 
-                cell_content += f'<div style="font-size: 0.6rem; margin-top: 2px;">Confidence: {confidence}%</div>'
-                cell_content += "</div>"
+                # Show sub-technique if highlighted
+                if tech["sub_technique"] and tech["type"] in ["observed", "predicted"]:
+                    cell += f'<br/><span style="font-size:0.65rem;">↳ {tech["sub_technique"]}</span>'
+                    if tech["sub_technique_id"]:
+                        cell += f'<br/><span class="technique-id">{tech["sub_technique_id"]}</span>'
 
-                html += f"<td>{cell_content}</td>"
+                # Show count of sub-techniques for grey techniques
+                if tech["has_subtechniques"] and tech["type"] == "default":
+                    count = len(tech["subtechniques_list"])
+                    cell += f'<br/><span style="font-size:0.6rem;opacity:0.6;">({count} sub-techs)</span>'
+
+                if tech["confidence"] > 0:
+                    cell += f'<br/><span style="font-size:0.6rem;">Conf: {tech["confidence"]}%</span>'
+                elif tech_type == "predicted":
+                    cell += '<br/><span style="font-size:0.6rem;">Predicted</span>'
+
+                cell += "</div>"
+                html += f"<td>{cell}</td>"
             else:
                 html += "<td></td>"
 
         html += "</tr>"
 
-    html += "</table>"
-    html += "</div>"
+    html += "</table></div>"
 
-    # Add legend
+    # Legend
     html += """
     <div style="margin-top: 1rem; padding: 1rem; background-color: #f3f4f6; border-radius: 0.5rem;">
-        <strong>Legend:</strong>
+        <strong>Complete MITRE ATT&CK Matrix - Legend:</strong>
         <span style="display: inline-block; margin-left: 1rem;">
-            <span style="background-color: #dc2626; color: white; padding: 2px 8px; border-radius: 3px; margin: 0 5px;">RED</span> Confirmed
+            <span style="background-color: #dc2626; color: white; padding: 2px 8px; border-radius: 3px; margin: 0 5px;">RED</span> Confirmed Observed
         </span>
         <span style="display: inline-block; margin-left: 1rem;">
-            <span style="background-color: #f59e0b; color: white; padding: 2px 8px; border-radius: 3px; margin: 0 5px;">AMBER</span> Likely
+            <span style="background-color: #f59e0b; color: white; padding: 2px 8px; border-radius: 3px; margin: 0 5px;">AMBER</span> Likely Observed
         </span>
         <span style="display: inline-block; margin-left: 1rem;">
-            <span style="background-color: #10b981; color: white; padding: 2px 8px; border-radius: 3px; margin: 0 5px;">GREEN</span> Predicted
+            <span style="background-color: #10b981; color: white; padding: 2px 8px; border-radius: 3px; margin: 0 5px;">GREEN</span> Possible Observed
+        </span>
+        <span style="display: inline-block; margin-left: 1rem;">
+            <span style="background-color: #3b82f6; color: white; padding: 2px 8px; border-radius: 3px; margin: 0 5px;">BLUE</span> Predicted Next Step
+        </span>
+        <span style="display: inline-block; margin-left: 1rem;">
+            <span style="background-color: #9ca3af; color: white; padding: 2px 8px; border-radius: 3px; margin: 0 5px;">GREY</span> All Other MITRE Techniques (Not Observed)
         </span>
     </div>
     """
@@ -270,243 +441,16 @@ def create_mitre_attack_matrix(techniques_data: list) -> str:
     return html
 
 
-def create_attack_timeline_chart(timeline_data: list) -> go.Figure:
-    """Create interactive attack timeline visualization"""
-
-    if not timeline_data:
-        return None
-
-    fig = go.Figure()
-
-    # Color mapping
-    color_map = {"RED": "#dc2626", "AMBER": "#f59e0b", "GREEN": "#10b981"}
-
-    stages = []
-    timestamps = []
-    techniques = []
-    colors = []
-    descriptions = []
-
-    for event in timeline_data:
-        stages.append(event.get("tactic", "Unknown"))
-        timestamps.append(event.get("timestamp", ""))
-        techniques.append(event.get("technique", "Unknown"))
-        colors.append(color_map.get(event.get("severity", "GREEN"), "#6b7280"))
-        descriptions.append(event.get("description", ""))
-
-    fig.add_trace(
-        go.Scatter(
-            x=list(range(len(stages))),
-            y=stages,
-            mode="markers+lines+text",
-            marker=dict(size=20, color=colors, line=dict(width=2, color="white")),
-            line=dict(width=3, color="#6b7280"),
-            text=techniques,
-            textposition="top center",
-            hovertemplate="<b>%{y}</b><br>%{text}<br>%{customdata}<extra></extra>",
-            customdata=descriptions,
-        )
-    )
-
-    fig.update_layout(
-        title="Attack Timeline & Progression",
-        xaxis_title="Attack Sequence",
-        yaxis_title="MITRE ATT&CK Tactic",
-        height=500,
-        template="plotly_dark",
-        showlegend=False,
-    )
-
-    return fig
-
-
-def create_mitre_heatmap(techniques_data: list) -> go.Figure:
-    """Create MITRE ATT&CK heatmap visualization with sub-techniques"""
-
-    if not techniques_data:
-        return None
-
-    # MITRE ATT&CK Tactics
-    tactics = [
-        "Reconnaissance",
-        "Resource Development",
-        "Initial Access",
-        "Execution",
-        "Persistence",
-        "Privilege Escalation",
-        "Defense Evasion",
-        "Credential Access",
-        "Discovery",
-        "Lateral Movement",
-        "Collection",
-        "Command and Control",
-        "Exfiltration",
-        "Impact",
-    ]
-
-    # Create matrix - now tracking sub-techniques separately
-    tactic_counts = {
-        tactic: {"RED": 0, "AMBER": 0, "GREEN": 0, "SUBTECHNIQUES": 0}
-        for tactic in tactics
-    }
-
-    for technique in techniques_data:
-        tactic = technique.get("tactic", "")
-        severity = technique.get("severity", "GREEN")
-        has_subtechnique = bool(
-            technique.get("sub_technique") and technique.get("sub_technique") != "N/A"
-        )
-
-        if tactic in tactic_counts:
-            tactic_counts[tactic][severity] += 1
-            if has_subtechnique:
-                tactic_counts[tactic]["SUBTECHNIQUES"] += 1
-
-    # Prepare data for heatmap
-    red_counts = [tactic_counts[t]["RED"] for t in tactics]
-    amber_counts = [tactic_counts[t]["AMBER"] for t in tactics]
-    green_counts = [tactic_counts[t]["GREEN"] for t in tactics]
-
-    fig = go.Figure()
-
-    fig.add_trace(
-        go.Bar(name="Confirmed (RED)", x=tactics, y=red_counts, marker_color="#dc2626")
-    )
-
-    fig.add_trace(
-        go.Bar(name="Likely (AMBER)", x=tactics, y=amber_counts, marker_color="#f59e0b")
-    )
-
-    fig.add_trace(
-        go.Bar(
-            name="Predicted (GREEN)", x=tactics, y=green_counts, marker_color="#10b981"
-        )
-    )
-
-    fig.update_layout(
-        title="MITRE ATT&CK Coverage Map (Including Sub-Techniques)",
-        xaxis_title="Tactics",
-        yaxis_title="Number of Techniques",
-        barmode="stack",
-        height=500,
-        template="plotly_dark",
-        xaxis={"tickangle": -45},
-    )
-
-    return fig
-
-
-def create_subtechnique_coverage_chart(coverage_data: dict) -> go.Figure:
-    """Create pie chart showing sub-technique coverage"""
-
-    if not coverage_data:
-        return None
-
-    total = coverage_data.get("total_techniques_mapped", 0)
-    with_sub = coverage_data.get("techniques_with_sub_techniques", 0)
-    without_sub = total - with_sub
-
-    if total == 0:
-        return None
-
-    fig = go.Figure(
-        data=[
-            go.Pie(
-                labels=["With Sub-Techniques", "Without Sub-Techniques"],
-                values=[with_sub, without_sub],
-                marker=dict(colors=["#10b981", "#6b7280"]),
-                hole=0.4,
-            )
-        ]
-    )
-
-    fig.update_layout(
-        title=f"Sub-Technique Coverage: {coverage_data.get('sub_technique_percentage', '0%')}",
-        height=400,
-        template="plotly_dark",
-    )
-
-    return fig
-
-
-def create_attack_path_sankey(attack_paths: list) -> go.Figure:
-    """Create Sankey diagram for attack path visualization"""
-
-    if not attack_paths:
-        return None
-
-    # Extract paths
-    all_stages = []
-    links = []
-
-    for path in attack_paths:
-        stages = path.get("stages", [])
-        for i, stage in enumerate(stages):
-            all_stages.append(stage.get("stage", "Unknown"))
-
-            if i < len(stages) - 1:
-                links.append(
-                    {
-                        "source": stage.get("stage", "Unknown"),
-                        "target": stages[i + 1].get("stage", "Unknown"),
-                        "color": stage.get("color", "green"),
-                    }
-                )
-
-    # Create unique nodes
-    unique_stages = list(set(all_stages))
-    stage_indices = {stage: idx for idx, stage in enumerate(unique_stages)}
-
-    # Map links
-    source_indices = []
-    target_indices = []
-    values = []
-    colors = []
-
-    color_map = {
-        "RED": "rgba(220, 38, 38, 0.4)",
-        "AMBER": "rgba(245, 158, 11, 0.4)",
-        "GREEN": "rgba(16, 185, 129, 0.4)",
-    }
-
-    for link in links:
-        if link["source"] in stage_indices and link["target"] in stage_indices:
-            source_indices.append(stage_indices[link["source"]])
-            target_indices.append(stage_indices[link["target"]])
-            values.append(1)
-            colors.append(
-                color_map.get(link["color"].upper(), "rgba(107, 114, 128, 0.4)")
-            )
-
-    fig = go.Figure(
-        data=[
-            go.Sankey(
-                node=dict(
-                    pad=15,
-                    thickness=20,
-                    line=dict(color="black", width=0.5),
-                    label=unique_stages,
-                    color="#667eea",
-                ),
-                link=dict(
-                    source=source_indices,
-                    target=target_indices,
-                    value=values,
-                    color=colors,
-                ),
-            )
-        ]
-    )
-
-    fig.update_layout(
-        title="Attack Path Flow Diagram", height=600, template="plotly_dark"
-    )
-
-    return fig
+def display_metric_with_info(label: str, value: str, info_text: str, col):
+    """Display metric with info tooltip"""
+    with col:
+        st.metric(label, value)
+        with st.expander(f"ℹ️ About {label}"):
+            st.markdown(info_text)
 
 
 def display_mitre_analysis(mitre_data: dict, username: str):
-    """Display comprehensive MITRE ATT&CK analysis with sub-techniques"""
+    """Display comprehensive MITRE ATT&CK analysis with enhanced features"""
 
     st.markdown("---")
     st.markdown(
@@ -515,76 +459,103 @@ def display_mitre_analysis(mitre_data: dict, username: str):
     )
     st.markdown("---")
 
-    if not mitre_data:
-        st.error("❌ MITRE analysis data not available")
+    if not mitre_data or not isinstance(mitre_data, dict):
+        st.error("❌ MITRE analysis data not available or invalid format")
+        st.info(
+            "💡 The initial analysis was successful, but MITRE mapping encountered an issue. Please review the initial assessment above."
+        )
         return
 
-    # Overall Assessment
+    # Overall Assessment with Info Tooltips
     overall = mitre_data.get("overall_assessment", {})
+
+    if not overall or not isinstance(overall, dict):
+        st.warning("⚠️ Overall assessment data is incomplete")
+        overall = {}
 
     col1, col2, col3, col4 = st.columns(4)
 
-    with col1:
-        st.metric("Attack Stage", overall.get("attack_stage", "Unknown"))
+    display_metric_with_info(
+        "Attack Stage",
+        overall.get("attack_stage", "Unknown"),
+        """
+        **Attack Stage** represents where the attacker currently is in their attack lifecycle:
+        
+        - **Initial Access**: Attacker has just gained entry to the system
+        - **Persistence Established**: Attacker has set up mechanisms to maintain access
+        - **Privilege Escalation**: Attacker is gaining higher-level permissions
+        - **Lateral Movement**: Attacker is moving across the network
+        - **Exfiltration**: Attacker is stealing data
+        - **Impact**: Attacker is causing damage or disruption
+        
+        Understanding the current stage helps prioritize response actions.
+        """,
+        col1,
+    )
 
-    with col2:
-        st.metric("Sophistication", overall.get("threat_sophistication", "Unknown"))
+    display_metric_with_info(
+        "Sophistication",
+        overall.get("threat_sophistication", "Unknown"),
+        """
+        **Threat Sophistication** indicates the attacker's skill level and resources:
+        
+        - **Low**: Script kiddies using publicly available tools
+        - **Medium**: Skilled attackers with custom tools and moderate resources
+        - **High**: Professional cybercriminals with advanced capabilities
+        - **APT** (Advanced Persistent Threat): Nation-state or highly organized groups with extensive resources
+        
+        Higher sophistication requires more advanced defensive measures.
+        """,
+        col2,
+    )
 
-    with col3:
-        st.metric("Confidence", f"{overall.get('attack_confidence', 0)}%")
+    display_metric_with_info(
+        "Confidence",
+        f"{overall.get('attack_confidence', 0)}%",
+        """
+        **Confidence Score** reflects how certain we are about the analysis:
+        
+        - **90-100%**: Very high confidence - strong evidence supports conclusions
+        - **70-89%**: High confidence - solid evidence with minor gaps
+        - **50-69%**: Medium confidence - some evidence but requires validation
+        - **Below 50%**: Low confidence - limited evidence, needs investigation
+        
+        Higher confidence allows for more decisive response actions.
+        """,
+        col3,
+    )
 
-    with col4:
-        st.metric("Dwell Time", overall.get("estimated_dwell_time", "Unknown"))
+    display_metric_with_info(
+        "Dwell Time",
+        overall.get("estimated_dwell_time", "Unknown"),
+        """
+        **Dwell Time** is how long the attacker has been in your environment:
+        
+        - **< 1 hour**: Very recent breach, quick response possible
+        - **1-24 hours**: Recent breach, immediate action required
+        - **1-7 days**: Established presence, thorough investigation needed
+        - **> 7 days**: Long-term compromise, assume extensive access
+        
+        Longer dwell time often means more damage and harder remediation.
+        """,
+        col4,
+    )
 
     st.markdown("---")
 
-    # MITRE ATT&CK Matrix Visualization
+    # MITRE ATT&CK Matrix Visualization with Predicted Steps
     techniques_data = mitre_data.get("mitre_techniques_observed", [])
-    if techniques_data:
+    predicted_steps = mitre_data.get("predicted_next_steps", [])
+
+    if techniques_data or predicted_steps:
         st.markdown("### 🗺️ MITRE ATT&CK Matrix Visualization")
         st.info(
-            "💡 This matrix shows the attack techniques mapped across all 14 MITRE ATT&CK tactics, color-coded by severity"
+            "💡 This matrix shows the complete attack chain: **RED/AMBER/GREEN** for observed techniques, "
+            "**BLUE** for predicted next steps, and **GREY** for other available techniques in the framework"
         )
 
-        matrix_html = create_mitre_attack_matrix(techniques_data)
+        matrix_html = create_complete_mitre_matrix(techniques_data, predicted_steps)
         st.markdown(matrix_html, unsafe_allow_html=True)
-
-        st.markdown("---")
-
-    # Sub-Technique Coverage Metrics
-    coverage_data = mitre_data.get("sub_technique_coverage", {})
-    if coverage_data:
-        st.markdown("### 📊 Sub-Technique Coverage Metrics")
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            st.metric(
-                "Total Techniques", coverage_data.get("total_techniques_mapped", 0)
-            )
-
-        with col2:
-            st.metric(
-                "With Sub-Techniques",
-                coverage_data.get("techniques_with_sub_techniques", 0),
-            )
-
-        with col3:
-            st.metric("Coverage", coverage_data.get("sub_technique_percentage", "0%"))
-
-        # Coverage pie chart
-        coverage_chart = create_subtechnique_coverage_chart(coverage_data)
-        if coverage_chart:
-            st.plotly_chart(coverage_chart, width="stretch")
-
-        # Show techniques requiring sub-techniques
-        if coverage_data.get("techniques_requiring_sub_techniques"):
-            with st.expander("⚠️ Techniques That Could Have Sub-Techniques"):
-                for tech in coverage_data["techniques_requiring_sub_techniques"]:
-                    st.warning(f"**{tech['technique']}** ({tech['technique_id']})")
-                    st.write(
-                        f"Available sub-techniques: {', '.join(tech['available_sub_techniques'][:5])}"
-                    )
 
         st.markdown("---")
 
@@ -595,43 +566,52 @@ def display_mitre_analysis(mitre_data: dict, username: str):
         )
         st.markdown("---")
 
-    # Attack Chain Narrative
+    # Enhanced Attack Chain Narrative
     st.markdown("### 📖 Attack Chain Narrative")
     narrative_text = mitre_data.get("attack_chain_narrative", "No narrative available")
+
+    # Create timeline-based narrative
+    attack_timeline = mitre_data.get("attack_timeline", [])
+
+    if attack_timeline:
+        st.markdown("#### Timeline of Events")
+        for event in attack_timeline:
+            stage_num = event.get("stage", 0)
+            timestamp = event.get("timestamp", "Unknown")
+            tactic = event.get("tactic", "Unknown")
+            technique = event.get("technique", "Unknown")
+            description = event.get("description", "")
+            severity = event.get("severity", "AMBER")
+
+            # Color based on severity
+            if severity == "RED":
+                icon = "🔴"
+                color = "#fee2e2"
+            elif severity == "AMBER":
+                icon = "🟠"
+                color = "#fed7aa"
+            else:
+                icon = "🟢"
+                color = "#d1fae5"
+
+            timeline_html = f"""
+            <div class="timeline-item" style="background-color: {color};">
+                <strong>{icon} Stage {stage_num}: {tactic}</strong><br/>
+                <small><strong>⏰ {timestamp}</strong></small><br/>
+                <strong>Technique:</strong> {technique}<br/>
+                <strong>Description:</strong> {description}
+            </div>
+            """
+            st.markdown(timeline_html, unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown("#### Detailed Narrative")
+
     st.info(narrative_text)
 
     st.markdown("---")
 
-    # Attack Timeline Visualization
-    timeline_data = mitre_data.get("attack_timeline", [])
-    if timeline_data:
-        st.markdown("### ⏱️ Attack Timeline Visualization")
-        timeline_fig = create_attack_timeline_chart(timeline_data)
-        if timeline_fig:
-            st.plotly_chart(timeline_fig, width="stretch")
-
-    st.markdown("---")
-
-    # MITRE Techniques Coverage
-    if techniques_data:
-        st.markdown("### 📊 MITRE ATT&CK Coverage Map")
-        heatmap_fig = create_mitre_heatmap(techniques_data)
-        if heatmap_fig:
-            st.plotly_chart(heatmap_fig, width="stretch")
-
-    st.markdown("---")
-
-    # Attack Path Flow
-    attack_paths = mitre_data.get("attack_path_visualization", {}).get("paths", [])
-    if attack_paths:
-        st.markdown("### 🔄 Attack Path Flow Diagram")
-        sankey_fig = create_attack_path_sankey(attack_paths)
-        if sankey_fig:
-            st.plotly_chart(sankey_fig, width="stretch")
-
-    st.markdown("---")
-
-    # Observed MITRE Techniques with Sub-Techniques
+    # Enhanced Observed MITRE Techniques with Procedures
     if techniques_data:
         st.markdown("### 🎯 Detailed Technique Analysis")
 
@@ -674,12 +654,28 @@ def display_mitre_analysis(mitre_data: dict, username: str):
             st.write(f"**Evidence:** {technique.get('evidence', 'No evidence')}")
             st.write(f"**Indicators:** {', '.join(technique.get('indicators', []))}")
 
+            # Add Procedure section
+            procedure = technique.get("procedure", "")
+            if procedure:
+                st.markdown(
+                    f"""
+                <div class="procedure-box">
+                    <strong>🔧 Procedure (TTP Details):</strong><br/>
+                    {procedure}
+                </div>
+                """,
+                    unsafe_allow_html=True,
+                )
+
             st.markdown("---")
 
     # Predicted Next Steps
     predicted_steps = mitre_data.get("predicted_next_steps", [])
     if predicted_steps:
         st.markdown("### 🔮 Predicted Next Attacker Moves")
+        st.info(
+            "💡 These techniques have been added to the matrix visualization above in **BLUE** color"
+        )
 
         for idx, step in enumerate(predicted_steps, 1):
             likelihood = step.get("likelihood", "Unknown")
@@ -1104,18 +1100,21 @@ def main():
                                     )
 
                                 with col2:
-                                    # Executive summary
+                                    # Executive summary with null checks
                                     exec_summary = complete_analysis.get(
-                                        "executive_summary", {}
+                                        "executive_summary"
                                     )
 
-                                    # Include sub-techniques in summary
-                                    subtechniques_text = ""
-                                    if exec_summary.get("key_sub_techniques_observed"):
-                                        subtechniques_text = f"\n\nKEY SUB-TECHNIQUES OBSERVED:\n{chr(10).join([f'- {st}' for st in exec_summary.get('key_sub_techniques_observed', [])])}"
+                                    if exec_summary and isinstance(exec_summary, dict):
+                                        # Include sub-techniques in summary
+                                        subtechniques_text = ""
+                                        if exec_summary.get(
+                                            "key_sub_techniques_observed"
+                                        ):
+                                            subtechniques_text = f"\n\nKEY SUB-TECHNIQUES OBSERVED:\n{chr(10).join([f'- {st}' for st in exec_summary.get('key_sub_techniques_observed', [])])}"
 
-                                    summary_text = f"""SECURITY INVESTIGATION REPORT
-                                    
+                                        summary_text = f"""SECURITY INVESTIGATION REPORT
+                                        
 User: {username}
 Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
@@ -1137,6 +1136,24 @@ IMMEDIATE ACTIONS:
 PRIORITY: {exec_summary.get('investigation_priority', 'N/A')}
 {subtechniques_text}
 """
+                                    else:
+                                        # Fallback summary if executive_summary is missing
+                                        summary_text = f"""SECURITY INVESTIGATION REPORT
+                                        
+User: {username}
+Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+CLASSIFICATION: {complete_analysis['initial_analysis'].get('classification', 'N/A')}
+RISK LEVEL: {complete_analysis['initial_analysis'].get('risk_level', 'N/A')}
+CONFIDENCE: {complete_analysis['initial_analysis'].get('confidence_score', 'N/A')}%
+
+SUMMARY:
+{complete_analysis['initial_analysis'].get('summary', 'Analysis completed - see detailed report for findings')}
+
+RECOMMENDATIONS:
+{chr(10).join([f"- {rec}" for rec in complete_analysis['initial_analysis'].get('recommendations', [])])}
+"""
+
                                     st.download_button(
                                         label="📋 Executive Summary (TXT)",
                                         data=summary_text,
@@ -1167,8 +1184,9 @@ PRIORITY: {exec_summary.get('investigation_priority', 'N/A')}
                                 if complete_analysis.get("mitre_attack_analysis"):
                                     coverage = complete_analysis[
                                         "mitre_attack_analysis"
-                                    ].get("sub_technique_coverage", {})
-                                    if coverage:
+                                    ].get("sub_technique_coverage")
+
+                                    if coverage and isinstance(coverage, dict):
                                         st.markdown("---")
                                         st.markdown("### 📊 Analysis Summary")
 
@@ -1198,18 +1216,21 @@ PRIORITY: {exec_summary.get('investigation_priority', 'N/A')}
                                                 ),
                                             )
 
-                                        if (
-                                            coverage.get("sub_technique_percentage")
-                                            and float(
-                                                coverage.get(
-                                                    "sub_technique_percentage", "0%"
-                                                ).rstrip("%")
+                                        # Check coverage percentage
+                                        try:
+                                            coverage_pct = coverage.get(
+                                                "sub_technique_percentage", "0%"
                                             )
-                                            < 50
-                                        ):
-                                            st.warning(
-                                                "⚠️ Low sub-technique coverage detected. Consider reviewing the analysis for more specific sub-technique identification."
-                                            )
+                                            if isinstance(coverage_pct, str):
+                                                coverage_value = float(
+                                                    coverage_pct.rstrip("%")
+                                                )
+                                                if coverage_value < 50:
+                                                    st.warning(
+                                                        "⚠️ Low sub-technique coverage detected. Consider reviewing the analysis for more specific sub-technique identification."
+                                                    )
+                                        except (ValueError, AttributeError):
+                                            pass
                             else:
                                 st.error(
                                     "❌ Analysis failed. Please check the logs and try again."
@@ -1218,50 +1239,6 @@ PRIORITY: {exec_summary.get('investigation_priority', 'N/A')}
                     st.warning("⚠️ Please enter a username to analyze")
     else:
         st.info("👆 Please upload an Excel file to begin analysis")
-
-        # Information section
-        st.markdown("---")
-        st.markdown("### 📖 About This Tool")
-        st.markdown(
-            """
-        This advanced security investigation tool provides:
-        
-        - **Automated Classification**: AI-powered TRUE/FALSE POSITIVE detection
-        - **MITRE ATT&CK Matrix**: Visual matrix showing techniques across all 14 tactics
-        - **MITRE ATT&CK Mapping**: Complete attack chain reconstruction using MITRE framework
-        - **Sub-Technique Analysis**: Detailed sub-technique identification for precise threat mapping
-        - **Geographic Risk Analysis**: Automatic detection of high-risk countries (Russia, China, etc.)
-        - **Attack Prediction**: AI-powered prediction of attacker's next moves with specific sub-techniques
-        - **Interactive Visualizations**: Timeline, heatmaps, matrix, and flow diagrams
-        - **Threat Intelligence**: Actor profiling and attribution analysis
-        - **Actionable Recommendations**: Prioritized defensive measures with MITRE mitigations
-        - **Sub-Technique Coverage Tracking**: Metrics showing the depth of analysis
-        
-        **Key Features**:
-        - ✅ **MITRE Matrix View**: Tabular visualization matching the official MITRE ATT&CK website
-        - ✅ **Color-Coded Severity**: RED (Confirmed), AMBER (Likely), GREEN (Predicted)
-        - ✅ **Sub-Technique Mapping**: Every technique is mapped to specific sub-techniques based on evidence
-        - ✅ **Coverage Metrics**: Track how many techniques have detailed sub-technique analysis
-        - ✅ **Navigator Export**: MITRE ATT&CK Navigator layers include both parent and sub-techniques
-        - ✅ **Evidence-Based**: All sub-techniques are justified with specific evidence from investigation
-        
-        **High-Risk Country Detection**: Access from Russia, China, North Korea, Iran, Syria, Belarus, Venezuela, Cuba, or Afghanistan automatically triggers TRUE POSITIVE classification.
-        """
-        )
-
-        st.markdown("---")
-        st.markdown("### 🎯 Why Sub-Techniques Matter")
-        st.info(
-            """
-            Sub-techniques provide **granular detail** about attacker behavior:
-            
-            - **More Precise Threat Detection**: Identify exactly HOW an attack was executed
-            - **Better Defense Planning**: Target specific attack methods with appropriate controls
-            - **Improved Incident Response**: Understand the exact TTPs used by attackers
-            - **Threat Intelligence**: Match attacks to known threat actor behaviors
-            - **Compliance & Reporting**: Provide detailed evidence for security audits
-            """
-        )
 
 
 if __name__ == "__main__":

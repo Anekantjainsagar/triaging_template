@@ -1,8 +1,8 @@
-import re
 import json
-from datetime import datetime
-import google.generativeai as genai
 from typing import Dict, List, Any, Optional
+import google.generativeai as genai
+from datetime import datetime
+import re
 
 
 class MITREAttackAnalyzer:
@@ -452,7 +452,7 @@ class MITREAttackAnalyzer:
                     "Proc Memory",
                     "Extra Window Memory Injection",
                     "Process Hollowing",
-                    "Process Doppelgänging",
+                    "Process DoppelgÃ¤nging",
                     "VDSO Hijacking",
                     "ListPlanting",
                 ],
@@ -632,7 +632,7 @@ class MITREAttackAnalyzer:
                     "Proc Memory",
                     "Extra Window Memory Injection",
                     "Process Hollowing",
-                    "Process Doppelgänging",
+                    "Process DoppelgÃ¤nging",
                     "VDSO Hijacking",
                     "ListPlanting",
                 ],
@@ -1068,327 +1068,419 @@ class MITREAttackAnalyzer:
         investigation_context = ""
         for step in investigation_steps[:8]:
             investigation_context += f"""
-### {step['step_name']}
-Output: {str(step['output'])[:300]}...
----
-"""
+    ### {step['step_name']}
+    Output: {str(step['output'])[:300]}...
+    ---
+    """
 
         geo_risk_context = ""
         if geo_risk_data["has_high_risk_country"]:
             geo_risk_context = f"""
-**HIGH-RISK GEOLOCATION DETECTED:**
-- High-risk countries: {', '.join([loc['country'] for loc in geo_risk_data['high_risk_locations']])}
-- Suspicious IPs: {', '.join(geo_risk_data['suspicious_ips'])}
-This significantly increases the TRUE POSITIVE likelihood and threat severity.
-"""
+    **HIGH-RISK GEOLOCATION DETECTED:**
+    - High-risk countries: {', '.join([loc['country'] for loc in geo_risk_data['high_risk_locations']])}
+    - Suspicious IPs: {', '.join(geo_risk_data['suspicious_ips'])}
+    This significantly increases the TRUE POSITIVE likelihood and threat severity.
+    """
 
         # Get MITRE techniques reference
         mitre_reference = self.build_mitre_techniques_reference()
 
+        # FIXED: Changed the timeline example to avoid f-string format issues
         prompt = f"""You are an elite threat intelligence analyst specializing in MITRE ATT&CK framework mapping and cyber attack chain reconstruction.
 
-# INVESTIGATION CONTEXT
-**User:** {username}
-**Classification:** {classification}
-**Risk Level:** {investigation_summary.get('risk_level', 'UNKNOWN')}
-**Confidence:** {investigation_summary.get('confidence_score', 0)}%
+    # INVESTIGATION CONTEXT
+    **User:** {username}
+    **Classification:** {classification}
+    **Risk Level:** {investigation_summary.get('risk_level', 'UNKNOWN')}
+    **Confidence:** {investigation_summary.get('confidence_score', 0)}%
 
-{geo_risk_context}
+    {geo_risk_context}
 
-# INVESTIGATION DATA SUMMARY
-{investigation_context}
+    # INVESTIGATION DATA SUMMARY
+    {investigation_context}
 
-# KEY FINDINGS
-{json.dumps(investigation_summary.get('key_findings', []), indent=2)}
+    # KEY FINDINGS
+    {json.dumps(investigation_summary.get('key_findings', []), indent=2)}
 
-# RISK INDICATORS
-{json.dumps(investigation_summary.get('risk_indicators', []), indent=2)}
+    # RISK INDICATORS
+    {json.dumps(investigation_summary.get('risk_indicators', []), indent=2)}
 
-{mitre_reference}
+    {mitre_reference}
 
----
+    ---
 
-# YOUR MISSION: MITRE ATT&CK MAPPING & ATTACK CHAIN RECONSTRUCTION
+    # YOUR MISSION: MITRE ATT&CK MAPPING & ATTACK CHAIN RECONSTRUCTION
 
-You must provide a comprehensive MITRE ATT&CK analysis including:
+    You must provide a comprehensive MITRE ATT&CK analysis including:
 
-1. **Complete Attack Chain Mapping** - Map observed TTPs to MITRE ATT&CK framework
-2. **Attack Progression Timeline** - Reconstruct the attack sequence
-3. **Threat Actor Profiling** - Identify likely threat actor characteristics
-4. **Predicted Next Steps** - Forecast attacker's probable next moves
-5. **Visual Attack Path** - Color-coded technique mapping (Green/Amber/Red)
+    1. **Complete Attack Chain Mapping** - Map observed TTPs to MITRE ATT&CK framework
+    2. **Attack Progression Timeline** - Reconstruct the attack sequence
+    3. **Threat Actor Profiling** - Identify likely threat actor characteristics
+    4. **Predicted Next Steps** - Forecast attacker's probable next moves
+    5. **Visual Attack Path** - Color-coded technique mapping (Green/Amber/Red)
 
----
 
-## MITRE ATT&CK TACTICS (All 14):
-1. Reconnaissance (TA0043)
-2. Resource Development (TA0042)
-3. Initial Access (TA0001)
-4. Execution (TA0002)
-5. Persistence (TA0003)
-6. Privilege Escalation (TA0004)
-7. Defense Evasion (TA0005)
-8. Credential Access (TA0006)
-9. Discovery (TA0007)
-10. Lateral Movement (TA0008)
-11. Collection (TA0009)
-12. Command and Control (TA0011)
-13. Exfiltration (TA0010)
-14. Impact (TA0040)
+    ---
 
----
+    ## ATTACK TIMELINE GENERATION REQUIREMENTS:
 
-## CRITICAL INSTRUCTIONS FOR SUB-TECHNIQUES:
+    **Create a detailed chronological attack timeline with the following:**
 
-**ALWAYS include sub-techniques when mapping MITRE techniques:**
-- Use the complete reference provided above to identify appropriate sub-techniques
-- Every technique that has sub-techniques MUST include at least one relevant sub-technique
-- Sub-technique selection must be evidence-based from investigation data
-- Format: "Technique" > "Sub-technique"
-- Example: "Valid Accounts" > "Cloud Accounts" (T1078.004)
+    1. **Chronological Ordering**: Arrange all attack events in time sequence based on actual timestamps from investigation data
+    2. **Stage Numbering**: Number each stage sequentially (1, 2, 3, etc.) to show attack progression
+    3. **Complete Context**: For each timeline entry include:
+    - Exact timestamp from investigation data
+    - MITRE tactic and technique (with sub-technique)
+    - Clear description of what happened in business terms
+    - Specific evidence from investigation outputs
+    - Severity assessment (RED/AMBER/GREEN)
+    - Impact statement explaining the security implications
+    - List of indicators observed at that stage
 
-**DO NOT use generic techniques when specific sub-techniques exist**
-- ❌ Wrong: "Valid Accounts (T1078)" without sub-technique
-- ✅ Correct: "Valid Accounts: Cloud Accounts (T1078.004)"
+    4. **Narrative Flow**: Timeline should tell a story - connect each stage to show how the attack progressed
+    5. **Evidence-Based**: Every timeline entry must reference specific data from investigation steps
+    6. **Business Language**: Describe technical events in terms business stakeholders can understand
 
----
+    **Timeline Entry Format:**
+    - Stage 1 at [timestamp]: Initial Access via compromised credentials
+    - Stage 2 at [timestamp]: Privilege escalation through role manipulation  
+    - Stage 3 at [timestamp]: Reconnaissance of cloud resources
+    - Stage 4 at [timestamp]: Lateral movement to sensitive systems
+    - Stage 5 at [timestamp]: Data exfiltration or impact activities
 
-## ANALYSIS REQUIREMENTS:
+    **Example Timeline Entry Structure:**
+    Stage 1: Initial cloud account compromise at 2025-10-08 11:54:20
+    Tactic: Initial Access
+    Technique: Valid Accounts with Cloud Accounts sub-technique (T1078.004)
+    Description: Attacker accessed cloud account using stolen credentials from suspicious location
+    Evidence: Authentication log showing sign-in from unknown IP address
+    Severity: AMBER
+    Impact: Attacker gained foothold in cloud environment with user privileges
+    Indicators: Impossible travel, unknown device, high-risk geographic region
 
-### For TRUE POSITIVE Cases:
-- Map ALL observed techniques to MITRE ATT&CK framework WITH sub-techniques
-- Identify the current attack stage
-- Predict 3-5 most likely next attacker moves WITH specific sub-techniques
-- Provide detailed kill chain reconstruction
-- Assign severity colors: RED (confirmed), AMBER (likely), GREEN (possible future)
-- Include specific technique IDs and sub-technique IDs (e.g., T1078.004 - Valid Accounts: Cloud Accounts)
+    ---
 
-### For FALSE POSITIVE Cases:
-- Map potential misinterpreted behaviors to MITRE techniques WITH sub-techniques
-- Explain why behaviors appeared suspicious but are benign
-- Provide "what-if" attack scenarios for learning
-- Suggest detection improvements to reduce false positives
-- Color code hypothetical attack paths
+    ## MITRE ATT&CK TACTICS (All 14):
+    1. Reconnaissance (TA0043)
+    2. Resource Development (TA0042)
+    3. Initial Access (TA0001)
+    4. Execution (TA0002)
+    5. Persistence (TA0003)
+    6. Privilege Escalation (TA0004)
+    7. Defense Evasion (TA0005)
+    8. Credential Access (TA0006)
+    9. Discovery (TA0007)
+    10. Lateral Movement (TA0008)
+    11. Collection (TA0009)
+    12. Command and Control (TA0011)
+    13. Exfiltration (TA0010)
+    14. Impact (TA0040)
 
-### For Both Cases:
-- Generate comprehensive attack narrative
-- Include MITRE Navigator layer data with sub-techniques
-- Provide defensive recommendations mapped to MITRE techniques and sub-techniques
-- Identify detection gaps
+    ---
 
----
+    ## CRITICAL INSTRUCTIONS FOR SUB-TECHNIQUES:
 
-# OUTPUT FORMAT (STRICT JSON):
+    **ALWAYS include sub-techniques when mapping MITRE techniques:**
+    - Use the complete reference provided above to identify appropriate sub-techniques
+    - Every technique that has sub-techniques MUST include at least one relevant sub-technique
+    - Sub-technique selection must be evidence-based from investigation data
+    - Format: "Technique" > "Sub-technique"
+    - Example: "Valid Accounts" > "Cloud Accounts" (T1078.004)
 
-{{
-    "mitre_attack_analysis": {{
-        "overall_assessment": {{
-            "attack_stage": "Initial Access | Persistence Established | Privilege Escalation | Lateral Movement | Exfiltration | Impact",
-            "threat_sophistication": "Low | Medium | High | Advanced Persistent Threat",
-            "attack_confidence": 95,
-            "primary_objective": "Credential theft | Data exfiltration | Ransomware | Espionage | Financial fraud",
-            "estimated_dwell_time": "< 1 hour | 1-24 hours | 1-7 days | > 7 days",
-            "geographic_threat_indicator": "High-risk country detected" or "Standard geographic profile"
-        }},
-        
-        "attack_chain_narrative": "Detailed 3-5 paragraph narrative explaining the complete attack sequence, attacker methodology, observed TTPs with specific sub-techniques, and threat context. Include specific evidence from investigation data.",
-        
-        "mitre_techniques_observed": [
-            {{
-                "tactic": "Initial Access",
-                "tactic_id": "TA0001",
-                "technique": "Valid Accounts",
-                "technique_id": "T1078",
-                "sub_technique": "Cloud Accounts",
-                "sub_technique_id": "T1078.004",
-                "severity": "RED | AMBER | GREEN",
-                "confidence": 95,
-                "evidence": "Specific evidence from investigation showing this technique and sub-technique",
-                "timestamp": "2025-10-09 09:54:20",
-                "indicators": ["Impossible travel", "Suspicious IP: 203.0.113.45"],
-                "sub_technique_justification": "Why this specific sub-technique applies"
-            }}
-        ],
-        
-        "attack_timeline": [
-            {{
-                "stage": 1,
-                "timestamp": "2025-10-08 11:54:20",
-                "tactic": "Initial Access",
-                "technique": "Valid Accounts: Cloud Accounts (T1078.004)",
-                "description": "Attacker used compromised credentials to access cloud account",
-                "evidence": "Sign-in from New York with valid credentials",
-                "severity": "AMBER",
-                "sub_technique_details": "Specific cloud account access method used"
-            }}
-        ],
-        
-        "predicted_next_steps": [
-            {{
-                "sequence": 1,
-                "likelihood": "High | Medium | Low",
-                "tactic": "Privilege Escalation",
-                "technique": "Account Manipulation",
-                "technique_id": "T1098",
-                "sub_technique": "Additional Cloud Roles",
-                "sub_technique_id": "T1098.003",
-                "description": "Attacker will likely attempt to add additional cloud roles for privilege escalation",
-                "rationale": "Current access level provides opportunity for cloud role manipulation",
-                "indicators_to_watch": ["Role assignment changes", "Permission modifications", "Cloud IAM policy changes"],
-                "recommended_preventive_action": "Enable privileged access monitoring and cloud role change alerting"
-            }}
-        ],
-        
-        "threat_actor_profile": {{
-            "sophistication_level": "Low | Medium | High | APT",
-            "likely_motivation": "Financial | Espionage | Sabotage | Hacktivism",
-            "probable_attribution": "Individual | Cybercriminal Group | Nation State | Insider",
-            "geographic_indicators": ["Russia", "China"] or ["No specific indicators"],
-            "tactics_signature": "Matches known APT group patterns" or "Generic attack methodology",
-            "similar_campaigns": ["Campaign names or TTPs matching known threats"],
-            "preferred_sub_techniques": ["List of commonly used sub-techniques by this threat actor"]
-        }},
-        
-        "mitre_navigator_layer": {{
-            "name": "Attack Chain - {username}",
-            "description": "MITRE ATT&CK Navigator layer for visualized attack path with sub-techniques",
-            "domain": "enterprise-attack",
-            "versions": {{
-                "attack": "14",
-                "navigator": "4.9"
+    **DO NOT use generic techniques when specific sub-techniques exist**
+    - Wrong: "Valid Accounts (T1078)" without sub-technique
+    - Correct: "Valid Accounts: Cloud Accounts (T1078.004)"
+
+    ---
+
+
+    ## CRITICAL INSTRUCTIONS FOR PROCEDURES (TTP Details):
+
+    **ALWAYS include detailed procedures for each technique:**
+    - The "procedure" field must explain HOW the attacker executed the technique
+    - Include specific tools, methods, commands, or techniques used
+    - Reference actual evidence from the investigation data
+    - Describe the attack flow step-by-step
+    - Make it actionable for defenders to understand the attack methodology
+
+    **Procedure Example Format:**
+    "The attacker used stolen credentials (username: john.doe@abc.com) to authenticate from IP 203.0.113.45 located in an unknown geographic region. The authentication occurred at 14:34:34, shortly after a Global Administrator role was assigned to the account. The attacker leveraged the cloud account access to bypass traditional perimeter defenses, utilizing valid authentication tokens to avoid detection by signature-based security tools."
+
+    **DO NOT use generic procedures** - Every procedure must be specific to THIS investigation's evidence.
+
+    ---
+
+    ## ANALYSIS REQUIREMENTS:
+
+    ### For TRUE POSITIVE Cases:
+    - Map ALL observed techniques to MITRE ATT&CK framework WITH sub-techniques
+    - Identify the current attack stage
+    - Predict 3-5 most likely next attacker moves WITH specific sub-techniques
+    - Provide detailed kill chain reconstruction
+    - Assign severity colors: RED (confirmed), AMBER (likely), GREEN (possible future)
+    - Include specific technique IDs and sub-technique IDs (e.g., T1078.004 - Valid Accounts: Cloud Accounts)
+
+    ### For FALSE POSITIVE Cases:
+    - Map potential misinterpreted behaviors to MITRE techniques WITH sub-techniques
+    - Explain why behaviors appeared suspicious but are benign
+    - Provide "what-if" attack scenarios for learning
+    - Suggest detection improvements to reduce false positives
+    - Color code hypothetical attack paths
+
+    ### For Both Cases:
+    - Generate comprehensive attack narrative
+    - Include MITRE Navigator layer data with sub-techniques
+    - Provide defensive recommendations mapped to MITRE techniques and sub-techniques
+    - Identify detection gaps
+
+    ---
+
+    # OUTPUT FORMAT (STRICT JSON):
+
+    {{
+        "mitre_attack_analysis": {{
+            "overall_assessment": {{
+                "attack_stage": "Initial Access | Persistence Established | Privilege Escalation | Lateral Movement | Exfiltration | Impact",
+                "attack_stage_explanation": "Detailed 2-3 sentence explanation of what this stage means, why the attacker is at this stage, and what evidence supports this assessment",
+                "threat_sophistication": "Low | Medium | High | Advanced Persistent Threat",
+                "sophistication_explanation": "Explain the attacker's skill level based on observed techniques, tools used, and operational security practices. Include specific examples from the investigation",
+                "attack_confidence": 95,
+                "confidence_explanation": "Explain why this confidence level was assigned, what evidence strongly supports the assessment, and what gaps exist",
+                "primary_objective": "Credential theft | Data exfiltration | Ransomware | Espionage | Financial fraud",
+                "objective_explanation": "Explain what the attacker is trying to achieve based on observed behavior and targeted systems",
+                "estimated_dwell_time": "< 1 hour | 1-24 hours | 1-7 days | > 7 days",
+                "dwell_time_explanation": "Explain how long the attacker has been in the environment, what evidence suggests this timeframe, and what this means for the investigation",
+                "geographic_threat_indicator": "High-risk country detected" or "Standard geographic profile"
             }},
-            "techniques": [
+            
+            "attack_chain_narrative": "Detailed 5-7 paragraph narrative that tells the complete attack story chronologically. Start with initial compromise, explain each stage of the attack progression, describe the attacker's objectives and methods at each phase, reference specific timestamps and evidence, explain the business impact at each stage, and conclude with the current threat status. Include all sub-techniques observed.",
+            
+            "mitre_techniques_observed": [
                 {{
-                    "techniqueID": "T1078",
-                    "tactic": "initial-access",
-                    "color": "#ff0000",
-                    "comment": "Observed - Valid Accounts: Cloud Accounts (T1078.004)",
-                    "enabled": true,
-                    "score": 100,
-                    "showSubtechniques": true
-                }},
-                {{
-                    "techniqueID": "T1078.004",
-                    "tactic": "initial-access",
-                    "color": "#ff0000",
-                    "comment": "Observed - Cloud Accounts sub-technique",
-                    "enabled": true,
-                    "score": 100
+                    "tactic": "Initial Access",
+                    "tactic_id": "TA0001",
+                    "technique": "Valid Accounts",
+                    "technique_id": "T1078",
+                    "sub_technique": "Cloud Accounts",
+                    "sub_technique_id": "T1078.004",
+                    "severity": "RED | AMBER | GREEN",
+                    "confidence": 95,
+                    "evidence": "Specific evidence from investigation showing this technique and sub-technique",
+                    "timestamp": "2025-10-09 09:54:20",
+                    "indicators": ["Impossible travel", "Suspicious IP: 203.0.113.45"],
+                    "sub_technique_justification": "Why this specific sub-technique applies",
+                    "procedure": "DETAILED step-by-step description of HOW the attacker executed this specific technique. Must include: (1) What credentials/access was used, (2) What systems/accounts were targeted, (3) What tools or methods were employed, (4) What evasion techniques were used if any, (5) What the attacker achieved through this action, (6) Specific evidence from logs/investigation that proves this procedure. Example: The attacker leveraged stolen credentials for user john.doe@abc.com obtained through a prior phishing campaign. At 14:34:34 UTC, they authenticated to the Microsoft 365 tenant from IP address 203.0.113.45 originating from Moscow, Russia. The authentication used valid username and password combination, bypassing initial access controls. The attacker's session presented as a new device with generic browser fingerprint, triggering impossible travel alerts as the legitimate user had authenticated from New York just 30 minutes prior. The cloud account access provided the attacker with initial foothold in the corporate environment, granting access to email, SharePoint, and other cloud resources associated with the compromised account. Evidence includes authentication logs showing successful sign-in with MFA push notification approved, geolocation data indicating high-risk country, and device fingerprint showing previously unknown device characteristics."
                 }}
             ],
-            "gradient": {{
-                "colors": ["#00ff00", "#ffff00", "#ff0000"],
-                "minValue": 0,
-                "maxValue": 100
-            }}
-        }},
-        
-        "attack_path_visualization": {{
-            "paths": [
+            
+            "attack_timeline": [
                 {{
-                    "path_id": 1,
-                    "path_name": "Primary Attack Path",
-                    "color_code": "RED",
-                    "stages": [
-                        {{
-                            "stage": "Initial Access",
-                            "techniques": ["T1078.004 - Valid Accounts: Cloud Accounts"],
-                            "status": "CONFIRMED",
-                            "color": "RED",
-                            "sub_technique_details": "Cloud account compromise through credential theft"
-                        }},
-                        {{
-                            "stage": "Defense Evasion", 
-                            "techniques": ["T1550.004 - Use Alternate Authentication Material: Web Session Cookie"],
-                            "status": "LIKELY",
-                            "color": "AMBER",
-                            "sub_technique_details": "Session hijacking using stolen cookies"
-                        }},
-                        {{
-                            "stage": "Exfiltration",
-                            "techniques": ["T1567.002 - Exfiltration Over Web Service: Exfiltration to Cloud Storage"],
-                            "status": "PREDICTED",
-                            "color": "GREEN",
-                            "sub_technique_details": "Data exfiltration to attacker-controlled cloud storage"
-                        }}
-                    ]
+                    "stage": 1,
+                    "timestamp": "2025-10-08 11:54:20",
+                    "tactic": "Initial Access",
+                    "technique": "Valid Accounts: Cloud Accounts (T1078.004)",
+                    "description": "Detailed narrative description of what happened at this stage. Explain the attacker's actions, the systems involved, and the security implications. Make it understandable for non-technical stakeholders.",
+                    "evidence": "Specific evidence from investigation logs or data that proves this event occurred",
+                    "severity": "AMBER",
+                    "sub_technique_details": "Explain exactly which sub-technique was used and why it fits this classification",
+                    "impact": "Explain the business and security impact of this event. What access did the attacker gain? What risks does this create?",
+                    "indicators_observed": ["Impossible travel detected", "Unknown device used", "Geographic anomaly from high-risk region", "Temporal anomaly - access outside business hours"]
+                }},
+                {{
+                    "stage": 2,
+                    "timestamp": "2025-10-08 15:34:34",
+                    "tactic": "Privilege Escalation",
+                    "technique": "Account Manipulation: Additional Cloud Roles (T1098.003)",
+                    "description": "Detailed description of privilege escalation activity",
+                    "evidence": "Role assignment logs showing Global Administrator role granted",
+                    "severity": "RED",
+                    "sub_technique_details": "Specific cloud role manipulation technique used",
+                    "impact": "Attacker gained full administrative control over cloud environment",
+                    "indicators_observed": ["Privilege escalation", "Administrative role assignment", "Unauthorized permission changes"]
                 }}
-            ]
+            ],
+            
+            "predicted_next_steps": [
+                {{
+                    "sequence": 1,
+                    "likelihood": "High | Medium | Low",
+                    "tactic": "[Tactic from MITRE framework]",
+                    "technique": "[Technique name]",
+                    "technique_id": "[T####]",
+                    "sub_technique": "[Sub-technique if applicable]",
+                    "sub_technique_id": "[T####.###]",
+                    "description": "ONLY predict next steps that are LOGICAL based on the ACTUAL investigation data. DO NOT mention cloud storage, AWS, Azure, Google Drive, DropBox, or any specific cloud services UNLESS the investigation explicitly shows the organization uses these services. Base predictions ONLY on what was observed: if you saw role assignments, predict abuse of those roles. If you saw unknown locations, predict lateral movement. DO NOT fabricate scenarios.",
+                    "rationale": "Explain WHY this is the predicted next step based on current attack stage, attacker's demonstrated capabilities, and common attack patterns",
+                    "indicators_to_watch": ["Specific log entries", "System behaviors", "Network activities to monitor"],
+                    "recommended_preventive_action": "Specific actionable steps to prevent this predicted activity",
+                    "detection_method": "How to detect if this activity occurs",
+                    "business_impact_if_occurs": "What would happen to the business if this predicted step succeeds"
+                }}
+            ],
+            
+            "threat_actor_profile": {{
+                "sophistication_level": "Low | Medium | High | APT",
+                "sophistication_details": "Detailed analysis of attacker capabilities based on observed techniques, operational security, and tool usage",
+                "likely_motivation": "Financial | Espionage | Sabotage | Hacktivism",
+                "motivation_details": "Why we believe this is the attacker's motivation based on targets, methods, and objectives",
+                "probable_attribution": "Individual | Cybercriminal Group | Nation State | Insider",
+                "attribution_details": "Evidence supporting this attribution including geographic indicators, TTP patterns, and known threat actor behaviors",
+                "geographic_indicators": ["Russia", "China"] or ["No specific indicators"],
+                "tactics_signature": "Matches known APT group patterns" or "Generic attack methodology",
+                "similar_campaigns": ["Campaign names or TTPs matching known threats"],
+                "preferred_sub_techniques": ["List of commonly used sub-techniques by this threat actor"]
+            }},
+            
+            "mitre_navigator_layer": {{
+                "name": "Attack Chain - {username}",
+                "description": "MITRE ATT&CK Navigator layer for visualized attack path with sub-techniques",
+                "domain": "enterprise-attack",
+                "versions": {{
+                    "attack": "14",
+                    "navigator": "4.9"
+                }},
+                "techniques": [
+                    {{
+                        "techniqueID": "T1078",
+                        "tactic": "initial-access",
+                        "color": "#ff0000",
+                        "comment": "Observed - Valid Accounts: Cloud Accounts (T1078.004)",
+                        "enabled": true,
+                        "score": 100,
+                        "showSubtechniques": true
+                    }},
+                    {{
+                        "techniqueID": "T1078.004",
+                        "tactic": "initial-access",
+                        "color": "#ff0000",
+                        "comment": "Observed - Cloud Accounts sub-technique",
+                        "enabled": true,
+                        "score": 100
+                    }}
+                ],
+                "gradient": {{
+                    "colors": ["#00ff00", "#ffff00", "#ff0000"],
+                    "minValue": 0,
+                    "maxValue": 100
+                }}
+            }},
+            
+            "attack_path_visualization": {{
+                "paths": [
+                    {{
+                        "path_id": 1,
+                        "path_name": "Primary Attack Path",
+                        "color_code": "RED",
+                        "stages": [
+                            {{
+                                "stage": "Initial Access",
+                                "techniques": ["T1078.004 - Valid Accounts: Cloud Accounts"],
+                                "status": "CONFIRMED",
+                                "color": "RED",
+                                "sub_technique_details": "Cloud account compromise through credential theft"
+                            }},
+                            {{
+                                "stage": "Defense Evasion", 
+                                "techniques": ["T1550.004 - Use Alternate Authentication Material: Web Session Cookie"],
+                                "status": "LIKELY",
+                                "color": "AMBER",
+                                "sub_technique_details": "Session hijacking using stolen cookies"
+                            }},
+                            {{
+                                "stage": "Exfiltration",
+                                "techniques": ["T1567.002 - Exfiltration Over Web Service: Exfiltration to Cloud Storage"],
+                                "status": "PREDICTED",
+                                "color": "GREEN",
+                                "sub_technique_details": "Data exfiltration to attacker-controlled cloud storage"
+                            }}
+                        ]
+                    }}
+                ]
+            }},
+            
+            "defensive_recommendations": [
+                {{
+                    "priority": "CRITICAL | HIGH | MEDIUM | LOW",
+                    "mitre_mitigation": "M1027 - Password Policies",
+                    "recommendation": "Implement mandatory MFA for all cloud accounts with hardware tokens",
+                    "mapped_techniques": ["T1078", "T1078.004"],
+                    "mapped_sub_techniques": ["Cloud Accounts (T1078.004)"],
+                    "implementation_complexity": "Low | Medium | High",
+                    "estimated_effectiveness": "80%"
+                }}
+            ],
+            
+            "detection_gaps": [
+                {{
+                    "gap_description": "No geo-blocking for executive cloud accounts",
+                    "affected_techniques": ["T1078.004"],
+                    "affected_sub_techniques": ["Cloud Accounts"],
+                    "risk_level": "HIGH",
+                    "recommended_detection": "Implement conditional access policies based on geolocation for cloud accounts",
+                    "mitre_data_source": "DS0028 - Logon Session"
+                }}
+            ],
+            
+            "sub_technique_coverage": {{
+                "total_techniques_mapped": 0,
+                "techniques_with_sub_techniques": 0,
+                "sub_technique_percentage": "0%",
+                "techniques_requiring_sub_techniques": []
+            }}
         }},
         
-        "defensive_recommendations": [
-            {{
-                "priority": "CRITICAL | HIGH | MEDIUM | LOW",
-                "mitre_mitigation": "M1027 - Password Policies",
-                "recommendation": "Implement mandatory MFA for all cloud accounts with hardware tokens",
-                "mapped_techniques": ["T1078", "T1078.004"],
-                "mapped_sub_techniques": ["Cloud Accounts (T1078.004)"],
-                "implementation_complexity": "Low | Medium | High",
-                "estimated_effectiveness": "80%"
-            }}
-        ],
-        
-        "detection_gaps": [
-            {{
-                "gap_description": "No geo-blocking for executive cloud accounts",
-                "affected_techniques": ["T1078.004"],
-                "affected_sub_techniques": ["Cloud Accounts"],
-                "risk_level": "HIGH",
-                "recommended_detection": "Implement conditional access policies based on geolocation for cloud accounts",
-                "mitre_data_source": "DS0028 - Logon Session"
-            }}
-        ],
-        
-        "sub_technique_coverage": {{
-            "total_techniques_mapped": 0,
-            "techniques_with_sub_techniques": 0,
-            "sub_technique_percentage": "0%",
-            "techniques_requiring_sub_techniques": []
+        "executive_summary": {{
+            "one_line_summary": "Account compromise via credential theft from high-risk country with impossible travel pattern",
+            "attack_sophistication": "Medium sophistication attack using compromised valid credentials with cloud account access",
+            "business_impact": "Critical - CFO account compromised, potential financial data exposure",
+            "immediate_actions": ["Disable account", "Reset credentials", "Review access logs", "Enable MFA"],
+            "investigation_priority": "P1 - Critical",
+            "key_sub_techniques_observed": ["Cloud Accounts (T1078.004)", "Additional sub-techniques as observed"]
         }}
-    }},
-    
-    "executive_summary": {{
-        "one_line_summary": "Account compromise via credential theft from high-risk country with impossible travel pattern",
-        "attack_sophistication": "Medium sophistication attack using compromised valid credentials with cloud account access",
-        "business_impact": "Critical - CFO account compromised, potential financial data exposure",
-        "immediate_actions": ["Disable account", "Reset credentials", "Review access logs", "Enable MFA"],
-        "investigation_priority": "P1 - Critical",
-        "key_sub_techniques_observed": ["Cloud Accounts (T1078.004)", "Additional sub-techniques as observed"]
     }}
-}}
 
----
+    ---
 
-# CRITICAL REQUIREMENTS:
+    # CRITICAL REQUIREMENTS:
 
-1. **Evidence-Based**: Every MITRE technique AND sub-technique must be supported by specific evidence from investigation
-2. **Sub-Technique Mandatory**: ALWAYS include sub-techniques when they exist for a technique
-3. **Color Coding**: 
-   - RED = Confirmed observed technique/sub-technique
-   - AMBER = Highly likely technique/sub-technique in progress
-   - GREEN = Predicted future technique/sub-technique
-4. **Completeness**: Map ALL relevant MITRE tactics (1-14) with appropriate sub-techniques
-5. **Specificity**: Use exact MITRE ATT&CK technique IDs and sub-technique IDs (e.g., T1078.004)
-6. **Actionability**: Recommendations must be specific, prioritized, and implementable
-7. **Timeline Accuracy**: Correlate MITRE techniques with actual timestamps from investigation
-8. **Prediction Quality**: Next steps must include specific sub-techniques and be realistic based on observed attacker behavior
-9. **Geographic Context**: If high-risk countries detected, emphasize in threat profiling
-10. **Sub-Technique Justification**: Explain WHY each specific sub-technique was selected based on evidence
-11. **Navigator Compatibility**: Include both parent techniques and sub-techniques in MITRE Navigator layer
-12. **Coverage Tracking**: Track sub-technique coverage percentage in analysis
+    1. **Evidence-Based**: Every MITRE technique AND sub-technique must be supported by specific evidence from investigation
+    2. **NO FABRICATION IN PREDICTIONS**: When predicting next attacker moves:
+    - Base predictions ONLY on techniques that logically follow from observed activity
+    - DO NOT mention specific cloud services (AWS, Azure, GCP, DropBox, etc.) unless investigation data explicitly mentions them
+    - DO NOT assume "cloud storage" exists unless investigation shows cloud environment
+    - DO NOT predict "exfiltration to cloud storage" unless investigation shows cloud infrastructure
+    - ONLY predict generic follow-up actions based on observed patterns
+    - Example: If you saw "Global Administrator assigned" → predict "Discovery of resources" NOT "Discovery of AWS S3 buckets"
+    3. **Sub-Technique Mandatory**: ALWAYS include sub-techniques when they exist for a technique
+    4. **Detailed Procedures**: Every technique must have a comprehensive procedure describing the exact attack method
+    5. **Comprehensive Timeline**: Attack timeline must include ALL stages with detailed narratives for each event
+    6. **Explanations**: All assessment fields (attack_stage, sophistication, confidence, dwell_time) must include detailed explanations
+    7. **Color Coding**: 
+    - RED = Confirmed observed technique/sub-technique
+    - AMBER = Highly likely technique/sub-technique in progress
+    - GREEN = Predicted future technique/sub-technique
+    8. **Completeness**: Map ALL relevant MITRE tactics (1-14) with appropriate sub-techniques
+    9. **Specificity**: Use exact MITRE ATT&CK technique IDs and sub-technique IDs (e.g., T1078.004)
+    10. **Actionability**: Recommendations must be specific, prioritized, and implementable
+    11. **Timeline Accuracy**: Correlate MITRE techniques with actual timestamps from investigation
+    12. **Prediction Quality**: Next steps must include specific sub-techniques and be realistic based on observed attacker behavior
+    13. **Geographic Context**: If high-risk countries detected, emphasize in threat profiling
+    14. **Sub-Technique Justification**: Explain WHY each specific sub-technique was selected based on evidence
+    15. **Navigator Compatibility**: Include both parent techniques and sub-techniques in MITRE Navigator layer
+    16. **Coverage Tracking**: Track sub-technique coverage percentage in analysis
 
-**Sub-Technique Selection Rules**:
-- If evidence shows "cloud account" access → Use T1078.004 (Cloud Accounts)
-- If evidence shows "domain account" access → Use T1078.002 (Domain Accounts)
-- If evidence shows "local account" access → Use T1078.003 (Local Accounts)
-- Always match the most specific sub-technique to the evidence
-- If multiple sub-techniques apply, include all relevant ones
+    **Sub-Technique Selection Rules**:
+    - If evidence shows "cloud account" access → Use T1078.004 (Cloud Accounts)
+    - If evidence shows "domain account" access → Use T1078.002 (Domain Accounts)
+    - If evidence shows "local account" access → Use T1078.003 (Local Accounts)
+    - Always match the most specific sub-technique to the evidence
+    - If multiple sub-techniques apply, include all relevant ones
 
-**Geographic Risk Enhancement**: If investigation involves Russia, China, or other high-risk countries, automatically increase threat severity and include nation-state TTPs with specific sub-techniques in analysis.
+    **Geographic Risk Enhancement**: If investigation involves Russia, China, or other high-risk countries, automatically increase threat severity and include nation-state TTPs with specific sub-techniques in analysis.
 
----
+    ---
 
-Now analyze the investigation data and provide comprehensive MITRE ATT&CK mapping with detailed sub-techniques in VALID JSON format only."""
+    Now analyze the investigation data and provide comprehensive MITRE ATT&CK mapping with detailed sub-techniques, comprehensive procedures, and detailed explanations in VALID JSON format only."""
 
         return prompt
 
@@ -1587,29 +1679,37 @@ class InvestigationAnalyzer:
 
 ---
 
+# CRITICAL ANALYSIS RULES:
+
+**YOU MUST ONLY USE DATA THAT ACTUALLY EXISTS IN THE INVESTIGATION STEPS ABOVE.**
+**DO NOT mention "cloud", "MFA", "authentication" or any technical term UNLESS it appears in the investigation outputs.**
+**DO NOT infer or assume information that is not explicitly written in the investigation data.**
+
 # CLASSIFICATION CRITERIA:
 
-## TRUE POSITIVE Indicators:
-✓ Impossible geographic travel times
-✓ High-risk country access (Russia, China, North Korea, Iran, etc.)
-✓ Suspicious IP addresses with malicious reputation
-✓ MFA bypass or authentication failures
-✓ Unknown device access
-✓ Temporal anomalies
-✓ Behavioral deviations
+Analyze ONLY what you can see in the investigation outputs:
 
-## FALSE POSITIVE Indicators:
-✓ Legitimate travel with proper documentation
-✓ VPN usage for business purposes
-✓ Expected location changes
-✓ High MFA success rate (>95%)
-✓ Known corporate devices
+## TRUE POSITIVE Indicators (only if evidence exists):
+- Multiple sign-ins from different locations at impossible times
+- Access from high-risk countries (Russia, China, North Korea, Iran, etc.)
+- "Unknown Location" mentioned in outputs
+- "Unknown Device" mentioned in outputs
+- Role changes to high-privilege roles (Global Administrator, etc.)
+- Sign-ins from suspicious or unusual IP addresses
 
-## BENIGN POSITIVE Indicators:
-✓ Normal sign-in patterns
-✓ 100% MFA success rate
-✓ Trusted devices only
-✓ Expected geographic locations
+## FALSE POSITIVE Indicators (only if evidence exists):
+- All activities from same location
+- All devices marked as "Trusted" in outputs
+- Normal business patterns visible in timestamps
+- Expected role assignments for user's job function
+
+## BENIGN POSITIVE Indicators (only if evidence exists):
+- Single location access
+- Trusted devices only
+- Normal timing patterns
+- No privilege escalations
+
+**If investigation data does NOT contain information about something (like MFA, cloud, authentication methods), then DO NOT mention it in your analysis.**
 
 ---
 
@@ -1621,12 +1721,12 @@ class InvestigationAnalyzer:
     "confidence_score": 85,
     "summary": "2-3 sentence executive summary",
     "pattern_analysis": {{
-        "privilege_escalation_risk": "Description",
-        "temporal_anomalies": "Description",
-        "geographic_anomalies": "Description",
-        "authentication_concerns": "Description",
-        "device_trust_issues": "Description",
-        "behavioral_deviations": "Description"
+        "privilege_escalation_risk": "Based ONLY on actual role assignment data from investigation outputs - quote specific evidence",
+        "temporal_anomalies": "Based ONLY on actual timestamp data from investigation outputs - quote specific evidence",
+        "geographic_anomalies": "Based ONLY on actual location/IP data from investigation outputs - quote specific evidence",
+        "authentication_concerns": "Based ONLY on actual authentication data IF IT EXISTS in investigation outputs - quote specific evidence or state 'No authentication data in investigation'",
+        "device_trust_issues": "Based ONLY on actual device information from investigation outputs - quote specific evidence",
+        "behavioral_deviations": "Based ONLY on actual behavioral patterns visible in investigation outputs - quote specific evidence"
     }},
     "key_findings": [
         {{

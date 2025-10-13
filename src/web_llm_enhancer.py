@@ -7,13 +7,12 @@ import time
 
 class WebLLMEnhancer:
     """
-    ✅ ENHANCED VERSION THAT PRESERVES EXACT STEPS
+    âœ… ULTRA-STRICT ENHANCER - NEVER CHANGES STEP NAMES
 
-    Rules:
-    1. NEVER change step names
-    2. NEVER change KQL queries
-    3. Only improve explanation IF it's truly vague/empty
-    4. If explanation is decent, keep it EXACTLY as-is
+    RULES:
+    1. Step names are 100% PRESERVED from template - ZERO changes
+    2. Only improve explanations if truly empty/vague
+    3. CLEAN KQL queries - remove all explanations and junk
     """
 
     def __init__(self):
@@ -21,247 +20,350 @@ class WebLLMEnhancer:
 
         try:
             self.web_search = SerperDevTool()
-            print("✅ Web search available")
         except:
             self.web_search = None
-            print("⚠️ Web search unavailable")
 
     def enhance_template_steps(self, rule_number: str, original_steps: list) -> list:
         """
-        Enhance with STRICT preservation rules
+        âœ… PRESERVE EVERYTHING - Only enhance if absolutely needed
         """
         print(f"\n{'='*80}")
-        print(f"🔧 ENHANCING TEMPLATE FOR {rule_number}")
+        print(f"ðŸ”§ PROCESSING TEMPLATE FOR {rule_number}")
+        print(f"STRICT MODE: Preserving ALL original data")
         print(f"{'='*80}")
 
         enhanced_steps = []
 
         for i, step in enumerate(original_steps, 1):
+            # âœ… GET ORIGINAL VALUES
             original_name = step.get("step_name", "")
             original_exp = step.get("explanation", "")
             original_kql = step.get("kql_query", "")
             original_input = step.get("input_required", "")
 
-            print(f"\n--- Step {i}: {original_name} ---")
+            print(f"\n{'='*60}")
+            print(f"Step {i}/{len(original_steps)}")
+            print(f"{'='*60}")
+            print(f"Original Name: {original_name}")
 
-            # ✅ RULE 1: NEVER change step name
+            # âœ… RULE 1: NEVER CHANGE STEP NAME - 100% PRESERVED
             final_name = original_name
-            print(f"✅ Name preserved: {final_name}")
 
-            # ✅ RULE 2: Only enhance explanation if TRULY needed
-            if self._needs_enhancement(original_exp):
-                print(f"📝 Explanation needs improvement (too vague)")
-                enhanced_exp = self._enhance_explanation_safely(
-                    original_name, original_exp, rule_number
-                )
+            # âœ… RULE 2: Keep explanation as-is OR improve only if empty
+            if not original_exp or len(original_exp) < 15:
+                print(f"ðŸ“ Explanation empty/too short, using smart fallback")
+                enhanced_exp = self._get_smart_fallback(original_name)
             else:
+                print(f"âœ… Explanation preserved (length: {len(original_exp)})")
                 enhanced_exp = original_exp
-                print(f"✅ Explanation kept as-is (already clear)")
 
-            # ✅ RULE 3: NEVER change KQL
-            final_kql = original_kql
-            if final_kql:
-                print(f"✅ KQL preserved ({len(final_kql)} chars)")
+            # âœ… RULE 3: CLEAN KQL - Remove explanations, keep only query
+            if original_kql:
+                final_kql = self._deep_clean_kql(original_kql)
+                if final_kql:
+                    print(
+                        f"âœ… KQL cleaned ({len(original_kql)} â†’ {len(final_kql)} chars)"
+                    )
+                else:
+                    print(f"âš ï¸ KQL removed (couldn't extract valid query)")
             else:
-                print(f"ℹ️ No KQL (documentation step)")
+                final_kql = ""
+                print(f"â„¹ï¸ No KQL (manual investigation step)")
 
+            # âœ… STORE WITH ZERO MODIFICATIONS
             enhanced_steps.append(
                 {
-                    "step_name": final_name,  # ✅ EXACT ORIGINAL
-                    "explanation": enhanced_exp,  # ✅ ORIGINAL OR IMPROVED
-                    "input_required": original_input,  # ✅ EXACT ORIGINAL
-                    "kql_query": final_kql,  # ✅ EXACT ORIGINAL
+                    "step_name": final_name,  # âœ… 100% ORIGINAL
+                    "explanation": enhanced_exp,  # âœ… ORIGINAL or smart fallback
+                    "input_required": original_input,  # âœ… 100% ORIGINAL
+                    "kql_query": final_kql,  # âœ… CLEANED
                 }
             )
 
-        print(f"\n✅ COMPLETED: {len(enhanced_steps)} steps processed")
+            print(f"âœ… Step {i} processed")
+
+        print(f"\n{'='*80}")
+        print(f"âœ… COMPLETED: {len(enhanced_steps)} steps")
+        print(f"{'='*80}\n")
+
         return enhanced_steps
 
-    def _needs_enhancement(self, explanation: str) -> bool:
+    def _deep_clean_kql(self, kql: str) -> str:
         """
-        Check if explanation REALLY needs improvement
+        âœ… AGGRESSIVE KQL CLEANING - Extract ONLY the query
 
-        Only enhance if:
-        - Empty or very short (<20 chars)
-        - Contains only "N/A" or "TBD"
-        - Is obviously incomplete
-
-        DO NOT enhance if:
-        - Already has clear instructions
-        - Contains specific details
-        - Is >30 characters with real content
+        Remove:
+        - Explanations (e.g., "To generate...", "Here is...", "### Explanation")
+        - Markdown formatting
+        - Comments that are too long
+        - Everything after "###" or "Explanation:" or "This query"
         """
-        if not explanation or len(explanation) < 20:
-            return True
+        if not kql or kql.strip().upper() in ["N/A", "NA", ""]:
+            return ""
 
-        exp_lower = explanation.lower()
+        print(f"\n   ðŸ§¹ Cleaning KQL (original: {len(kql)} chars)...")
 
-        # Vague placeholders
-        if exp_lower in ["n/a", "tbd", "pending", "todo", "..."]:
-            return True
+        # âœ… STEP 1: Remove everything BEFORE the actual query
+        # Remove introductory text like "To generate a KQL query..."
+        kql = re.sub(
+            r"^.*?(SigninLogs|AuditLogs|IdentityInfo|ThreatIntelligenceIndicator|SecurityIncident|DeviceInfo)",
+            r"\1",
+            kql,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
 
-        # Very generic phrases only
-        generic_only = [
-            "complete the step",
-            "perform investigation",
-            "document findings",
-            "review data",
+        # âœ… STEP 2: Remove everything AFTER the query
+        # Stop at "###", "Explanation:", "This query", etc.
+        stop_patterns = [
+            r"###.*",
+            r"Explanation:.*",
+            r"This query.*",
+            r"This KQL query.*",
+            r"\*\*\* Explanation:.*",
+            r"I now.*",
+            r"The key elements.*",
+            r"Since this is.*",
+            r"You can adjust.*",
         ]
 
+        for pattern in stop_patterns:
+            kql = re.sub(pattern, "", kql, flags=re.DOTALL | re.IGNORECASE)
+
+        # âœ… STEP 3: Remove markdown formatting
+        kql = re.sub(r"```[a-z]*\s*\n?", "", kql)
+        kql = re.sub(r"\n?```", "", kql)
+        kql = re.sub(r"\*\*", "", kql)
+        kql = re.sub(r"`", "", kql)
+
+        # âœ… STEP 4: Remove long explanatory comments (keep short ones)
+        lines = kql.split("\n")
+        cleaned_lines = []
+
+        for line in lines:
+            stripped = line.strip()
+
+            # Skip empty lines at start
+            if not stripped and not cleaned_lines:
+                continue
+
+            # Keep KQL lines (contain |, where, extend, etc.)
+            if any(
+                keyword in stripped.lower()
+                for keyword in ["|", "where", "extend", "project", "summarize", "join"]
+            ):
+                cleaned_lines.append(line)
+
+            # Keep SHORT comments (< 60 chars)
+            elif stripped.startswith("//") and len(stripped) < 60:
+                cleaned_lines.append(line)
+
+            # Keep lines that look like KQL operators
+            elif stripped.startswith(
+                (
+                    "SigninLogs",
+                    "AuditLogs",
+                    "IdentityInfo",
+                    "ThreatIntelligenceIndicator",
+                    "SecurityIncident",
+                    "DeviceInfo",
+                )
+            ):
+                cleaned_lines.append(line)
+
+        kql = "\n".join(cleaned_lines)
+
+        # âœ… STEP 5: Remove trailing explanatory text
+        # If there's a blank line followed by text, remove everything after
+        parts = kql.split("\n\n")
+        if len(parts) > 1:
+            # Keep only the first part (the query)
+            kql = parts[0]
+
+        # âœ… STEP 6: Clean whitespace
+        lines = [line.rstrip() for line in kql.split("\n") if line.strip()]
+        kql = "\n".join(lines)
+        kql = kql.strip()
+
+        # âœ… STEP 7: Validate it's actually a KQL query
+        if not any(
+            keyword in kql
+            for keyword in [
+                "|",
+                "where",
+                "extend",
+                "project",
+                "summarize",
+                "SigninLogs",
+                "AuditLogs",
+            ]
+        ):
+            print(f"   âš ï¸ Not a valid KQL query after cleaning")
+            return ""
+
+        # âœ… STEP 8: Final length check
+        if len(kql) < 20:
+            print(f"   âš ï¸ Query too short after cleaning")
+            return ""
+
+        print(f"   âœ… Cleaned to {len(kql)} chars")
+        return kql
+
+    def _get_smart_fallback(self, step_name: str) -> str:
+        """
+        Smart fallback explanations based on EXACT step name patterns
+        """
+        name_lower = step_name.lower()
+
+        # âœ… EXACT MATCHES FIRST (from your template)
         if (
-            any(phrase in exp_lower for phrase in generic_only)
-            and len(explanation) < 40
+            "provide the username" in name_lower
+            or "username which are involved" in name_lower
         ):
-            return True
+            return "Provide the username which are involved in the incident"
 
-        # Otherwise, explanation is good enough
-        return False
+        elif "vip" in name_lower and "user" in name_lower:
+            return "Cross verify if the user is VIP or not - with the list (Shared by Arcutis)"
 
-    def _enhance_explanation_safely(
-        self, step_name: str, original_exp: str, rule_number: str
-    ) -> str:
-        """
-        Enhance ONLY if needed, with fallback to reasonable default
-        """
-        # Build context-aware explanation based on step name
-        step_lower = step_name.lower()
+        elif "run the kql" in name_lower or "run kql query" in name_lower:
+            return "Verify the logs whether there is any Application without sign in attempts"
 
-        # ✅ SMART FALLBACKS based on common SOC patterns
-        if "document" in step_lower and "investigation" in step_lower:
-            return "Complete investigation by reviewing relevant data from all sources and documenting key findings including timestamps, user details, and any anomalies discovered during analysis."
-
-        elif "verify" in step_lower and "vip" in step_lower:
-            return "Cross-verify if the user is classified as VIP or Executive by checking organizational user lists and IdentityInfo tags to assess incident priority and escalation requirements."
-
-        elif "audit" in step_lower or "log" in step_lower:
-            return "Verify audit logs and sign-in attempts to identify whether any applications were accessed without proper authentication or if suspicious access patterns exist."
-
-        elif "application" in step_lower and "critical" in step_lower:
-            return "If application sign-in occurred without password authentication, determine whether the application is classified as critical to business operations to assess risk level."
-
-        elif "close" in step_lower and "false positive" in step_lower:
-            return "If no critical applications were accessed without authentication and all indicators point to legitimate activity, close the incident as False Positive with proper justification."
-
-        elif "true positive" in step_lower:
-            return "If any critical applications were found with passwordless authentication or other suspicious indicators, classify as True Positive and proceed with escalation."
-
-        elif "authentication" in step_lower:
-            return "Ensure passwordless authentication method used is legitimate such as biometrics or hardware tokens. If critical apps lack passwords, coordinate with IT to enable MFA."
-
-        elif "legitimate" in step_lower and "close" in step_lower:
-            return "If authentication method is verified as legitimate through approved passwordless mechanisms and user confirmation, classify as False Positive and close incident."
-
-        elif "unauthorized" in step_lower or "action" in step_lower:
-            return "If unauthorized access is confirmed or suspicious activity detected, take appropriate remediation actions including account lockout, password reset, or escalation for further investigation."
-
-        elif "monitor" in step_lower or "future" in step_lower:
-            return "Enhance monitoring capabilities and tune detection rules to identify similar events in the future. Document lessons learned and update playbook procedures accordingly."
-
-        elif "ip" in step_lower and (
-            "check" in step_lower or "reputation" in step_lower
+        elif (
+            "collect the basic info" in name_lower
+            or "username, app displayname" in name_lower
         ):
-            return "Query threat intelligence sources to verify IP address reputation, check for known malicious activity, and validate geolocation against user's expected locations."
+            return "If there is any application sign in without password check whether the application is critical or not"
 
-        elif "user" in step_lower and (
-            "detail" in step_lower or "information" in step_lower
-        ):
-            return "Extract comprehensive user account information including UPN, display name, department, job title, manager, and VIP status from IdentityInfo to assess context."
+        elif "user confirmation" in name_lower and "yes" in name_lower:
+            return "If no critical applications close the incident as false positive"
 
-        elif "sign" in step_lower or "login" in step_lower:
-            return "Review user sign-in logs to analyze authentication patterns, device compliance, MFA status, locations accessed, and identify any anomalies or deviations from normal behavior."
+        elif "user confirmation" in name_lower and "no" in name_lower:
+            return "If any critical application found consider as True Positive"
 
-        elif "device" in step_lower:
-            return "Verify device compliance status, check if device is registered and managed by organization, and validate operating system and security configurations."
+        elif "ad logs" in name_lower or "sign in logs" in name_lower:
+            return "Ensure that the passwordless authentication method used is legitimate (e.g., biometrics, hardware tokens). If there is critical applications without password then reach out IT team to set password by enabling MFA"
 
-        elif "mfa" in step_lower:
-            return "Validate multi-factor authentication status and confirm MFA was successfully completed using approved methods for this sign-in attempt."
+        elif "user account details" in name_lower:
+            return "If the authentication is Legitimate then consider it as False Positive and close the incident"
 
-        elif "role" in step_lower:
-            return "Query role assignments to identify privileged roles, check for recent changes, and verify if assigned roles match user's job responsibilities."
+        elif "inform to it team" in name_lower or "inform it team" in name_lower:
+            return "If unauthorized, take appropriate action such as locking accounts, resetting passwords, or investigating further."
+
+        elif "track" in name_lower and "closer" in name_lower:
+            return "Enhance monitoring to detect similar events in the future"
+
+        # âœ… GENERIC PATTERNS (if no exact match)
+        elif "ip" in name_lower:
+            return "Verify IP address reputation and check for known malicious activity using threat intelligence sources."
+
+        elif "user" in name_lower and "detail" in name_lower:
+            return "Extract comprehensive user account information including UPN, department, job title, and VIP status."
+
+        elif "sign" in name_lower or "authentication" in name_lower:
+            return "Review user sign-in logs to analyze authentication patterns, device compliance, and MFA status."
+
+        elif "device" in name_lower:
+            return "Verify device compliance status and check if device is registered and managed by organization."
+
+        elif "mfa" in name_lower:
+            return "Validate multi-factor authentication status and confirm MFA completion using approved methods."
+
+        elif "role" in name_lower:
+            return "Query role assignments to identify privileged roles and verify if roles match job responsibilities."
 
         else:
-            # Generic fallback
-            return f"Complete {step_name} by reviewing relevant security data, executing necessary queries, and documenting all findings with timestamps and evidence."
+            # Last resort fallback
+            return f"Complete {step_name} by reviewing relevant security data and documenting all findings."
 
     def validate_enhanced_steps(
         self, original_steps: list, enhanced_steps: list
     ) -> dict:
         """
-        Validation report
+        âœ… STRICT VALIDATION - Check for ANY changes
         """
         report = {
             "total_original": len(original_steps),
             "total_enhanced": len(enhanced_steps),
             "names_preserved": 0,
+            "names_changed": 0,
+            "explanations_kept": 0,
             "explanations_improved": 0,
-            "kql_relevant": 0,
+            "kql_preserved": 0,
+            "kql_cleaned": 0,
             "kql_removed": 0,
-            "prompt_leaks_found": 0,
             "issues": [],
         }
 
         for i, (orig, enh) in enumerate(zip(original_steps, enhanced_steps), 1):
-            # Check name preservation
-            if orig.get("step_name") == enh.get("step_name"):
+            # âœ… CHECK 1: Name preservation (MUST BE 100%)
+            orig_name = orig.get("step_name", "")
+            enh_name = enh.get("step_name", "")
+
+            if orig_name == enh_name:
                 report["names_preserved"] += 1
             else:
+                report["names_changed"] += 1
                 report["issues"].append(
-                    f"❌ Step {i}: Name changed! '{orig.get('step_name')}' → '{enh.get('step_name')}'"
+                    f"âŒ Step {i}: Name CHANGED!\n"
+                    f"   Original: '{orig_name}'\n"
+                    f"   Enhanced: '{enh_name}'"
                 )
 
-            # Check explanation
+            # âœ… CHECK 2: Explanation
             orig_exp = orig.get("explanation", "")
             enh_exp = enh.get("explanation", "")
 
-            if orig_exp != enh_exp and len(enh_exp) > len(orig_exp):
+            if orig_exp == enh_exp:
+                report["explanations_kept"] += 1
+            else:
                 report["explanations_improved"] += 1
 
-            # Check KQL preservation
+            # âœ… CHECK 3: KQL preservation/cleaning
             orig_kql = orig.get("kql_query", "")
             enh_kql = enh.get("kql_query", "")
 
             if orig_kql == enh_kql:
-                if enh_kql:
-                    report["kql_relevant"] += 1
-            else:
-                if orig_kql and not enh_kql:
-                    report["kql_removed"] += 1
-                    report["issues"].append(f"⚠️ Step {i}: KQL removed")
-                elif not orig_kql and enh_kql:
-                    report["issues"].append(
-                        f"⚠️ Step {i}: KQL added (should not happen)"
-                    )
+                report["kql_preserved"] += 1
+            elif orig_kql and enh_kql:
+                report["kql_cleaned"] += 1
+            elif orig_kql and not enh_kql:
+                report["kql_removed"] += 1
 
         return report
 
     def print_validation_report(self, report: dict):
-        """Print validation results"""
+        """Print detailed validation"""
         print("\n" + "=" * 80)
         print("VALIDATION REPORT")
         print("=" * 80)
         print(f"Total Steps: {report['total_enhanced']}/{report['total_original']}")
+        print(f"\nðŸ“› STEP NAMES:")
         print(
-            f"✅ Names Preserved: {report['names_preserved']}/{report['total_original']}"
+            f"   âœ… Preserved: {report['names_preserved']}/{report['total_original']}"
         )
-        print(f"📝 Explanations Improved: {report['explanations_improved']}")
-        print(f"📊 KQL Queries Relevant: {report['kql_relevant']}")
-        print(f"🗑️ KQL Queries Removed: {report['kql_removed']}")
+        print(f"   âŒ Changed: {report['names_changed']}/{report['total_original']}")
+
+        print(f"\nðŸ“ EXPLANATIONS:")
+        print(f"   âœ… Kept Original: {report['explanations_kept']}")
+        print(f"   ðŸ“ Improved: {report['explanations_improved']}")
+
+        print(f"\nðŸ“Š KQL QUERIES:")
+        print(f"   âœ… Preserved: {report['kql_preserved']}")
+        print(f"   ðŸ§¹ Cleaned: {report['kql_cleaned']}")
+        print(f"   ðŸ—‘ï¸ Removed: {report['kql_removed']}")
 
         if report["issues"]:
-            print(f"\n⚠️ ISSUES FOUND ({len(report['issues'])}):")
-            for issue in report["issues"][:5]:  # Show first 5
-                print(f"  • {issue}")
-            if len(report["issues"]) > 5:
-                print(f"  ... and {len(report['issues']) - 5} more")
+            print(f"\n{'='*80}")
+            print(f"âŒ CRITICAL ISSUES FOUND: {len(report['issues'])}")
+            print(f"{'='*80}")
+            for issue in report["issues"]:
+                print(f"\n{issue}")
         else:
-            print("\n✅ PERFECT - NO ISSUES FOUND")
+            print(f"\n{'='*80}")
+            print("âœ… PERFECT - ALL STEP NAMES PRESERVED!")
+            print(f"{'='*80}")
 
-        print("=" * 80 + "\n")
+        print("\n")
 
     def _is_kql_relevant(self, kql: str, step_name: str, explanation: str) -> bool:
-        """Check if KQL is relevant to the step"""
-        if not kql or len(kql) < 20:
-            return False
-
-        # Always return True to preserve original KQL
-        return True
+        """Always return True to preserve original KQL"""
+        return True if kql else False
