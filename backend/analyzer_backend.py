@@ -15,13 +15,11 @@ class SecurityAlertAnalyzerCrew:
     def __init__(self):
         if not GOOGLE_API_KEY:
             raise ValueError("GOOGLE_API_KEY environment variable must be set")
-        
+
         self.llm = LLM(
-            model="gemini/gemini-2.5-flash",
-            temperature=0.7,
-            api_key=GOOGLE_API_KEY
+            model="gemini/gemini-2.5-flash", temperature=0.7, api_key=GOOGLE_API_KEY
         )
-        
+
         self.search_tool = (
             SerperDevTool(api_key=SERPER_API_KEY) if SERPER_API_KEY else None
         )
@@ -190,18 +188,6 @@ FINAL CHECK:
         return [threat_intel_task]
 
     def analyze_alert(self, alert_name: str) -> str:
-        """
-        Execute the crew analysis and return cleaned results
-
-        Args:
-            alert_name: Name/description of the security alert
-
-        Returns:
-            Cleaned analysis text in markdown format
-
-        Raises:
-            Exception: If analysis fails
-        """
         try:
             agents = self._create_agents()
             tasks = self._create_tasks(alert_name, agents)
@@ -232,11 +218,4 @@ FINAL CHECK:
             return analysis_text
 
         except Exception as e:
-            error_msg = f"""## Analysis Error
-                **Error:** {str(e)}
-                **Steps:**
-                1. Verify GOOGLE_API_KEY is set
-                2. Check API key at: https://makersuite.google.com/app/apikey
-                3. Verify SERPER_API_KEY if using search
-                """
-            raise Exception(error_msg)
+            raise Exception(str(e))

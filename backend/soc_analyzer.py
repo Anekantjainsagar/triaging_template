@@ -9,13 +9,13 @@ warnings.filterwarnings("ignore")
 
 # NLP and ML imports
 try:
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    from sklearn.metrics.pairwise import cosine_similarity
-    from sklearn.cluster import KMeans
     import nltk
     from nltk.corpus import stopwords
-    from nltk.tokenize import word_tokenize
+    from sklearn.cluster import KMeans
     from nltk.stem import WordNetLemmatizer
+    from nltk.tokenize import word_tokenize
+    from sklearn.metrics.pairwise import cosine_similarity
+    from sklearn.feature_extraction.text import TfidfVectorizer
 
     nltk.download("punkt", quiet=True)
     nltk.download("stopwords", quiet=True)
