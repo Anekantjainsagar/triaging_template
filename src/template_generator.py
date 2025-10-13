@@ -5,13 +5,6 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 
 class CompleteTemplateGenerator:
-    """
-    Complete template generator with:
-    - Intelligent step naming
-    - Dynamic KQL generation
-    - No Input column
-    - Clean formatting
-    """
 
     def __init__(self, kql_generator=None, step_name_generator=None):
         # Import generators
@@ -228,10 +221,6 @@ class CompleteTemplateGenerator:
 
 # Integration wrapper for existing codebase
 class EnhancedTemplateGenerator:
-    """
-    Wrapper to maintain compatibility with existing code
-    Replaces the old template_generator.py
-    """
 
     def __init__(self):
         from src.kql_generation import DynamicKQLGenerator
