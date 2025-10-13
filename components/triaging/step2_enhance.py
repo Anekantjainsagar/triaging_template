@@ -5,7 +5,8 @@ import os
 import re
 import json
 import time
-import traceback # Added for error logging
+import traceback  # Added for error logging
+
 
 def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGenerator):
     st.markdown(
@@ -220,10 +221,10 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
             template_df = template_gen.generate_clean_template(
                 rule_number=rule_number, enhanced_steps=enhanced_steps
             )
-            
+
             # --- FIX: Ensure 'Step' column is a consistent type to avoid PyArrow error ---
-            template_df['Step'] = template_df['Step'].astype(str)
-            
+            template_df["Step"] = template_df["Step"].astype(str)
+
             excel_file = template_gen.export_to_excel(template_df, rule_number)
 
             session_state.original_steps = original_steps  # Store for comparison

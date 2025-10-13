@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+
 def show_page(session_state, export_rule_incidents_to_excel):
     st.markdown(
         '<div class="step-header"><h2>Step 2: Select an Alert & Export Historical Data</h2></div>',

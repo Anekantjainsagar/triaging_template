@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+
 def show_page(session_state, load_tracker_data, search_alerts_in_data):
     st.markdown(
         '<div class="step-header"><h2>Step 1: Search for Security Alerts</h2></div>',
@@ -69,9 +70,7 @@ def show_page(session_state, load_tracker_data, search_alerts_in_data):
                     session_state.step = 1
                     st.rerun()
                 else:
-                    st.warning(
-                        "⚠️ No relevant alerts found. Try different keywords."
-                    )
+                    st.warning("⚠️ No relevant alerts found. Try different keywords.")
 
             except Exception as e:
                 st.error(f"❌ Error during search: {str(e)}")

@@ -2,15 +2,14 @@
 
 import streamlit as st
 
+
 def show_page(session_state, crew, traceback):
     st.markdown(
         '<div class="step-header"><h2>Step 4: AI-Powered Triaging Walkthrough</h2></div>',
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        f"**Alert:** {session_state.selected_alert.get('description', 'N/A')}"
-    )
+    st.markdown(f"**Alert:** {session_state.selected_alert.get('description', 'N/A')}")
 
     if session_state.triaging_plan is None:
         st.markdown("### 🧠 AI Agents are Analyzing...")
@@ -84,9 +83,7 @@ def show_page(session_state, crew, traceback):
 
         # Display the formatted step
         st.markdown(f"***")
-        st.markdown(
-            f"### {current_step_index + 1}. {current_step.get('step_name')} 🔍"
-        )
+        st.markdown(f"### {current_step_index + 1}. {current_step.get('step_name')} 🔍")
         st.markdown(f"* **Explanation:** {current_step.get('explanation')}")
         st.markdown(f"* **Input Required:** {current_step.get('input_required')}")
 
@@ -118,9 +115,7 @@ def show_page(session_state, crew, traceback):
 
                 with col1:
                     fp_prob = current_prog.get("false_positive_probability", 50)
-                    delta_fp = fp_prob - session_state.rule_history.get(
-                        "fp_rate", 50
-                    )
+                    delta_fp = fp_prob - session_state.rule_history.get("fp_rate", 50)
                     st.metric(
                         "False Positive Likelihood",
                         f"{fp_prob:.1f}%",
@@ -130,9 +125,7 @@ def show_page(session_state, crew, traceback):
 
                 with col2:
                     tp_prob = current_prog.get("true_positive_probability", 50)
-                    delta_tp = tp_prob - session_state.rule_history.get(
-                        "tp_rate", 50
-                    )
+                    delta_tp = tp_prob - session_state.rule_history.get("tp_rate", 50)
                     st.metric(
                         "True Positive Likelihood",
                         f"{tp_prob:.1f}%",
@@ -204,9 +197,7 @@ def show_page(session_state, crew, traceback):
             if st.button(
                 "⏹️ Skip to End", help="Skip remaining steps and go to summary"
             ):
-                for remaining_step in session_state.triaging_plan[
-                    current_step_index:
-                ]:
+                for remaining_step in session_state.triaging_plan[current_step_index:]:
                     step_name = remaining_step.get("step_name", "Unknown Step")
                     if step_name not in session_state.triaging_output:
                         session_state.triaging_output[step_name] = "[Skipped]"

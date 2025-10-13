@@ -19,6 +19,8 @@ from src.web_llm_enhancer import WebLLMEnhancer
 from src.template_generator import EnhancedTemplateGenerator
 from src.csv_template_generator import generate_blank_triaging_template_csv
 
+from config.triaging_styles import main_header_style
+
 # Imports for the individual steps
 from components.triaging.step0_search import show_page as step0_search
 from components.triaging.step1_select import show_page as step1_select
@@ -35,42 +37,7 @@ st.set_page_config(
 
 # --- Custom CSS ---
 st.markdown(
-    """
-    <style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f77b4;
-        margin-bottom: 1rem;
-    }
-    .step-header {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
-    }
-    .step-container {
-        background-color: #ffffff;
-        padding: 1.5rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #1f77b4;
-        margin-bottom: 1rem;
-    }
-    .expected-output {
-        background-color: #fff3e0;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #ff9800;
-        margin: 1rem 0;
-    }
-    .progressive-prediction {
-        background-color: #e3f2fd;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
-    }
-    </style>
-""",
+    main_header_style,
     unsafe_allow_html=True,
 )
 
@@ -148,15 +115,27 @@ with st.sidebar:
             st.rerun()
 
 
-
 # --- Page Routing ---
 if st.session_state.step == 0:
     step0_search(st.session_state, load_tracker_data, search_alerts_in_data)
+
 elif st.session_state.step == 1:
     step1_select(st.session_state, export_rule_incidents_to_excel)
+
 elif st.session_state.step == 2:
-    step2_enhance(st.session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGenerator)
+    step2_enhance(
+        st.session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGenerator
+    )
+
 elif st.session_state.step == 3:
     step3_walkthrough(st.session_state, crew, traceback)
+
 elif st.session_state.step == 4:
-    step4_complete(st.session_state, crew, generate_completed_template, generate_blank_triaging_template_csv, EnhancedTemplateGenerator, traceback)
+    step4_complete(
+        st.session_state,
+        crew,
+        generate_completed_template,
+        generate_blank_triaging_template_csv,
+        EnhancedTemplateGenerator,
+        traceback,
+    )
