@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
-from utils.metrices import extract_detailed_metrics
-from utils.generate_summaries import generate_data_summary_with_ollama, extract_summary_data
+from utils.alert_analysis.metrices import extract_detailed_metrics
+from utils.alert_analysis.generate_summaries import generate_data_summary_with_ollama, extract_summary_data
 
 
 def display_historical_analysis_tab(data_df: pd.DataFrame):
