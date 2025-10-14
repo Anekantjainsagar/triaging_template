@@ -2,7 +2,6 @@ import pandas as pd
 from datetime import datetime
 from typing import Optional, Dict, List, Any
 
-# Import from fastapi, NOT from fastapi_backend
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -62,8 +61,8 @@ class SearchResponse(BaseModel):
     timestamp: str
 
 
-class HealthResponse(BaseModel):
-    """Response model for health check"""
+class SearchAlertStatusResponse(BaseModel):
+    """Response model for search alert status check"""
 
     status: str
     timestamp: str
@@ -151,18 +150,18 @@ def get_tracker_data(force_reload: bool = False) -> pd.DataFrame:
 
 
 @router.get(
-    "/health",
-    response_model=HealthResponse,
-    summary="Health check",
+    "/status",  # CHANGED from /health to /status to avoid conflict
+    response_model=SearchAlertStatusResponse,
+    summary="Search alert status check",
     description="Check if the search alert service is healthy and data is loaded",
 )
-async def health_check():
+async def search_alert_status():
     """
-    Health check endpoint for search alert service
+    Status check endpoint for search alert service
 
     Returns status, data loading state, and cache information
     """
-    return HealthResponse(
+    return SearchAlertStatusResponse(
         status="healthy",
         timestamp=datetime.now().isoformat(),
         data_loaded=_cached_data is not None,
@@ -317,7 +316,7 @@ async def search_alerts(request: SearchRequest):
     description="Get detailed information about a specific alert by its index in search results",
 )
 async def get_alert_details(
-    alert_index: int,  # Path parameter - no Query() decorator
+    alert_index: int,
     query: str = Query(..., description="Original search query used"),
     top_n: int = Query(
         5, ge=1, le=50, description="Number of results that were returned"

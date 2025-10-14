@@ -3,10 +3,10 @@ SOC Intelligence Dashboard - Streamlit Frontend
 Updated to use FastAPI backend via API client
 """
 
+import pandas as pd
 import streamlit as st
 from frontend.config.styles import apply_custom_css
 from api_client.analyzer_api_client import get_analyzer_client
-from components.alert_analysis import display_alert_analysis_tab
 from components.predictions_page import display_predictions_page
 from components.historical_analysis import display_historical_analysis_tab
 
@@ -82,8 +82,6 @@ def display_rule_suggestion(rule_data, index):
 # ============================================================================
 # Main Dashboard
 # ============================================================================
-
-
 def display_soc_dashboard():
     """Display the main SOC Dashboard page"""
 
@@ -136,14 +134,23 @@ def display_soc_dashboard():
                     historical_result = api_client.get_historical_data(selected_rule)
 
                     if historical_result.get("success"):
-                        st.session_state.selected_rule_data = {
-                            "rule_name": selected_rule,
-                            "data": historical_result.get("data", []),
-                            "query": user_query,
-                        }
+                        # FIXED: Convert list to DataFrame
+                        data_list = historical_result.get("data", [])
 
-                        st.session_state.current_suggestions = []
-                        st.rerun()
+                        if data_list:
+                            # Convert list of dicts to DataFrame
+                            data_df = pd.DataFrame(data_list)
+
+                            st.session_state.selected_rule_data = {
+                                "rule_name": selected_rule,
+                                "data": data_df,  # Store as DataFrame
+                                "query": user_query,
+                            }
+
+                            st.session_state.current_suggestions = []
+                            st.rerun()
+                        else:
+                            st.warning("No historical data found for this rule")
                     else:
                         st.error(
                             f"❌ Failed to load historical data: {historical_result.get('error')}"
@@ -154,7 +161,7 @@ def display_soc_dashboard():
         st.markdown("---")
 
         rule_name = st.session_state.selected_rule_data["rule_name"]
-        data = st.session_state.selected_rule_data["data"]
+        data = st.session_state.selected_rule_data["data"]  # Now it's a DataFrame
 
         st.markdown(
             f'<h2 style="color: #2c3e50; text-align: center;">📊 Analysis: {rule_name}</h2>',
@@ -168,6 +175,7 @@ def display_soc_dashboard():
             display_alert_analysis_tab_api(rule_name, api_client)
 
         with tab2:
+            # FIXED: Now passing DataFrame instead of list
             display_historical_analysis_tab(data)
 
 

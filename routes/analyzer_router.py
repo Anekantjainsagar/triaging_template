@@ -96,8 +96,8 @@ class SystemStatsResponse(BaseModel):
     timestamp: str
 
 
-class HealthResponse(BaseModel):
-    """Response model for health check"""
+class AnalyzerStatusResponse(BaseModel):
+    """Response model for analyzer-specific status check"""
 
     status: str
     timestamp: str
@@ -179,18 +179,18 @@ def get_analyzers(force_reload: bool = False):
 
 
 @router.get(
-    "/health",
-    response_model=HealthResponse,
-    summary="Health check",
+    "/status",  # CHANGED from /health to /status to avoid conflict
+    response_model=AnalyzerStatusResponse,
+    summary="Analyzer status check",
     description="Check if the SOC analyzer service is healthy and analyzers are loaded",
 )
-async def health_check():
+async def analyzer_status():
     """
-    Health check endpoint for SOC analyzer service
+    Status check endpoint for SOC analyzer service
 
     Returns status, analyzer loading state, and cache information
     """
-    return HealthResponse(
+    return AnalyzerStatusResponse(
         status="healthy",
         timestamp=datetime.now().isoformat(),
         soc_analyzer_loaded=_soc_analyzer is not None,
@@ -350,6 +350,12 @@ async def analyze_alert(request: AnalyzeAlertRequest):
         raise HTTPException(status_code=500, detail=f"Error analyzing alert: {str(e)}")
 
 
+"""
+Replace the get_historical_data endpoint in analyzer_router.py
+This preserves original column names and data types
+"""
+
+
 @router.post(
     "/historical-data",
     response_model=HistoricalDataResponse,
@@ -388,6 +394,7 @@ async def get_historical_data(request: HistoricalDataRequest):
             )
 
         # Convert to dict records with proper serialization
+        # KEEP ORIGINAL COLUMN NAMES
         records = []
         for _, row in matching_data.iterrows():
             record = {}
@@ -396,6 +403,9 @@ async def get_historical_data(request: HistoricalDataRequest):
                     record[key] = None
                 elif isinstance(value, (pd.Timestamp, datetime)):
                     record[key] = value.isoformat()
+                elif isinstance(value, (int, float)):
+                    # Keep numeric types as numbers, not strings
+                    record[key] = value
                 else:
                     record[key] = str(value)
             records.append(record)

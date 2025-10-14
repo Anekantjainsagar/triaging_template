@@ -32,7 +32,9 @@ class AnalyzerAPIClient:
             Dict with status, timestamp, analyzer loading state, and total_records
         """
         try:
-            response = self.session.get(f"{self.base_url}/analyzer/health", timeout=5)
+            response = self.session.get(
+                f"{self.base_url}/analyzer/status", timeout=5
+            )  # CHANGED
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -198,50 +200,3 @@ def get_analyzer_client(base_url: str = "http://localhost:8000") -> AnalyzerAPIC
         Cached AnalyzerAPIClient instance
     """
     return AnalyzerAPIClient(base_url)
-
-
-# ============================================================================
-# Usage Example
-# ============================================================================
-
-if __name__ == "__main__":
-    # Example usage
-    client = AnalyzerAPIClient()
-
-    # Check if API is available
-    print("Checking API availability...")
-    if client.is_api_available():
-        print("✅ API is available")
-
-        # Get API info
-        info = client.get_api_info()
-        print(f"\n📋 API Info: {info}")
-
-        # Health check
-        health = client.health_check()
-        print(f"\n💚 Health Status: {health}")
-
-        # Get system stats
-        stats = client.get_system_stats()
-        if stats.get("success"):
-            print(f"\n📊 System Stats:")
-            print(f"  Total Records: {stats.get('total_records')}")
-            print(f"  Unique Rules: {stats.get('unique_rules')}")
-            print(f"  Data Sources: {stats.get('data_sources')}")
-
-        # Example search
-        print("\n🔍 Searching for 'conditional access' rules...")
-        results = client.get_rule_suggestions("conditional access", top_k=3)
-        if results.get("success"):
-            print(f"Found {results.get('total_found')} suggestions")
-            for i, suggestion in enumerate(results.get("suggestions", [])):
-                print(f"  {i+1}. {suggestion.get('rule')}")
-                print(
-                    f"     Score: {suggestion.get('score'):.2%} | Incidents: {suggestion.get('incident_count')}"
-                )
-        else:
-            print(f"Search failed: {results.get('error')}")
-
-    else:
-        print("❌ API is not available. Please start the FastAPI server.")
-        print("Run: uvicorn fastapi_backend:app --reload --host 0.0.0.0 --port 8000")

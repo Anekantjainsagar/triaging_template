@@ -33,7 +33,8 @@ class AlertAPIClient:
         """
         try:
             response = self.session.get(
-                f"{self.base_url}/search-alert/health", timeout=5
+                f"{self.base_url}/search-alert/status",
+                timeout=5,  # CHANGED from /health to /status
             )
             response.raise_for_status()
             return response.json()
@@ -201,40 +202,3 @@ def get_api_client(base_url: str = "http://localhost:8000") -> AlertAPIClient:
         Cached AlertAPIClient instance
     """
     return AlertAPIClient(base_url)
-
-
-# ============================================================================
-# Usage Example
-# ============================================================================
-
-if __name__ == "__main__":
-    # Example usage
-    client = AlertAPIClient()
-
-    # Check if API is available
-    print("Checking API availability...")
-    if client.is_api_available():
-        print("✅ API is available")
-
-        # Get API info
-        info = client.get_api_info()
-        print(f"\n📋 API Info: {info}")
-
-        # Health check
-        health = client.health_check()
-        print(f"\n💚 Health Status: {health}")
-
-        # Example search
-        print("\n🔍 Searching for 'login' alerts...")
-        results = client.search_alerts("login", top_n=3)
-        if results.get("success"):
-            print(f"Found {results.get('total_found')} alerts")
-            for i, alert in enumerate(results.get("alerts", [])):
-                print(
-                    f"  {i+1}. {alert.get('rule_number')} - {alert.get('alert_name')}"
-                )
-        else:
-            print(f"Search failed: {results.get('error')}")
-    else:
-        print("❌ API is not available. Please start the FastAPI server.")
-        print("Run: uvicorn main:app --reload --host 0.0.0.0 --port 8000")
