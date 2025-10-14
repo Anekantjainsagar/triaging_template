@@ -43,7 +43,7 @@ def generate_data_summary_with_ollama(section_name: str, data: Dict[str, Any]) -
                 'prompt': prompt,
                 'stream': False
             },
-            timeout=30
+            timeout=300
         )
         
         if response.status_code == 200:

@@ -137,9 +137,7 @@ if st.session_state.selected_alert:
         """
         )
 
-        if st.button(
-            "🔄 Select Different Alert", type="primary", use_container_width=True
-        ):
+        if st.button("🔄 Select Different Alert", type="primary", width="stretch"):
             st.session_state.selected_alert = None
             st.session_state.step = 0
             st.rerun()

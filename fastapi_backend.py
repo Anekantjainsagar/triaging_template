@@ -1,12 +1,13 @@
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
-# Import routers - make sure the path matches your file structure
+# Import routers
 from routes.search_alert import router as search_alert_router
+from routes.analyzer_router import router as analyzer_router
 
 
-# Lifespan event handler (replaces on_event)
+# Lifespan event handler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan - startup and shutdown tasks"""
@@ -14,22 +15,32 @@ async def lifespan(app: FastAPI):
     print("=" * 80)
     print("🚀 Starting Security Alert Management API")
     print("=" * 80)
-    print("\n📊 Loading tracker data...")
+    print("\n📊 Loading data...")
 
-    # Load data on startup
+    # Load search alert data
     try:
         from routes.search_alert import get_tracker_data
 
         get_tracker_data(force_reload=True)
-        print("✅ Data loaded successfully!")
+        print("✅ Search alert data loaded successfully!")
     except Exception as e:
-        print(f"⚠️ Warning: Could not load data on startup: {str(e)}")
+        print(f"⚠️ Warning: Could not load search alert data: {str(e)}")
+
+    # Load analyzer data
+    try:
+        from routes.analyzer_router import get_analyzers
+
+        get_analyzers(force_reload=True)
+        print("✅ SOC analyzer data loaded successfully!")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not load analyzer data: {str(e)}")
 
     print("\n📚 API Documentation available at:")
     print("  - Swagger UI: http://localhost:8000/docs")
     print("  - ReDoc: http://localhost:8000/redoc")
     print("\n📌 Available API Routes:")
     print("  - /search-alert/* (Search Alert endpoints)")
+    print("  - /analyzer/* (SOC Analyzer endpoints)")
     print("=" * 80)
 
     yield  # Application runs here
@@ -38,11 +49,11 @@ async def lifespan(app: FastAPI):
     print("\n🛑 Shutting down Security Alert Management API...")
 
 
-# Initialize FastAPI app with lifespan (ONLY ONCE!)
+# Initialize FastAPI app
 app = FastAPI(
     title="Security Alert Management API",
-    description="Comprehensive API for managing security alerts, incidents, and SOC operations",
-    version="2.0.0",
+    description="Comprehensive API for managing security alerts, incidents, and SOC operations with AI-powered threat intelligence",
+    version="2.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -59,11 +70,7 @@ app.add_middleware(
 
 # Include routers with prefixes
 app.include_router(search_alert_router, prefix="/search-alert", tags=["Search Alerts"])
-
-# You can add more routers here as you build more features
-# app.include_router(incident_router, prefix="/incidents", tags=["Incidents"])
-# app.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
-# app.include_router(reports_router, prefix="/reports", tags=["Reports"])
+app.include_router(analyzer_router, prefix="/analyzer", tags=["SOC Analyzer"])
 
 
 @app.get("/", tags=["Root"])
@@ -71,11 +78,12 @@ async def root():
     """Root endpoint with API information"""
     return {
         "name": "Security Alert Management API",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "status": "running",
         "documentation": {"swagger_ui": "/docs", "redoc": "/redoc"},
         "available_routes": {
             "search_alerts": "/search-alert",
+            "soc_analyzer": "/analyzer",
         },
     }
 
@@ -86,7 +94,7 @@ async def system_health():
     return {
         "status": "healthy",
         "service": "Security Alert Management API",
-        "version": "2.0.0",
+        "version": "2.1.0",
     }
 
 

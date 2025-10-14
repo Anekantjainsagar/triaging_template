@@ -46,9 +46,7 @@ def show_page(session_state):
 
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        search_button = st.button(
-            "Search Alerts", type="primary", use_container_width=True
-        )
+        search_button = st.button("Search Alerts", type="primary", width="stretch")
 
     if search_button and search_query:
         with st.spinner("🔎 Searching for relevant alerts..."):

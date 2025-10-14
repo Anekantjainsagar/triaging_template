@@ -1,37 +1,14 @@
-import os
-import sys
-from io import StringIO
+"""
+SOC Intelligence Dashboard - Streamlit Frontend
+Updated to use FastAPI backend via API client
+"""
+
 import streamlit as st
-
-# Suppress CrewAI traces globally
-os.environ["CREWAI_TELEMETRY"] = "false"
-
 from frontend.config.styles import apply_custom_css
+from api_client.analyzer_api_client import get_analyzer_client
 from components.alert_analysis import display_alert_analysis_tab
 from components.predictions_page import display_predictions_page
 from components.historical_analysis import display_historical_analysis_tab
-
-
-# Suppress the execution traces prompt
-class SuppressOutput:
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        self._original_stderr = sys.stderr
-        sys.stdout = StringIO()
-        sys.stderr = StringIO()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stdout = self._original_stdout
-        sys.stderr = self._original_stderr
-
-
-try:
-    from backend.analyzer_backend import SecurityAlertAnalyzerCrew
-    from backend.soc_analyzer import IntelligentSOCAnalyzer
-except ImportError:
-    st.error("Please make sure required files are in the correct directory")
-    st.stop()
 
 
 # Page configuration
@@ -45,22 +22,43 @@ st.set_page_config(
 apply_custom_css()
 
 
-@st.cache_resource
-def initialize_analyzer():
-    """Initialize the SOC analyzer with caching for better performance"""
-    try:
-        analyzer = IntelligentSOCAnalyzer(
-            data_directory="data", ollama_model="qwen2.5:0.5b"
-        )
-        alert_analyzer = SecurityAlertAnalyzerCrew()
+# ============================================================================
+# Session State Management
+# ============================================================================
 
-        if analyzer.load_and_process_data():
-            return analyzer, alert_analyzer
-        else:
-            return None, None
-    except Exception as e:
-        st.error(f"Error initializing analyzer: {e}")
-        return None, None
+
+def initialize_session_state():
+    """Initialize all session state variables"""
+    defaults = {
+        "chat_history": [],
+        "current_suggestions": [],
+        "selected_rule_data": None,
+        "search_query": "",
+        "system_stats": None,
+    }
+
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
+initialize_session_state()
+
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+
+def check_api_status():
+    """Check if backend API is running"""
+    api_client = get_analyzer_client()
+    health = api_client.health_check()
+
+    if health.get("status") == "healthy":
+        return True, health
+    else:
+        return False, health
 
 
 def display_rule_suggestion(rule_data, index):
@@ -81,6 +79,11 @@ def display_rule_suggestion(rule_data, index):
     )
 
 
+# ============================================================================
+# Main Dashboard
+# ============================================================================
+
+
 def display_soc_dashboard():
     """Display the main SOC Dashboard page"""
 
@@ -90,32 +93,8 @@ def display_soc_dashboard():
         "**Enhanced SOC Tracker Analysis with Threat Intelligence Integration**"
     )
 
-    # Initialize session state
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-    if "current_suggestions" not in st.session_state:
-        st.session_state.current_suggestions = []
-    if "selected_rule_data" not in st.session_state:
-        st.session_state.selected_rule_data = None
-    if "analyzer" not in st.session_state:
-        st.session_state.analyzer = None
-    if "alert_analyzer" not in st.session_state:
-        st.session_state.alert_analyzer = None
-
-    # Initialize analyzer
-    if st.session_state.analyzer is None:
-        with st.spinner("🔄 Initializing SOC Analysis System..."):
-            analyzer, alert_analyzer = initialize_analyzer()
-
-            if analyzer:
-                st.session_state.analyzer = analyzer
-                st.session_state.alert_analyzer = alert_analyzer
-                st.success("✅ System initialized successfully!")
-            else:
-                st.error(
-                    "❌ Failed to initialize system. Please check your data directory and files."
-                )
-                st.stop()
+    # Check API status
+    api_client = get_analyzer_client()
 
     # Main search interface
     st.markdown("### 🔍 Rule Search & Analysis")
@@ -123,19 +102,25 @@ def display_soc_dashboard():
     user_query = st.text_input(
         "Enter your search query (e.g., 'rule 002', 'conditional access', 'passwordless')",
         placeholder="Type rule name or keywords...",
+        key="search_input",
     )
 
     if st.button("🔎 Search Rules", width="stretch") and user_query:
         with st.spinner(f"🔍 Searching for: '{user_query}'"):
-            suggestions = st.session_state.analyzer.get_rule_suggestions(
-                user_query, top_k=5
-            )
+            result = api_client.get_rule_suggestions(user_query, top_k=5)
 
-        if suggestions:
-            st.session_state.current_suggestions = suggestions
-            st.success(f"Found {len(suggestions)} matching rules")
+        if result.get("success"):
+            suggestions = result.get("suggestions", [])
+            if suggestions:
+                st.session_state.current_suggestions = suggestions
+                st.session_state.search_query = user_query
+                st.success(f"Found {len(suggestions)} matching rules")
+            else:
+                st.warning(
+                    "No matching rules found. Try different keywords or phrases."
+                )
         else:
-            st.warning("No matching rules found. Try different keywords or phrases.")
+            st.error(f"❌ Search failed: {result.get('error')}")
 
     # Display current suggestions
     if st.session_state.current_suggestions:
@@ -147,26 +132,29 @@ def display_soc_dashboard():
                 selected_rule = suggestion["rule"]
 
                 with st.spinner(f"📊 Preparing analysis for: {selected_rule}"):
-                    matching_data = st.session_state.analyzer.df[
-                        st.session_state.analyzer.df["RULE"] == selected_rule
-                    ].copy()
+                    # Get historical data
+                    historical_result = api_client.get_historical_data(selected_rule)
 
-                    if not matching_data.empty:
+                    if historical_result.get("success"):
                         st.session_state.selected_rule_data = {
                             "rule_name": selected_rule,
-                            "data": matching_data,
+                            "data": historical_result.get("data", []),
                             "query": user_query,
                         }
 
                         st.session_state.current_suggestions = []
                         st.rerun()
+                    else:
+                        st.error(
+                            f"❌ Failed to load historical data: {historical_result.get('error')}"
+                        )
 
     # Display tabbed analysis results
     if st.session_state.selected_rule_data:
         st.markdown("---")
 
         rule_name = st.session_state.selected_rule_data["rule_name"]
-        data_df = st.session_state.selected_rule_data["data"]
+        data = st.session_state.selected_rule_data["data"]
 
         st.markdown(
             f'<h2 style="color: #2c3e50; text-align: center;">📊 Analysis: {rule_name}</h2>',
@@ -177,10 +165,91 @@ def display_soc_dashboard():
         tab1, tab2 = st.tabs(["🤖 AI Threat Analysis", "📊 Historical Analysis"])
 
         with tab1:
-            display_alert_analysis_tab(rule_name, st.session_state.alert_analyzer)
+            display_alert_analysis_tab_api(rule_name, api_client)
 
         with tab2:
-            display_historical_analysis_tab(data_df)
+            display_historical_analysis_tab(data)
+
+
+def display_alert_analysis_tab_api(rule_name: str, api_client):
+    """Display AI-powered alert analysis tab using API"""
+
+    st.markdown(
+        """
+        ### 🎯 Comprehensive Threat Intelligence
+        
+        This AI-powered analysis provides:
+        - **Technical threat breakdown** with detailed attack vectors
+        - **MITRE ATT&CK technique mapping** for framework alignment
+        - **Real threat actor intelligence** from global threat databases
+        - **Business impact assessment** and compliance implications
+        """
+    )
+
+    st.markdown("---")
+
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    try:
+        status_text.text("🚀 Initializing AI analysis engine...")
+        progress_bar.progress(20)
+
+        status_text.text("🔍 Analyzing alert patterns and mapping to MITRE ATT&CK...")
+        progress_bar.progress(40)
+
+        status_text.text("🌐 Researching threat intelligence and actor TTPs...")
+        progress_bar.progress(60)
+
+        # Make API call for analysis
+        result = api_client.analyze_alert(rule_name)
+
+        status_text.text("📊 Assessing business impact and compliance implications...")
+        progress_bar.progress(80)
+
+        if result.get("success"):
+            analysis = result.get("analysis", "")
+
+            progress_bar.progress(100)
+            status_text.text("✅ Analysis complete!")
+
+            # Clear progress indicators
+            progress_bar.empty()
+            status_text.empty()
+
+            # Display analysis in styled container
+            st.markdown('<div class="threat-intel-box">', unsafe_allow_html=True)
+            st.markdown(analysis)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            # Download option
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col2:
+                from datetime import datetime
+
+                st.download_button(
+                    label="📄 Download Analysis Report",
+                    data=analysis,
+                    file_name=f"threat_analysis_{rule_name[:30]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                    mime="text/markdown",
+                    width="stretch",
+                )
+        else:
+            progress_bar.empty()
+            status_text.empty()
+            st.error(f"❌ Analysis failed: {result.get('error')}")
+
+    except Exception as e:
+        progress_bar.empty()
+        status_text.empty()
+        st.error(f"❌ Analysis Error: {str(e)}")
+        with st.expander("🔍 View Error Details"):
+            st.code(str(e))
+
+
+# ============================================================================
+# Main Application
+# ============================================================================
 
 
 def main():
@@ -189,6 +258,30 @@ def main():
     # Sidebar navigation
     with st.sidebar:
         st.title("🛡️ SOC Hub")
+        st.markdown("---")
+
+        # Check backend status
+        st.header("📌 Backend Status")
+        is_healthy, health_data = check_api_status()
+
+        if is_healthy:
+            st.success("✅ API Connected")
+            with st.expander("API Info", expanded=False):
+                st.write(f"**Status:** {health_data.get('status')}")
+                st.write(
+                    f"**SOC Analyzer:** {'✅' if health_data.get('soc_analyzer_loaded') else '❌'}"
+                )
+                st.write(
+                    f"**Alert Analyzer:** {'✅' if health_data.get('alert_analyzer_loaded') else '❌'}"
+                )
+                if health_data.get("cache_timestamp"):
+                    st.write(f"**Cache Time:** {health_data['cache_timestamp'][:19]}")
+        else:
+            st.error("❌ API Not Connected")
+            st.warning("Please start the FastAPI backend server")
+            st.code("uvicorn fastapi_backend:app --reload --host 0.0.0.0 --port 8000")
+            st.stop()
+
         st.markdown("---")
 
         # Navigation
@@ -204,29 +297,27 @@ def main():
         if page == "🏠 Dashboard":
             st.markdown("### 📋 System Information")
 
-            if (
-                st.session_state.get("analyzer")
-                and st.session_state.analyzer.df is not None
-            ):
-                total_records = len(st.session_state.analyzer.df)
-                unique_rules = (
-                    st.session_state.analyzer.df["RULE"].nunique()
-                    if "RULE" in st.session_state.analyzer.df.columns
-                    else 0
-                )
+            # Get system stats from API
+            api_client = get_analyzer_client()
+            stats_result = api_client.get_system_stats()
 
-                st.metric("Total Records", f"{total_records:,}")
-                st.metric("Unique Rules", unique_rules)
-
-                if "source_file" in st.session_state.analyzer.df.columns:
-                    sources = st.session_state.analyzer.df["source_file"].nunique()
-                    st.metric("Data Sources", sources)
+            if stats_result.get("success"):
+                st.metric("Total Records", f"{stats_result.get('total_records', 0):,}")
+                st.metric("Unique Rules", stats_result.get("unique_rules", 0))
+                st.metric("Data Sources", stats_result.get("data_sources", 0))
+            else:
+                st.warning("Unable to load system stats")
 
             st.markdown("### 🔧 Actions")
-            if st.button("🔄 Refresh System", help="Reload data and reinitialize"):
-                st.session_state.analyzer = None
-                st.session_state.alert_analyzer = None
-                st.rerun()
+
+            if st.button("🔄 Refresh Data", help="Reload data from backend"):
+                with st.spinner("Reloading data..."):
+                    result = api_client.load_data()
+                    if result.get("success"):
+                        st.success(f"✅ {result.get('message')}")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ {result.get('error')}")
 
             if st.button("🗑️ Clear Selection", help="Clear current selection"):
                 st.session_state.current_suggestions = []
