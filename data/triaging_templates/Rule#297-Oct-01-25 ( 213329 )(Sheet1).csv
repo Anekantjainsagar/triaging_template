@@ -1,0 +1,16 @@
+Sr.No.,Inputs Required,Input Details,Instructions
+1,Rule#297 - Detecting unusual login patterns with behavior analytics rule,,"This alert is triggred when one or more successful or failed authentication attempts, or session initiations, that significantly deviate from the user’s established behavioral baseline — including unusual geolocation, IP address, device, time of access, or user agent"
+2,Incident Number,213329,
+3,How many users are impacted ?,1,Gather details of all users - (By adding sheet to this excel)
+4,VIP Users,No,Cross-check usernames with VIP list from Arcutis
+5,"Run the KQL query then, Check for IP Address, UserName, Location & Time and User agent","Observed the events , checked the sign in logs for the user - Vchittepu@arcutis.com, all failed logis were seen , the location is US and the Ip is clean in virus total, (50.226.4.130 ) hence closing as FP.","Review login event details (user account, IP address, time,  Geo location & User agent)
+Analyze audit and signin logs to identify successful and failed attempts for last 7 days & device history."
+6,IP Validation - if Malicious,No,"Check IP reputation using VirusTotal
+If bad score, take a screenshot for documentation"
+7,User Confirmation --- Yes. ,Not Required,"Based on the investigation, if you still find it suspicious, then get confirmation from the user. If user confirms then close it as: False Positive"
+8,User Confirmation --- NO. ,,If user says they are not aware about the acitivty then treat it as : True Positive
+9,"Inform to IT Team to Reset the account, Revoke the MFA tokens, Temporary disable the account",NA,"Reach out to the Network/EDR teams to block the detected suspicious IP, Inform user to reset password, maintain complex password and enable MFA."
+10,Track for the closer/closer confirmation,Closed,"After all the investigation document the steps taken, findings, and any remediation actions required"
+,,,
+,,,
+,,,
