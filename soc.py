@@ -1,6 +1,6 @@
 """
-SOC Intelligence Dashboard - Streamlit Frontend
-Updated to use FastAPI backend via API client
+SOC Intelligence Dashboard - Streamlit Frontend with Integrated Triaging
+Updated to include AI-Powered Triaging as a third tab
 """
 
 import pandas as pd
@@ -10,6 +10,8 @@ from api_client.analyzer_api_client import get_analyzer_client
 from components.predictions_page import display_predictions_page
 from components.historical_analysis import display_historical_analysis_tab
 
+# Triaging imports
+from components.triaging_integrated import display_triaging_workflow
 
 # Page configuration
 st.set_page_config(
@@ -35,6 +37,23 @@ def initialize_session_state():
         "selected_rule_data": None,
         "search_query": "",
         "system_stats": None,
+        # Triaging-specific states
+        "triaging_step": 2,  # Start at step 2 (enhance)
+        "triaging_alerts": [],
+        "triaging_selected_alert": None,
+        "triaging_template_content": None,
+        "triaging_plan": None,
+        "triaging_output": {},
+        "triaging_predictions": [],
+        "progressive_predictions": {},
+        "rule_history": {},
+        "current_step_index": 0,
+        "analysis_complete": False,
+        "excel_template_data": None,
+        "original_steps": None,
+        "enhanced_steps": None,
+        "validation_report": None,
+        "real_time_prediction": None,
     }
 
     for key, value in defaults.items():
@@ -75,7 +94,7 @@ def display_rule_suggestion(rule_data, index):
         f"{match_indicator} {display_rule}\n📊 {incident_count} incidents | 🎯 Score: {score:.1%} | Type: {match_type}",
         key=f"rule_btn_{index}",
         help=f"Click to analyze: {rule_name}",
-        width="stretch",
+        use_container_width=True,
     )
 
 
@@ -103,7 +122,7 @@ def display_soc_dashboard():
         key="search_input",
     )
 
-    if st.button("🔎 Search Rules", width="stretch") and user_query:
+    if st.button("🔎 Search Rules", use_container_width=True) and user_query:
         with st.spinner(f"🔍 Searching for: '{user_query}'"):
             result = api_client.get_rule_suggestions(user_query, top_k=5)
 
@@ -134,16 +153,14 @@ def display_soc_dashboard():
                     historical_result = api_client.get_historical_data(selected_rule)
 
                     if historical_result.get("success"):
-                        # FIXED: Convert list to DataFrame
                         data_list = historical_result.get("data", [])
 
                         if data_list:
-                            # Convert list of dicts to DataFrame
                             data_df = pd.DataFrame(data_list)
 
                             st.session_state.selected_rule_data = {
                                 "rule_name": selected_rule,
-                                "data": data_df,  # Store as DataFrame
+                                "data": data_df,
                                 "query": user_query,
                             }
 
@@ -161,7 +178,7 @@ def display_soc_dashboard():
         st.markdown("---")
 
         rule_name = st.session_state.selected_rule_data["rule_name"]
-        data = st.session_state.selected_rule_data["data"]  # Now it's a DataFrame
+        data = st.session_state.selected_rule_data["data"]
 
         st.markdown(
             f'<h2 style="color: #2c3e50; text-align: center;">📊 Analysis: {rule_name}</h2>',
@@ -169,14 +186,18 @@ def display_soc_dashboard():
         )
 
         # Create tabs for different analysis sections
-        tab1, tab2 = st.tabs(["🤖 AI Threat Analysis", "📊 Historical Analysis"])
+        tab1, tab2, tab3 = st.tabs(
+            ["🤖 AI Threat Analysis", "📊 Historical Analysis", "🔍 AI Triaging"]
+        )
 
         with tab1:
             display_alert_analysis_tab_api(rule_name, api_client)
 
         with tab2:
-            # FIXED: Now passing DataFrame instead of list
             display_historical_analysis_tab(data)
+
+        with tab3:
+            display_triaging_workflow(rule_name, data)
 
 
 def display_alert_analysis_tab_api(rule_name: str, api_client):
@@ -240,7 +261,7 @@ def display_alert_analysis_tab_api(rule_name: str, api_client):
                     data=analysis,
                     file_name=f"threat_analysis_{rule_name[:30]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                     mime="text/markdown",
-                    width="stretch",
+                    use_container_width=True,
                 )
         else:
             progress_bar.empty()
@@ -269,7 +290,7 @@ def main():
         st.markdown("---")
 
         # Check backend status
-        st.header("📌 Backend Status")
+        st.header("🔌 Backend Status")
         is_healthy, health_data = check_api_status()
 
         if is_healthy:
@@ -292,7 +313,7 @@ def main():
 
         st.markdown("---")
 
-        # Navigation
+        # Navigation - NOW WITH 2 PAGES (Triaging integrated into Dashboard)
         page = st.radio(
             "Navigation",
             ["🏠 Dashboard", "🔮 Predictions & MITRE"],
@@ -332,14 +353,13 @@ def main():
                 st.session_state.selected_rule_data = None
                 st.rerun()
 
-            st.markdown("---")
-
+        st.markdown("---")
         st.caption("© 2025 SOC Intelligence Dashboard")
 
     # Route to appropriate page
     if page == "🏠 Dashboard":
         display_soc_dashboard()
-    else:
+    else:  # Predictions & MITRE
         display_predictions_page()
 
 

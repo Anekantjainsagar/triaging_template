@@ -14,8 +14,8 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
         unsafe_allow_html=True,
     )
 
-    selected_incident = session_state.selected_alert.get("incident")
-    rule_number = session_state.selected_alert.get("rule")
+    selected_incident = session_state.triaging_selected_alert.get("incident")
+    rule_number = session_state.triaging_selected_alert.get("rule")
 
     col1, col2 = st.columns(2)
     with col1:
