@@ -65,11 +65,3 @@ def display_alert_analysis_tab(rule_name: str, alert_analyzer):
         st.error(f"❌ Analysis Error: {str(e)}")
         with st.expander("🔍 View Error Details"):
             st.code(str(e))
-            st.markdown(
-                """
-            **Common Solutions:**
-            1. Ensure Ollama is running: `ollama serve`
-            2. Verify model is installed: `ollama pull qwen2.5:1.5b`
-            3. Check Ollama status at: http://localhost:11434
-            """
-            )
