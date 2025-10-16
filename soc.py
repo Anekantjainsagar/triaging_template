@@ -11,7 +11,11 @@ from components.predictions_page import display_predictions_page
 from components.historical_analysis import display_historical_analysis_tab
 
 # Triaging imports
-from components.triaging_integrated import display_triaging_workflow
+from components.triaging_integrated import (
+    display_triaging_workflow,
+    extract_alert_from_dataframe_row,
+    initialize_triaging_state_from_data,
+)
 
 # Page configuration
 st.set_page_config(
@@ -46,6 +50,7 @@ def initialize_session_state():
         "triaging_output": {},
         "triaging_predictions": [],
         "progressive_predictions": {},
+        "triaging_initialized": False,  # ✅ ADD THIS LIN
         "rule_history": {},
         "current_step_index": 0,
         "analysis_complete": False,
@@ -148,6 +153,15 @@ def display_soc_dashboard():
             if display_rule_suggestion(suggestion, i):
                 selected_rule = suggestion["rule"]
 
+                # ✅ CLEAR OLD ANALYSIS CACHE WHEN SELECTING NEW RULE
+                old_analysis_keys = [
+                    k
+                    for k in st.session_state.keys()
+                    if k.startswith("analysis_result_")
+                ]
+                for key in old_analysis_keys:
+                    del st.session_state[key]
+
                 with st.spinner(f"📊 Preparing analysis for: {selected_rule}"):
                     # Get historical data
                     historical_result = api_client.get_historical_data(selected_rule)
@@ -158,8 +172,35 @@ def display_soc_dashboard():
                         if data_list:
                             data_df = pd.DataFrame(data_list)
 
+                            # ✅ UPDATED: Use existing utility functions
+                            from routes.src.utils import (
+                                extract_rule_number,
+                                extract_alert_name,
+                            )
+
+                            rule_number = extract_rule_number(selected_rule)
+                            alert_name = extract_alert_name(selected_rule)
+
+                            # Fallback: Get alert name from DataFrame if extraction failed
+                            if alert_name == selected_rule and not data_df.empty:
+                                for col in [
+                                    "Alert Name",
+                                    "ALERT_NAME",
+                                    "Description",
+                                    "DESCRIPTION",
+                                    "Title",
+                                    "alert_incident",
+                                ]:
+                                    if col in data_df.columns and pd.notna(
+                                        data_df[col].iloc[0]
+                                    ):
+                                        alert_name = str(data_df[col].iloc[0])
+                                        break
+
                             st.session_state.selected_rule_data = {
-                                "rule_name": selected_rule,
+                                "rule_name": selected_rule,  # Full: "Rule#280 - Suspicious Auth Activity"
+                                "rule_number": rule_number,  # Just: "280" or "286/2/002"
+                                "alert_name": alert_name,  # Just: "Suspicious Auth Activity"
                                 "data": data_df,
                                 "query": user_query,
                             }
@@ -179,6 +220,7 @@ def display_soc_dashboard():
 
         rule_name = st.session_state.selected_rule_data["rule_name"]
         data = st.session_state.selected_rule_data["data"]
+        rule_number = st.session_state.selected_rule_data["rule_number"]
 
         st.markdown(
             f'<h2 style="color: #2c3e50; text-align: center;">📊 Analysis: {rule_name}</h2>',
@@ -197,26 +239,85 @@ def display_soc_dashboard():
             display_historical_analysis_tab(data)
 
         with tab3:
-            display_triaging_workflow(rule_name, data)
+            # Extract rule components for triaging
+            rule_data = st.session_state.selected_rule_data
+
+            # Initialize triaging if not already done
+            if (
+                "triaging_selected_alert" not in st.session_state
+                or st.session_state.triaging_selected_alert is None
+            ):
+                # Auto-select first incident and skip incident selector
+                if not data.empty:
+                    # Create alert object from first row
+                    first_alert = extract_alert_from_dataframe_row(
+                        data.iloc[0], rule_number
+                    )
+
+                    # Initialize triaging state
+                    if initialize_triaging_state_from_data(
+                        rule_number, data, first_alert
+                    ):
+                        st.session_state.triaging_step = 2  # Go directly to step 2
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to initialize triaging")
+                else:
+                    st.error("❌ No data available for triaging")
+            else:
+                # Display triaging workflow
+                display_triaging_workflow(rule_number, data)
+
+
+# ============================================================================
+# FIXED: display_alert_analysis_tab_api - Prevents Multiple Reruns
+# ============================================================================
 
 
 def display_alert_analysis_tab_api(rule_name: str, api_client):
-    """Display AI-powered alert analysis tab using API"""
+    """
+    Display AI-powered alert analysis tab using API
+    OPTIMIZED: Analysis runs only once and is cached in session state
+    """
 
-    st.markdown(
-        """
-        ### 🎯 Comprehensive Threat Intelligence
-        
-        This AI-powered analysis provides:
-        - **Technical threat breakdown** with detailed attack vectors
-        - **MITRE ATT&CK technique mapping** for framework alignment
-        - **Real threat actor intelligence** from global threat databases
-        - **Business impact assessment** and compliance implications
-        """
-    )
+    # ✅ CHECK IF ANALYSIS ALREADY EXISTS IN SESSION STATE
+    analysis_key = f"analysis_result_{rule_name}"
 
-    st.markdown("---")
+    if analysis_key in st.session_state:
+        # Analysis already done, just display it (NO RERUN)
+        result = st.session_state[analysis_key]
 
+        if result.get("success"):
+            analysis = result.get("analysis", "")
+
+            # Display analysis in styled container
+            st.markdown('<div class="threat-intel-box">', unsafe_allow_html=True)
+            st.markdown(analysis)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            # Download option
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col2:
+                from datetime import datetime
+
+                st.download_button(
+                    label="📄 Download Analysis Report",
+                    data=analysis,
+                    file_name=f"threat_analysis_{rule_name[:30]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                    mime="text/markdown",
+                    use_container_width=True,
+                )
+        else:
+            st.error(f"❌ Analysis failed: {result.get('error')}")
+
+        # Add refresh button (only way to re-run)
+        if st.button("🔄 Re-run Analysis", key="rerun_analysis"):
+            del st.session_state[analysis_key]
+            st.rerun()
+
+        return  # ✅ EXIT EARLY - Don't run analysis again
+
+    # ✅ IF NOT CACHED, RUN ANALYSIS (ONLY ONCE)
     progress_bar = st.progress(0)
     status_text = st.empty()
 
@@ -233,6 +334,9 @@ def display_alert_analysis_tab_api(rule_name: str, api_client):
         # Make API call for analysis
         result = api_client.analyze_alert(rule_name)
 
+        # ✅ CACHE THE RESULT (prevents rerun)
+        st.session_state[analysis_key] = result
+
         status_text.text("📊 Assessing business impact and compliance implications...")
         progress_bar.progress(80)
 
@@ -243,10 +347,13 @@ def display_alert_analysis_tab_api(rule_name: str, api_client):
             status_text.text("✅ Analysis complete!")
 
             # Clear progress indicators
+            import time
+
+            time.sleep(1)
             progress_bar.empty()
             status_text.empty()
 
-            # Display analysis in styled container
+            # Display analysis
             st.markdown('<div class="threat-intel-box">', unsafe_allow_html=True)
             st.markdown(analysis)
             st.markdown("</div>", unsafe_allow_html=True)
@@ -351,6 +458,10 @@ def main():
             if st.button("🗑️ Clear Selection", help="Clear current selection"):
                 st.session_state.current_suggestions = []
                 st.session_state.selected_rule_data = None
+                # Clear triaging state
+                for key in list(st.session_state.keys()):
+                    if key.startswith("triaging_"):
+                        del st.session_state[key]
                 st.rerun()
 
         st.markdown("---")

@@ -466,9 +466,20 @@ def display_analysis_results(analysis: dict, username: str):
         st.markdown("---")
 
     # Pattern Analysis
+    # Pattern Analysis with Icons
     if "pattern_analysis" in initial:
         st.subheader("🔬 Pattern Analysis")
         pattern = initial["pattern_analysis"]
+
+        # Icon mapping for each pattern type
+        pattern_icons = {
+            "privilege_escalation_risk": "🔐",
+            "temporal_anomalies": "⏰",
+            "geographic_anomalies": "🌍",
+            "authentication_concerns": "🔑",
+            "device_trust_issues": "💻",
+            "behavioral_deviations": "👤",
+        }
 
         col1, col2 = st.columns(2)
 
@@ -479,8 +490,10 @@ def display_analysis_results(analysis: dict, username: str):
                 "geographic_anomalies",
             ]:
                 if pattern.get(key):
-                    st.markdown(f"**{key.replace('_', ' ').title()}:**")
+                    icon = pattern_icons.get(key, "📌")
+                    st.markdown(f"**{icon} {key.replace('_', ' ').title()}:**")
                     st.write(pattern[key])
+                    st.markdown("")
 
         with col2:
             for key in [
@@ -489,8 +502,10 @@ def display_analysis_results(analysis: dict, username: str):
                 "behavioral_deviations",
             ]:
                 if pattern.get(key):
-                    st.markdown(f"**{key.replace('_', ' ').title()}:**")
+                    icon = pattern_icons.get(key, "📌")
+                    st.markdown(f"**{icon} {key.replace('_', ' ').title()}:**")
                     st.write(pattern[key])
+                    st.markdown("")
 
         st.markdown("---")
 

@@ -1,7 +1,9 @@
 import requests
 import json
+import streamlit as st
 from typing import Dict, Any
 import pandas as pd
+import hashlib
 
 def convert_to_json_serializable(obj):
     """Convert numpy/pandas types to native Python types"""
@@ -20,9 +22,19 @@ def convert_to_json_serializable(obj):
         return None
     return obj
 
+
+def _create_cache_key(section_name: str, data: Dict[str, Any]) -> str:
+    """Create a unique cache key for the summary"""
+    data_str = json.dumps(convert_to_json_serializable(data), sort_keys=True)
+    hash_obj = hashlib.md5(f"{section_name}_{data_str}".encode())
+    return f"summary_cache_{hash_obj.hexdigest()}"
+
+
+@st.cache_data(ttl=3600, show_spinner=False)  # Cache for 1 hour
 def generate_data_summary_with_ollama(section_name: str, data: Dict[str, Any]) -> str:
     """
-    Generate a 2-3 line summary for a metric or visualization section using actual data
+    Generate a 2-3 line summary for a metric section using actual data
+    CACHED to prevent regeneration on every rerun
     
     Args:
         section_name: Name of the section
@@ -32,7 +44,7 @@ def generate_data_summary_with_ollama(section_name: str, data: Dict[str, Any]) -
         Generated summary string with insights from the data
     """
     
-    # Create prompts based on section and actual data
+    # Create contextual prompt
     prompt = create_contextual_prompt(section_name, data)
     
     try:
@@ -84,6 +96,14 @@ def create_contextual_prompt(section_name: str, data: Dict[str, Any]) -> str:
 
     Focus on: detection accuracy, alert quality implications, and actionable insights. Avoid repeating the numbers unnecessarily."""
 
+    elif section_name == "VIP User Distribution":
+        prompt = f"""Analyze this VIP user distribution data and write a 2-3 line summary:
+    - VIP User Incidents: {data.get('vip_count', 0)} ({format_number(data.get('vip_percentage', 0))}%)
+    - Non-VIP Incidents: {data.get('non_vip_count', 0)} ({format_number(data.get('non_vip_percentage', 0))}%)
+    - VIP Avg MTTR: {data.get('vip_avg_mttr', 'N/A')} minutes
+    - Non-VIP Avg MTTR: {data.get('non_vip_avg_mttr', 'N/A')} minutes
+
+    Highlight resource prioritization and response time differences."""
 
     elif section_name == "Response Time Analysis":
         mttr_mean = format_number(data.get('mttr_mean'))
@@ -137,6 +157,10 @@ def generate_fallback_summary(section_name: str, data: Dict[str, Any]) -> str:
         bp_pct = format_number(data.get('bp_percentage', 0))
         return f"Out of total alerts, {tp_pct}% were true positives, {fp_pct}% were false positives, and {bp_pct}% were benign. This distribution helps assess detection accuracy and tune alerting mechanisms."
 
+    elif section_name == "VIP User Distribution":
+        vip_pct = format_number(data.get('vip_percentage', 0))
+        return f"VIP users account for {vip_pct}% of incidents. VIP incidents average {data.get('vip_avg_mttr', 'N/A')} min resolution time vs {data.get('non_vip_avg_mttr', 'N/A')} min for non-VIP, indicating prioritization effectiveness."
+
     elif section_name == "Response Time Analysis":
         mttr_mean = format_number(data.get('mttr_mean'))
         mttr_median = format_number(data.get('mttr_median'))
@@ -158,28 +182,20 @@ def extract_summary_data(metrics: Dict, data_df) -> Dict[str, Dict]:
     
     summary_data = {}
     
-    # KPI Data
-    summary_data["Key Performance Indicators"] = {
-        'total_incidents': metrics.get('total_incidents', 0),
-        'avg_mttr': metrics.get('mttr_analysis', {}).get('mean', 'N/A'),
-        'avg_mttd': metrics.get('mttd_analysis', {}).get('mean', 'N/A'),
-        'fp_rate': metrics.get('classification_analysis', {}).get('fp_rate', 0)
-    }
-    
     # Alert Classification Data
     if 'classification_analysis' in metrics:
         ca = metrics['classification_analysis']
         tp = ca.get('true_positives', 0)
         fp = ca.get('false_positives', 0)
-        bp = ca.get('benign_positives', 0)  # ✅ Get actual value
+        bp = ca.get('benign_positives', 0)
         
         summary_data["Alert Classification"] = {
             'true_positives': tp,
             'false_positives': fp,
-            'benign_positives': bp,  # ✅ Use actual value
+            'benign_positives': bp,
             'tp_percentage': ca.get('tp_rate', 0),
             'fp_percentage': ca.get('fp_rate', 0),
-            'bp_percentage': ca.get('bp_rate', 0)  # ✅ Use actual value
+            'bp_percentage': ca.get('bp_rate', 0)
         }
     
     # Response Time Data
@@ -230,9 +246,8 @@ def extract_summary_data(metrics: Dict, data_df) -> Dict[str, Dict]:
         over_30 = ma.get('over_30_min', 0)
         over_60 = ma.get('over_60_min', 0)
         
-        # Calculate intermediate buckets
-        good_count = over_30 - over_60  # 30-60 min
-        moderate_count = over_30 - over_60  # Same as good for now
+        good_count = over_30 - over_60
+        moderate_count = over_30 - over_60
         
         summary_data["Resolution Time Distribution"] = {
             'excellent_count': excellent,
@@ -246,7 +261,6 @@ def extract_summary_data(metrics: Dict, data_df) -> Dict[str, Dict]:
     # Heatmap Pattern Data
     if 'weekly_patterns' in metrics:
         wp = metrics['weekly_patterns']
-        weekday_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         busiest = max(wp.items(), key=lambda x: x[1])
         quietest = min(wp.items(), key=lambda x: x[1])
         
@@ -255,7 +269,7 @@ def extract_summary_data(metrics: Dict, data_df) -> Dict[str, Dict]:
             'busiest_day_count': busiest[1],
             'quietest_day_of_week': quietest[0],
             'quietest_day_count': quietest[1],
-            'peak_hour': 'N/A',  # Would need hourly data
+            'peak_hour': 'N/A',
             'peak_hour_count': 0,
             'quiet_hour': 'N/A',
             'quiet_hour_count': 0
