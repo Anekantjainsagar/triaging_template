@@ -11,11 +11,7 @@ from components.predictions_page import display_predictions_page
 from components.historical_analysis import display_historical_analysis_tab
 
 # Triaging imports
-from components.triaging_integrated import (
-    display_triaging_workflow,
-    extract_alert_from_dataframe_row,
-    initialize_triaging_state_from_data,
-)
+from components.triaging_integrated import display_triaging_workflow
 
 import streamlit as st
 import shutil
@@ -112,7 +108,7 @@ def display_rule_suggestion(rule_data, index):
         f"{match_indicator} {display_rule}\n📊 {incident_count} incidents | 🎯 Score: {score:.1%} | Type: {match_type}",
         key=f"rule_btn_{index}",
         help=f"Click to analyze: {rule_name}",
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -140,7 +136,7 @@ def display_soc_dashboard():
         key="search_input",
     )
 
-    if st.button("🔎 Search Rules", use_container_width=True) and user_query:
+    if st.button("🔎 Search Rules", width="stretch") and user_query:
         with st.spinner(f"🔍 Searching for: '{user_query}'"):
             result = api_client.get_rule_suggestions(user_query, top_k=5)
 
@@ -247,18 +243,7 @@ def display_soc_dashboard():
 
         # ✅ INITIALIZE ALL 3 OPERATIONS ONCE
         if init_key not in st.session_state:
-            with st.spinner("🚀 Initializing analysis pipeline..."):
-                # 1. Prepare triaging (don't auto-select yet)
-                if not data.empty:
-                    first_alert = extract_alert_from_dataframe_row(
-                        data.iloc[0], rule_number
-                    )
-                    initialize_triaging_state_from_data(rule_number, data, first_alert)
-                    st.session_state.triaging_step = 2
-
-                # Mark as initialized
-                st.session_state[init_key] = True
-                st.rerun()  # Single rerun to apply state
+            st.session_state[init_key] = True
 
         # Create tabs for different analysis sections
         tab1, tab2, tab3 = st.tabs(
@@ -272,18 +257,7 @@ def display_soc_dashboard():
             display_historical_analysis_tab(data)
 
         with tab3:
-            # Now triaging is already initialized, just display
-            st.write("🔍 DEBUG - Before Triaging Call:")
-            st.write(f"- Rule number: {rule_number}")
-            st.write(f"- Data rows: {len(data)}")
-            st.write(
-                f"- triaging_initialized: {st.session_state.get('triaging_initialized', False)}"
-            )
-            st.write(
-                f"- triaging_selected_alert: {st.session_state.get('triaging_selected_alert', None)}"
-            )
-
-            display_triaging_workflow(rule_number, data)
+            display_triaging_workflow(rule_number)
 
 
 # ============================================================================
@@ -322,7 +296,7 @@ def display_alert_analysis_tab_api(rule_name: str, api_client):
                     data=analysis,
                     file_name=f"threat_analysis_{rule_name[:30]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                     mime="text/markdown",
-                    use_container_width=True,
+                    width="stretch",
                 )
         else:
             st.error(f"❌ Analysis failed: {result.get('error')}")
@@ -385,7 +359,7 @@ def display_alert_analysis_tab_api(rule_name: str, api_client):
                     data=analysis,
                     file_name=f"threat_analysis_{rule_name[:30]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                     mime="text/markdown",
-                    use_container_width=True,
+                    width="stretch",
                 )
         else:
             progress_bar.empty()

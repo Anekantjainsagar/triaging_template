@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 # Import routers
-from routes.search_alert import router as search_alert_router
 from routes.analyzer_router import router as analyzer_router
 from routes.predictions_router import router as predictions_router
 
@@ -20,15 +19,6 @@ async def lifespan(app: FastAPI):
     print("🚀 Starting Security Alert Management API")
     print("=" * 80)
     print("\n📊 Loading data...")
-
-    # Load search alert data
-    try:
-        from routes.search_alert import get_tracker_data
-
-        get_tracker_data(force_reload=True)
-        print("✅ Search alert data loaded successfully!")
-    except Exception as e:
-        print(f"⚠️ Warning: Could not load search alert data: {str(e)}")
 
     # Load analyzer data
     try:
@@ -49,7 +39,6 @@ async def lifespan(app: FastAPI):
     print("  - Swagger UI: http://localhost:8000/docs")
     print("  - ReDoc: http://localhost:8000/redoc")
     print("\n🔌 Available API Routes:")
-    print("  - /search-alert/* (Search Alert endpoints)")
     print("  - /analyzer/* (SOC Analyzer endpoints)")
     print("  - /predictions/* (Predictions & MITRE Analysis endpoints)")
     print("=" * 80)
@@ -80,7 +69,6 @@ app.add_middleware(
 )
 
 # Include routers with prefixes
-app.include_router(search_alert_router, prefix="/search-alert", tags=["Search Alerts"])
 app.include_router(analyzer_router, prefix="/analyzer", tags=["SOC Analyzer"])
 app.include_router(
     predictions_router, prefix="/predictions", tags=["Predictions & MITRE"]
@@ -96,7 +84,6 @@ async def root():
         "status": "running",
         "documentation": {"swagger_ui": "/docs", "redoc": "/redoc"},
         "available_routes": {
-            "search_alerts": "/search-alert",
             "soc_analyzer": "/analyzer",
             "predictions": "/predictions",
         },

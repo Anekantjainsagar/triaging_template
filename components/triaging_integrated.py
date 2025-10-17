@@ -1,15 +1,12 @@
 # components/triaging_integrated.py
 """
-Integrated AI-Powered Triaging Module - DYNAMIC DATA VERSION
-Uses actual search results instead of hardcoded values
+FIXED: Proper state management for triaging workflow
 """
 
 import streamlit as st
 import pandas as pd
 import traceback
-
-# API Client import
-from api_client.search_alert_api_client import get_api_client
+import hashlib
 
 # Backend utilities
 from routes.src.crew import TriagingCrew
@@ -20,7 +17,6 @@ from routes.src.template_parser import TemplateParser
 from routes.src.web_llm_enhancer import WebLLMEnhancer
 from routes.src.template_generator import EnhancedTemplateGenerator
 from routes.src.csv_template_generator import generate_blank_triaging_template_csv
-from frontend.config.triaging_styles import main_header_style
 
 # Individual step imports
 from components.triaging.step2_enhance import show_page as step2_enhance
@@ -29,390 +25,114 @@ from components.triaging.step4_complete import show_page as step4_complete
 
 
 @st.cache_resource
-def get_cached_api_client():
-    """Initialize and cache the API client."""
-    try:
-        return get_api_client()
-    except Exception as e:
-        st.warning(f"⚠️ API client unavailable: {str(e)}")
-        return None
-
-
-@st.cache_resource
 def get_crew():
     """Initialize and cache the CrewAI instance."""
     return TriagingCrew()
 
 
-def extract_alert_from_dataframe_row(row: pd.Series, rule_name: str) -> dict:
-    """Extract alert information with your actual column names"""
+def initialize_triaging_state(rule_number: str):
+    """
+    ✅ MINIMAL initialization - only what's needed for template enhancement
 
-    def get_value(keys, default="N/A"):
-        for key in keys:
-            if key in row.index and pd.notna(row[key]):
-                val = str(row[key]).strip()
-                if val and val != "nan":
-                    return val
-        return default
+    Args:
+        rule_number: The rule number (e.g., "297" or "Rule#297")
+    """
 
-    # ✅ USE YOUR ACTUAL COLUMN NAMES
-    incident = get_value(
-        [
-            "Incidnet No #",  # ✅ YOUR ACTUAL COLUMN (with typo)
-            "Incident No #",
-            "Incident",
-            "INCIDENT",
-        ],
-        f"INC_{rule_name}_{pd.Timestamp.now().strftime('%Y%m%d')}",
-    )
+    # ✅ Store ONLY the rule number and alert object
+    if "triaging_rule_number" not in st.session_state:
+        st.session_state.triaging_rule_number = rule_number
 
-    priority = get_value(["Priority", "PRIORITY"], "Medium")
-
-    data_connector = get_value(
-        [
-            "Data connecter",  # ✅ YOUR ACTUAL COLUMN (with typo)
-            "Data Connector",
-            "Source",
-        ],
-        "Unknown",
-    )
-
-    comments = get_value(
-        ["Resolver Comments", "Remarks / Comments", "Comments"],
-        "Template-based triaging",
-    )
-
-    alert_name = get_value(
-        ["Alert/Incident", "Alert Name", "Description"],  # ✅ YOUR ACTUAL COLUMN
-        f"Rule {rule_name}",
-    )
-
-    created_date = get_value(
-        ["Date", "Created Date"], pd.Timestamp.now().strftime("%Y-%m-%d")
-    )
-
-    reported_time = get_value(
-        ["Reported time Stamp", "Reported Time"],  # ✅ YOUR ACTUAL COLUMN
-        pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
-    )
-
-    status = get_value(["Status", "STATUS"], "Open")
-
-    return {
-        "rule_number": rule_name,
-        "rule": rule_name,
-        "alert_name": alert_name,
-        "incident": incident,
-        "priority": priority,
-        "data_connector": data_connector,
-        "status": status,
-        "type": "Security Alert",
-        "description": f"Rule {rule_name}: {alert_name}",
-        "resolver_comments": comments,
-        "created_date": created_date,
-        "reported_time": reported_time,
-        "_original_row": row.to_dict(),
+    # 🔧 FIX: Always set/overwrite the alert object (don't check if exists)
+    st.session_state.triaging_selected_alert = {
+        "rule": rule_number,
+        "rule_number": rule_number,
+        "incident": f"TEMPLATE_GEN_{rule_number}",
+        "description": f"Template Generation for Rule {rule_number}",
     }
 
-
-def create_consolidated_dataframe_from_row(alert: dict) -> pd.DataFrame:
-    """
-    Create consolidated DataFrame from alert object
-
-    Args:
-        alert: Alert dictionary
-
-    Returns:
-        pd.DataFrame: Single-row DataFrame with consolidated data
-    """
-    consolidated_row = {
-        "Rule Number": alert["rule_number"],
-        "Alert Name": alert["alert_name"],
-        "Incident": alert["incident"],
-        "Priority": alert["priority"],
-        "Resolver Comments": alert["resolver_comments"],
-        "Data Connector": alert["data_connector"],
-        "Description": alert["description"],
-        "Status": alert["status"],
-        "Created Date": alert["created_date"],
-        "Reported Time": alert["reported_time"],
-    }
-
-    return pd.DataFrame([consolidated_row])
-
-
-def display_incident_selector(data_df: pd.DataFrame, rule_name: str) -> dict:
-    """
-    Display UI for selecting which incident to triage from available data
-
-    Args:
-        data_df: DataFrame with historical incidents
-        rule_name: Rule name/number
-
-    Returns:
-        dict: Selected alert object
-    """
-    st.markdown("### 🎯 Select Incident to Triage")
-
-    # Show summary
-    total_incidents = len(data_df)
-    st.info(f"📊 Found **{total_incidents}** incident(s) for rule: `{rule_name}`")
-
-    if total_incidents == 0:
-        st.error("❌ No incidents found for this rule")
-        return None
-
-    # Selection mode
-    selection_mode = st.radio(
-        "Selection Mode:",
-        ["📋 Select from List", "🔢 Select by Incident Number", "🚀 Use Most Recent"],
-        horizontal=True,
-    )
-
-    selected_alert = None
-
-    if selection_mode == "📋 Select from List":
-        # Create display strings for each incident
-        incident_options = []
-        incident_map = {}
-
-        for idx, row in data_df.iterrows():
-            alert = extract_alert_from_dataframe_row(row, rule_name)
-
-            display_str = (
-                f"🔹 Incident: {alert['incident']} | "
-                f"Priority: {alert['priority']} | "
-                f"Status: {alert['status']} | "
-                f"Date: {alert['created_date']}"
-            )
-
-            incident_options.append(display_str)
-            incident_map[display_str] = alert
-
-        # Selectbox for incidents
-        selected_display = st.selectbox(
-            "Choose an incident:", options=incident_options, index=0
-        )
-
-        selected_alert = incident_map[selected_display]
-
-    elif selection_mode == "🔢 Select by Incident Number":
-        # Extract incident numbers
-        incident_col_name = None
-        for col in ["Incident", "INCIDENT", "Incident Number", "INC"]:
-            if col in data_df.columns:
-                incident_col_name = col
-                break
-
-        if incident_col_name:
-            incident_numbers = data_df[incident_col_name].astype(str).tolist()
-
-            selected_incident_num = st.selectbox(
-                "Select Incident Number:", options=incident_numbers, index=0
-            )
-
-            # Find matching row
-            matching_row = data_df[
-                data_df[incident_col_name].astype(str) == selected_incident_num
-            ].iloc[0]
-            selected_alert = extract_alert_from_dataframe_row(matching_row, rule_name)
-        else:
-            st.error("❌ Cannot find incident number column in data")
-            return None
-
-    else:  # Use Most Recent
-        # Try to sort by date
-        date_cols = [
-            "Created Date",
-            "CREATED_DATE",
-            "Date",
-            "Timestamp",
-            "Reported Time",
-        ]
-
-        sorted_df = data_df.copy()
-        for col in date_cols:
-            if col in sorted_df.columns:
-                try:
-                    sorted_df[col] = pd.to_datetime(sorted_df[col], errors="coerce")
-                    sorted_df = sorted_df.sort_values(col, ascending=False)
-                    break
-                except:
-                    continue
-
-        most_recent_row = sorted_df.iloc[0]
-        selected_alert = extract_alert_from_dataframe_row(most_recent_row, rule_name)
-
-        st.success(
-            f"✅ Auto-selected most recent incident: **{selected_alert['incident']}**"
-        )
-
-    # Display selected incident details
-    if selected_alert:
-        st.markdown("---")
-        st.markdown("### 📋 Selected Incident Details")
-
-        col1, col2, col3, col4 = st.columns(4)
-
-        with col1:
-            st.metric("Incident", selected_alert["incident"])
-        with col2:
-            st.metric("Priority", selected_alert["priority"])
-        with col3:
-            st.metric("Status", selected_alert["status"])
-        with col4:
-            st.metric("Data Source", selected_alert["data_connector"])
-
-        with st.expander("🔍 View Full Details", expanded=False):
-            for key, value in selected_alert.items():
-                if not key.startswith("_"):
-                    st.text(f"{key}: {value}")
-
-    return selected_alert
-
-
-def initialize_triaging_state_from_data(
-    rule_name: str, data_df: pd.DataFrame, selected_alert: dict = None
-):
-    """
-    Initialize triaging state using actual search data
-
-    Args:
-        rule_name: The rule name/number
-        data_df: DataFrame with historical data
-        selected_alert: Pre-selected alert (optional)
-    """
-
-    # If no alert selected, use the first row as default
-    if selected_alert is None:
-        if data_df.empty:
-            st.error("❌ No data available for triaging")
-            return False
-
-        selected_alert = extract_alert_from_dataframe_row(data_df.iloc[0], rule_name)
-
-    # Create consolidated data
-    consolidated_data = create_consolidated_dataframe_from_row(selected_alert)
-
-    # Initialize session state
+    # ✅ Initialize other minimal state
     defaults = {
-        "triaging_step": 2,  # Start at step 2 (enhance)
-        "triaging_alerts": [selected_alert],
-        "triaging_all_data": data_df,
-        "triaging_consolidated_data": consolidated_data,
-        "triaging_selected_alert": selected_alert,
-        "selected_alert": selected_alert,  # For step3 compatibility
-        "selected_alert_details": selected_alert,
-        "consolidated_data": consolidated_data,  # For step3
-        "template_content": None,
+        "triaging_step": 2,  # Start at template enhancement
         "triaging_plan": None,
         "triaging_output": {},
         "predictions": [],
-        "triaging_predictions": [],
         "progressive_predictions": {},
         "rule_history": {},
         "current_step_index": 0,
         "analysis_complete": False,
-        "excel_template_data": None,
         "original_steps": None,
         "enhanced_steps": None,
         "validation_report": None,
         "real_time_prediction": None,
-        "api_client": None,
-        "search_results": [selected_alert],
-        "current_search_results": [selected_alert],
+        "excel_template_data": None,
     }
 
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
 
-    # 🐛 DEBUG: Verify all required states are set
-    st.write("🔍 DEBUG - State Initialization:")
-    st.write(f"✅ triaging_selected_alert set: {selected_alert is not None}")
-    st.write(f"✅ consolidated_data rows: {len(consolidated_data)}")
-    st.write(f"✅ selected_alert incident: {selected_alert.get('incident', 'MISSING')}")
-
     return True
 
 
-def display_triaging_workflow(rule_name: str, data: pd.DataFrame):
-    """Display triaging workflow for a specific rule"""
+def display_triaging_workflow(rule_number: str):
+    """
+    ✅ SIMPLIFIED: Template generation workflow (no historical data needed)
 
-    st.markdown("## 🔍 AI-Powered Security Incident Triaging")
+    Args:
+        rule_number: Rule number/name (e.g., "297" or "Rule#297")
+    """
+
+    st.markdown("## 🔍 AI-Powered Template Enhancement")
     st.markdown("---")
 
-    # ✅ CREATE UNIQUE KEY FOR THIS RULE + DATA COMBINATION
-    import hashlib
+    # ✅ CREATE UNIQUE KEY FOR THIS RULE
+    init_key = f"triaging_init_{rule_number}"
 
-    data_hash = hashlib.md5(str(data.head().to_dict()).encode()).hexdigest()
-    init_key = f"triaging_init_{rule_name}_{data_hash}"
-
-    # ✅ STEP 1: Check if already initialized for THIS specific rule+data
+    # ✅ INITIALIZE ONCE
     if init_key not in st.session_state:
-        st.info("🎯 Initializing triaging state...")
+        st.info("🎯 Initializing template enhancement...")
 
-        # Extract first incident
-        selected_alert = extract_alert_from_dataframe_row(data.iloc[0], rule_name)
-
-        # Initialize state with selected alert
-        if not initialize_triaging_state_from_data(rule_name, data, selected_alert):
-            st.error("❌ Failed to initialize triaging state")
+        if not initialize_triaging_state(rule_number):  # ← Calls initialization
+            st.error("❌ Failed to initialize")
             return
 
-        # ✅ Mark as initialized for THIS specific rule+data combo
+        # Mark as initialized
         st.session_state[init_key] = True
-        st.session_state.triaging_initialized = True
-        st.session_state.triaging_step = 2
-
-        st.success("✅ Triaging initialized!")
-        st.rerun()  # ✅ ONE-TIME RERUN
-        return  # ✅ STOP HERE
-
-    # ✅ AFTER FIRST RERUN, THIS SECTION RUNS
-    # Now check if alert is valid (DON'T RERUN AGAIN)
-    selected_alert = st.session_state.get("triaging_selected_alert")
-
-    if selected_alert is None:
-        st.error("❌ State initialization failed. Please restart.")
-        if st.button("🔄 Restart Triaging"):
-            # Clear only triaging keys
-            for key in list(st.session_state.keys()):
-                if "triaging" in key.lower() or key == init_key:
-                    del st.session_state[key]
-            st.rerun()
+        st.success("✅ Ready for template enhancement!")
+        st.rerun()  # ← Reruns the entire script
         return
 
-    # ✅ NOW PROCEED WITH NORMAL WORKFLOW (NO MORE RERUNS)
-    crew = get_crew()
-    api_client = get_cached_api_client()
-    st.session_state.api_client = api_client
+        # ✅ VERIFY STATE EXISTS
+        if "triaging_rule_number" not in st.session_state:
+            st.error("❌ State lost. Please restart.")
+            if st.button("🔄 Restart"):
+                if init_key in st.session_state:
+                    del st.session_state[init_key]
+                st.rerun()
+            return
 
-    alert = selected_alert
+    # ✅ GET RULE NUMBER
+    rule_num = st.session_state.triaging_rule_number
 
-    # Display current alert info banner
-    st.info(
-        f"🎯 **Active Triaging** | Rule: `{alert.get('rule_number')}` | "
-        f"Incident: `{alert.get('incident')}` | Priority: `{alert.get('priority')}`"
-    )
+    # Display banner
+    st.info(f"🎯 **Active Rule:** `{rule_num}` | **Mode:** Template Enhancement Only")
 
     st.markdown("---")
 
-    # Step Navigation
+    # ✅ STEP NAVIGATION
     step_names = [
         "🚀 Enhance Template",  # Step 2
-        "👥 CrewAI Walkthrough",  # Step 3
+        "💥 CrewAI Walkthrough",  # Step 3
         "✨ Complete Analysis",  # Step 4
     ]
 
-    # Navigation buttons
     col1, col2, col3 = st.columns(3)
 
     with col1:
         if st.button(
             step_names[0],
-            key="nav_step2_tab",
-            use_container_width=True,
+            key="nav_step2",
+            width="stretch",
             type="primary" if st.session_state.triaging_step == 2 else "secondary",
         ):
             st.session_state.triaging_step = 2
@@ -421,212 +141,109 @@ def display_triaging_workflow(rule_name: str, data: pd.DataFrame):
     with col2:
         if st.button(
             step_names[1],
-            key="nav_step3_tab",
-            use_container_width=True,
+            key="nav_step3",
+            width="stretch",
             type="primary" if st.session_state.triaging_step == 3 else "secondary",
+            disabled=True,  # Disable for template-only mode
         ):
-            st.session_state.triaging_step = 3
-            st.rerun()
+            st.warning("⚠️ CrewAI walkthrough requires incident data")
 
     with col3:
         if st.button(
             step_names[2],
-            key="nav_step4_tab",
-            use_container_width=True,
+            key="nav_step4",
+            width="stretch",
             type="primary" if st.session_state.triaging_step == 4 else "secondary",
+            disabled=True,  # Disable for template-only mode
         ):
-            st.session_state.triaging_step = 4
-            st.rerun()
+            st.warning("⚠️ Complete analysis requires incident data")
 
     # Progress indicator
-    display_step = st.session_state.triaging_step - 2
-    if 0 <= display_step < len(step_names):
-        st.progress(
-            (display_step + 1) / len(step_names),
-            text=f"Progress: {step_names[display_step]}",
-        )
+    st.progress(0.33, text=f"Progress: {step_names[0]}")
 
     st.markdown("---")
 
-    # Display current step content
+    # ✅ DISPLAY TEMPLATE ENHANCEMENT STEP ONLY
     try:
-        if st.session_state.triaging_step == 2:  # Template Enhancement
+        # Only show template enhancement
+        if st.session_state.triaging_step == 2:
             step2_enhance(
                 st.session_state,
                 TemplateParser,
                 WebLLMEnhancer,
                 EnhancedTemplateGenerator,
             )
-
-        elif st.session_state.triaging_step == 3:  # CrewAI Walkthrough
-            step3_walkthrough(st.session_state, crew, traceback)
-
-        elif st.session_state.triaging_step == 4:  # Complete Analysis
-            step4_complete(
-                st.session_state,
-                crew,
-                generate_completed_template,
-                generate_blank_triaging_template_csv,
-                EnhancedTemplateGenerator,
-                traceback,
-            )
-
         else:
-            st.warning(
-                "⚠️ Invalid step detected. Redirecting to Template Enhancement..."
+            st.warning("⚠️ Only template enhancement is available in this mode")
+            st.info(
+                "💡 To use full triaging workflow, select an incident from the dashboard"
             )
-            st.session_state.triaging_step = 2
-            st.rerun()
 
-    except AttributeError as e:
-        st.error(f"❌ Configuration Error: {str(e)}")
-        st.warning("Reinitializing session state...")
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
+        with st.expander("🔍 View Error Details"):
+            st.code(traceback.format_exc())
 
-        # Force reinitialization
-        for key in list(st.session_state.keys()):
-            if key.startswith("triaging_") or key in [
-                "selected_alert",
-                "consolidated_data",
-                "predictions",
-            ]:
-                if key in st.session_state:
-                    del st.session_state[key]
-
-        # Reinitialize with current data
-        initialize_triaging_state_from_data(rule_name, data)
-        st.session_state.triaging_initialized = True
-        st.rerun()
-
-    # Action buttons at bottom
+    # ✅ ACTION BUTTONS
     st.markdown("---")
-
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("🔄 Change Incident", key="change_incident_tab"):
-            # Clear initialization flags to show selector again
-            if init_key in st.session_state:
-                del st.session_state[init_key]
-            st.session_state.triaging_initialized = False
-            st.session_state.triaging_selected_alert = None
-            st.session_state.triaging_step = 2
+        if st.button("🔄 Reset Workflow", key="reset_workflow"):
+            # Clear all triaging state including init flag
+            keys_to_clear = [
+                k
+                for k in st.session_state.keys()
+                if k.startswith("triaging_") or k == init_key
+            ]
+            for key in keys_to_clear:
+                del st.session_state[
+                    key
+                ]  # ✅ This is good - deletes, doesn't set to None
+            st.success("✅ Reset complete!")
             st.rerun()
 
     with col2:
-        if st.button("🔄 Reset Workflow", key="reset_triaging_tab"):
-            # Clear triaging-specific state including initialization flag
-            triaging_keys = [
-                k
-                for k in st.session_state.keys()
-                if k.startswith("triaging_")
-                or k.startswith("triaging_init_")  # ✅ Clear init keys too
-                or k
-                in [
-                    "template_content",
-                    "progressive_predictions",
-                    "rule_history",
-                    "current_step_index",
-                    "analysis_complete",
-                    "excel_template_data",
-                    "original_steps",
-                    "enhanced_steps",
-                    "validation_report",
-                    "real_time_prediction",
-                    "selected_alert",
-                    "consolidated_data",
-                    "predictions",
-                ]
-            ]
-            for key in triaging_keys:
-                if key in st.session_state:
-                    del st.session_state[key]
-
-            st.success("✅ Workflow reset complete!")
-            st.rerun()
-
-    with col3:
-        # Show raw data inspector
-        with st.expander("🔍 View Raw Data", expanded=False):
-            st.markdown("**Selected Alert Object:**")
-            st.json(alert)
-
-            st.markdown("**Available Historical Data:**")
-            st.dataframe(data, height=200)
+        # State inspector
+        with st.expander("📊 View State", expanded=False):
+            st.json(
+                {
+                    "rule_number": rule_num,
+                    "current_step": st.session_state.triaging_step,
+                    "initialized": init_key in st.session_state,
+                    "template_found": st.session_state.get("original_steps")
+                    is not None,
+                    "enhanced": st.session_state.get("enhanced_steps") is not None,
+                }
+            )
 
 
 def display_triaging_page():
     """
-    Main triaging page display - STANDALONE VERSION
-    (Used when triaging is accessed as a separate page, not embedded in dashboard)
+    Standalone triaging page for template enhancement only
     """
+    st.markdown("# 🔍 AI-Powered Template Enhancement")
 
-    # Apply custom CSS
-    st.markdown(main_header_style, unsafe_allow_html=True)
-
-    # App Title
-    st.markdown(
-        '<h1 class="main-header">🔍 AI-Powered Security Incident Triaging</h1>',
-        unsafe_allow_html=True,
-    )
-
-    st.warning(
-        "⚠️ **Note:** This is a standalone triaging page. "
-        "For best experience, use the triaging feature from the main dashboard "
-        "by selecting a rule and navigating to the 'AI Triaging' tab."
+    st.info(
+        "💡 **Template Enhancement Mode** - Generate enhanced triaging templates from existing templates"
     )
 
     st.markdown("---")
+    st.markdown("### 🎯 Enter Rule Number")
 
-    # Manual rule/incident entry for standalone mode
-    st.markdown("### 🎯 Manual Incident Entry")
+    manual_rule = st.text_input(
+        "Rule Number:",
+        placeholder="e.g., 297 or Rule#297",
+        key="manual_rule",
+    )
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        manual_rule = st.text_input(
-            "Rule Number/Name:",
-            placeholder="e.g., #280 or Rule 280",
-            key="manual_rule_input",
-        )
-
-    with col2:
-        manual_incident = st.text_input(
-            "Incident Number:",
-            placeholder="e.g., INC123456",
-            key="manual_incident_input",
-        )
-
-    if st.button("🚀 Start Manual Triaging", type="primary", use_container_width=True):
-        if not manual_rule or not manual_incident:
-            st.error("❌ Please provide both rule and incident number")
+    if st.button("🚀 Start Template Enhancement", type="primary", width="stretch"):
+        if not manual_rule:
+            st.error("❌ Please provide a rule number")
         else:
-            # Create a mock alert object
-            mock_alert = {
-                "rule_number": manual_rule,
-                "rule": manual_rule,
-                "alert_name": f"Manual Entry: {manual_rule}",
-                "incident": manual_incident,
-                "priority": "High",
-                "data_connector": "Manual",
-                "status": "Open",
-                "type": "Security Alert",
-                "description": f"Manually entered rule {manual_rule}",
-                "resolver_comments": "Manual triaging entry",
-                "created_date": pd.Timestamp.now().strftime("%Y-%m-%d"),
-                "reported_time": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
-            }
-
-            # Create mock DataFrame
-            mock_df = pd.DataFrame([mock_alert])
-
-            # Initialize triaging
-            if initialize_triaging_state_from_data(manual_rule, mock_df, mock_alert):
-                st.success("✅ Manual triaging initialized!")
+            # Initialize and start
+            if initialize_triaging_state(manual_rule):
+                st.success("✅ Initialized!")
                 st.rerun()
             else:
-                st.error("❌ Failed to initialize triaging")
-
-    st.markdown("---")
-    st.caption(
-        "💡 Tip: Use the main SOC Dashboard to search for rules and access triaging with full historical context"
-    )
+                st.error("❌ Initialization failed")

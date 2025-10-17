@@ -20,11 +20,33 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
         unsafe_allow_html=True,
     )
 
+    # 🔍 DEBUG: Check what's in session_state
+    # st.write("DEBUG - Keys in session_state:")
+    # st.write([k for k in dir(session_state) if not k.startswith("_")])
+    # st.write(
+    #     "triaging_selected_alert exists?", "triaging_selected_alert" in session_state
+    # )
+    # if "triaging_selected_alert" in session_state:
+    #     st.write("Value:", session_state.triaging_selected_alert)
+
     # Get alert information with fallback
-    selected_alert = getattr(session_state, "triaging_selected_alert", None)
+    selected_alert = session_state.get("triaging_selected_alert", None)
+    
+    # 🔧 FIX: If None or missing, try to get rule_number and reconstruct
     if selected_alert is None:
-        st.error("❌ No alert selected. Please go back and select an incident.")
-        return
+        rule_number = session_state.get("triaging_rule_number", None)
+        if rule_number:
+            st.warning("⚠️ Alert object was None, reconstructing...")
+            selected_alert = {
+                "rule": rule_number,
+                "rule_number": rule_number,
+                "incident": f"TEMPLATE_GEN_{rule_number}",
+                "description": f"Template Generation for Rule {rule_number}",
+            }
+            session_state["triaging_selected_alert"] = selected_alert
+        else:
+            st.error("❌ No alert selected. Please go back and select an incident.")
+            return
 
     selected_incident = selected_alert.get("incident", "Unknown")
     rule_number = selected_alert.get(
@@ -325,7 +347,7 @@ def _display_enhancement_results(
     )
 
     with tab1:
-        st.dataframe(template_df, use_container_width=True, height=400)
+        st.dataframe(template_df, width='stretch', height=400)
 
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -482,7 +504,7 @@ def _display_enhancement_results(
             data=session_state.excel_template_data,
             file_name=f"triaging_template_{rule_number.replace('#', '_')}_enhanced.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            width='stretch',
             type="primary",
         )
 
@@ -505,7 +527,7 @@ def _display_enhancement_results(
             data=json.dumps(json_export, indent=2),
             file_name=f"triaging_template_{rule_number.replace('#', '_')}_validated.json",
             mime="application/json",
-            use_container_width=True,
+            width='stretch',
         )
 
     with col3:
@@ -522,10 +544,10 @@ def _display_enhancement_results(
                 data=kql_export,
                 file_name=f"kql_queries_{rule_number.replace('#', '_')}_validated.kql",
                 mime="text/plain",
-                use_container_width=True,
+                width='stretch',
             )
         else:
-            st.button("🔎 No KQL Queries", disabled=True, use_container_width=True)
+            st.button("🔎 No KQL Queries", disabled=True, width='stretch')
 
     # Navigation
     st.markdown("---")
@@ -538,7 +560,7 @@ def _display_enhancement_results(
             st.rerun()
 
     with col3:
-        if st.button("🔄 Start New Search", type="primary", use_container_width=True):
+        if st.button("🔄 Start New Search", type="primary", width='stretch'):
             # Clear triaging-related state
             for key in list(session_state.keys()):
                 if key.startswith("triaging_") or key in [
