@@ -17,6 +17,10 @@ from components.triaging_integrated import (
     initialize_triaging_state_from_data,
 )
 
+import streamlit as st
+import shutil
+import os
+
 # Page configuration
 st.set_page_config(
     page_title="SOC Intelligence Dashboard",
@@ -27,6 +31,14 @@ st.set_page_config(
 
 apply_custom_css()
 
+
+# Clear media cache on startup
+media_cache = os.path.join(os.path.expanduser("~"), ".streamlit", "cache")
+if os.path.exists(media_cache):
+    try:
+        shutil.rmtree(media_cache)
+    except:
+        pass
 
 # ============================================================================
 # Session State Management
@@ -72,6 +84,7 @@ initialize_session_state()
 # ============================================================================
 # Helper Functions
 # ============================================================================
+
 
 @st.cache_data(ttl=60)  # ✅ Cache for 30 seconds
 def check_api_status():
@@ -237,7 +250,9 @@ def display_soc_dashboard():
             with st.spinner("🚀 Initializing analysis pipeline..."):
                 # 1. Prepare triaging (don't auto-select yet)
                 if not data.empty:
-                    first_alert = extract_alert_from_dataframe_row(data.iloc[0], rule_number)
+                    first_alert = extract_alert_from_dataframe_row(
+                        data.iloc[0], rule_number
+                    )
                     initialize_triaging_state_from_data(rule_number, data, first_alert)
                     st.session_state.triaging_step = 2
 
@@ -261,9 +276,13 @@ def display_soc_dashboard():
             st.write("🔍 DEBUG - Before Triaging Call:")
             st.write(f"- Rule number: {rule_number}")
             st.write(f"- Data rows: {len(data)}")
-            st.write(f"- triaging_initialized: {st.session_state.get('triaging_initialized', False)}")
-            st.write(f"- triaging_selected_alert: {st.session_state.get('triaging_selected_alert', None)}")
-                    
+            st.write(
+                f"- triaging_initialized: {st.session_state.get('triaging_initialized', False)}"
+            )
+            st.write(
+                f"- triaging_selected_alert: {st.session_state.get('triaging_selected_alert', None)}"
+            )
+
             display_triaging_workflow(rule_number, data)
 
 

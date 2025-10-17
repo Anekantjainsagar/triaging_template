@@ -48,61 +48,59 @@ def get_crew():
 
 
 def extract_alert_from_dataframe_row(row: pd.Series, rule_name: str) -> dict:
-    """
-    Extract alert information from a DataFrame row with flexible column mapping
+    """Extract alert information with your actual column names"""
 
-    Args:
-        row: pandas Series (single row from DataFrame)
-        rule_name: The rule name/number
-
-    Returns:
-        dict: Standardized alert object
-    """
-
-    # Helper function to safely get value
     def get_value(keys, default="N/A"):
         for key in keys:
             if key in row.index and pd.notna(row[key]):
-                return str(row[key])
+                val = str(row[key]).strip()
+                if val and val != "nan":
+                    return val
         return default
 
-    # Extract incident number
-    incident = get_value(["Incident", "INCIDENT", "Incident Number", "INC"], "Unknown")
+    # ✅ USE YOUR ACTUAL COLUMN NAMES
+    incident = get_value(
+        [
+            "Incidnet No #",  # ✅ YOUR ACTUAL COLUMN (with typo)
+            "Incident No #",
+            "Incident",
+            "INCIDENT",
+        ],
+        f"INC_{rule_name}_{pd.Timestamp.now().strftime('%Y%m%d')}",
+    )
 
-    # Extract priority
-    priority = get_value(["Priority", "PRIORITY", "Severity"], "Medium")
+    priority = get_value(["Priority", "PRIORITY"], "Medium")
 
-    # Extract data connector
     data_connector = get_value(
-        ["Data Connector", "DATA_CONNECTOR", "Source", "Connector"], "Unknown"
+        [
+            "Data connecter",  # ✅ YOUR ACTUAL COLUMN (with typo)
+            "Data Connector",
+            "Source",
+        ],
+        "Unknown",
     )
 
-    # Extract comments
     comments = get_value(
-        ["Resolver Comments", "RESOLVER_COMMENTS", "Comments", "Notes"],
-        "No comments available",
+        ["Resolver Comments", "Remarks / Comments", "Comments"],
+        "Template-based triaging",
     )
 
-    # Extract alert name/description
     alert_name = get_value(
-        ["Alert Name", "ALERT_NAME", "Description", "Title"], rule_name
+        ["Alert/Incident", "Alert Name", "Description"],  # ✅ YOUR ACTUAL COLUMN
+        f"Rule {rule_name}",
     )
 
-    # Extract timestamps
     created_date = get_value(
-        ["Created Date", "CREATED_DATE", "Date", "Timestamp"],
-        pd.Timestamp.now().strftime("%Y-%m-%d"),
+        ["Date", "Created Date"], pd.Timestamp.now().strftime("%Y-%m-%d")
     )
 
     reported_time = get_value(
-        ["Reported Time", "REPORTED_TIME", "Time", "Created Time"],
+        ["Reported time Stamp", "Reported Time"],  # ✅ YOUR ACTUAL COLUMN
         pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
     )
 
-    # Extract status
-    status = get_value(["Status", "STATUS", "State"], "Open")
+    status = get_value(["Status", "STATUS"], "Open")
 
-    # Build standardized alert object
     return {
         "rule_number": rule_name,
         "rule": rule_name,
@@ -116,7 +114,6 @@ def extract_alert_from_dataframe_row(row: pd.Series, rule_name: str) -> dict:
         "resolver_comments": comments,
         "created_date": created_date,
         "reported_time": reported_time,
-        # Store original row data for reference
         "_original_row": row.to_dict(),
     }
 
@@ -332,7 +329,7 @@ def initialize_triaging_state_from_data(
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
-            
+
     # 🐛 DEBUG: Verify all required states are set
     st.write("🔍 DEBUG - State Initialization:")
     st.write(f"✅ triaging_selected_alert set: {selected_alert is not None}")
@@ -343,10 +340,7 @@ def initialize_triaging_state_from_data(
 
 
 def display_triaging_workflow(rule_name: str, data: pd.DataFrame):
-    """
-    Display triaging workflow for a specific rule (embedded in tab)
-    OPTIMIZED: Only initializes once per rule selection
-    """
+    """Display triaging workflow for a specific rule"""
 
     st.markdown("## 🔍 AI-Powered Security Incident Triaging")
     st.markdown("---")
@@ -359,11 +353,6 @@ def display_triaging_workflow(rule_name: str, data: pd.DataFrame):
 
     # ✅ STEP 1: Check if already initialized for THIS specific rule+data
     if init_key not in st.session_state:
-        # Auto-select first incident for dashboard workflow
-        if data.empty:
-            st.error("❌ No data available for triaging")
-            return
-
         st.info("🎯 Initializing triaging state...")
 
         # Extract first incident
@@ -380,36 +369,29 @@ def display_triaging_workflow(rule_name: str, data: pd.DataFrame):
         st.session_state.triaging_step = 2
 
         st.success("✅ Triaging initialized!")
-        st.rerun()  # ✅ Force rerun to apply state
-        return  # ✅ Stop execution after rerun
+        st.rerun()  # ✅ ONE-TIME RERUN
+        return  # ✅ STOP HERE
 
-    # ✅ VERIFY ALERT EXISTS (even if init_key exists)
-    if (
-        "triaging_selected_alert" not in st.session_state
-        or st.session_state.triaging_selected_alert is None
-    ):
-        st.error("❌ Alert was not properly initialized. Reinitializing...")
+    # ✅ AFTER FIRST RERUN, THIS SECTION RUNS
+    # Now check if alert is valid (DON'T RERUN AGAIN)
+    selected_alert = st.session_state.get("triaging_selected_alert")
 
-        # 🐛 DEBUG: Show what went wrong
-        st.write("🔍 DEBUG - Reinitialization triggered:")
-        st.write(f"- init_key: {init_key}")
-        st.write(
-            f"- triaging_selected_alert: {st.session_state.get('triaging_selected_alert', 'MISSING')}"
-        )
-
-        # Clear the bad init_key and force reinitialization
-        if init_key in st.session_state:
-            del st.session_state[init_key]
-
-        st.rerun()
+    if selected_alert is None:
+        st.error("❌ State initialization failed. Please restart.")
+        if st.button("🔄 Restart Triaging"):
+            # Clear only triaging keys
+            for key in list(st.session_state.keys()):
+                if "triaging" in key.lower() or key == init_key:
+                    del st.session_state[key]
+            st.rerun()
         return
 
-    # Initialize clients (cached)
+    # ✅ NOW PROCEED WITH NORMAL WORKFLOW (NO MORE RERUNS)
     crew = get_crew()
     api_client = get_cached_api_client()
     st.session_state.api_client = api_client
 
-    alert = st.session_state.triaging_selected_alert
+    alert = selected_alert
 
     # Display current alert info banner
     st.info(

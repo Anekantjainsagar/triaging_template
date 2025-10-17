@@ -4,7 +4,7 @@ import hashlib
 import json
 from frontend.utils.alert_analysis.metrices import extract_detailed_metrics
 from frontend.utils.alert_analysis.generate_summaries import (
-    generate_data_summary_with_ollama,
+    generate_data_summary_with_llm,
     extract_summary_data,
 )
 
@@ -35,18 +35,18 @@ def display_historical_analysis_tab(data_df: pd.DataFrame):
 
             # Generate summaries with progress
             if "classification_analysis" in metrics:
-                summaries["classification"] = generate_data_summary_with_ollama(
+                summaries["classification"] = generate_data_summary_with_llm(
                     "Alert Classification", summary_data.get("Alert Classification", {})
                 )
 
             if "vip_analysis" in metrics:
-                summaries["vip"] = generate_data_summary_with_ollama(
+                summaries["vip"] = generate_data_summary_with_llm(
                     "VIP User Distribution",
                     summary_data.get("VIP User Distribution", {}),
                 )
 
             if "mttr_analysis" in metrics or "mttd_analysis" in metrics:
-                summaries["response"] = generate_data_summary_with_ollama(
+                summaries["response"] = generate_data_summary_with_llm(
                     "Response Time Analysis",
                     summary_data.get("Response Time Analysis", {}),
                 )
