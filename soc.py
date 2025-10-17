@@ -73,7 +73,7 @@ initialize_session_state()
 # Helper Functions
 # ============================================================================
 
-
+@st.cache_data(ttl=60)  # ✅ Cache for 30 seconds
 def check_api_status():
     """Check if backend API is running"""
     api_client = get_analyzer_client()
@@ -227,6 +227,24 @@ def display_soc_dashboard():
             unsafe_allow_html=True,
         )
 
+        import hashlib
+
+        rule_hash = hashlib.md5(rule_name.encode()).hexdigest()
+        init_key = f"rule_initialized_{rule_hash}"
+
+        # ✅ INITIALIZE ALL 3 OPERATIONS ONCE
+        if init_key not in st.session_state:
+            with st.spinner("🚀 Initializing analysis pipeline..."):
+                # 1. Prepare triaging (don't auto-select yet)
+                if not data.empty:
+                    first_alert = extract_alert_from_dataframe_row(data.iloc[0], rule_number)
+                    initialize_triaging_state_from_data(rule_number, data, first_alert)
+                    st.session_state.triaging_step = 2
+
+                # Mark as initialized
+                st.session_state[init_key] = True
+                st.rerun()  # Single rerun to apply state
+
         # Create tabs for different analysis sections
         tab1, tab2, tab3 = st.tabs(
             ["🤖 AI Threat Analysis", "📊 Historical Analysis", "🔍 AI Triaging"]
@@ -239,34 +257,14 @@ def display_soc_dashboard():
             display_historical_analysis_tab(data)
 
         with tab3:
-            # Extract rule components for triaging
-            rule_data = st.session_state.selected_rule_data
-
-            # Initialize triaging if not already done
-            if (
-                "triaging_selected_alert" not in st.session_state
-                or st.session_state.triaging_selected_alert is None
-            ):
-                # Auto-select first incident and skip incident selector
-                if not data.empty:
-                    # Create alert object from first row
-                    first_alert = extract_alert_from_dataframe_row(
-                        data.iloc[0], rule_number
-                    )
-
-                    # Initialize triaging state
-                    if initialize_triaging_state_from_data(
-                        rule_number, data, first_alert
-                    ):
-                        st.session_state.triaging_step = 2  # Go directly to step 2
-                        st.rerun()
-                    else:
-                        st.error("❌ Failed to initialize triaging")
-                else:
-                    st.error("❌ No data available for triaging")
-            else:
-                # Display triaging workflow
-                display_triaging_workflow(rule_number, data)
+            # Now triaging is already initialized, just display
+            st.write("🔍 DEBUG - Before Triaging Call:")
+            st.write(f"- Rule number: {rule_number}")
+            st.write(f"- Data rows: {len(data)}")
+            st.write(f"- triaging_initialized: {st.session_state.get('triaging_initialized', False)}")
+            st.write(f"- triaging_selected_alert: {st.session_state.get('triaging_selected_alert', None)}")
+                    
+            display_triaging_workflow(rule_number, data)
 
 
 # ============================================================================
@@ -433,9 +431,12 @@ def main():
         if page == "🏠 Dashboard":
             st.markdown("### 📋 System Information")
 
-            # Get system stats from API
-            api_client = get_analyzer_client()
-            stats_result = api_client.get_system_stats()
+            # ✅ CACHE STATS - Only fetch once per session
+            if "system_stats_cache" not in st.session_state:
+                api_client = get_analyzer_client()
+                st.session_state.system_stats_cache = api_client.get_system_stats()
+
+            stats_result = st.session_state.system_stats_cache
 
             if stats_result.get("success"):
                 st.metric("Total Records", f"{stats_result.get('total_records', 0):,}")

@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import hashlib
+import json
 from frontend.utils.alert_analysis.metrices import extract_detailed_metrics
 from frontend.utils.alert_analysis.generate_summaries import (
     generate_data_summary_with_ollama,
@@ -10,21 +12,61 @@ from frontend.utils.alert_analysis.generate_summaries import (
 def display_historical_analysis_tab(data_df: pd.DataFrame):
     """Display streamlined historical data analysis tab with LLM-generated summaries"""
 
-    # Extract metrics
-    metrics = extract_detailed_metrics(data_df)
+    # ✅ CREATE CACHE KEY FOR THIS SPECIFIC DATA
+    data_hash = hashlib.md5(
+        json.dumps(data_df.head().to_dict(), sort_keys=True, default=str).encode()
+    ).hexdigest()
+    cache_key = f"historical_analysis_{data_hash}"
 
-    # Extract data for summaries
-    summary_data = extract_summary_data(metrics, data_df)
+    # ✅ CHECK IF ALREADY PROCESSED
+    if cache_key in st.session_state:
+        cached_data = st.session_state[cache_key]
+        metrics = cached_data["metrics"]
+        summary_data = cached_data["summary_data"]
+        summaries = cached_data["summaries"]
+    else:
+        # ✅ FIRST TIME - Extract metrics and generate summaries
+        with st.spinner("📊 Analyzing historical data..."):
+            metrics = extract_detailed_metrics(data_df)
+            summary_data = extract_summary_data(metrics, data_df)
+
+            # Pre-generate all summaries
+            summaries = {"classification": None, "vip": None, "response": None}
+
+            # Generate summaries with progress
+            if "classification_analysis" in metrics:
+                summaries["classification"] = generate_data_summary_with_ollama(
+                    "Alert Classification", summary_data.get("Alert Classification", {})
+                )
+
+            if "vip_analysis" in metrics:
+                summaries["vip"] = generate_data_summary_with_ollama(
+                    "VIP User Distribution",
+                    summary_data.get("VIP User Distribution", {}),
+                )
+
+            if "mttr_analysis" in metrics or "mttd_analysis" in metrics:
+                summaries["response"] = generate_data_summary_with_ollama(
+                    "Response Time Analysis",
+                    summary_data.get("Response Time Analysis", {}),
+                )
+
+        # ✅ CACHE EVERYTHING
+        st.session_state[cache_key] = {
+            "metrics": metrics,
+            "summary_data": summary_data,
+            "summaries": summaries,
+        }
+
+    # ========== DISPLAY SECTION (Uses Cached Data) ==========
 
     # Classification Breakdown
     if "False / True Positive" in data_df.columns:
         st.markdown("### 🎯 Alert Classification")
 
-        # Generate and display summary directly
-        class_summary = generate_data_summary_with_ollama(
-            "Alert Classification", summary_data.get("Alert Classification", {})
-        )
-        st.info(class_summary)
+        # Display cached summary
+        if summaries["classification"]:
+            st.info(summaries["classification"])
 
         # Standardize classification values
         fp_column = data_df["False / True Positive"].astype(str).str.strip().str.lower()
@@ -76,11 +118,9 @@ def display_historical_analysis_tab(data_df: pd.DataFrame):
     if "VIP Users " in data_df.columns:
         st.markdown("### 👤 VIP User Analysis")
 
-        # Generate and display summary directly
-        vip_summary = generate_data_summary_with_ollama(
-            "VIP User Distribution", summary_data.get("VIP User Distribution", {})
-        )
-        st.info(vip_summary)
+        # Display cached summary
+        if summaries["vip"]:
+            st.info(summaries["vip"])
 
         vip_column = data_df["VIP Users "].astype(str).str.strip().str.lower()
         vip_standardized = vip_column.replace(
@@ -112,11 +152,9 @@ def display_historical_analysis_tab(data_df: pd.DataFrame):
     # Performance Summary
     st.markdown("### ⏱️ Response Time Analysis")
 
-    # Generate and display summary directly
-    response_summary = generate_data_summary_with_ollama(
-        "Response Time Analysis", summary_data.get("Response Time Analysis", {})
-    )
-    st.info(response_summary)
+    # Display cached summary
+    if summaries["response"]:
+        st.info(summaries["response"])
 
     col1, col2 = st.columns(2)
 

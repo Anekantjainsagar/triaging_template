@@ -332,6 +332,12 @@ def initialize_triaging_state_from_data(
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+            
+    # 🐛 DEBUG: Verify all required states are set
+    st.write("🔍 DEBUG - State Initialization:")
+    st.write(f"✅ triaging_selected_alert set: {selected_alert is not None}")
+    st.write(f"✅ consolidated_data rows: {len(consolidated_data)}")
+    st.write(f"✅ selected_alert incident: {selected_alert.get('incident', 'MISSING')}")
 
     return True
 
@@ -351,14 +357,14 @@ def display_triaging_workflow(rule_name: str, data: pd.DataFrame):
     data_hash = hashlib.md5(str(data.head().to_dict()).encode()).hexdigest()
     init_key = f"triaging_init_{rule_name}_{data_hash}"
 
-    # STEP 1: Incident Selection - ONLY run if state is not initialized FOR THIS RULE
+    # ✅ STEP 1: Check if already initialized for THIS specific rule+data
     if init_key not in st.session_state:
         # Auto-select first incident for dashboard workflow
         if data.empty:
             st.error("❌ No data available for triaging")
             return
 
-        st.info("🎯 Auto-selecting first incident for quick start...")
+        st.info("🎯 Initializing triaging state...")
 
         # Extract first incident
         selected_alert = extract_alert_from_dataframe_row(data.iloc[0], rule_name)
@@ -373,14 +379,29 @@ def display_triaging_workflow(rule_name: str, data: pd.DataFrame):
         st.session_state.triaging_initialized = True
         st.session_state.triaging_step = 2
 
-        st.success("✅ Incident selected! Proceeding to template enhancement...")
+        st.success("✅ Triaging initialized!")
+        st.rerun()  # ✅ Force rerun to apply state
+        return  # ✅ Stop execution after rerun
 
-    # Verify we have a selected alert
+    # ✅ VERIFY ALERT EXISTS (even if init_key exists)
     if (
         "triaging_selected_alert" not in st.session_state
         or st.session_state.triaging_selected_alert is None
     ):
-        st.error("❌ No alert selected. Please go back to select an incident.")
+        st.error("❌ Alert was not properly initialized. Reinitializing...")
+
+        # 🐛 DEBUG: Show what went wrong
+        st.write("🔍 DEBUG - Reinitialization triggered:")
+        st.write(f"- init_key: {init_key}")
+        st.write(
+            f"- triaging_selected_alert: {st.session_state.get('triaging_selected_alert', 'MISSING')}"
+        )
+
+        # Clear the bad init_key and force reinitialization
+        if init_key in st.session_state:
+            del st.session_state[init_key]
+
+        st.rerun()
         return
 
     # Initialize clients (cached)
@@ -505,7 +526,8 @@ def display_triaging_workflow(rule_name: str, data: pd.DataFrame):
     with col1:
         if st.button("🔄 Change Incident", key="change_incident_tab"):
             # Clear initialization flags to show selector again
-            del st.session_state[init_key]
+            if init_key in st.session_state:
+                del st.session_state[init_key]
             st.session_state.triaging_initialized = False
             st.session_state.triaging_selected_alert = None
             st.session_state.triaging_step = 2
