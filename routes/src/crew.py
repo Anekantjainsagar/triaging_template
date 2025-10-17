@@ -175,17 +175,6 @@ class TriagingCrew:
                 "rule_history": {},
             }
 
-    def _clean_kql(self, kql: str) -> str:
-        """Clean KQL query"""
-        if not kql or kql.strip().upper() in ["N/A", "NA", ""]:
-            return ""
-
-        # Remove code block markers
-        kql = re.sub(r"```[a-z]*\s*", "", kql)
-        kql = kql.strip()
-
-        return kql if len(kql) > 10 else ""
-
     def _calculate_progressive_predictions(
         self, triaging_plan: list, rule_history: dict
     ) -> dict:

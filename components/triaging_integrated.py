@@ -1,28 +1,16 @@
-# components/triaging_integrated.py
-"""
-FIXED: Proper state management for triaging workflow
-"""
-
 import streamlit as st
-import pandas as pd
 import traceback
-import hashlib
 
 # Backend utilities
 from routes.src.crew import TriagingCrew
-from routes.src.utils import generate_completed_template
 
 # Template processing imports
 from routes.src.template_parser import TemplateParser
 from routes.src.web_llm_enhancer import WebLLMEnhancer
 from routes.src.template_generator import EnhancedTemplateGenerator
-from routes.src.csv_template_generator import generate_blank_triaging_template_csv
 
 # Individual step imports
 from components.triaging.step2_enhance import show_page as step2_enhance
-from components.triaging.step3_walkthrough import show_page as step3_walkthrough
-from components.triaging.step4_complete import show_page as step4_complete
-
 
 @st.cache_resource
 def get_crew():

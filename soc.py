@@ -1,8 +1,3 @@
-"""
-SOC Intelligence Dashboard - Streamlit Frontend with Integrated Triaging
-Updated to include AI-Powered Triaging as a third tab
-"""
-
 import pandas as pd
 import streamlit as st
 from frontend.config.styles import apply_custom_css

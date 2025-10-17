@@ -1,8 +1,3 @@
-"""
-Updated Predictions Page with API Integration
-Streamlit page for True/False Positive Analysis with MITRE ATT&CK Framework
-"""
-
 import os
 import json
 import streamlit as st
@@ -17,7 +12,6 @@ from frontend.utils.predictions.display_utils import (
 from api_client.predictions_api_client import (
     get_predictions_client,
     validate_api_connection,
-    format_analysis_for_display,
     export_analysis_json,
 )
 
@@ -164,7 +158,9 @@ def display_predictions_page():
                 with col1:
                     st.metric("True Positives", classifications.get("TRUE POSITIVE", 0))
                 with col2:
-                    st.metric("False Positives", classifications.get("FALSE POSITIVE", 0))
+                    st.metric(
+                        "False Positives", classifications.get("FALSE POSITIVE", 0)
+                    )
 
                 if stats.get("last_analysis_time"):
                     st.caption(f"Last analysis: {stats.get('last_analysis_time')}")
@@ -183,7 +179,8 @@ def display_predictions_page():
                 else:
                     st.error("Failed to clear cache")
 
-def perform_initial_analysis(client, username: str, api_key: str):
+
+def perform_initial_analysis(client, username: str):
     """Perform initial classification analysis only"""
 
     with st.spinner(f"🤖 Performing initial analysis for {username}..."):
@@ -229,7 +226,7 @@ def perform_initial_analysis(client, username: str, api_key: str):
         st.error(f"❌ Analysis failed: {result.get('error', 'Unknown error')}")
 
 
-def perform_mitre_analysis(client, username: str, api_key: str):
+def perform_mitre_analysis(client, username: str):
     """Perform MITRE ATT&CK analysis only"""
 
     with st.spinner(f"🤖 Performing MITRE ATT&CK analysis for {username}..."):
@@ -260,7 +257,7 @@ def perform_mitre_analysis(client, username: str, api_key: str):
         st.error(f"❌ Analysis failed: {result.get('error', 'Unknown error')}")
 
 
-def perform_complete_analysis(client, username: str, api_key: str):
+def perform_complete_analysis(client, username: str):
     """Perform complete investigation analysis"""
 
     with st.spinner(

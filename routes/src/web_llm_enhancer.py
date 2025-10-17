@@ -234,30 +234,6 @@ class WebLLMEnhancer:
 
         return report
 
-    def print_validation_report(self, report: dict):
-        """Print validation results"""
-        print("\n" + "=" * 80)
-        print("VALIDATION REPORT")
-        print("=" * 80)
-        print(f"Total Steps: {report['total_enhanced']}/{report['total_original']}")
-        print(
-            f"✅ Names Preserved: {report['names_preserved']}/{report['total_original']}"
-        )
-        print(f"📝 Explanations Improved: {report['explanations_improved']}")
-        print(f"📊 KQL Queries Relevant: {report['kql_relevant']}")
-        print(f"🗑️ KQL Queries Removed: {report['kql_removed']}")
-
-        if report["issues"]:
-            print(f"\n⚠️ ISSUES FOUND ({len(report['issues'])}):")
-            for issue in report["issues"][:5]:  # Show first 5
-                print(f"  • {issue}")
-            if len(report["issues"]) > 5:
-                print(f"  ... and {len(report['issues']) - 5} more")
-        else:
-            print("\n✅ PERFECT - NO ISSUES FOUND")
-
-        print("=" * 80 + "\n")
-
     def _is_kql_relevant(self, kql: str, step_name: str, explanation: str) -> bool:
         """Check if KQL is relevant to the step"""
         if not kql or len(kql) < 20:

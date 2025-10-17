@@ -999,11 +999,6 @@ class MITREAttackAnalyzer:
 
         return mitre_structure
 
-    def is_high_risk_country(self, location_data: str) -> bool:
-        """Check if location contains high-risk country"""
-        location_lower = location_data.lower()
-        return any(country in location_lower for country in self.high_risk_countries)
-
     def extract_geolocation_risk(
         self, investigation_steps: List[Dict]
     ) -> Dict[str, Any]:
@@ -1828,15 +1823,3 @@ Analyze and provide VALID JSON only."""
         }
 
         return complete_analysis
-
-
-def parse_excel_data(uploaded_file):
-    """Parse the uploaded Excel file"""
-    import pandas as pd
-
-    try:
-        df = pd.read_excel(uploaded_file)
-        return df
-    except Exception as e:
-        print(f"Error parsing Excel: {str(e)}")
-        return None
