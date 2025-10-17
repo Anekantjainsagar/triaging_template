@@ -13,10 +13,7 @@ from api_client.search_alert_api_client import get_api_client
 
 # Backend utilities
 from routes.src.crew import TriagingCrew
-from routes.src.utils import (
-    export_rule_incidents_to_excel,
-    generate_completed_template,
-)
+from routes.src.utils import generate_completed_template
 
 # Template processing imports
 from routes.src.template_parser import TemplateParser
