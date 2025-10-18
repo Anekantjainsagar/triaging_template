@@ -1,14 +1,9 @@
-"""
-Predictions & MITRE Analysis Router
-FastAPI router for AI-powered threat investigation analysis with MITRE ATT&CK framework
-"""
-
-import pandas as pd
 import io
+import pandas as pd
 from datetime import datetime
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, List, Any
 from fastapi import APIRouter, HTTPException, Query, File, UploadFile
-from pydantic import BaseModel, Field
 
 # Import backend analyzer
 from backend.predictions_backend import InvestigationAnalyzer

@@ -3,14 +3,11 @@ import pandas as pd
 import hashlib
 import json
 from frontend.utils.alert_analysis.metrices import extract_detailed_metrics
-from backend.historical_analysis_backend import (
-    generate_data_summary_with_llm,
-    extract_summary_data,
-)
+from api_client.summary_api_client import get_summary_client
 
 
 def display_historical_analysis_tab(data_df: pd.DataFrame):
-    """Display streamlined historical data analysis tab with LLM-generated summaries"""
+    """Display streamlined historical data analysis tab with API-generated summaries"""
 
     # ✅ CREATE CACHE KEY FOR THIS SPECIFIC DATA
     data_hash = hashlib.md5(
@@ -25,31 +22,57 @@ def display_historical_analysis_tab(data_df: pd.DataFrame):
         summary_data = cached_data["summary_data"]
         summaries = cached_data["summaries"]
     else:
-        # ✅ FIRST TIME - Extract metrics and generate summaries
+        # ✅ FIRST TIME - Extract metrics and call API for summaries
         with st.spinner("📊 Analyzing historical data..."):
             metrics = extract_detailed_metrics(data_df)
-            summary_data = extract_summary_data(metrics, data_df)
 
-            # Pre-generate all summaries
-            summaries = {"classification": None, "vip": None, "response": None}
+            # Convert DataFrame to list of dicts for API
+            historical_data = data_df.to_dict(orient="records")
 
-            # Generate summaries with progress
-            if "classification_analysis" in metrics:
-                summaries["classification"] = generate_data_summary_with_llm(
-                    "Alert Classification", summary_data.get("Alert Classification", {})
+            # Get summary client and generate summaries via API
+            summary_client = get_summary_client()
+            api_result = summary_client.generate_multiple_summaries(historical_data)
+
+            if api_result.get("success"):
+                summaries = api_result.get("summaries", {})
+                summary_data = api_result.get("summary_data", {})
+
+                # If API didn't return summary_data, extract it locally
+                if not summary_data:
+                    from backend.historical_analysis_backend import extract_summary_data
+
+                    summary_data = extract_summary_data(metrics, data_df)
+            else:
+                # Fallback to local generation if API fails
+                st.warning(
+                    f"⚠️ API summary generation failed: {api_result.get('error')}. Using local generation."
+                )
+                from backend.historical_analysis_backend import (
+                    generate_data_summary_with_llm,
+                    extract_summary_data,
                 )
 
-            if "vip_analysis" in metrics:
-                summaries["vip"] = generate_data_summary_with_llm(
-                    "VIP User Distribution",
-                    summary_data.get("VIP User Distribution", {}),
-                )
+                summary_data = extract_summary_data(metrics, data_df)
+                summaries = {"classification": None, "vip": None, "response": None}
 
-            if "mttr_analysis" in metrics or "mttd_analysis" in metrics:
-                summaries["response"] = generate_data_summary_with_llm(
-                    "Response Time Analysis",
-                    summary_data.get("Response Time Analysis", {}),
-                )
+                # Generate summaries locally as fallback
+                if "classification_analysis" in metrics:
+                    summaries["classification"] = generate_data_summary_with_llm(
+                        "Alert Classification",
+                        summary_data.get("Alert Classification", {}),
+                    )
+
+                if "vip_analysis" in metrics:
+                    summaries["vip"] = generate_data_summary_with_llm(
+                        "VIP User Distribution",
+                        summary_data.get("VIP User Distribution", {}),
+                    )
+
+                if "mttr_analysis" in metrics or "mttd_analysis" in metrics:
+                    summaries["response"] = generate_data_summary_with_llm(
+                        "Response Time Analysis",
+                        summary_data.get("Response Time Analysis", {}),
+                    )
 
         # ✅ CACHE EVERYTHING
         st.session_state[cache_key] = {
@@ -65,8 +88,8 @@ def display_historical_analysis_tab(data_df: pd.DataFrame):
         st.markdown("### 🎯 Alert Classification")
 
         # Display cached summary
-        if summaries["classification"]:
-            st.info(summaries["classification"])
+        if summaries.get("Alert Classification"):
+            st.info(summaries["Alert Classification"])
 
         # Standardize classification values
         fp_column = data_df["False / True Positive"].astype(str).str.strip().str.lower()
@@ -119,8 +142,8 @@ def display_historical_analysis_tab(data_df: pd.DataFrame):
         st.markdown("### 👤 VIP User Analysis")
 
         # Display cached summary
-        if summaries["vip"]:
-            st.info(summaries["vip"])
+        if summaries.get("VIP User Distribution"):
+            st.info(summaries["VIP User Distribution"])
 
         vip_column = data_df["VIP Users "].astype(str).str.strip().str.lower()
         vip_standardized = vip_column.replace(
@@ -153,8 +176,8 @@ def display_historical_analysis_tab(data_df: pd.DataFrame):
     st.markdown("### ⏱️ Response Time Analysis")
 
     # Display cached summary
-    if summaries["response"]:
-        st.info(summaries["response"])
+    if summaries.get("Response Time Analysis"):
+        st.info(summaries["Response Time Analysis"])
 
     col1, col2 = st.columns(2)
 

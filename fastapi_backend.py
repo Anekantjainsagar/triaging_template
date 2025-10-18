@@ -1,9 +1,10 @@
 from fastapi import FastAPI
+from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
 
 # Import routers
+from routes.summary_router import router as summary_router 
 from routes.analyzer_router import router as analyzer_router
 from routes.predictions_router import router as predictions_router
 
@@ -35,12 +36,19 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️ Warning: Could not initialize predictions API: {str(e)}")
 
+    # Initialize summary generator
+    try:
+        print("✅ Summary Generation API initialized and ready!")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not initialize summary API: {str(e)}")
+
     print("\n📚 API Documentation available at:")
     print("  - Swagger UI: http://localhost:8000/docs")
     print("  - ReDoc: http://localhost:8000/redoc")
     print("\n🔌 Available API Routes:")
     print("  - /analyzer/* (SOC Analyzer endpoints)")
     print("  - /predictions/* (Predictions & MITRE Analysis endpoints)")
+    print("  - /summaries/* (Historical Analysis Summary endpoints)")  # ✅ NEW
     print("=" * 80)
 
     yield  # Application runs here
@@ -52,8 +60,8 @@ async def lifespan(app: FastAPI):
 # Initialize FastAPI app
 app = FastAPI(
     title="Security Alert Management & Threat Intelligence API",
-    description="Comprehensive API for managing security alerts, incidents, SOC operations, and threat investigations with AI-powered MITRE ATT&CK analysis",
-    version="3.0.0",
+    description="Comprehensive API for managing security alerts, incidents, SOC operations, threat investigations with AI-powered MITRE ATT&CK analysis, and intelligent summary generation",
+    version="3.1.0",  # ✅ Updated version
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -73,6 +81,9 @@ app.include_router(analyzer_router, prefix="/analyzer", tags=["SOC Analyzer"])
 app.include_router(
     predictions_router, prefix="/predictions", tags=["Predictions & MITRE"]
 )
+app.include_router(
+    summary_router, prefix="/summaries", tags=["Summary Generation"]
+)  # ✅ NEW
 
 
 @app.get("/", tags=["Root"])
@@ -80,12 +91,13 @@ async def root():
     """Root endpoint with API information"""
     return {
         "name": "Security Alert Management & Threat Intelligence API",
-        "version": "3.0.0",
+        "version": "3.1.0",  # ✅ Updated
         "status": "running",
         "documentation": {"swagger_ui": "/docs", "redoc": "/redoc"},
         "available_routes": {
             "soc_analyzer": "/analyzer",
             "predictions": "/predictions",
+            "summaries": "/summaries",  # ✅ NEW
         },
         "features": [
             "Search Alert Management",
@@ -94,6 +106,7 @@ async def root():
             "True/False Positive Classification",
             "Batch Analysis & Comparison",
             "Defensive Recommendations",
+            "AI-Powered Historical Analysis Summaries",  # ✅ NEW
         ],
     }
 
@@ -104,7 +117,7 @@ async def system_health():
     return {
         "status": "healthy",
         "service": "Security Alert Management & Threat Intelligence API",
-        "version": "3.0.0",
+        "version": "3.1.0",  # ✅ Updated
     }
 
 
