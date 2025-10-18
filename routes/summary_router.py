@@ -18,6 +18,80 @@ _summary_cache: Dict[str, Dict[str, Any]] = {}
 
 
 # ============================================================================
+# Helper Functions
+# ============================================================================
+
+
+def convert_timestamps_to_serializable(data_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert all datetime/timestamp columns to strings for JSON serialization
+
+    Args:
+        data_df: Input DataFrame with potential timestamp columns
+
+    Returns:
+        DataFrame with timestamps converted to strings
+    """
+    df_copy = data_df.copy()
+
+    # Find all datetime columns
+    datetime_columns = df_copy.select_dtypes(
+        include=["datetime64", "datetime64[ns]", "datetimetz"]
+    ).columns
+
+    # Convert to ISO format strings
+    for col in datetime_columns:
+        df_copy[col] = df_copy[col].astype(str)
+
+    # Also handle any remaining Timestamp objects in object columns
+    for col in df_copy.select_dtypes(include=["object"]).columns:
+        df_copy[col] = df_copy[col].apply(
+            lambda x: (
+                str(x)
+                if pd.api.types.is_datetime64_any_dtype(type(x))
+                or isinstance(x, pd.Timestamp)
+                else x
+            )
+        )
+
+    return df_copy
+
+
+def make_json_serializable(obj):
+    """
+    Recursively convert numpy/pandas types to native Python types for JSON serialization
+
+    Args:
+        obj: Any object (dict, list, numpy type, etc.)
+
+    Returns:
+        JSON-serializable version of the object
+    """
+    import numpy as np
+
+    if isinstance(obj, dict):
+        return {k: make_json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [make_json_serializable(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(make_json_serializable(item) for item in obj)
+    elif isinstance(obj, (np.integer, np.int64, np.int32, np.int16, np.int8)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float64, np.float32, np.float16)):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (pd.Timestamp, pd.Timedelta)):
+        return str(obj)
+    elif pd.isna(obj):
+        return None
+    elif isinstance(obj, (np.bool_, bool)):
+        return bool(obj)
+    else:
+        return obj
+
+
+# ============================================================================
 # Pydantic Models (Request/Response Schemas)
 # ============================================================================
 
@@ -210,18 +284,23 @@ async def generate_multiple_summaries(request: GenerateMultipleSummariesRequest)
         raise HTTPException(status_code=400, detail="Historical data cannot be empty")
 
     try:
-        # Convert to DataFrame
+        # 🔧 FIX: Convert to DataFrame and handle timestamps
         data_df = pd.DataFrame(request.historical_data)
 
         if data_df.empty:
             raise HTTPException(status_code=400, detail="Historical data is empty")
 
-        # Create cache key
+        # 🔧 FIX: Convert timestamps before any JSON operations
+        data_df_clean = convert_timestamps_to_serializable(data_df)
+
+        # Create cache key using cleaned data
         import hashlib
         import json
 
         data_hash = hashlib.md5(
-            json.dumps(data_df.head().to_dict(), sort_keys=True, default=str).encode()
+            json.dumps(
+                data_df_clean.head().to_dict(), sort_keys=True, default=str
+            ).encode()
         ).hexdigest()
         cache_key = f"multiple_{data_hash}"
 
@@ -231,14 +310,16 @@ async def generate_multiple_summaries(request: GenerateMultipleSummariesRequest)
             return GenerateMultipleSummariesResponse(
                 success=True,
                 summaries=cached_result["summaries"],
-                metrics=cached_result["metrics"],
-                summary_data=cached_result["summary_data"],
+                metrics=make_json_serializable(cached_result["metrics"]),  # ✅ ADD THIS
+                summary_data=make_json_serializable(
+                    cached_result["summary_data"]
+                ),  # ✅ ADD THIS
                 total_incidents=cached_result["total_incidents"],
                 timestamp=cached_result["timestamp"],
                 cached=True,
             )
 
-        # Extract metrics
+        # Extract metrics (use original data_df for metric calculations)
         metrics = extract_detailed_metrics(data_df)
         summary_data = extract_summary_data(metrics, data_df)
 
@@ -286,11 +367,15 @@ async def generate_multiple_summaries(request: GenerateMultipleSummariesRequest)
                 summary_data.get("Resolution Time Distribution", {}),
             )
 
+        # ✅ ADD THESE TWO LINES HERE (before caching)
+        metrics = make_json_serializable(metrics)
+        summary_data = make_json_serializable(summary_data)
+
         # Cache result
         _summary_cache[cache_key] = {
             "summaries": summaries,
-            "metrics": metrics,
-            "summary_data": summary_data,
+            "metrics": metrics,  # Now safe to cache
+            "summary_data": summary_data,  # Now safe to cache
             "total_incidents": len(data_df),
             "timestamp": datetime.now().isoformat(),
         }
@@ -298,8 +383,8 @@ async def generate_multiple_summaries(request: GenerateMultipleSummariesRequest)
         return GenerateMultipleSummariesResponse(
             success=True,
             summaries=summaries,
-            metrics=metrics,
-            summary_data=summary_data,
+            metrics=metrics,  # Already serialized above
+            summary_data=summary_data,  # Already serialized above
             total_incidents=len(data_df),
             timestamp=datetime.now().isoformat(),
             cached=False,
@@ -308,6 +393,11 @@ async def generate_multiple_summaries(request: GenerateMultipleSummariesRequest)
     except HTTPException as he:
         raise he
     except Exception as e:
+        # 🔧 FIX: Better error logging
+        import traceback
+
+        error_details = traceback.format_exc()
+        print(f"❌ Error in generate_multiple_summaries: {error_details}")
         raise HTTPException(
             status_code=500, detail=f"Error generating summaries: {str(e)}"
         )

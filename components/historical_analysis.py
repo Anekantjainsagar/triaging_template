@@ -6,6 +6,22 @@ from frontend.utils.alert_analysis.metrices import extract_detailed_metrics
 from api_client.summary_api_client import get_summary_client
 
 
+def convert_timestamps_to_str(data_df: pd.DataFrame) -> pd.DataFrame:
+    """Convert all datetime/timestamp columns to strings for JSON serialization"""
+    df_copy = data_df.copy()
+
+    # Find all datetime columns
+    datetime_columns = df_copy.select_dtypes(
+        include=["datetime64", "datetime64[ns]"]
+    ).columns
+
+    # Convert to ISO format strings
+    for col in datetime_columns:
+        df_copy[col] = df_copy[col].astype(str)
+
+    return df_copy
+
+
 def display_historical_analysis_tab(data_df: pd.DataFrame):
     """Display streamlined historical data analysis tab with API-generated summaries"""
 
@@ -26,8 +42,11 @@ def display_historical_analysis_tab(data_df: pd.DataFrame):
         with st.spinner("📊 Analyzing historical data..."):
             metrics = extract_detailed_metrics(data_df)
 
+            # 🔧 FIX: Convert timestamps to strings before serialization
+            data_df_serializable = convert_timestamps_to_str(data_df)
+
             # Convert DataFrame to list of dicts for API
-            historical_data = data_df.to_dict(orient="records")
+            historical_data = data_df_serializable.to_dict(orient="records")
 
             # Get summary client and generate summaries via API
             summary_client = get_summary_client()
