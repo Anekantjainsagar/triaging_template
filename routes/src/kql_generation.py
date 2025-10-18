@@ -1,18 +1,10 @@
 import re
-import requests
-from typing import Dict, Optional
-from crewai import Agent, Task, Crew, LLM
+from crewai import LLM
+from typing import Optional
 from crewai_tools import SerperDevTool
 
 
 class DynamicKQLGenerator:
-    """
-    Advanced KQL Query Generator using multiple strategies:
-    1. Pattern-based generation for common scenarios
-    2. Web research for specific use cases
-    3. LLM enhancement for complex queries
-    """
-
     def __init__(self):
         self.llm = LLM(model="ollama/qwen2.5:0.5b", base_url="http://localhost:11434")
         try:
@@ -314,4 +306,3 @@ Generate KQL query:"""
         kql = "\n".join(lines)
 
         return kql.strip()
-

@@ -1,21 +1,8 @@
-from crewai import Agent, Task, Crew, LLM
+from crewai import LLM
 from crewai_tools import SerperDevTool
-import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import time
 
 
 class WebLLMEnhancer:
-    """
-    ✅ ENHANCED VERSION THAT PRESERVES EXACT STEPS
-
-    Rules:
-    1. NEVER change step names
-    2. NEVER change KQL queries
-    3. Only improve explanation IF it's truly vague/empty
-    4. If explanation is decent, keep it EXACTLY as-is
-    """
-
     def __init__(self):
         self.llm = LLM(model="ollama/qwen2.5:0.5b", base_url="http://localhost:11434")
 

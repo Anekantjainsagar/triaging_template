@@ -1,9 +1,6 @@
 import streamlit as st
 import traceback
 
-# Backend utilities
-from routes.src.crew import TriagingCrew
-
 # Template processing imports
 from routes.src.template_parser import TemplateParser
 from routes.src.web_llm_enhancer import WebLLMEnhancer
@@ -11,11 +8,6 @@ from routes.src.template_generator import EnhancedTemplateGenerator
 
 # Individual step imports
 from components.triaging.step2_enhance import show_page as step2_enhance
-
-@st.cache_resource
-def get_crew():
-    """Initialize and cache the CrewAI instance."""
-    return TriagingCrew()
 
 
 def initialize_triaging_state(rule_number: str):

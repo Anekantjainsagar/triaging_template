@@ -3,7 +3,7 @@ import pandas as pd
 import hashlib
 import json
 from frontend.utils.alert_analysis.metrices import extract_detailed_metrics
-from frontend.utils.alert_analysis.generate_summaries import (
+from backend.historical_analysis_backend import (
     generate_data_summary_with_llm,
     extract_summary_data,
 )
