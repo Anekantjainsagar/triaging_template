@@ -1,15 +1,75 @@
-# step2_enhance.py - FIXED DATA FLOW FOR KQL
+# step2_enhance.py - UPDATED WITH REMARKS DOWNLOAD
 import streamlit as st
 import os
 import re
 import time
 import traceback
 import hashlib
+import pandas as pd
+from io import BytesIO
 
 
 def _get_enhancement_cache_key(rule_number: str, template_path: str) -> str:
     """Create unique cache key for template enhancement"""
     return f"enhanced_template_{rule_number}_{hashlib.md5(template_path.encode()).hexdigest()}"
+
+
+def _export_template_with_remarks(template_df, remarks_dict, rule_number):
+    """Export template with remarks column added"""
+    # Create a copy of the dataframe
+    export_df = template_df.copy()
+
+    # Add remarks column
+    remarks_list = []
+    step_counter = 1
+
+    for idx, row in export_df.iterrows():
+        # Skip header row
+        if pd.isna(row["Step"]) or str(row["Step"]).strip() == "":
+            remarks_list.append("")
+        else:
+            remark_key = f"remark_step_{step_counter}_{rule_number}"
+            remark = remarks_dict.get(remark_key, "")
+            remarks_list.append(remark)
+            step_counter += 1
+
+    export_df["Remarks/Comments"] = remarks_list
+
+    # Export to Excel with formatting
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        export_df.to_excel(writer, index=False, sheet_name="Triaging Steps")
+
+        worksheet = writer.sheets["Triaging Steps"]
+
+        # Set column widths
+        worksheet.column_dimensions["A"].width = 8
+        worksheet.column_dimensions["B"].width = 30
+        worksheet.column_dimensions["C"].width = 50
+        worksheet.column_dimensions["D"].width = 60
+        worksheet.column_dimensions["E"].width = 40
+        worksheet.column_dimensions["F"].width = 50
+
+        # Format header row
+        from openpyxl.styles import Font, PatternFill, Alignment
+
+        header_fill = PatternFill(
+            start_color="4472C4", end_color="4472C4", fill_type="solid"
+        )
+        header_font = Font(bold=True, color="FFFFFF")
+
+        for cell in worksheet[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        # Wrap text for all cells
+        for row in worksheet.iter_rows(min_row=2):
+            for cell in row:
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+
+    output.seek(0)
+    return output.getvalue()
 
 
 def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGenerator):
@@ -130,12 +190,11 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
 
         progress_bar.progress(50, text=f"⚡ Enhanced {len(enhanced_steps)} steps")
 
-        # STEP 3: Generate Full Template with KQL (THIS is where KQL gets added!)
+        # STEP 3: Generate Full Template with KQL
         progress_bar.progress(60, text="🔎 Generating KQL queries...")
 
         template_gen = EnhancedTemplateGenerator()
 
-        # ✅ THIS generates the complete template with KQL
         template_df = template_gen.generate_clean_template(
             rule_number=rule_number, enhanced_steps=enhanced_steps
         )
@@ -149,17 +208,14 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
         progress_bar.progress(90, text="💾 Converting to display format...")
 
         # ✅ CONVERT DataFrame back to dictionary format with KQL included
-        import pandas as pd
-
-        # âœ… CONVERT DataFrame back to dictionary format with KQL included
         enhanced_steps_with_kql = []
 
         for idx, row in template_df.iterrows():
-            # Skip header row (where Step is empty string or "")
+            # Skip header row
             if pd.isna(row["Step"]) or str(row["Step"]).strip() == "":
                 continue
 
-            # Extract KQL with detailed logging
+            # Extract KQL
             kql_raw = row["KQL Query"]
             kql_str = str(kql_raw) if pd.notna(kql_raw) else ""
             kql_cleaned = kql_str.strip().lower()
@@ -192,7 +248,7 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
         # ✅ CACHE WITH KQL INCLUDED
         st.session_state[cache_key] = {
             "original_steps": original_steps,
-            "enhanced_steps": enhanced_steps_with_kql,  # ✅ Now has KQL!
+            "enhanced_steps": enhanced_steps_with_kql,
             "excel_template_data": excel_file,
             "template_dataframe": template_df,
             "elapsed_time": elapsed,
@@ -200,7 +256,7 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
 
         # Store in session state
         session_state.original_steps = original_steps
-        session_state.enhanced_steps = enhanced_steps_with_kql  # ✅ Now has KQL!
+        session_state.enhanced_steps = enhanced_steps_with_kql
         session_state.excel_template_data = excel_file
         session_state.template_dataframe = template_df
 
@@ -255,22 +311,20 @@ def _display_enhancement_results(
             step_name = step.get("step_name", f"Step {step_num}")
             explanation = step.get("explanation", "No explanation provided")
 
-            # ✅ NOW the keys should exist!
             kql_query = step.get("kql_query", "")
             kql_explanation = step.get("kql_explanation", "")
 
             # Clean up KQL query
             if kql_query:
                 kql_query = str(kql_query).strip()
-                # Remove 'nan' or empty values
                 if kql_query.lower() in ["nan", "none", "n/a", ""]:
                     kql_query = ""
 
             # Display Step Header
-            st.markdown(f"### Step {step_num}: {step_name}")
+            st.markdown(f"### Step {step_num} of {len(enhanced_steps)}: {step_name}")
             st.write(explanation)
 
-            # ✅ 2. KQL Query Section (if exists)
+            # ✅ KQL Query Section (if exists)
             if kql_query and len(kql_query) > 5:
                 st.markdown("##### 🔎 KQL Query")
                 if kql_explanation and str(kql_explanation).strip() not in [
@@ -282,7 +336,7 @@ def _display_enhancement_results(
                     st.write(kql_explanation)
                 st.code(kql_query, language="kql")
 
-                # ✅ 4. Execute Button
+                # ✅ Execute Button
                 col_space, col_execute = st.columns([4, 1])
                 with col_execute:
                     if st.button(
@@ -295,7 +349,11 @@ def _display_enhancement_results(
                         st.info("🚀 Query execution would be triggered here")
                         # TODO: Add your execution logic here
 
-            # ✅ 5. Remarks/Comments Input
+                # ✅ Output Section (Empty for now)
+                st.markdown("##### 📊 Output")
+                st.info("Output will be displayed here after query execution")
+
+            # ✅ Remarks/Comments Input
             st.markdown("##### 💬 Remarks/Comments")
 
             # Get existing remark
@@ -315,24 +373,57 @@ def _display_enhancement_results(
             # Save remark to session state
             if remark != existing_remark:
                 st.session_state.step_remarks[remark_key] = remark
-                st.success("💾 Remark saved!")
 
-            # ✅ 6. Navigation Buttons
+            st.markdown("---")
+
+            # ✅ Navigation Buttons
             col1, col2, col3 = st.columns([1, 2, 1])
 
             with col1:
                 if st.session_state.current_open_step > 1:
-                    if st.button("⬅️ Previous", width="stretch"):
+                    if st.button("⬅️ Previous", key="prev_btn", width="stretch"):
                         st.session_state.current_open_step -= 1
                         st.rerun()
 
             with col3:
                 if st.session_state.current_open_step < len(enhanced_steps):
-                    if st.button("Next ➡️", type="primary", width="stretch"):
+                    if st.button(
+                        "Next ➡️",
+                        key="next_btn",
+                        type="primary",
+                        width="stretch",
+                    ):
                         st.session_state.current_open_step += 1
                         st.rerun()
-                else:
-                    st.success("✅ All steps reviewed!")
+
+        # ✅ SHOW DOWNLOAD BUTTON WHEN ALL STEPS REVIEWED
+        if st.session_state.current_open_step == len(enhanced_steps):
+            st.markdown("---")
+            st.success("🎉 All steps reviewed!")
+
+            st.info(
+                "📝 Click below to download the complete template with all your remarks"
+            )
+
+            # Generate template with remarks
+            template_df = session_state.template_dataframe
+            remarks_dict = st.session_state.step_remarks
+
+            excel_with_remarks = _export_template_with_remarks(
+                template_df, remarks_dict, rule_number
+            )
+
+            # Center the download button
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.download_button(
+                    label="📥 Download Complete Template with Remarks",
+                    data=excel_with_remarks,
+                    file_name=f"triaging_template_{rule_number.replace('#', '_')}_with_remarks.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    type="primary",
+                    width="stretch",
+                )
 
     # TAB 2: Excel Template Preview & Download
     with tab2:
@@ -358,13 +449,29 @@ def _display_enhancement_results(
 
         st.markdown("---")
 
-        # Download Button
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
+        # Download Buttons
+        col1, col2 = st.columns(2)
+
+        with col1:
             st.download_button(
-                label="📥 Download Excel Template",
+                label="📥 Download Base Template",
                 data=session_state.excel_template_data,
-                file_name=f"triaging_template_{rule_number.replace('#', '_')}_enhanced.xlsx",
+                file_name=f"triaging_template_{rule_number.replace('#', '_')}_base.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                width="stretch",
+            )
+
+        with col2:
+            # Generate template with remarks
+            remarks_dict = st.session_state.step_remarks
+            excel_with_remarks = _export_template_with_remarks(
+                template_df, remarks_dict, rule_number
+            )
+
+            st.download_button(
+                label="📥 Download with Remarks",
+                data=excel_with_remarks,
+                file_name=f"triaging_template_{rule_number.replace('#', '_')}_with_remarks.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 width="stretch",
                 type="primary",
