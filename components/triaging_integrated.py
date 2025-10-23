@@ -88,16 +88,6 @@ def display_triaging_workflow(rule_number: str):
     # ✅ GET RULE NUMBER
     rule_num = st.session_state.triaging_rule_number
 
-    # Display banner
-    st.info(f"🎯 **Active Rule:** `{rule_num}` | **Mode:** Template Enhancement Only")
-
-    st.markdown("---")
-
-    # Progress indicator
-    st.progress(1, text=f"Progress: Enhance Steps")
-
-    st.markdown("---")
-
     # ✅ DISPLAY TEMPLATE ENHANCEMENT STEP ONLY
     try:
         # Only show template enhancement
