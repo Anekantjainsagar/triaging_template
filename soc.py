@@ -290,6 +290,17 @@ def display_predictions_tab_integrated():
 
     st.markdown("### 🔮 True/False Positive Analyzer with MITRE ATT&CK")
 
+    # Check if file was already uploaded during triaging
+    if st.session_state.get("predictions_uploaded"):
+        st.success("✅ Template already uploaded to predictions API")
+
+        # Show upload stats if available
+        upload_result = st.session_state.get("predictions_upload_result")
+        if upload_result:
+            st.info(
+                f"📊 Loaded {upload_result.get('total_rows', 0)} investigation steps"
+            )
+
     # Get the Excel file from session state
     excel_data = st.session_state.get("predictions_excel_data")
     excel_filename = st.session_state.get("predictions_excel_filename")
@@ -300,9 +311,9 @@ def display_predictions_tab_integrated():
 
     st.info(f"📄 Using triaging template: {excel_filename}")
 
-    # Auto-upload to predictions API
+    # Auto-upload to predictions API if not already done
     import os
-    from io import BytesIO  # ✅ ADD THIS IMPORT
+    from io import BytesIO
 
     final_api_key = os.getenv("GOOGLE_API_KEY")
     predictions_api_url = os.getenv("PREDICTIONS_API_URL", "http://localhost:8000")
@@ -312,22 +323,21 @@ def display_predictions_tab_integrated():
     try:
         client = get_predictions_client(predictions_api_url, final_api_key)
 
-        # Upload the Excel file ONCE
-        if "predictions_uploaded" not in st.session_state:
+        # Upload the Excel file if not already uploaded
+        if not st.session_state.get("predictions_uploaded"):
             with st.spinner("📤 Uploading triaging data to predictions API..."):
-                # ✅ FIX: Properly wrap bytes in BytesIO
                 file_obj = BytesIO(excel_data)
                 upload_result = client.upload_excel_bytes(file_obj, excel_filename)
 
             if upload_result.get("success"):
                 st.session_state.predictions_uploaded = True
+                st.session_state.predictions_upload_result = upload_result
                 st.success(
                     f"✅ Loaded {upload_result.get('total_rows', 0)} investigation steps"
                 )
             else:
                 st.error(f"❌ Upload failed: {upload_result.get('error')}")
 
-                # ✅ Show detailed error for debugging
                 with st.expander("🔍 View Error Details"):
                     st.json(upload_result)
                 return
@@ -347,7 +357,9 @@ def display_predictions_tab_integrated():
             key="predictions_analysis_type",
         )
 
-        if st.button("🔍 Analyze Investigation Data", type="primary", width="stretch"):
+        if st.button(
+            "🔍 Analyze Investigation Data", type="primary", key="analyze_btn"
+        ):
             if not username:
                 st.warning("⚠️ Please enter a username to analyze")
             else:

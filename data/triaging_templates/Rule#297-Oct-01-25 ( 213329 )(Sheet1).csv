@@ -11,6 +11,3 @@ If bad score, take a screenshot for documentation"
 8,User Confirmation --- NO. ,,If user says they are not aware about the acitivty then treat it as : True Positive
 9,"Inform to IT Team to Reset the account, Revoke the MFA tokens, Temporary disable the account",NA,"Reach out to the Network/EDR teams to block the detected suspicious IP, Inform user to reset password, maintain complex password and enable MFA."
 10,Track for the closer/closer confirmation,Closed,"After all the investigation document the steps taken, findings, and any remediation actions required"
-,,,
-,,,
-,,,

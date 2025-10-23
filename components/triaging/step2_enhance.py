@@ -1,4 +1,4 @@
-# step2_enhance.py - UPDATED WITH REMARKS DOWNLOAD
+# step2_enhance.py - FIXED WITH PROPER FILE UPLOAD
 import streamlit as st
 import os
 import re
@@ -9,6 +9,21 @@ import pandas as pd
 from io import BytesIO
 
 
+def _save_step_data(step_num: int, rule_number: str, data_type: str):
+    """Helper to save step data immediately"""
+    if data_type == "remark":
+        remark_key = f"remark_step_{step_num}_{rule_number}"
+        input_key = f"remark_input_{step_num}"
+        if input_key in st.session_state:
+            st.session_state.step_remarks[remark_key] = st.session_state[input_key]
+
+    elif data_type == "output":
+        output_key = f"output_step_{step_num}_{rule_number}"
+        input_key = f"output_input_{step_num}"
+        if input_key in st.session_state:
+            st.session_state.step_outputs[output_key] = st.session_state[input_key]
+
+
 def _unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
     """Callback to unlock predictions tab after download"""
     st.session_state.triaging_complete = True
@@ -16,8 +31,42 @@ def _unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
     st.session_state.predictions_excel_filename = filename
     st.session_state.predictions_rule_number = rule_number
 
-    # Show success message on next render
-    st.session_state.show_predictions_unlock_message = True
+    # ✅ ADD: Force save before upload
+    st.session_state.download_triggered = True
+
+
+def _upload_to_predictions_api(excel_data: bytes, filename: str):
+    """Upload Excel file to predictions API immediately"""
+    try:
+        import os
+        from api_client.predictions_api_client import get_predictions_client
+
+        final_api_key = os.getenv("GOOGLE_API_KEY")
+        predictions_api_url = os.getenv("PREDICTIONS_API_URL", "http://localhost:8000")
+
+        client = get_predictions_client(predictions_api_url, final_api_key)
+
+        # ✅ FIX: Use BytesIO to create proper file object
+        file_obj = BytesIO(excel_data)
+
+        with st.spinner("📤 Uploading to predictions API..."):
+            upload_result = client.upload_excel_bytes(file_obj, filename)
+
+        if upload_result.get("success"):
+            st.session_state.predictions_uploaded = True
+            st.session_state.predictions_upload_result = upload_result
+            print(
+                f"✅ Successfully uploaded {upload_result.get('total_rows', 0)} rows to predictions API"
+            )
+        else:
+            st.session_state.predictions_upload_error = upload_result.get(
+                "error", "Unknown error"
+            )
+            print(f"❌ Upload failed: {upload_result.get('error')}")
+
+    except Exception as e:
+        st.session_state.predictions_upload_error = str(e)
+        print(f"❌ Upload exception: {str(e)}")
 
 
 def _get_enhancement_cache_key(rule_number: str, template_path: str) -> str:
@@ -307,182 +356,208 @@ def _display_enhancement_results(
     rule_number,
     EnhancedTemplateGenerator,
 ):
-    """Display enhancement results with sequential navigation"""
+    """Display enhancement results with accordion navigation and completion tracking"""
 
     enhanced_steps = session_state.enhanced_steps
 
     st.success(f"✅ Successfully generated {len(enhanced_steps)} enhanced steps")
     st.markdown("---")
 
-    # Initialize remarks, outputs, and current step in session state
+    # Initialize state
     if "step_remarks" not in st.session_state:
         st.session_state.step_remarks = {}
-    if "step_outputs" not in st.session_state:  # ✅ NEW: Store outputs
+    if "step_outputs" not in st.session_state:
         st.session_state.step_outputs = {}
+    if "completed_steps" not in st.session_state:
+        st.session_state.completed_steps = set()
     if "current_open_step" not in st.session_state:
         st.session_state.current_open_step = 1
 
-    # ✅ CHECK TESTING MODE
     testing_mode = os.getenv("TESTING", "false").lower() == "true"
 
-    # ✅ TWO MAIN TABS
+    # TWO MAIN TABS
     tab1, tab2 = st.tabs(["📋 Triaging Steps", "📊 Excel Template"])
 
-    # TAB 1: Sequential Step Navigation
+    # TAB 1: Accordion Steps
     with tab1:
+        # Show upload status if exists
+        if st.session_state.get("predictions_upload_error"):
+            st.error(f"❌ Upload failed: {st.session_state.predictions_upload_error}")
+            if st.button("🔄 Retry Upload"):
+                del st.session_state.predictions_upload_error
+                if st.session_state.get("predictions_excel_data"):
+                    _upload_to_predictions_api(
+                        st.session_state.predictions_excel_data,
+                        st.session_state.predictions_excel_filename,
+                    )
+                st.rerun()
+
         if st.session_state.get("show_predictions_unlock_message", False):
-            st.success(
-                "✅ Predictions tab unlocked! Switch to the **🔮 Predictions & MITRE** tab to continue."
-            )
+            if st.session_state.get("predictions_uploaded"):
+                st.success(
+                    "✅ Predictions tab unlocked! Switch to the **🔮 Predictions & MITRE** tab to continue."
+                )
+            else:
+                st.warning(
+                    "⚠️ Template downloaded but upload to predictions API failed. Check the error above."
+                )
             del st.session_state.show_predictions_unlock_message
 
-        # Display current step
-        current_idx = st.session_state.current_open_step - 1
-        if 0 <= current_idx < len(enhanced_steps):
-            step = enhanced_steps[current_idx]
-            step_num = current_idx + 1
-
+        # Display all steps as accordions
+        for idx, step in enumerate(enhanced_steps):
+            step_num = idx + 1
             step_name = step.get("step_name", f"Step {step_num}")
-            explanation = step.get("explanation", "No explanation provided")
 
-            kql_query = step.get("kql_query", "")
-            kql_explanation = step.get("kql_explanation", "")
+            # Check if step is completed
+            is_completed = step_num in st.session_state.completed_steps
 
-            # Clean up KQL query
-            if kql_query:
-                kql_query = str(kql_query).strip()
-                if kql_query.lower() in ["nan", "none", "n/a", ""]:
-                    kql_query = ""
+            # Determine if this step should be expanded
+            is_expanded = (
+                step_num == st.session_state.current_open_step and not is_completed
+            )
 
-            # Display Step Header
-            st.markdown(f"### Step {step_num} of {len(enhanced_steps)}: {step_name}")
-            st.write(explanation)
+            # Determine if step is locked (previous step not completed)
+            is_locked = (
+                step_num > 1 and (step_num - 1) not in st.session_state.completed_steps
+            )
 
-            # ✅ KQL Query Section (if exists)
-            if kql_query and len(kql_query) > 5:
-                st.markdown("##### 🔎 KQL Query")
-                if kql_explanation and str(kql_explanation).strip() not in [
-                    "nan",
-                    "none",
-                    "n/a",
-                    "",
-                ]:
-                    st.write(kql_explanation)
-                st.code(kql_query, language="kql")
+            # Build step header with status icon
+            if is_completed:
+                status_icon = "✅"
+                header_color = "#d4edda"  # Light green
+            elif is_locked:
+                status_icon = "🔒"
+                header_color = "#f8d7da"  # Light red
+            else:
+                status_icon = "⏳"
+                header_color = "#fff3cd"  # Light yellow
 
-                # ✅ TESTING MODE: Manual Output Input
-                if testing_mode:
-                    st.markdown("##### 📊 Output")
-
-                    # Get existing output
-                    output_key = f"output_step_{step_num}_{rule_number}"
-                    existing_output = st.session_state.step_outputs.get(output_key, "")
-
-                    # Text area for manual output
-                    manual_output = st.text_area(
-                        "Enter the KQL query output (for testing):",
-                        value=existing_output,
-                        height=200,
-                        key=f"output_input_{step_num}",
-                        placeholder="Paste the query results here...\n\nExample:\nuser@example.com | 192.168.1.1 | 2025-01-15 10:30:00",
-                        help="In testing mode, manually enter the output that would be returned by this query",
-                    )
-
-                    # Save output to session state
-                    if manual_output != existing_output:
-                        st.session_state.step_outputs[output_key] = manual_output
-
-                    # Show saved indicator
-                    if manual_output:
-                        st.success(f"✅ Output saved ({len(manual_output)} characters)")
-
+            # Create expander with custom styling
+            with st.expander(
+                f"{status_icon} Step {step_num}: {step_name}", expanded=is_expanded
+            ):
+                if is_locked:
+                    st.warning("🔒 Complete the previous step to unlock this one")
                 else:
-                    # PRODUCTION MODE: Execute Button
-                    col_space, col_execute = st.columns([4, 1])
-                    with col_execute:
+                    explanation = step.get("explanation", "No explanation provided")
+                    st.write(explanation)
+
+                    kql_query = step.get("kql_query", "")
+                    kql_explanation = step.get("kql_explanation", "")
+
+                    # Clean KQL
+                    if kql_query:
+                        kql_query = str(kql_query).strip()
+                        if kql_query.lower() in ["nan", "none", "n/a", ""]:
+                            kql_query = ""
+
+                    # KQL Query Section
+                    if kql_query and len(kql_query) > 5:
+                        st.markdown("##### 🔎 KQL Query")
+                        if kql_explanation and str(kql_explanation).strip() not in [
+                            "nan",
+                            "none",
+                            "n/a",
+                            "",
+                        ]:
+                            st.write(kql_explanation)
+                        st.code(kql_query, language="kql")
+
+                        # Output Section
+                        if testing_mode:
+                            st.markdown("##### 📊 Output")
+                            output_key = f"output_step_{step_num}_{rule_number}"
+                            existing_output = st.session_state.step_outputs.get(
+                                output_key, ""
+                            )
+
+                            manual_output = st.text_area(
+                                "Enter the KQL query output:",
+                                value=existing_output,
+                                height=200,
+                                key=f"output_input_{step_num}",
+                                placeholder="Paste the query results here...",
+                                on_change=lambda sn=step_num: _save_step_data(
+                                    sn, rule_number, "output"
+                                ),
+                            )
+                            st.session_state.step_outputs[output_key] = manual_output
+
+                            if manual_output:
+                                st.success(
+                                    f"✅ Output saved ({len(manual_output)} characters)"
+                                )
+                        else:
+                            col_space, col_execute = st.columns([4, 1])
+                            with col_execute:
+                                if st.button(
+                                    "▶️ Execute",
+                                    key=f"execute_step_{step_num}",
+                                    type="primary",
+                                ):
+                                    st.info(
+                                        "🚀 Query execution would be triggered here"
+                                    )
+
+                            st.markdown("##### 📊 Output")
+                            st.info(
+                                "Output will be displayed here after query execution"
+                            )
+
+                    # Remarks Section
+                    st.markdown("##### 💬 Remarks/Comments")
+                    remark_key = f"remark_step_{step_num}_{rule_number}"
+                    existing_remark = st.session_state.step_remarks.get(remark_key, "")
+
+                    remark = st.text_area(
+                        "Add remarks:",
+                        value=existing_remark,
+                        height=120,
+                        key=f"remark_input_{step_num}",
+                        placeholder="Enter observations or comments...",
+                        label_visibility="collapsed",
+                        on_change=lambda sn=step_num: _save_step_data(
+                            sn, rule_number, "remark"
+                        ),
+                    )
+                    st.session_state.step_remarks[remark_key] = remark
+
+                    st.markdown("---")
+
+                    # Mark as Complete Button
+                    if not is_completed:
                         if st.button(
-                            "▶️ Execute",
-                            key=f"execute_step_{step_num}",
+                            "✅ Mark as Complete",
+                            key=f"complete_step_{step_num}",
                             type="primary",
-                            help="Execute this KQL query",
                             width="stretch",
                         ):
-                            st.info("🚀 Query execution would be triggered here")
-                            # TODO: Add your execution logic here
+                            st.session_state.completed_steps.add(step_num)
+                            st.session_state.current_open_step = step_num + 1
+                            st.rerun()
 
-                    # Output Section (Empty for now)
-                    st.markdown("##### 📊 Output")
-                    st.info("Output will be displayed here after query execution")
-
-            # ✅ Remarks/Comments Input
-            st.markdown("##### 💬 Remarks/Comments")
-
-            # Get existing remark
-            remark_key = f"remark_step_{step_num}_{rule_number}"
-            existing_remark = st.session_state.step_remarks.get(remark_key, "")
-
-            # Text area for remarks
-            remark = st.text_area(
-                "Add your remarks or comments for this step:",
-                value=existing_remark,
-                height=120,
-                key=f"remark_input_{step_num}",
-                placeholder="Enter any observations, notes, or comments about this step...",
-                label_visibility="collapsed",
-            )
-
-            # Save remark to session state
-            if remark != existing_remark:
-                st.session_state.step_remarks[remark_key] = remark
-
+        # Final Download Section
+        if len(st.session_state.completed_steps) == len(enhanced_steps):
             st.markdown("---")
+            st.success("🎉 All steps completed!")
 
-            # ✅ Navigation Buttons
-            col1, col2, col3 = st.columns([1, 2, 1])
-
-            with col1:
-                if st.session_state.current_open_step > 1:
-                    if st.button("⬅️ Previous", key="prev_btn", width="stretch"):
-                        st.session_state.current_open_step -= 1
-                        st.rerun()
-
-            with col3:
-                if st.session_state.current_open_step < len(enhanced_steps):
-                    if st.button(
-                        "Next ➡️",
-                        key="next_btn",
-                        type="primary",
-                        width="stretch",
-                    ):
-                        st.session_state.current_open_step += 1
-                        st.rerun()
-
-        # ✅ SHOW DOWNLOAD BUTTON WHEN ALL STEPS REVIEWED
-        if st.session_state.current_open_step == len(enhanced_steps):
-            st.markdown("---")
-            st.success("✅ All steps reviewed!")
-
-            st.info(
-                "📥 Click below to download the template and unlock Predictions Analysis"
-            )
-
-            # Generate template with remarks AND outputs
+            # Generate complete template
             template_df = session_state.template_dataframe
-            remarks_dict = st.session_state.step_remarks
-            outputs_dict = st.session_state.step_outputs  # ✅ NEW
-
             excel_with_data = _export_template_with_remarks_and_outputs(
-                template_df, remarks_dict, outputs_dict, rule_number
+                template_df,
+                st.session_state.step_remarks,
+                st.session_state.step_outputs,
+                rule_number,
             )
 
             filename = (
                 f"triaging_template_{rule_number.replace('#', '_')}_complete.xlsx"
             )
+            st.session_state.final_excel_data = excel_with_data
+            st.session_state.final_excel_filename = filename
 
-            # Center the button
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                # ✅ COMBINED BUTTON: Download + Unlock Predictions
                 if st.download_button(
                     label="📥 Download & Proceed to Predictions",
                     data=excel_with_data,
@@ -491,10 +566,10 @@ def _display_enhancement_results(
                     type="primary",
                     width="stretch",
                     key="download_and_proceed",
-                    on_click=_unlock_predictions,
-                    args=(excel_with_data, filename, rule_number),
                 ):
-                    st.success("✅ Download started! Predictions tab unlocked!")
+                    _unlock_predictions(excel_with_data, filename, rule_number)
+                    _upload_to_predictions_api(excel_with_data, filename)
+                    st.rerun()
 
     # TAB 2: Excel Template Preview & Download
     with tab2:

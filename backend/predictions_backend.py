@@ -1,5 +1,6 @@
 import re
 import json
+import pandas as pd
 from datetime import datetime
 import google.generativeai as genai
 from typing import Dict, List, Any, Optional
@@ -1061,12 +1062,20 @@ class MITREAttackAnalyzer:
 
         # Format investigation context
         investigation_context = ""
-        for step in investigation_steps[:8]:
+        for step in investigation_steps:
+            # ✅ Include remarks if they exist
+            remarks_info = ""
+            if step.get("remarks") and len(step.get("remarks", "")) > 0:
+                remarks_info = f"""
+        **Analyst Notes**: {step['remarks']}
+        """
+
             investigation_context += f"""
-    ### {step['step_name']}
-    Output: {str(step['output'])[:300]}...
-    ---
-    """
+        ### {step['step_name']}
+        Output: {str(step['output'])}
+        {remarks_info}
+        ---
+        """
 
         geo_risk_context = ""
         if geo_risk_data["has_high_risk_country"]:
@@ -1629,23 +1638,58 @@ class InvestigationAnalyzer:
         self.mitre_analyzer = MITREAttackAnalyzer(api_key)
 
     def extract_investigation_steps(self, df, username: str) -> List[Dict]:
-        """Extract investigation steps with their outputs for the specific user"""
+        """Extract investigation steps with their outputs AND remarks for the specific user"""
         investigation_steps = []
 
         for idx, row in df.iterrows():
+            # ✅ Extract ALL relevant columns
+            output_value = row.get("Output", "")
+            remarks_value = row.get("Remarks/Comments", "")
+            step_name = row.get("Name", "Unknown Step")
+            explanation = row.get("Explanation", "")
+            kql_query = row.get("KQL Query", "")
+
+            # ✅ Clean up values
+            output_str = (
+                str(output_value)
+                if pd.notna(output_value)
+                and str(output_value).lower() not in ["nan", "none", ""]
+                else ""
+            )
+            remarks_str = (
+                str(remarks_value)
+                if pd.notna(remarks_value)
+                and str(remarks_value).lower() not in ["nan", "none", ""]
+                else ""
+            )
+
             step_data = {
                 "step_number": row.get("Step", idx + 1),
-                "step_name": row.get("Name", "Unknown Step"),
-                "explanation": row.get("Explanation", ""),
-                "kql_query": row.get("KQL Query", ""),
-                "output": row.get("Output", ""),
-                "remarks": row.get("Remarks/Comments", ""),
+                "step_name": str(step_name) if pd.notna(step_name) else "Unknown Step",
+                "explanation": str(explanation) if pd.notna(explanation) else "",
+                "kql_query": str(kql_query) if pd.notna(kql_query) else "",
+                "output": output_str,  # ✅ Query output
+                "remarks": remarks_str,  # ✅ Analyst remarks
+                "analyst_notes": remarks_str,  # ✅ Additional field for context
             }
 
-            # Check if this step's output contains the username
-            output_str = str(step_data["output"]).lower()
-            if username.lower() in output_str or str(step_data["output"]) != "nan":
+            # ✅ Include step if it has meaningful data OR contains the username
+            has_meaningful_data = (
+                output_str
+                or remarks_str
+                or username.lower() in str(step_data.get("output", "")).lower()
+                or username.lower() in str(step_data.get("remarks", "")).lower()
+            )
+
+            if has_meaningful_data:
                 investigation_steps.append(step_data)
+
+        # ✅ Debug logging
+        print(f"📊 Extracted {len(investigation_steps)} steps for user: {username}")
+        for step in investigation_steps[:3]:  # Show first 3 steps
+            print(f"  - Step {step['step_number']}: {step['step_name']}")
+            print(f"    Output length: {len(step['output'])} chars")
+            print(f"    Remarks length: {len(step['remarks'])} chars")
 
         return investigation_steps
 
@@ -1656,14 +1700,22 @@ class InvestigationAnalyzer:
 
         steps_formatted = ""
         for i, step in enumerate(investigation_steps, 1):
+            # ✅ Only show remarks if they exist
+            remarks_section = ""
+            if step.get("remarks") and len(step["remarks"]) > 0:
+                remarks_section = f"""
+        **Analyst Remarks/Observations**: 
+        {step['remarks']}
+        """
+
             steps_formatted += f"""
-### STEP {step['step_number']}: {step['step_name']}
-**Purpose**: {step['explanation']}
-**Output Data**:
-{step['output']}
-**Remarks**: {step['remarks']}
----
-"""
+        ### STEP {step['step_number']}: {step['step_name']}
+        **Purpose**: {step['explanation']}
+        **Output Data**:
+        {step['output']}
+        {remarks_section}
+        ---
+        """
 
         prompt = f"""You are an elite cybersecurity analyst specializing in security investigations and threat detection.
 
@@ -1676,9 +1728,11 @@ class InvestigationAnalyzer:
 
 # CRITICAL ANALYSIS RULES:
 
-**YOU MUST ONLY USE DATA THAT ACTUALLY EXISTS IN THE INVESTIGATION STEPS ABOVE.**
-**DO NOT mention "cloud", "MFA", "authentication" or any technical term UNLESS it appears in the investigation outputs.**
-**DO NOT infer or assume information that is not explicitly written in the investigation data.**
+**YOU MUST USE BOTH THE OUTPUT DATA AND ANALYST REMARKS to make your determination.**
+**DO NOT mention "cloud", "MFA", "authentication" or any technical term UNLESS it appears in the investigation outputs or remarks.**
+**IMPORTANT: Pay special attention to "Analyst Remarks/Observations" - these contain critical context and observations made during the investigation.**
+**If an analyst remarks that an IP is suspicious or activity is confirmed, treat this as PRIMARY EVIDENCE.**
+**Analyst remarks override ambiguous output data - they represent human expert judgment.**
 
 # CLASSIFICATION CRITERIA:
 
