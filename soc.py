@@ -2,7 +2,6 @@ import pandas as pd
 import streamlit as st
 from frontend.config.styles import apply_custom_css
 from api_client.analyzer_api_client import get_analyzer_client
-from components.predictions_page import display_predictions_page
 from components.historical_analysis import display_historical_analysis_tab
 
 # Triaging imports
@@ -62,6 +61,10 @@ def initialize_session_state():
         "enhanced_steps": None,
         "validation_report": None,
         "real_time_prediction": None,
+        "triaging_complete": False,
+        "predictions_excel_data": None,
+        "predictions_excel_filename": None,
+        "predictions_uploaded": False,
     }
 
     for key, value in defaults.items():
@@ -240,10 +243,21 @@ def display_soc_dashboard():
         if init_key not in st.session_state:
             st.session_state[init_key] = True
 
-        # Create tabs for different analysis sections
-        tab1, tab2, tab3 = st.tabs(
-            ["🤖 AI Threat Analysis", "📊 Historical Analysis", "🔍 AI Triaging"]
-        )
+        predictions_enabled = st.session_state.get("triaging_complete", False)
+
+        if predictions_enabled:
+            tab1, tab2, tab3, tab4 = st.tabs(
+                [
+                    "🤖 AI Threat Analysis",
+                    "📊 Historical Analysis",
+                    "🔍 AI Triaging",
+                    "🔮 Predictions & MITRE",
+                ]
+            )
+        else:
+            tab1, tab2, tab3 = st.tabs(
+                ["🤖 AI Threat Analysis", "📊 Historical Analysis", "🔍 AI Triaging"]
+            )
 
         with tab1:
             display_alert_analysis_tab_api(rule_name, api_client)
@@ -254,10 +268,109 @@ def display_soc_dashboard():
         with tab3:
             display_triaging_workflow(rule_number)
 
+        # Add 4th tab ONLY if triaging complete
+        if predictions_enabled:
+            with tab4:
+                display_predictions_tab_integrated()
+
 
 # ============================================================================
 # FIXED: display_alert_analysis_tab_api - Prevents Multiple Reruns
 # ============================================================================
+
+
+def display_predictions_tab_integrated():
+    """Display predictions analysis tab (unlocked after triaging)"""
+
+    if not st.session_state.get("triaging_complete", False):
+        st.warning(
+            "⚠️ Complete the AI Triaging workflow first to unlock predictions analysis"
+        )
+        return
+
+    st.markdown("### 🔮 True/False Positive Analyzer with MITRE ATT&CK")
+
+    # Get the Excel file from session state
+    excel_data = st.session_state.get("predictions_excel_data")
+    excel_filename = st.session_state.get("predictions_excel_filename")
+
+    if not excel_data:
+        st.error("❌ No triaging data found. Please complete triaging first.")
+        return
+
+    st.info(f"📄 Using triaging template: {excel_filename}")
+
+    # Auto-upload to predictions API
+    import os
+    from io import BytesIO  # ✅ ADD THIS IMPORT
+
+    final_api_key = os.getenv("GOOGLE_API_KEY")
+    predictions_api_url = os.getenv("PREDICTIONS_API_URL", "http://localhost:8000")
+
+    from api_client.predictions_api_client import get_predictions_client
+
+    try:
+        client = get_predictions_client(predictions_api_url, final_api_key)
+
+        # Upload the Excel file ONCE
+        if "predictions_uploaded" not in st.session_state:
+            with st.spinner("📤 Uploading triaging data to predictions API..."):
+                # ✅ FIX: Properly wrap bytes in BytesIO
+                file_obj = BytesIO(excel_data)
+                upload_result = client.upload_excel_bytes(file_obj, excel_filename)
+
+            if upload_result.get("success"):
+                st.session_state.predictions_uploaded = True
+                st.success(
+                    f"✅ Loaded {upload_result.get('total_rows', 0)} investigation steps"
+                )
+            else:
+                st.error(f"❌ Upload failed: {upload_result.get('error')}")
+
+                # ✅ Show detailed error for debugging
+                with st.expander("🔍 View Error Details"):
+                    st.json(upload_result)
+                return
+
+        # Username input
+        st.markdown("---")
+        username = st.text_input(
+            "Enter username/email to analyze",
+            placeholder="e.g., sarah.mitchell@abc.com",
+            key="predictions_username",
+        )
+
+        # Analysis type selection
+        analysis_type = st.radio(
+            "Select analysis type:",
+            ["Complete Analysis", "Initial Classification Only", "MITRE Mapping Only"],
+            key="predictions_analysis_type",
+        )
+
+        if st.button("🔍 Analyze Investigation Data", type="primary", width="stretch"):
+            if not username:
+                st.warning("⚠️ Please enter a username to analyze")
+            else:
+                # Import the analysis functions from predictions_page
+                from components.predictions_page import (
+                    perform_complete_analysis,
+                    perform_initial_analysis,
+                    perform_mitre_analysis,
+                )
+
+                if analysis_type == "Complete Analysis":
+                    perform_complete_analysis(client, username)
+                elif analysis_type == "Initial Classification Only":
+                    perform_initial_analysis(client, username)
+                else:
+                    perform_mitre_analysis(client, username)
+
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
+        with st.expander("🔍 View Full Error"):
+            import traceback
+
+            st.code(traceback.format_exc())
 
 
 def display_alert_analysis_tab_api(rule_name: str, api_client):
@@ -400,67 +513,55 @@ def main():
                     st.write(f"**Cache Time:** {health_data['cache_timestamp'][:19]}")
         else:
             st.error("❌ API Not Connected")
-            st.warning("Please start the FastAPI backend server")
-            st.code("uvicorn fastapi_backend:app --reload --host 0.0.0.0 --port 8000")
             st.stop()
 
         st.markdown("---")
 
-        # Navigation - NOW WITH 2 PAGES (Triaging integrated into Dashboard)
-        page = st.radio(
-            "Navigation",
-            ["🏠 Dashboard", "🔮 Predictions & MITRE"],
-            label_visibility="collapsed",
-        )
-
-        st.markdown("---")
-
         # System info for dashboard page
-        if page == "🏠 Dashboard":
-            st.markdown("### 📋 System Information")
+        st.markdown("### 📋 System Information")
 
-            # ✅ CACHE STATS - Only fetch once per session
-            if "system_stats_cache" not in st.session_state:
-                api_client = get_analyzer_client()
-                st.session_state.system_stats_cache = api_client.get_system_stats()
+        # ✅ CACHE STATS - Only fetch once per session
+        if "system_stats_cache" not in st.session_state:
+            api_client = get_analyzer_client()
+            st.session_state.system_stats_cache = api_client.get_system_stats()
 
-            stats_result = st.session_state.system_stats_cache
+        stats_result = st.session_state.system_stats_cache
 
-            if stats_result.get("success"):
-                st.metric("Total Records", f"{stats_result.get('total_records', 0):,}")
-                st.metric("Unique Rules", stats_result.get("unique_rules", 0))
-                st.metric("Data Sources", stats_result.get("data_sources", 0))
-            else:
-                st.warning("Unable to load system stats")
+        if stats_result.get("success"):
+            st.metric("Total Records", f"{stats_result.get('total_records', 0):,}")
+            st.metric("Unique Rules", stats_result.get("unique_rules", 0))
+            st.metric("Data Sources", stats_result.get("data_sources", 0))
+        else:
+            st.warning("Unable to load system stats")
 
-            st.markdown("### 🔧 Actions")
+        st.markdown("### 🔧 Actions")
 
-            if st.button("🔄 Refresh Data", help="Reload data from backend"):
-                with st.spinner("Reloading data..."):
-                    result = api_client.load_data()
-                    if result.get("success"):
-                        st.success(f"✅ {result.get('message')}")
-                        st.rerun()
-                    else:
-                        st.error(f"❌ {result.get('error')}")
+        if st.button("🔄 Refresh Data", help="Reload data from backend"):
+            with st.spinner("Reloading data..."):
+                result = api_client.load_data()
+                if result.get("success"):
+                    st.success(f"✅ {result.get('message')}")
+                    st.rerun()
+                else:
+                    st.error(f"❌ {result.get('error')}")
 
-            if st.button("🗑️ Clear Selection", help="Clear current selection"):
-                st.session_state.current_suggestions = []
-                st.session_state.selected_rule_data = None
-                # Clear triaging state
-                for key in list(st.session_state.keys()):
-                    if key.startswith("triaging_"):
-                        del st.session_state[key]
-                st.rerun()
+        if st.button("🗑️ Clear Selection", help="Clear current selection"):
+            st.session_state.current_suggestions = []
+            st.session_state.selected_rule_data = None
+            # Clear triaging state
+            for key in list(st.session_state.keys()):
+                if key.startswith("triaging_") or key.startswith("predictions_"):
+                    del st.session_state[key]
+            # Clear triaging complete flag
+            if "triaging_complete" in st.session_state:
+                del st.session_state["triaging_complete"]
+            st.rerun()
 
         st.markdown("---")
         st.caption("© 2025 SOC Intelligence Dashboard")
 
     # Route to appropriate page
-    if page == "🏠 Dashboard":
-        display_soc_dashboard()
-    else:  # Predictions & MITRE
-        display_predictions_page()
+    display_soc_dashboard()
 
 
 if __name__ == "__main__":

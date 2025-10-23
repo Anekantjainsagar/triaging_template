@@ -9,30 +9,53 @@ import pandas as pd
 from io import BytesIO
 
 
+def _unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
+    """Callback to unlock predictions tab after download"""
+    st.session_state.triaging_complete = True
+    st.session_state.predictions_excel_data = excel_data
+    st.session_state.predictions_excel_filename = filename
+    st.session_state.predictions_rule_number = rule_number
+
+    # Show success message on next render
+    st.session_state.show_predictions_unlock_message = True
+
+
 def _get_enhancement_cache_key(rule_number: str, template_path: str) -> str:
     """Create unique cache key for template enhancement"""
     return f"enhanced_template_{rule_number}_{hashlib.md5(template_path.encode()).hexdigest()}"
 
 
-def _export_template_with_remarks(template_df, remarks_dict, rule_number):
-    """Export template with remarks column added"""
+def _export_template_with_remarks_and_outputs(
+    template_df, remarks_dict, outputs_dict, rule_number
+):
+    """Export template with remarks AND outputs columns added"""
     # Create a copy of the dataframe
     export_df = template_df.copy()
 
-    # Add remarks column
+    # Add remarks and outputs columns
     remarks_list = []
+    outputs_list = []
     step_counter = 1
 
     for idx, row in export_df.iterrows():
         # Skip header row
         if pd.isna(row["Step"]) or str(row["Step"]).strip() == "":
             remarks_list.append("")
+            outputs_list.append("")
         else:
+            # Get remark
             remark_key = f"remark_step_{step_counter}_{rule_number}"
             remark = remarks_dict.get(remark_key, "")
             remarks_list.append(remark)
+
+            # Get output
+            output_key = f"output_step_{step_counter}_{rule_number}"
+            output = outputs_dict.get(output_key, "")
+            outputs_list.append(output)
+
             step_counter += 1
 
+    export_df["Output"] = outputs_list  # ✅ Add Output column
     export_df["Remarks/Comments"] = remarks_list
 
     # Export to Excel with formatting
@@ -43,12 +66,12 @@ def _export_template_with_remarks(template_df, remarks_dict, rule_number):
         worksheet = writer.sheets["Triaging Steps"]
 
         # Set column widths
-        worksheet.column_dimensions["A"].width = 8
-        worksheet.column_dimensions["B"].width = 30
-        worksheet.column_dimensions["C"].width = 50
-        worksheet.column_dimensions["D"].width = 60
-        worksheet.column_dimensions["E"].width = 40
-        worksheet.column_dimensions["F"].width = 50
+        worksheet.column_dimensions["A"].width = 8  # Step
+        worksheet.column_dimensions["B"].width = 30  # Name
+        worksheet.column_dimensions["C"].width = 50  # Explanation
+        worksheet.column_dimensions["D"].width = 60  # KQL Query
+        worksheet.column_dimensions["E"].width = 50  # Output ✅ NEW
+        worksheet.column_dimensions["F"].width = 40  # Remarks
 
         # Format header row
         from openpyxl.styles import Font, PatternFill, Alignment
@@ -291,17 +314,28 @@ def _display_enhancement_results(
     st.success(f"✅ Successfully generated {len(enhanced_steps)} enhanced steps")
     st.markdown("---")
 
-    # Initialize remarks and current step in session state
+    # Initialize remarks, outputs, and current step in session state
     if "step_remarks" not in st.session_state:
         st.session_state.step_remarks = {}
+    if "step_outputs" not in st.session_state:  # ✅ NEW: Store outputs
+        st.session_state.step_outputs = {}
     if "current_open_step" not in st.session_state:
         st.session_state.current_open_step = 1
+
+    # ✅ CHECK TESTING MODE
+    testing_mode = os.getenv("TESTING", "false").lower() == "true"
 
     # ✅ TWO MAIN TABS
     tab1, tab2 = st.tabs(["📋 Triaging Steps", "📊 Excel Template"])
 
     # TAB 1: Sequential Step Navigation
     with tab1:
+        if st.session_state.get("show_predictions_unlock_message", False):
+            st.success(
+                "✅ Predictions tab unlocked! Switch to the **🔮 Predictions & MITRE** tab to continue."
+            )
+            del st.session_state.show_predictions_unlock_message
+
         # Display current step
         current_idx = st.session_state.current_open_step - 1
         if 0 <= current_idx < len(enhanced_steps):
@@ -336,22 +370,49 @@ def _display_enhancement_results(
                     st.write(kql_explanation)
                 st.code(kql_query, language="kql")
 
-                # ✅ Execute Button
-                col_space, col_execute = st.columns([4, 1])
-                with col_execute:
-                    if st.button(
-                        "▶️ Execute",
-                        key=f"execute_step_{step_num}",
-                        type="primary",
-                        help="Execute this KQL query",
-                        width="stretch",
-                    ):
-                        st.info("🚀 Query execution would be triggered here")
-                        # TODO: Add your execution logic here
+                # ✅ TESTING MODE: Manual Output Input
+                if testing_mode:
+                    st.markdown("##### 📊 Output")
 
-                # ✅ Output Section (Empty for now)
-                st.markdown("##### 📊 Output")
-                st.info("Output will be displayed here after query execution")
+                    # Get existing output
+                    output_key = f"output_step_{step_num}_{rule_number}"
+                    existing_output = st.session_state.step_outputs.get(output_key, "")
+
+                    # Text area for manual output
+                    manual_output = st.text_area(
+                        "Enter the KQL query output (for testing):",
+                        value=existing_output,
+                        height=200,
+                        key=f"output_input_{step_num}",
+                        placeholder="Paste the query results here...\n\nExample:\nuser@example.com | 192.168.1.1 | 2025-01-15 10:30:00",
+                        help="In testing mode, manually enter the output that would be returned by this query",
+                    )
+
+                    # Save output to session state
+                    if manual_output != existing_output:
+                        st.session_state.step_outputs[output_key] = manual_output
+
+                    # Show saved indicator
+                    if manual_output:
+                        st.success(f"✅ Output saved ({len(manual_output)} characters)")
+
+                else:
+                    # PRODUCTION MODE: Execute Button
+                    col_space, col_execute = st.columns([4, 1])
+                    with col_execute:
+                        if st.button(
+                            "▶️ Execute",
+                            key=f"execute_step_{step_num}",
+                            type="primary",
+                            help="Execute this KQL query",
+                            width="stretch",
+                        ):
+                            st.info("🚀 Query execution would be triggered here")
+                            # TODO: Add your execution logic here
+
+                    # Output Section (Empty for now)
+                    st.markdown("##### 📊 Output")
+                    st.info("Output will be displayed here after query execution")
 
             # ✅ Remarks/Comments Input
             st.markdown("##### 💬 Remarks/Comments")
@@ -399,31 +460,41 @@ def _display_enhancement_results(
         # ✅ SHOW DOWNLOAD BUTTON WHEN ALL STEPS REVIEWED
         if st.session_state.current_open_step == len(enhanced_steps):
             st.markdown("---")
-            st.success("🎉 All steps reviewed!")
+            st.success("✅ All steps reviewed!")
 
             st.info(
-                "📝 Click below to download the complete template with all your remarks"
+                "📥 Click below to download the template and unlock Predictions Analysis"
             )
 
-            # Generate template with remarks
+            # Generate template with remarks AND outputs
             template_df = session_state.template_dataframe
             remarks_dict = st.session_state.step_remarks
+            outputs_dict = st.session_state.step_outputs  # ✅ NEW
 
-            excel_with_remarks = _export_template_with_remarks(
-                template_df, remarks_dict, rule_number
+            excel_with_data = _export_template_with_remarks_and_outputs(
+                template_df, remarks_dict, outputs_dict, rule_number
             )
 
-            # Center the download button
+            filename = (
+                f"triaging_template_{rule_number.replace('#', '_')}_complete.xlsx"
+            )
+
+            # Center the button
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                st.download_button(
-                    label="📥 Download Complete Template with Remarks",
-                    data=excel_with_remarks,
-                    file_name=f"triaging_template_{rule_number.replace('#', '_')}_with_remarks.xlsx",
+                # ✅ COMBINED BUTTON: Download + Unlock Predictions
+                if st.download_button(
+                    label="📥 Download & Proceed to Predictions",
+                    data=excel_with_data,
+                    file_name=filename,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
                     width="stretch",
-                )
+                    key="download_and_proceed",
+                    on_click=_unlock_predictions,
+                    args=(excel_with_data, filename, rule_number),
+                ):
+                    st.success("✅ Download started! Predictions tab unlocked!")
 
     # TAB 2: Excel Template Preview & Download
     with tab2:
@@ -462,16 +533,18 @@ def _display_enhancement_results(
             )
 
         with col2:
-            # Generate template with remarks
+            # Generate template with remarks and outputs
             remarks_dict = st.session_state.step_remarks
-            excel_with_remarks = _export_template_with_remarks(
-                template_df, remarks_dict, rule_number
+            outputs_dict = st.session_state.step_outputs
+
+            excel_with_data = _export_template_with_remarks_and_outputs(
+                template_df, remarks_dict, outputs_dict, rule_number
             )
 
             st.download_button(
-                label="📥 Download with Remarks",
-                data=excel_with_remarks,
-                file_name=f"triaging_template_{rule_number.replace('#', '_')}_with_remarks.xlsx",
+                label="📥 Download Complete Template",
+                data=excel_with_data,
+                file_name=f"triaging_template_{rule_number.replace('#', '_')}_complete.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 width="stretch",
                 type="primary",
