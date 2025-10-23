@@ -8,7 +8,7 @@ from crewai import Agent, Task, Crew, Process, LLM
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 USE_OLLAMA = os.getenv("USE_OLLAMA", "false").lower() == "true"
-OLLAMA_CHAT = os.getenv("OLLAMA_CHAT", "qwen2.5:0.5b")
+OLLAMA_CHAT = os.getenv("OLLAMA_CHAT", "qwen2.5:3b")
 
 
 class SecurityAlertAnalyzerCrew:
@@ -16,7 +16,7 @@ class SecurityAlertAnalyzerCrew:
 
     def __init__(self):
         # Initialize LLM based on configuration
-        
+
         if USE_OLLAMA:
             # Use Ollama
             print("Using OLLAMA", OLLAMA_CHAT)

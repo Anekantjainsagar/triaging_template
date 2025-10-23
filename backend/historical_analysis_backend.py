@@ -8,7 +8,7 @@ from typing import Dict, Any
 # Configuration
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 USE_OLLAMA = os.getenv("USE_OLLAMA", "false").lower() == "true"
-OLLAMA_SUMMARY = os.getenv("OLLAMA_SUMMARY", "qwen2.5:0.5b")
+OLLAMA_SUMMARY = os.getenv("OLLAMA_SUMMARY", "qwen2.5:3b")
 
 
 # Initialize LLM globally

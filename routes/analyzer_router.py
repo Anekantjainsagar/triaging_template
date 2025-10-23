@@ -149,7 +149,7 @@ def get_analyzers(force_reload: bool = False):
         try:
             # Initialize SOC Analyzer
             soc_analyzer = IntelligentSOCAnalyzer(
-                data_directory="data", ollama_model="qwen2.5:0.5b"
+                data_directory="data", ollama_model="qwen2.5:3b"
             )
 
             if not soc_analyzer.load_and_process_data():

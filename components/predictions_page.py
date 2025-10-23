@@ -116,20 +116,16 @@ def display_predictions_page():
                 width="stretch",
                 disabled=not final_api_key,
             ):
-                if not final_api_key:
-                    st.error(
-                        "❌ API key not configured. Please set GOOGLE_API_KEY in environment variables."
-                    )
-                elif not username:
+                if not username:
                     st.warning("⚠️ Please enter a username to analyze")
                 else:
                     # Determine which analysis to run
                     if analysis_type == "Complete Analysis":
-                        perform_complete_analysis(client, username, final_api_key)
+                        perform_complete_analysis(client, username)
                     elif analysis_type == "Initial Classification Only":
-                        perform_initial_analysis(client, username, final_api_key)
+                        perform_initial_analysis(client, username)
                     else:
-                        perform_mitre_analysis(client, username, final_api_key)
+                        perform_mitre_analysis(client, username)
 
         else:
             st.error(f"❌ Upload failed: {upload_result.get('error', 'Unknown error')}")

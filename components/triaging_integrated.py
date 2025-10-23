@@ -55,12 +55,6 @@ def initialize_triaging_state(rule_number: str):
 
 
 def display_triaging_workflow(rule_number: str):
-    """
-    ✅ SIMPLIFIED: Template generation workflow (no historical data needed)
-
-    Args:
-        rule_number: Rule number/name (e.g., "297" or "Rule#297")
-    """
 
     st.markdown("## 🔍 AI-Powered Template Enhancement")
     st.markdown("---")
@@ -99,47 +93,8 @@ def display_triaging_workflow(rule_number: str):
 
     st.markdown("---")
 
-    # ✅ STEP NAVIGATION
-    step_names = [
-        "🚀 Enhance Template",  # Step 2
-        "💥 CrewAI Walkthrough",  # Step 3
-        "✨ Complete Analysis",  # Step 4
-    ]
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        if st.button(
-            step_names[0],
-            key="nav_step2",
-            width="stretch",
-            type="primary" if st.session_state.triaging_step == 2 else "secondary",
-        ):
-            st.session_state.triaging_step = 2
-            st.rerun()
-
-    with col2:
-        if st.button(
-            step_names[1],
-            key="nav_step3",
-            width="stretch",
-            type="primary" if st.session_state.triaging_step == 3 else "secondary",
-            disabled=True,  # Disable for template-only mode
-        ):
-            st.warning("⚠️ CrewAI walkthrough requires incident data")
-
-    with col3:
-        if st.button(
-            step_names[2],
-            key="nav_step4",
-            width="stretch",
-            type="primary" if st.session_state.triaging_step == 4 else "secondary",
-            disabled=True,  # Disable for template-only mode
-        ):
-            st.warning("⚠️ Complete analysis requires incident data")
-
     # Progress indicator
-    st.progress(0.33, text=f"Progress: {step_names[0]}")
+    st.progress(1, text=f"Progress: Enhance Steps")
 
     st.markdown("---")
 

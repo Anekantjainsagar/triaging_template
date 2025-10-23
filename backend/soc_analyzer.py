@@ -40,7 +40,7 @@ class IntelligentSOCAnalyzer:
     def __init__(
         self,
         data_directory="data",
-        ollama_model="qwen2.5:0.5b",
+        ollama_model="qwen2.5:3b",
     ):
         self.data_directory = data_directory
         self.ollama_model = ollama_model
