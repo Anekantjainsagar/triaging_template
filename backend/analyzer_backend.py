@@ -97,7 +97,7 @@ class SecurityAlertAnalyzerCrew:
             - Remove all meta-text""",
             tools=([self.search_tool] if self.search_tool else []),
             llm=self.llm,
-            verbose=True,
+            verbose=False,
             allow_delegation=False,
             max_iter=12,
         )
@@ -209,7 +209,7 @@ FINAL CHECK:
                 agents=list(agents.values()),
                 tasks=tasks,
                 process=Process.sequential,
-                verbose=True,
+                verbose=False,
             )
 
             result = crew.kickoff()
