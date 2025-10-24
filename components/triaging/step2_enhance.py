@@ -48,7 +48,7 @@ def _check_virustotal_auto(ip_address: str) -> dict:
         st.session_state.vt_checker = VirusTotalChecker()
 
     checker = st.session_state.vt_checker
-    return checker.check_ip_reputation(ip_address, method="auto")
+    return checker.check_ip_reputation(ip_address.strip(), method="auto")
 
 
 def _unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
