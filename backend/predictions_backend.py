@@ -14,32 +14,32 @@ def clean_json_response(content: str) -> str:
     Aggressively clean JSON response from LLM to fix parsing errors
     """
     # Remove any BOM or invisible characters at start
-    content = content.lstrip('\ufeff\u200b\u200c\u200d\u2060\ufeff')
-    
+    content = content.lstrip("\ufeff\u200b\u200c\u200d\u2060\ufeff")
+
     # Remove all control characters except newline/tab (we'll handle those separately)
-    content = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', content)
-    
+    content = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", content)
+
     # Replace non-breaking spaces and other problematic Unicode spaces
-    content = content.replace('\xa0', ' ')
-    content = content.replace('\u202f', ' ')
-    content = content.replace('\u2009', ' ')
-    
+    content = content.replace("\xa0", " ")
+    content = content.replace("\u202f", " ")
+    content = content.replace("\u2009", " ")
+
     # Strip leading/trailing whitespace
     content = content.strip()
-    
+
     # Handle literal newlines and tabs in string values (not in structure)
     # This regex finds content between quotes and escapes unescaped newlines
     def escape_in_strings(match):
         s = match.group(0)
         # Only escape if not already escaped
-        s = re.sub(r'(?<!\\)\n', r'\\n', s)
-        s = re.sub(r'(?<!\\)\t', r'\\t', s)
-        s = re.sub(r'(?<!\\)\r', r'\\r', s)
+        s = re.sub(r"(?<!\\)\n", r"\\n", s)
+        s = re.sub(r"(?<!\\)\t", r"\\t", s)
+        s = re.sub(r"(?<!\\)\r", r"\\r", s)
         return s
-    
+
     # Apply to content between double quotes
     content = re.sub(r'"[^"]*"', escape_in_strings, content, flags=re.DOTALL)
-    
+
     return content
 
 
@@ -50,8 +50,15 @@ class MITREAttackAnalyzer:
 
         # High-risk countries for geolocation analysis
         self.high_risk_countries = [
-            "russia", "china", "north korea", "iran", "syria",
-            "belarus", "venezuela", "cuba", "afghanistan",
+            "russia",
+            "china",
+            "north korea",
+            "iran",
+            "syria",
+            "belarus",
+            "venezuela",
+            "cuba",
+            "afghanistan",
         ]
 
         # Load MITRE ATT&CK techniques
@@ -60,9 +67,12 @@ class MITREAttackAnalyzer:
     def _load_mitre_data(self) -> Dict[str, Any]:
         """Load MITRE ATT&CK framework data"""
         from backend.mitre_data import mitre_structure
+
         return mitre_structure
-    
-    def extract_geolocation_risk(self, investigation_steps: List[Dict]) -> Dict[str, Any]:
+
+    def extract_geolocation_risk(
+        self, investigation_steps: List[Dict]
+    ) -> Dict[str, Any]:
         """Extract and analyze geolocation risk from investigation data"""
         geo_risks = {
             "has_high_risk_country": False,
@@ -82,11 +92,13 @@ class MITREAttackAnalyzer:
                     ip_pattern = r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b"
                     ips = re.findall(ip_pattern, output)
 
-                    geo_risks["high_risk_locations"].append({
-                        "country": country.title(),
-                        "step": step.get("step_name", "Unknown"),
-                        "context": output[:200],
-                    })
+                    geo_risks["high_risk_locations"].append(
+                        {
+                            "country": country.title(),
+                            "step": step.get("step_name", "Unknown"),
+                            "context": output[:200],
+                        }
+                    )
 
                     if ips:
                         geo_risks["suspicious_ips"].extend(ips)
@@ -121,8 +133,11 @@ class MITREAttackAnalyzer:
 
             # Build prompt (using existing method from your code)
             prompt = self.build_mitre_analysis_prompt(
-                username, classification, investigation_summary, 
-                geo_risk_data, investigation_steps
+                username,
+                classification,
+                investigation_summary,
+                geo_risk_data,
+                investigation_steps,
             )
 
             response = self.model.generate_content(prompt)
@@ -158,7 +173,7 @@ class MITREAttackAnalyzer:
         except Exception as e:
             logger.error(f"Error in MITRE analysis: {str(e)}")
             return None
-    
+
     def build_mitre_analysis_prompt(
         self,
         username: str,
@@ -668,12 +683,12 @@ class InvestigationAnalyzer:
             logger.info("Initializing GenerativeModel...")
             self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
             logger.info("✅ Investigation Analyzer initialized")
-            
+
             self.mitre_analyzer = MITREAttackAnalyzer(api_key)
         except Exception as e:
             logger.error(f"FATAL: InvestigationAnalyzer init failed: {str(e)}")
             raise
-        
+
     def perform_initial_analysis(
         self, username: str, investigation_steps: List[Dict]
     ) -> Optional[Dict[str, Any]]:
@@ -698,7 +713,7 @@ class InvestigationAnalyzer:
                     # FIXED: Don't truncate output - keep full content
                     output_text = str(step.get("output", "No output data"))
                     remarks_text = str(step.get("remarks", "None"))
-                    
+
                     investigation_context += f"""
 ### Step {step['step_number']}: {step['step_name']}
 Explanation: {step.get('explanation', 'N/A')}
@@ -769,20 +784,123 @@ Respond ONLY with valid JSON:
             try:
                 analysis_result = json.loads(content)
                 logger.info(f"✅ JSON parsed: {analysis_result.get('classification')}")
-                
+
                 # CRITICAL FIX: Validate the result makes sense
-                # If VirusTotal shows clean, override to FALSE POSITIVE
+                # IMPROVED: Smart VirusTotal analysis with detection ratio parsing
+                virustotal_malicious_count = 0
+                has_virustotal_check = False
+
                 for step in investigation_steps:
                     output = str(step.get("output", "")).lower()
-                    if "virustotal" in output and ("clean" in output or "0/95" in output or "malicious: 0" in output):
+
+                    # Check if this step contains VirusTotal results
+                    if "virustotal" in output:
+                        has_virustotal_check = True
+
+                        # Parse detection ratio (e.g., "malicious: 1/95" or "1/95")
+                        import re
+
+                        # Look for patterns like "malicious: X/Y" or "X/Y" in context
+                        malicious_patterns = [
+                            r"malicious[:\s]+(\d+)/(\d+)",  # "Malicious: 1/95"
+                            r"•\s*malicious[:\s]+(\d+)/(\d+)",  # "• Malicious: 1/95"
+                        ]
+
+                        for pattern in malicious_patterns:
+                            match = re.search(pattern, output, re.IGNORECASE)
+                            if match:
+                                malicious_count = int(match.group(1))
+                                total_count = int(match.group(2))
+
+                                # Calculate percentage
+                                if total_count > 0:
+                                    malicious_percentage = (
+                                        malicious_count / total_count
+                                    ) * 100
+                                    virustotal_malicious_count = malicious_count
+
+                                    logger.info(
+                                        f"VirusTotal detection: {malicious_count}/{total_count} ({malicious_percentage:.1f}%)"
+                                    )
+
+                                    # IMPORTANT: Any detection by VirusTotal is suspicious
+                                    # Even 1/95 means at least ONE vendor flagged it
+                                    if malicious_count > 0:
+                                        logger.warning(
+                                            f"⚠️ IP flagged as malicious by {malicious_count} vendor(s)"
+                                        )
+
+                                break
+
+                # Apply intelligent override logic
+                if has_virustotal_check:
+                    if virustotal_malicious_count == 0:
+                        # Only if NO vendors detected anything, consider FALSE POSITIVE
                         if analysis_result.get("classification") == "TRUE POSITIVE":
-                            logger.warning("Overriding TRUE POSITIVE due to clean VirusTotal result")
-                            analysis_result["classification"] = "FALSE POSITIVE"
-                            analysis_result["risk_level"] = "Low"
-                            analysis_result["confidence_score"] = min(analysis_result.get("confidence_score", 60), 70)
-                
+                            # Check if there are OTHER strong indicators
+                            other_indicators = False
+                            for finding in analysis_result.get("key_findings", []):
+                                if finding.get("severity") in ["High", "Critical"]:
+                                    other_indicators = True
+                                    break
+
+                            if not other_indicators:
+                                logger.warning(
+                                    "Overriding to FALSE POSITIVE: VirusTotal clean + no other high-severity indicators"
+                                )
+                                analysis_result["classification"] = "FALSE POSITIVE"
+                                analysis_result["risk_level"] = "Low"
+                                analysis_result["confidence_score"] = 60
+
+                    elif virustotal_malicious_count >= 1:
+                        # If ANY vendor detected malicious activity, this is serious
+                        logger.info(
+                            f"⚠️ VirusTotal detected malicious IP - maintaining TRUE POSITIVE classification"
+                        )
+
+                        # If it was incorrectly classified as FALSE POSITIVE, override it
+                        if analysis_result.get("classification") == "FALSE POSITIVE":
+                            logger.warning(
+                                "Overriding to TRUE POSITIVE: VirusTotal detected malicious IP"
+                            )
+                            analysis_result["classification"] = "TRUE POSITIVE"
+                            analysis_result["risk_level"] = "High"
+                            analysis_result["confidence_score"] = max(
+                                analysis_result.get("confidence_score", 70), 80
+                            )
+
+                            # Add/update finding about malicious IP
+                            malicious_ip_finding = {
+                                "step_reference": "Verify IP Reputation Using VirusTotal",
+                                "category": "Malicious IP Detected",
+                                "severity": "High",
+                                "details": f"IP address flagged as malicious by {virustotal_malicious_count} VirusTotal vendor(s)",
+                                "evidence": f"VirusTotal detection ratio: {virustotal_malicious_count}/95",
+                                "impact": "Potential compromise, data exfiltration risk, or botnet activity",
+                            }
+
+                            # Update or add the finding
+                            findings = analysis_result.get("key_findings", [])
+                            ip_finding_exists = False
+                            for i, finding in enumerate(findings):
+                                if "IP" in finding.get(
+                                    "category", ""
+                                ) or "VirusTotal" in finding.get("step_reference", ""):
+                                    findings[i] = malicious_ip_finding
+                                    ip_finding_exists = True
+                                    break
+
+                            if not ip_finding_exists:
+                                findings.append(malicious_ip_finding)
+
+                            analysis_result["key_findings"] = findings
+
+                logger.info(
+                    f"Final classification after VirusTotal check: {analysis_result.get('classification')}"
+                )
+
                 return analysis_result
-                
+
             except json.JSONDecodeError as je:
                 logger.error(f"JSON parse error: {str(je)}")
                 logger.error(f"Raw content: {content[:500]}")
@@ -796,74 +914,148 @@ Respond ONLY with valid JSON:
         self, username: str, investigation_steps: List[Dict]
     ) -> Dict[str, Any]:
         """
-        FIXED: Fallback analysis with better logic
+        FIXED: Fallback analysis with smart VirusTotal detection
         """
         logger.info("Using fallback analysis")
 
         risk_score = 0
         findings = []
-        has_virustotal_clean = False
+        has_virustotal_malicious = False
+        malicious_ip_count = 0
 
         for step in investigation_steps:
             output = str(step.get("output", "")).lower()
-            
-            # Check for VirusTotal clean results
-            if "virustotal" in output and ("clean" in output or "malicious: 0" in output):
-                has_virustotal_clean = True
-                risk_score -= 20  # Reduce risk score
-            
-            # Check for suspicious indicators
+
+            # ✅ SMART VirusTotal Detection
+            if "virustotal" in output:
+                import re
+
+                # Parse malicious detection ratio
+                match = re.search(r"malicious[:\s]+(\d+)/(\d+)", output, re.IGNORECASE)
+
+                if match:
+                    malicious_count = int(match.group(1))
+                    total_count = int(match.group(2))
+
+                    if malicious_count > 0:
+                        has_virustotal_malicious = True
+                        malicious_ip_count = malicious_count
+                        risk_score += 40  # High weight for malicious IP
+
+                        findings.append(
+                            {
+                                "step_reference": step["step_name"],
+                                "category": "Malicious IP Detected",
+                                "severity": "High",
+                                "details": f"IP flagged as malicious by {malicious_count} VirusTotal vendor(s)",
+                                "evidence": f"Detection ratio: {malicious_count}/{total_count}",
+                                "impact": "Potential compromise or malicious activity from known bad IP",
+                            }
+                        )
+                    elif malicious_count == 0:
+                        risk_score -= 10  # Slight reduction for clean IP
+
+            # Check for travel anomalies
+            if any(
+                keyword in output
+                for keyword in [
+                    "impossible travel",
+                    "geographic",
+                    "location",
+                    "country",
+                ]
+            ):
+                risk_score += 25
+                findings.append(
+                    {
+                        "step_reference": step["step_name"],
+                        "category": "Geographic Anomaly",
+                        "severity": "Medium",
+                        "details": "Unusual geographic access patterns detected",
+                        "evidence": output[:200],
+                        "impact": "Potential account compromise or unauthorized access",
+                    }
+                )
+
+            # Check for failed logins
             if "failed" in output:
-                # Only 2 failed out of 72 is not very suspicious
-                if "failedattempts\n2" in output.replace(" ", "") or "failedattempts: 2" in output:
-                    risk_score += 10  # Minor increase
+                import re
+
+                failed_match = re.search(r"failed[^:]*:\s*(\d+)", output, re.IGNORECASE)
+                if failed_match:
+                    failed_count = int(failed_match.group(1))
+                    if failed_count > 5:
+                        risk_score += 20
+                    elif failed_count > 2:
+                        risk_score += 10
                 else:
-                    risk_score += 25
-            
+                    risk_score += 15
+
+            # Check for suspicious indicators
             if "suspicious" in output:
                 risk_score += 20
-                findings.append({
-                    "step_reference": step["step_name"],
-                    "category": "Suspicious Activity",
-                    "severity": "Medium",
-                    "details": "Suspicious indicators detected",
-                    "evidence": output[:200],
-                    "impact": "Requires investigation",
-                })
-            
-            if "unknown" in output and "device" not in output:
+
+            # Check for privilege escalation
+            if any(
+                keyword in output
+                for keyword in [
+                    "admin",
+                    "privilege",
+                    "escalation",
+                    "role",
+                    "global administrator",
+                ]
+            ):
                 risk_score += 15
 
-        # CRITICAL FIX: If VirusTotal is clean, force FALSE POSITIVE
-        if has_virustotal_clean:
+        # ✅ SMART Classification Logic
+        if has_virustotal_malicious:
+            # ANY malicious IP detection = TRUE POSITIVE
+            classification = "TRUE POSITIVE"
+            risk_level = "High"
+            confidence = min(75 + (malicious_ip_count * 5), 95)
+        elif risk_score >= 50:
+            classification = "TRUE POSITIVE"
+            risk_level = "High" if risk_score >= 70 else "Medium"
+            confidence = min(risk_score, 90)
+        elif risk_score >= 30:
+            classification = "TRUE POSITIVE"
+            risk_level = "Medium"
+            confidence = 70
+        else:
             classification = "FALSE POSITIVE"
             risk_level = "Low"
             confidence = 60
-        else:
-            # Normal classification
-            classification = "TRUE POSITIVE" if risk_score >= 50 else "FALSE POSITIVE"
-            risk_level = "High" if risk_score >= 60 else ("Medium" if risk_score >= 40 else "Low")
-            confidence = min(risk_score, 95)
 
-        logger.info(f"Fallback result: {classification} (risk_score={risk_score})")
+        logger.info(
+            f"Fallback result: {classification} (risk_score={risk_score}, malicious_ip={has_virustotal_malicious})"
+        )
 
         return {
             "classification": classification,
             "risk_level": risk_level,
             "confidence_score": confidence,
-            "key_findings": findings if findings else [{
-                "step_reference": "Overall Assessment",
-                "category": "General",
-                "severity": "Low",
-                "details": "Limited investigation data available",
-                "evidence": f"Analysis based on {len(investigation_steps)} steps",
-                "impact": "Requires manual review",
-            }],
-            "risk_indicators": [{
-                "indicator": "Investigation completeness",
-                "severity": "Low",
-                "evidence": f"{len([s for s in investigation_steps if s.get('output')])} steps with output",
-            }],
+            "key_findings": (
+                findings
+                if findings
+                else [
+                    {
+                        "step_reference": "Overall Assessment",
+                        "category": "General Analysis",
+                        "severity": "Low",
+                        "details": "Limited investigation data available for analysis",
+                        "evidence": f"Analyzed {len(investigation_steps)} investigation steps",
+                        "impact": "Manual review recommended",
+                    }
+                ]
+            ),
+            "risk_indicators": [
+                {
+                    "indicator": "Investigation completeness",
+                    "severity": "Medium" if has_virustotal_malicious else "Low",
+                    "evidence": f"{len([s for s in investigation_steps if s.get('output')])} steps with data",
+                }
+            ],
         }
 
     def perform_complete_analysis(
@@ -872,7 +1064,9 @@ Respond ONLY with valid JSON:
         """Perform complete analysis with all components"""
         try:
             # Initial analysis
-            initial_analysis = self.perform_initial_analysis(username, investigation_steps)
+            initial_analysis = self.perform_initial_analysis(
+                username, investigation_steps
+            )
 
             if not initial_analysis:
                 return {
@@ -903,7 +1097,8 @@ Respond ONLY with valid JSON:
                 "initial_analysis": initial_analysis,
                 "mitre_attack_analysis": (
                     mitre_analysis.get("mitre_attack_analysis", {})
-                    if mitre_analysis else {}
+                    if mitre_analysis
+                    else {}
                 ),
                 "executive_summary": executive_summary,
                 "geographic_risk": geo_risk,
@@ -919,8 +1114,11 @@ Respond ONLY with valid JSON:
             }
 
     def _create_executive_summary(
-        self, username: str, initial_analysis: Dict,
-        mitre_analysis: Dict, geo_risk: Dict
+        self,
+        username: str,
+        initial_analysis: Dict,
+        mitre_analysis: Dict,
+        geo_risk: Dict,
     ) -> Dict[str, Any]:
         """Create executive summary"""
         classification = initial_analysis.get("classification", "UNKNOWN")
@@ -949,8 +1147,8 @@ Respond ONLY with valid JSON:
             ],
             "investigation_priority": "P1" if "TRUE" in classification else "P3",
             "key_sub_techniques_observed": key_sub_techniques,
-        }    
-        
+        }
+
     def extract_investigation_steps(self, df, username: str) -> List[Dict]:
         """Extract investigation steps with their outputs AND remarks for the specific user - FIXED"""
         investigation_steps = []
@@ -1072,10 +1270,10 @@ Respond ONLY with valid JSON:
     def build_initial_analysis_prompt(
         self, username: str, investigation_steps: List[Dict]
     ) -> str:
-        """Build prompt for initial investigation analysis with true positive bias"""
+        """Build prompt for initial investigation analysis with improved VirusTotal logic"""
         investigation_context = ""
         for step in investigation_steps:
-            # ✅ Include remarks if they exist
+            # Include remarks if they exist
             remarks_info = ""
             if step.get("remarks") and len(step.get("remarks", "")) > 0:
                 remarks_info = f"""
@@ -1106,27 +1304,39 @@ Respond ONLY with valid JSON:
     # CLASSIFICATION GUIDELINES:
 
     **TRUE POSITIVE Indicators (Prioritize these):**
-    - Access from unknown locations or devices
-    - Impossible travel patterns
-    - Suspicious IP addresses or geolocations
-    - Privilege escalation attempts
-    - Unusual account activity patterns
-    - High-risk country connections (Russia, China, etc.)
-    - Analyst remarks indicating suspicion
-    - Multiple risk factors present
+    - ✅ **ANY IP flagged as malicious by VirusTotal** (even 1/95 detection is SIGNIFICANT)
+    - ✅ Access from unknown locations or devices
+    - ✅ Impossible travel patterns (multiple countries in short time)
+    - ✅ Suspicious IP addresses or high-risk geolocations
+    - ✅ Privilege escalation attempts
+    - ✅ Unusual account activity patterns
+    - ✅ High-risk country connections (Russia, China, Iran, North Korea, Switzerland)
+    - ✅ Multiple failed login attempts followed by success
+    - ✅ VIP user with suspicious activity
+    - ✅ Analyst remarks indicating suspicion
+
+    **CRITICAL: VirusTotal Detection Rules**
+    - `Malicious: 1/95` or higher → **STRONG TRUE POSITIVE indicator**
+    - `Malicious: 0/95` → Consider other factors
+    - Even 1 out of 95 detections means the IP has been associated with malicious activity
+    - Do NOT ignore VirusTotal detections - they are authoritative threat intelligence
 
     **FALSE POSITIVE Indicators:**
-    - Only normal business activity
-    - Expected user behavior patterns
-    - No concrete suspicious indicators
-    - Legitimate business travel
-    - Authorized administrative actions
+    - All indicators show normal business activity
+    - Expected user behavior patterns (same location, same device, business hours)
+    - No suspicious technical indicators
+    - Legitimate business travel with proper context
+    - Authorized administrative actions with justification
+    - **VirusTotal shows 0/95 malicious AND no other suspicious indicators**
 
-    # IMPORTANT: 
-    - When multiple indicators exist, lean toward TRUE POSITIVE
-    - High-risk countries automatically increase suspicion
-    - Unknown devices/locations are strong TRUE POSITIVE indicators
-    - Analyst remarks should be heavily weighted
+    # CRITICAL DECISION RULES:
+
+    1. **If VirusTotal shows ANY malicious detection (1/95 or higher)** → Classify as TRUE POSITIVE
+    2. **If impossible travel detected** (e.g., USA → Canada → Switzerland in 5 days) → TRUE POSITIVE
+    3. **If VIP user + suspicious indicators** → Increase severity to High/Critical
+    4. **Multiple risk factors** → TRUE POSITIVE
+    5. **High-risk countries** → Increase suspicion significantly
+    6. **Do NOT classify as FALSE POSITIVE if VirusTotal detected malicious IP**
 
     # OUTPUT FORMAT (JSON only):
 
@@ -1136,22 +1346,28 @@ Respond ONLY with valid JSON:
         "confidence_score": 85,
         "key_findings": [
             {{
-                "step_reference": "Step name or reference",
-                "category": "Geographic Anomaly | Privilege Escalation | Suspicious Activity",
+                "step_reference": "Step name",
+                "category": "Malicious IP | Geographic Anomaly | Privilege Escalation | Suspicious Activity",
                 "severity": "Critical | High | Medium | Low",
-                "details": "Specific finding description",
-                "evidence": "Supporting evidence from investigation",
-                "impact": "Potential security impact"
+                "details": "Specific finding description with evidence",
+                "evidence": "Concrete data from investigation",
+                "impact": "Security and business impact"
             }}
         ],
         "risk_indicators": [
             {{
-                "indicator": "Unknown device access",
-                "severity": "High",
-                "evidence": "Device not recognized in user's history"
+                "indicator": "Risk indicator name",
+                "severity": "High | Medium | Low",
+                "evidence": "Supporting evidence"
             }}
         ]
     }}
+
+    **IMPORTANT:** 
+    - Base classification on ACTUAL evidence, not assumptions
+    - If VirusTotal flagged an IP as malicious (even 1/95), that alone is sufficient for TRUE POSITIVE
+    - Impossible travel across multiple countries in short time = TRUE POSITIVE
+    - VIP user compromise = Higher severity
 
     Now analyze the investigation data and provide your assessment in JSON format:"""
 
