@@ -588,17 +588,25 @@ class MITREAttackAnalyzer:
 
             content = content.strip()
             
-            # --- 👇 FIX START: Sanitize BOTH control characters and non-ASCII whitespace 👇 ---
-            # 1. Replace unescaped newlines/tabs inside JSON strings (from previous fix)
-            content_safe = re.sub(r'(?<!\\)\n', r'\\n', content)
-            content_safe = re.sub(r'(?<!\\)\t', r'\\t', content_safe)
-
-            # 2. Remove all non-ASCII control characters and non-standard whitespace
-            content_safe = content_safe.replace('\xa0', ' ') # Replace non-breaking space
-            content_safe = re.sub(r'[\x00-\x09\x0B\x0C\x0E-\x1F]', '', content_safe) # Remove non-printing control characters
+# --- 👇 FINAL FIX: Aggressive Cleanup and Escaping 👇 ---
+            # 1. Clean up non-standard Unicode/ASCII whitespace and control characters *before* custom escaping.
+            content_safe = content
             
-            # Ensure it's stripped again after cleaning
+            # Remove non-printing control characters and replace non-standard spaces with standard space
+            content_safe = content_safe.replace('\xa0', ' ')
+            content_safe = re.sub(r'[\x00-\x09\x0B\x0C\x0E-\x1F]', '', content_safe)
+            
+            # 2. Re-strip to ensure no leading/trailing spaces remain
             content_safe = content_safe.strip()
+
+            # 3. Replace unescaped newlines/tabs inside JSON strings
+            # Apply only to the cleaned content_safe
+            content_safe = re.sub(r'(?<!\\)\\n', r'\\n', content_safe) # Replace literal \n with \\n
+            content_safe = re.sub(r'(?<!\\)\\t', r'\\t', content_safe) # Replace literal \t with \\t
+            
+            # Re-run the regex more aggressively for literal unescaped control characters in the Python string
+            content_safe = re.sub(r'(?<!\\)\n', r'\\n', content_safe)
+            content_safe = re.sub(r'(?<!\\)\t', r'\\t', content_safe)
 
             # Parse JSON
             mitre_analysis = json.loads(content_safe)
@@ -986,24 +994,31 @@ class InvestigationAnalyzer:
 
             content = content.strip()
             
-            # --- 👇 FIX START: Sanitize BOTH control characters and non-ASCII whitespace 👇 ---
-            # 1. Replace unescaped newlines/tabs inside JSON strings (from previous fix)
-            content_safe = re.sub(r'(?<!\\)\n', r'\\n', content)
-            content_safe = re.sub(r'(?<!\\)\t', r'\\t', content_safe)
-            
-            # 2. Remove all non-ASCII control characters and non-standard whitespace (e.g., em space)
+            # --- 👇 FINAL FIX: Aggressive Cleanup and Escaping 👇 ---
+            # 1. Clean up non-standard Unicode/ASCII whitespace and control characters *before* custom escaping.
             # This addresses the 'line 1 column 2' error caused by hidden/non-standard leading whitespace.
-            # \s includes standard space, tab, newline. We want to target the non-standard ones.
-            # The regex r'[\x00-\x1F\x80-\xFF]' targets control characters and non-ASCII chars.
-            # Let's try to remove non-printing control characters and replace non-standard spaces with standard ones.
+            content_safe = content
             
-            # First, strip non-breaking space (U+00A0) and other non-standard spaces
-            content_safe = content_safe.replace('\xa0', ' ') # Replace non-breaking space
-            content_safe = re.sub(r'[\x00-\x09\x0B\x0C\x0E-\x1F]', '', content_safe) # Remove non-printing control characters
+            # Remove non-printing control characters and replace non-standard spaces with standard space
+            # \s is standard space, \xa0 is non-breaking space.
+            content_safe = content_safe.replace('\xa0', ' ')
+            content_safe = re.sub(r'[\x00-\x09\x0B\x0C\x0E-\x1F]', '', content_safe)
             
-            # Ensure it's stripped again after cleaning
+            # 2. Re-strip to ensure no leading/trailing spaces remain
             content_safe = content_safe.strip()
 
+            # 3. Replace unescaped newlines/tabs inside JSON strings
+            # Apply only to the cleaned content_safe
+            content_safe = re.sub(r'(?<!\\)\\n', r'\\n', content_safe) # Replace literal \n with \\n
+            content_safe = re.sub(r'(?<!\\)\\t', r'\\t', content_safe) # Replace literal \t with \\t
+            
+            # Re-run the regex more aggressively for literal unescaped control characters in the Python string
+            # These were the original culprits
+            content_safe = re.sub(r'(?<!\\)\n', r'\\n', content_safe)
+            content_safe = re.sub(r'(?<!\\)\t', r'\\t', content_safe)
+            
+            # --- 👆 FIX END 👆 ---
+            
             # ✅ LOG RAW RESPONSE for debugging
             logger.info(f"Cleaned response preview: {content_safe[:200]}")
 
