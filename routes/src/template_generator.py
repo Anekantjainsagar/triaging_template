@@ -1,3 +1,4 @@
+# template_generator.py - UPDATED
 """
 Improved Template Generator using Enhanced KQL Generation
 Replaces the existing template_generator.py
@@ -13,6 +14,11 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import time
 import os
 from dotenv import load_dotenv
+
+# --- New Imports for API Call ---
+from routes.src.utils import extract_alert_name
+from api_client.analyzer_api_client import get_analyzer_client # Assuming a client exists or using direct LLM call
+# ----------------------------------
 
 load_dotenv()
 
@@ -56,6 +62,14 @@ class ImprovedTemplateGenerator:
             "Remarks/Comments",
         ]
 
+        # Initialize API Client for getting the Technical Overview
+        try:
+            self.analyzer_client = get_analyzer_client()
+        except Exception as e:
+            print(f"⚠️ Could not initialize Analyzer API Client: {e}")
+            self.analyzer_client = None
+
+
     def generate_template(
         self, rule_number: str, original_steps: List[Dict], rule_context: str = ""
     ) -> pd.DataFrame:
@@ -72,13 +86,33 @@ class ImprovedTemplateGenerator:
         header_row["Name"] = rule_number
         template_rows.append(header_row)
 
-        # Get rule context if not provided
+        # 1. Get rule context if not provided
         if not rule_context:
             rule_context = self._extract_rule_context(rule_number, original_steps)
 
-        # Process steps in parallel
+        # 2. Get the Technical Overview from the AI Analysis
+        technical_overview = self._get_alert_technical_overview(rule_number)
+        
+        # Merge context for LLM guidance
+        full_context = rule_context
+        if technical_overview:
+            print(f"💡 Technical Overview loaded: {technical_overview[:50]}...")
+            full_context = f"{rule_context}. Technical focus: {technical_overview}"
+        
+        # 3. Filter non-investigative steps (NEW LOGIC)
+        investigative_steps = [
+            step for step in original_steps if self._is_investigative_step(step)
+        ]
+        
+        print(f"🗑️ Filtered {len(original_steps) - len(investigative_steps)} non-investigative steps.")
+        
+        if not investigative_steps:
+             print("❌ No investigative steps remaining after filtering.")
+             return pd.DataFrame(template_rows)
+
+        # 4. Process filtered steps in parallel
         enhanced_steps = self._process_steps_parallel(
-            original_steps, rule_number, rule_context
+            investigative_steps, rule_number, full_context
         )
 
         template_rows.extend(enhanced_steps)
@@ -89,6 +123,82 @@ class ImprovedTemplateGenerator:
         print(f"{'='*80}\n")
 
         return pd.DataFrame(template_rows)
+
+    # --- NEW HELPER METHOD FOR FILTERING ---
+    def _is_investigative_step(self, step: Dict) -> bool:
+        """Filter out non-investigative/meta/remediation steps"""
+        name = step.get("step_name", "").lower()
+        explanation = step.get("explanation", "").lower()
+        
+        # Patterns for post-investigation, remediation, or final documentation
+        non_investigative_patterns = [
+            "reset the account",
+            "revoke the mfa",
+            "block the detected",
+            "inform to it team",
+            "track for the closer",
+            "document the steps taken",
+            "after all the investigation",
+            "close it as:",
+            "treat it as :",
+            "if user confirms then close",
+            "reach out to the network/edr",
+            "final confirmation received",
+        ]
+        
+        combined = f"{name} {explanation}"
+
+        # If it is a step to confirm or finalize the incident, it is not investigative
+        if any(p in combined for p in non_investigative_patterns):
+            return False
+
+        # If it contains core investigative verbs and is not caught by the above, keep it
+        investigative_verbs = ["check", "verify", "analyze", "review", "run the kql"]
+        if any(v in name for v in investigative_verbs):
+            return True
+
+        # Default to keeping if it's not explicitly filtered and not too short
+        return len(name) > 10
+
+    # --- NEW HELPER METHOD FOR TECHNICAL OVERVIEW ---
+    def _get_alert_technical_overview(self, rule_number: str) -> str:
+        """Fetch the Technical Overview from the AI Alert Analysis API"""
+        if not self.analyzer_client:
+            return ""
+
+        try:
+            # 1. Extract alert name from rule number (e.g., "Rule#297 - Unusual Login" -> "Unusual Login")
+            alert_name = extract_alert_name(rule_number)
+            
+            # If the extraction fails, use a generic name
+            if not alert_name or alert_name.lower() in ["n/a", rule_number.lower()]:
+                 return ""
+
+            # 2. Call the analysis API
+            result = self.analyzer_client.analyze_alert(alert_name)
+
+            if result.get("success"):
+                analysis_text = result.get("analysis", "")
+                
+                # 3. Extract only the Technical Overview section
+                # Pattern to find '## TECHNICAL OVERVIEW' and everything until the next '##'
+                match = re.search(
+                    r"##\s*TECHNICAL\s*OVERVIEW\s*([\s\S]*?)(?=##|\Z)", 
+                    analysis_text, 
+                    re.IGNORECASE
+                )
+                
+                if match:
+                    overview = match.group(1).strip()
+                    # Further clean up any sub-headers or extra newlines
+                    overview = re.sub(r"\n{2,}", " ", overview).strip()
+                    return overview
+                
+            return ""
+
+        except Exception as e:
+            print(f"⚠️ Failed to get technical overview for {rule_number}: {e}")
+            return ""
 
     def _extract_rule_context(self, rule_number: str, steps: List[Dict]) -> str:
         """Extract context from rule number and steps"""
@@ -131,7 +241,8 @@ class ImprovedTemplateGenerator:
             for future in as_completed(future_to_index):
                 index = future_to_index[future]
                 try:
-                    result = future.result(timeout=180)  # Longer timeout for web search
+                    # Longer timeout for web search and LLM calls
+                    result = future.result(timeout=180) 
                     enhanced_steps[index] = result
                     print(f"✅ Step {index + 1} completed")
                 except Exception as e:
@@ -140,7 +251,8 @@ class ImprovedTemplateGenerator:
                         index + 1, original_steps[index]
                     )
 
-        return enhanced_steps
+        # Filter out any potential None if a step failed unexpectedly and fallback was missed
+        return [step for step in enhanced_steps if step is not None]
 
     def _process_single_step(
         self,
@@ -168,7 +280,7 @@ class ImprovedTemplateGenerator:
             step_name=step_name,
             explanation=explanation,
             step_number=step_num,
-            rule_context=rule_context,
+            rule_context=rule_context, # Use the full_context passed from generate_template
         )
 
         # 4. Add manual investigation steps if no KQL

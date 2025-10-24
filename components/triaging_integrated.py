@@ -162,7 +162,7 @@ def display_triaging_page():
         key="manual_rule",
     )
 
-    if st.button("🚀 Start Template Enhancement", type="primary", width="stretch"):
+    if st.button("🚀 Start Template Enhancement", type="primary", use_container_width=True):
         if not manual_rule:
             st.error("❌ Please provide a rule number")
         else:

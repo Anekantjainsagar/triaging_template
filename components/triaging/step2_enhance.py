@@ -725,7 +725,7 @@ def _display_enhancement_results(
                     file_name=filename,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
-                    width="stretch",
+                    use_container_width=True,
                     key="download_and_proceed",
                     on_click=lambda: _unlock_predictions(
                         excel_with_data, filename, rule_number
@@ -768,7 +768,7 @@ def _display_enhancement_results(
             session_state.template_dataframe = template_df
 
         # Display dataframe
-        st.dataframe(template_df, width="stretch", height=500)
+        st.dataframe(template_df, use_container_width=True, height=500)
 
         st.markdown("---")
 
@@ -782,7 +782,7 @@ def _display_enhancement_results(
                 data=session_state.excel_template_data,
                 file_name=f"triaging_template_{rule_number.replace('#', '_')}_base.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                width="stretch",
+                use_container_width=True,
                 key="download_base_excel",
             )
 
@@ -803,7 +803,7 @@ def _display_enhancement_results(
                 data=st.session_state[complete_excel_key],
                 file_name=f"triaging_template_{rule_number.replace('#', '_')}_complete.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                width="stretch",
+                use_container_width=True,
                 type="primary",
                 key="download_complete_excel",
             )
