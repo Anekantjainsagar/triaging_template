@@ -7,8 +7,6 @@ from typing import Dict, List, Any, Optional
 
 
 class MITREAttackAnalyzer:
-    """Handles MITRE ATT&CK framework analysis with sub-techniques"""
-
     def __init__(self, api_key: str):
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
@@ -31,8 +29,9 @@ class MITREAttackAnalyzer:
 
     def _load_mitre_data(self) -> Dict[str, Any]:
         """Load MITRE ATT&CK framework data from the document"""
+        # This will be populated from the MITRE ATT&CK document provided
+        # Structure: {tactic: {technique: [sub-techniques]}}
         from mitre_data import mitre_structure
-
         return mitre_structure
 
     def extract_geolocation_risk(
@@ -664,8 +663,6 @@ class MITREAttackAnalyzer:
 
 
 class InvestigationAnalyzer:
-    """Main investigation analyzer combining initial analysis and MITRE mapping"""
-
     def __init__(self, api_key: str):
         self.api_key = api_key
         genai.configure(api_key=api_key)

@@ -5,7 +5,7 @@ Client for interacting with the SOC Intelligence API
 
 import requests
 import streamlit as st
-from typing import Optional, Dict, List, Any
+from typing import Dict, Any
 
 
 class AnalyzerAPIClient:
