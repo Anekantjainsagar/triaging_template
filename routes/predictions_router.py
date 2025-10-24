@@ -5,8 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, List, Any
 from fastapi import APIRouter, HTTPException, Query, File, UploadFile
-from backend.backed_fixes import extract_investigation_steps_fixed, clean_dataframe
-
+from backend.backed_fixes import extract_investigation_steps_fixed, clean_dataframe # Import fixed extraction
 
 # Import backend analyzer
 from backend.predictions_backend import InvestigationAnalyzer
@@ -471,6 +470,7 @@ async def analyze_mitre(request: AnalyzeInvestigationRequest, api_key: str = "")
 
     try:
         analyzer = get_analyzer(api_key)
+        # ✅ Corrected: Use the method available on the analyzer object
         investigation_steps = analyzer.extract_investigation_steps(
             _uploaded_data, request.username
         )
@@ -540,7 +540,8 @@ async def analyze_complete(request: AnalyzeInvestigationRequest, api_key: str = 
 
     try:
         analyzer = get_analyzer(api_key)
-        investigation_steps = analyzer.extract_investigation_steps_fixed(
+        # FIX: Call the correct, globally available fixed function
+        investigation_steps = extract_investigation_steps_fixed(
             _uploaded_data, request.username
         )
 
@@ -583,8 +584,12 @@ async def analyze_complete(request: AnalyzeInvestigationRequest, api_key: str = 
     except HTTPException as he:
         raise he
     except Exception as e:
+        # Re-raise with detail to help debug 500 errors
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Error in complete analysis: {str(e)}\n{error_details}")
         raise HTTPException(
-            status_code=500, detail=f"Error in complete analysis: {str(e)}"
+            status_code=500, detail=f"Analysis error: {str(e)}"
         )
 
 
@@ -618,6 +623,7 @@ async def batch_analyze(request: BatchAnalysisRequest, api_key: str = ""):
 
         for username in request.usernames:
             try:
+                # ✅ Corrected: Use the method available on the analyzer object
                 investigation_steps = analyzer.extract_investigation_steps(
                     _uploaded_data, username
                 )
@@ -712,11 +718,13 @@ async def compare_analyses(request: ComparisonRequest, api_key: str = ""):
         # Analyze both users
         analysis1 = analyzer.perform_complete_analysis(
             request.username1,
+            # ✅ Corrected: Use the method available on the analyzer object
             analyzer.extract_investigation_steps(_uploaded_data, request.username1),
         )
 
         analysis2 = analyzer.perform_complete_analysis(
             request.username2,
+            # ✅ Corrected: Use the method available on the analyzer object
             analyzer.extract_investigation_steps(_uploaded_data, request.username2),
         )
 

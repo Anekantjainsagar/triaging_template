@@ -588,25 +588,28 @@ class MITREAttackAnalyzer:
 
             content = content.strip()
             
-# --- 👇 FINAL FIX: Aggressive Cleanup and Escaping 👇 ---
+            # --- 👇 FINAL FIX: Aggressive Cleanup and Escaping 👇 ---
             # 1. Clean up non-standard Unicode/ASCII whitespace and control characters *before* custom escaping.
             content_safe = content
             
-            # Remove non-printing control characters and replace non-standard spaces with standard space
-            content_safe = content_safe.replace('\xa0', ' ')
-            content_safe = re.sub(r'[\x00-\x09\x0B\x0C\x0E-\x1F]', '', content_safe)
+            # Aggressively replace all non-standard spaces and invisible characters
+            content_safe = content_safe.replace('\xa0', ' ') # Fix for non-breaking space
+            content_safe = re.sub(r'[\x00-\x09\x0B\x0C\x0E-\x1F]', '', content_safe) # Remove control characters
             
-            # 2. Re-strip to ensure no leading/trailing spaces remain
+            # 2. Re-strip to ensure no leading/trailing spaces remain (critical for the 'char 1' error)
             content_safe = content_safe.strip()
 
             # 3. Replace unescaped newlines/tabs inside JSON strings
-            # Apply only to the cleaned content_safe
-            content_safe = re.sub(r'(?<!\\)\\n', r'\\n', content_safe) # Replace literal \n with \\n
-            content_safe = re.sub(r'(?<!\\)\\t', r'\\t', content_safe) # Replace literal \t with \\t
+            content_safe = re.sub(r'(?<!\\)\\n', r'\\n', content_safe) 
+            content_safe = re.sub(r'(?<!\\)\\t', r'\\t', content_safe)
             
             # Re-run the regex more aggressively for literal unescaped control characters in the Python string
             content_safe = re.sub(r'(?<!\\)\n', r'\\n', content_safe)
             content_safe = re.sub(r'(?<!\\)\t', r'\\t', content_safe)
+            
+            # Final left-strip to catch any remaining leading invisible chars
+            content_safe = content_safe.lstrip()
+            # --- 👆 FIX END 👆 ---
 
             # Parse JSON
             mitre_analysis = json.loads(content_safe)
@@ -996,27 +999,25 @@ class InvestigationAnalyzer:
             
             # --- 👇 FINAL FIX: Aggressive Cleanup and Escaping 👇 ---
             # 1. Clean up non-standard Unicode/ASCII whitespace and control characters *before* custom escaping.
-            # This addresses the 'line 1 column 2' error caused by hidden/non-standard leading whitespace.
             content_safe = content
             
-            # Remove non-printing control characters and replace non-standard spaces with standard space
-            # \s is standard space, \xa0 is non-breaking space.
-            content_safe = content_safe.replace('\xa0', ' ')
-            content_safe = re.sub(r'[\x00-\x09\x0B\x0C\x0E-\x1F]', '', content_safe)
+            # Aggressively replace all non-standard spaces and invisible characters
+            content_safe = content_safe.replace('\xa0', ' ') # Fix for non-breaking space
+            content_safe = re.sub(r'[\x00-\x09\x0B\x0C\x0E-\x1F]', '', content_safe) # Remove control characters
             
-            # 2. Re-strip to ensure no leading/trailing spaces remain
+            # 2. Re-strip to ensure no leading/trailing spaces remain (critical for the 'char 1' error)
             content_safe = content_safe.strip()
 
             # 3. Replace unescaped newlines/tabs inside JSON strings
-            # Apply only to the cleaned content_safe
-            content_safe = re.sub(r'(?<!\\)\\n', r'\\n', content_safe) # Replace literal \n with \\n
-            content_safe = re.sub(r'(?<!\\)\\t', r'\\t', content_safe) # Replace literal \t with \\t
+            content_safe = re.sub(r'(?<!\\)\\n', r'\\n', content_safe) 
+            content_safe = re.sub(r'(?<!\\)\\t', r'\\t', content_safe)
             
             # Re-run the regex more aggressively for literal unescaped control characters in the Python string
-            # These were the original culprits
             content_safe = re.sub(r'(?<!\\)\n', r'\\n', content_safe)
             content_safe = re.sub(r'(?<!\\)\t', r'\\t', content_safe)
             
+            # Final left-strip to catch any remaining leading invisible chars
+            content_safe = content_safe.lstrip()
             # --- 👆 FIX END 👆 ---
             
             # ✅ LOG RAW RESPONSE for debugging
