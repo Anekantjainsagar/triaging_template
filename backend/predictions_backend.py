@@ -670,9 +670,23 @@ class MITREAttackAnalyzer:
 class InvestigationAnalyzer:
     def __init__(self, api_key: str):
         self.api_key = api_key
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
-        self.mitre_analyzer = MITREAttackAnalyzer(api_key)
+
+        try:
+            # 💡 Log before configuration
+            logger.info("Attempting to configure Gemini API...")
+            genai.configure(api_key=api_key)
+            logger.info("Gemini API configured.")
+
+            # 💡 Log before model initialization
+            logger.info("Attempting to initialize GenerativeModel...")
+            self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+            logger.info("GenerativeModel initialized.")
+
+            self.mitre_analyzer = MITREAttackAnalyzer(api_key)
+        except Exception as e:
+            # 🚨 If this block is hit, the initialization failed.
+            logger.error(f"FATAL ERROR during InvestigationAnalyzer init: {str(e)}")
+            raise # Re-raise to be caught by predictions_router
 
     def extract_investigation_steps(self, df, username: str) -> List[Dict]:
         """Extract investigation steps with their outputs AND remarks for the specific user - FIXED"""

@@ -164,6 +164,8 @@ async def predictions_root():
     }
 
 
+# predictions_router.py
+
 def get_analyzer(api_key: str) -> InvestigationAnalyzer:
     """Get or initialize the investigation analyzer"""
     global _investigation_analyzer
@@ -171,20 +173,25 @@ def get_analyzer(api_key: str) -> InvestigationAnalyzer:
     if _investigation_analyzer is None:
         try:
             if not api_key:
+                # This would raise a 400 error, not a 500, but is good to check
                 raise HTTPException(
                     status_code=400, detail="API key is required for analysis"
                 )
 
-            _investigation_analyzer = InvestigationAnalyzer(api_key)
+            # 🚨 CRITICAL POINT 🚨
+            # This line attempts to initialize the model. If it fails due to an
+            # invalid key or network issue, it raises an exception which is caught
+            # and results in a 500 error, leaving _investigation_analyzer as None.
+            _investigation_analyzer = InvestigationAnalyzer(api_key) 
             print("✅ Investigation Analyzer initialized with API key")
         except Exception as e:
+            # 💡 This is the path leading to analyzer_loaded: false
+            # and the 500 error in analysis endpoints.
             raise HTTPException(
                 status_code=500, detail=f"Failed to initialize analyzer: {str(e)}"
             )
 
     return _investigation_analyzer
-
-
 # ============================================================================
 # Status Endpoints
 # ============================================================================
