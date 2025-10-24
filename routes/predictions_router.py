@@ -1,9 +1,12 @@
 import io
 import pandas as pd
+import numpy as np  # ✅ ADD THIS IMPORT
 from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, List, Any
 from fastapi import APIRouter, HTTPException, Query, File, UploadFile
+from backend.backed_fixes import extract_investigation_steps_fixed, clean_dataframe
+
 
 # Import backend analyzer
 from backend.predictions_backend import InvestigationAnalyzer
@@ -162,8 +165,13 @@ def get_analyzer(api_key: str) -> InvestigationAnalyzer:
 
     if _investigation_analyzer is None:
         try:
+            if not api_key:
+                raise HTTPException(
+                    status_code=400, detail="API key is required for analysis"
+                )
+
             _investigation_analyzer = InvestigationAnalyzer(api_key)
-            print("✅ Investigation Analyzer initialized")
+            print("✅ Investigation Analyzer initialized with API key")
         except Exception as e:
             raise HTTPException(
                 status_code=500, detail=f"Failed to initialize analyzer: {str(e)}"
@@ -217,6 +225,7 @@ async def get_statistics():
 # ============================================================================
 
 
+# Update the upload endpoint to use cleaned data
 @router.post(
     "/upload/excel",
     response_model=ExcelUploadResponse,
@@ -224,7 +233,7 @@ async def get_statistics():
     description="Upload Excel file with investigation data",
 )
 async def upload_excel(file: UploadFile = File(...)):
-    """Upload investigation data in Excel format"""
+    """Upload investigation data in Excel format with enhanced NaN handling"""
     global _uploaded_data
 
     try:
@@ -234,18 +243,31 @@ async def upload_excel(file: UploadFile = File(...)):
         # Parse Excel
         df = pd.read_excel(io.BytesIO(contents))
 
-        # Store globally
-        _uploaded_data = df
+        # Use the fixed cleaning function
+        df_clean = clean_dataframe(df)
 
-        # Create preview
-        preview = df.head(3).to_dict(orient="records")
+        # Store globally
+        _uploaded_data = df_clean
+
+        # Create preview with cleaned data
+        preview_df = df_clean.head(3).copy()
+        preview_data = preview_df.to_dict(orient="records")
+
+        # Final cleanup pass
+        for record in preview_data:
+            for key in list(record.keys()):
+                value = record[key]
+                if value is None or (
+                    isinstance(value, float) and (np.isnan(value) or np.isinf(value))
+                ):
+                    record[key] = None
 
         return ExcelUploadResponse(
             success=True,
             message=f"Successfully uploaded {file.filename}",
-            total_rows=len(df),
-            columns=df.columns.tolist(),
-            preview_data=preview,
+            total_rows=len(df_clean),
+            columns=df_clean.columns.tolist(),
+            preview_data=preview_data,
             timestamp=datetime.now().isoformat(),
         )
 
@@ -257,20 +279,80 @@ async def upload_excel(file: UploadFile = File(...)):
 
 @router.get("/upload/preview", tags=["Upload"])
 async def get_upload_preview():
-    """Get preview of uploaded data"""
+    """Get preview of uploaded data with FIXED NaN handling"""
     if _uploaded_data is None:
         raise HTTPException(
             status_code=400,
             detail="No data uploaded yet. Please upload an Excel file first.",
         )
 
-    return {
-        "success": True,
-        "total_rows": len(_uploaded_data),
-        "columns": _uploaded_data.columns.tolist(),
-        "preview_data": _uploaded_data.head(10).to_dict(orient="records"),
-        "timestamp": datetime.now().isoformat(),
-    }
+    try:
+        # Create a clean copy of the data for preview
+        preview_df = _uploaded_data.head(10).copy()
+
+        # ✅ COMPREHENSIVE NaN CLEANING
+        # Replace all problematic values
+        preview_df = preview_df.replace(
+            {
+                pd.NA: None,
+                pd.NaT: None,
+                float("nan"): None,
+                float("inf"): None,
+                float("-inf"): None,
+            }
+        )
+
+        # Use where to replace remaining NaN values
+        preview_df = preview_df.where(pd.notna(preview_df), None)
+
+        # Convert to dictionary
+        preview_data = preview_df.to_dict(orient="records")
+
+        # ✅ FINAL CLEANUP PASS - Handle any remaining problematic values
+        for record in preview_data:
+            for key in list(record.keys()):
+                value = record[key]
+
+                # Check for any type of NaN/None/NA
+                if value is None or value is pd.NA or value is pd.NaT:
+                    record[key] = None
+                    continue
+
+                # Check for float NaN/inf
+                if isinstance(value, float):
+                    if np.isnan(value) or np.isinf(value):
+                        record[key] = None
+                        continue
+
+                # Check for string representations of NaN
+                if isinstance(value, str) and value.lower() in [
+                    "nan",
+                    "nat",
+                    "none",
+                    "<na>",
+                ]:
+                    record[key] = None
+
+        return {
+            "success": True,
+            "total_rows": len(_uploaded_data),
+            "columns": _uploaded_data.columns.tolist(),
+            "preview_data": preview_data,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    except Exception as e:
+        # Enhanced error reporting
+        import traceback
+
+        error_details = traceback.format_exc()
+        print(f"❌ Preview error: {str(e)}")
+        print(f"📋 Traceback: {error_details}")
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating preview: {str(e)}\n\nDetails: {error_details}",
+        )
 
 
 # ============================================================================
@@ -284,8 +366,9 @@ async def get_upload_preview():
     summary="Initial classification analysis",
     description="Analyze investigation for TRUE/FALSE POSITIVE classification",
 )
+# Update analysis endpoints to use fixed extraction
 async def analyze_initial(request: AnalyzeInvestigationRequest, api_key: str = ""):
-    """Perform initial classification analysis"""
+    """Perform initial classification analysis - FIXED VERSION"""
     if _uploaded_data is None or _uploaded_data.empty:
         raise HTTPException(
             status_code=400,
@@ -297,7 +380,9 @@ async def analyze_initial(request: AnalyzeInvestigationRequest, api_key: str = "
 
     try:
         analyzer = get_analyzer(api_key)
-        investigation_steps = analyzer.extract_investigation_steps(
+
+        # Use the fixed extraction function
+        investigation_steps = extract_investigation_steps_fixed(
             _uploaded_data, request.username
         )
 
@@ -326,7 +411,7 @@ async def analyze_initial(request: AnalyzeInvestigationRequest, api_key: str = "
             classification=initial_analysis.get("classification", "UNKNOWN"),
             risk_level=initial_analysis.get("risk_level", "UNKNOWN"),
             confidence_score=initial_analysis.get("confidence_score", 0),
-            summary=initial_analysis.get("summary", ""),
+            summary=str(initial_analysis.get("summary", "")),
             timestamp=datetime.now().isoformat(),
         )
 
@@ -436,10 +521,12 @@ async def analyze_complete(request: AnalyzeInvestigationRequest, api_key: str = 
                 detail=f"No investigation data found for user: {request.username}",
             )
 
+        print(request.username, investigation_steps)
         complete_analysis = analyzer.perform_complete_analysis(
             request.username, investigation_steps
         )
 
+        print(complete_analysis)
         if complete_analysis.get("status") != "success":
             raise HTTPException(status_code=500, detail="Analysis failed")
 

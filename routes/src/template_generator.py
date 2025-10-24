@@ -1,52 +1,49 @@
+"""
+Improved Template Generator using Enhanced KQL Generation
+Replaces the existing template_generator.py
+"""
+
 import re
 import pandas as pd
 from io import BytesIO
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from crewai import LLM, Agent, Task, Crew
-from crewai_tools import SerperDevTool
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import time
 import os
 from dotenv import load_dotenv
 
-# ✅ LOAD ENVIRONMENT VARIABLES
 load_dotenv()
 
-# ✅ IMPORT KQL GENERATOR
-from routes.src.kql_generation import DynamicKQLGenerator
+# Import the enhanced KQL generator
+from routes.src.enhanced_kql_generation import EnhancedKQLGenerator
 
 
-class OptimizedTemplateGenerator:
+class ImprovedTemplateGenerator:
     """
-    Fast, reliable template generator with parallel processing
+    Template generator with enhanced KQL generation
     """
 
     def __init__(self):
-        # ✅ USE MODEL FROM .ENV (qwen2.5:3b instead of 0.5b)
-        ollama_model = os.getenv("OLLAMA_CHAT", "ollama/qwen2.5:3b")
+        # Initialize LLM for non-KQL tasks
+        gemini_key = os.getenv("GOOGLE_API_KEY")
+        if gemini_key:
+            self.llm = LLM(
+                model="gemini/gemini-1.5-flash", api_key=gemini_key, temperature=0.3
+            )
+            print("✅ Using Gemini for template generation")
+        else:
+            ollama_model = os.getenv("OLLAMA_CHAT", "ollama/qwen2.5:3b")
+            if not ollama_model.startswith("ollama/"):
+                ollama_model = f"ollama/{ollama_model}"
+            self.llm = LLM(
+                model=ollama_model, base_url="http://localhost:11434", temperature=0.3
+            )
+            print(f"✅ Using {ollama_model} for template generation")
 
-        # Ensure proper format
-        if not ollama_model.startswith("ollama/"):
-            ollama_model = f"ollama/{ollama_model}"
-
-        print(f"🤖 Using LLM: {ollama_model}")
-
-        self.llm = LLM(
-            model=ollama_model,
-            base_url="http://localhost:11434",
-            timeout=120,
-        )
-
-        # ✅ INITIALIZE KQL GENERATOR
-        self.kql_generator = DynamicKQLGenerator()
-
-        try:
-            self.web_search = SerperDevTool()
-            self.has_web = True
-        except:
-            self.web_search = None
-            self.has_web = False
+        # Initialize enhanced KQL generator
+        self.kql_generator = EnhancedKQLGenerator()
 
         self.template_columns = [
             "Step",
@@ -62,9 +59,9 @@ class OptimizedTemplateGenerator:
     def generate_template(
         self, rule_number: str, original_steps: List[Dict], rule_context: str = ""
     ) -> pd.DataFrame:
-        """Generate enhanced template with PARALLEL processing"""
+        """Generate enhanced template with improved KQL generation"""
         print(f"\n{'='*80}")
-        print(f"🎯 PARALLEL TEMPLATE GENERATION FOR {rule_number}")
+        print(f"🎯 IMPROVED TEMPLATE GENERATION FOR {rule_number}")
         print(f"{'='*80}\n")
 
         start_time = time.time()
@@ -75,7 +72,11 @@ class OptimizedTemplateGenerator:
         header_row["Name"] = rule_number
         template_rows.append(header_row)
 
-        # Process steps in PARALLEL
+        # Get rule context if not provided
+        if not rule_context:
+            rule_context = self._extract_rule_context(rule_number, original_steps)
+
+        # Process steps in parallel
         enhanced_steps = self._process_steps_parallel(
             original_steps, rule_number, rule_context
         )
@@ -89,19 +90,36 @@ class OptimizedTemplateGenerator:
 
         return pd.DataFrame(template_rows)
 
+    def _extract_rule_context(self, rule_number: str, steps: List[Dict]) -> str:
+        """Extract context from rule number and steps"""
+        # Analyze step names to determine context
+        all_text = " ".join(
+            [s.get("step_name", "") + " " + s.get("explanation", "") for s in steps]
+        ).lower()
+
+        if "role" in all_text and ("assign" in all_text or "privilege" in all_text):
+            return "Privileged role assignment and RBAC investigation"
+        elif "sign-in" in all_text or "login" in all_text:
+            return "User authentication and sign-in activity investigation"
+        elif "ip" in all_text and "reputation" in all_text:
+            return "IP reputation and network threat investigation"
+        elif "device" in all_text or "endpoint" in all_text:
+            return "Device compliance and endpoint security investigation"
+        else:
+            return "Security incident investigation and analysis"
+
     def _process_steps_parallel(
         self, original_steps: List[Dict], rule_number: str, rule_context: str
     ) -> List[Dict]:
-        """Process multiple steps in parallel for speed"""
+        """Process multiple steps in parallel"""
 
         enhanced_steps = [None] * len(original_steps)
 
         # Use ThreadPoolExecutor for parallel processing
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            # Submit all tasks
+        with ThreadPoolExecutor(max_workers=3) as executor:
             future_to_index = {
                 executor.submit(
-                    self._process_single_step_fast,
+                    self._process_single_step,
                     i + 1,
                     step,
                     rule_number,
@@ -110,55 +128,55 @@ class OptimizedTemplateGenerator:
                 for i, step in enumerate(original_steps)
             }
 
-            # Collect results as they complete
             for future in as_completed(future_to_index):
                 index = future_to_index[future]
                 try:
-                    result = future.result(timeout=150)
+                    result = future.result(timeout=180)  # Longer timeout for web search
                     enhanced_steps[index] = result
                     print(f"✅ Step {index + 1} completed")
                 except Exception as e:
                     print(f"⚠️ Step {index + 1} failed: {str(e)}")
-                    # Use fallback
                     enhanced_steps[index] = self._fallback_step(
                         index + 1, original_steps[index]
                     )
 
         return enhanced_steps
 
-    def _process_single_step_fast(
+    def _process_single_step(
         self,
         step_num: int,
         original_step: Dict,
         rule_number: str,
         rule_context: str,
     ) -> Dict:
-        """Process step with better error handling and faster prompts"""
+        """Process single step with enhanced KQL generation"""
 
         original_name = original_step.get("step_name", "")
         original_explanation = original_step.get("explanation", "")
 
-        # 1. Generate step name - SHORT prompt
-        step_name = self._generate_step_name_fast(
+        # 1. Generate/improve step name
+        step_name = self._enhance_step_name(
             original_name, original_explanation, step_num
         )
 
-        # 2. Keep or enhance explanation
-        if len(original_explanation) > 50 and not self._is_vague(original_explanation):
-            explanation = self._enforce_explanation_length(original_explanation)
-        else:
-            explanation = self._enhance_explanation_fast(
-                step_name, original_explanation
-            )
+        # 2. Enhance explanation
+        explanation = self._enhance_explanation(step_name, original_explanation)
 
-        # 3. Generate KQL if needed
-        kql_query, kql_explanation = self._generate_kql_dynamic(
-            step_name, explanation, step_num
+        # 3. Generate KQL using enhanced generator
+        print(f"\n📊 Processing Step {step_num}: {step_name}")
+        kql_query, kql_explanation = self.kql_generator.generate_kql_query(
+            step_name=step_name,
+            explanation=explanation,
+            step_number=step_num,
+            rule_context=rule_context,
         )
 
-        # 4. If no KQL, enhance explanation with manual steps
+        # 4. Add manual investigation steps if no KQL
         if not kql_query and self._needs_investigation_guidance(step_name, explanation):
             explanation = self._add_manual_investigation_steps(explanation, step_name)
+
+        # Enforce length limits
+        explanation = self._enforce_length(explanation, max_sentences=3)
 
         return {
             "Step": step_num,
@@ -171,125 +189,78 @@ class OptimizedTemplateGenerator:
             "Remarks/Comments": "",
         }
 
-    def _enforce_explanation_length(
-        self, explanation: str, max_sentences: int = 3
+    def _enhance_step_name(
+        self, original_name: str, explanation: str, step_num: int
     ) -> str:
-        """✅ REDUCED to 3 sentences max"""
-        if not explanation:
-            return explanation
+        """Enhance step name if needed"""
 
-        sentences = re.split(r"(?<=[.!?])\s+", explanation.strip())
+        # If original is good, clean and use it
+        if self._is_good_step_name(original_name):
+            return self._clean_step_name(original_name)
 
-        if len(sentences) > max_sentences:
-            limited = " ".join(sentences[:max_sentences])
-            return limited
+        # Generate improved name
+        prompt = f"""Generate a clear SOC investigation step name.
 
-        return explanation
+Original name: {original_name[:100]}
+Context: {explanation[:100]}
 
-    def _generate_kql_dynamic(
-        self, step_name: str, explanation: str, step_num: int
-    ) -> Tuple[str, str]:
-        """Generate KQL using DynamicKQLGenerator (web + LLM)"""
+Requirements:
+- Start with action verb: Verify, Analyze, Review, Check, Investigate
+- Be specific and clear
+- 4-8 words maximum
+- No numbering or prefixes
 
-        combined = f"{step_name} {explanation}".lower()
+Example: "Verify User Sign-in Activity"
 
-        # Check if needs KQL
-        if not self._needs_kql(combined):
-            return "", ""
+Output ONLY the step name:"""
 
         try:
-            # ✅ USE DYNAMIC GENERATOR
-            kql_query = self.kql_generator.generate_kql_query(
-                step_name=step_name,
-                explanation=explanation,
-                context=f"Security investigation step {step_num}",
-            )
+            result = self._quick_llm_call(prompt, max_tokens=30)
+            step_name = self._aggressive_clean(result)
 
-            if kql_query and self._is_valid_kql(kql_query):
-                # ✅ AGGRESSIVE KQL CLEANING
-                kql_query = self._deep_clean_kql(kql_query)
-                kql_explanation = self._get_kql_explanation_from_query(kql_query)
-                return kql_query, kql_explanation
+            if 5 <= len(step_name) <= 100 and self._is_clean_name(step_name):
+                return step_name
 
         except Exception as e:
-            print(f"⚠️ KQL generation failed for step {step_num}: {str(e)}")
+            print(f"   ⚠️ Name generation failed: {str(e)[:50]}")
 
-        return "", ""
+        return self._clean_step_name(original_name) or f"Investigation Step {step_num}"
 
-    def _deep_clean_kql(self, kql: str) -> str:
-        """✅ AGGRESSIVE KQL cleaning to remove all artifacts"""
-        if not kql:
-            return ""
+    def _enhance_explanation(self, step_name: str, original: str) -> str:
+        """Enhance explanation if needed"""
 
-        # Remove markdown
-        kql = re.sub(r"```kql\s*", "", kql)
-        kql = re.sub(r"```\s*", "", kql)
+        # If original is detailed enough, keep it
+        if len(original) > 50 and not self._is_vague(original):
+            return self._enforce_length(original, max_sentences=3)
 
-        # Remove explanations and comments
-        lines = []
-        for line in kql.split("\n"):
-            line = line.strip()
+        # Generate enhanced explanation
+        prompt = f"""Write a concise SOC investigation instruction.
 
-            # Skip empty lines
-            if not line:
-                continue
+Step: {step_name}
+Current: {original[:150]}
 
-            # Skip comment lines
-            if line.startswith("//") or line.startswith("#"):
-                continue
+Include:
+- What to investigate
+- Which logs/tools to use
+- What to look for
+- Maximum 2-3 sentences
 
-            # Remove inline comments
-            if "//" in line:
-                line = line.split("//")[0].strip()
+Output ONLY the instruction:"""
 
-            # Stop at explanation text
-            if any(
-                stop in line.lower()
-                for stop in [
-                    "this query",
-                    "explanation:",
-                    "note:",
-                    "output:",
-                    "the query",
-                    "this kql",
-                    "result:",
-                ]
-            ):
-                break
+        try:
+            result = self._quick_llm_call(prompt, max_tokens=100)
+            explanation = self._aggressive_clean(result)
 
-            # ✅ REMOVE LLM ARTIFACTS
-            if any(
-                artifact in line.lower()
-                for artifact in [
-                    "i now can give",
-                    "final answer",
-                    "my job depends",
-                    "i must use",
-                    "current task",
-                    "here is",
-                    "here's",
-                ]
-            ):
-                continue
+            if len(explanation) > 20:
+                return self._enforce_length(explanation, max_sentences=3)
 
-            lines.append(line)
+        except Exception as e:
+            print(f"   ⚠️ Explanation generation failed: {str(e)[:50]}")
 
-        kql = "\n".join(lines)
-
-        # Replace hardcoded values with placeholders
-        kql = re.sub(
-            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "<USER_EMAIL>", kql
-        )
-        kql = re.sub(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", "<IP_ADDRESS>", kql)
-        kql = re.sub(r"ago\(\d+[dhm]\)", "ago(<TIMESPAN>)", kql)
-
-        # Remove trailing/leading whitespace
-        kql = kql.strip()
-
-        return kql
+        return original or "Complete investigation and document findings."
 
     def _needs_investigation_guidance(self, step_name: str, explanation: str) -> bool:
-        """Check if step needs investigation guidance"""
+        """Check if step needs manual investigation guidance"""
         combined = f"{step_name} {explanation}".lower()
 
         needs_guidance = [
@@ -324,7 +295,6 @@ class OptimizedTemplateGenerator:
         """Add manual investigation steps when KQL isn't available"""
 
         step_lower = step_name.lower()
-
         manual_steps = ""
 
         if "ip" in step_lower and "reputation" in step_lower:
@@ -350,166 +320,30 @@ class OptimizedTemplateGenerator:
 
         if manual_steps and manual_steps.strip() not in explanation:
             combined = explanation + manual_steps
-            return self._enforce_explanation_length(combined, max_sentences=3)
+            return self._enforce_length(combined, max_sentences=4)
 
         return explanation
 
-    def _get_kql_explanation_from_query(self, kql: str) -> str:
-        """Generate concise explanation from KQL query structure"""
+    def _enforce_length(self, text: str, max_sentences: int = 3) -> str:
+        """Enforce maximum sentence length"""
+        if not text:
+            return text
 
-        kql_lower = kql.lower()
+        sentences = re.split(r"(?<=[.!?])\s+", text.strip())
 
-        if "signinlogs" in kql_lower:
-            if "summarize" in kql_lower:
-                return "Aggregates sign-in activity to identify patterns, unique locations, failed attempts, and risk indicators."
-            else:
-                return "Queries SigninLogs to retrieve user authentication activity, IP addresses, locations, and device details."
+        if len(sentences) > max_sentences:
+            limited = " ".join(sentences[:max_sentences])
+            return limited
 
-        elif "auditlogs" in kql_lower:
-            if "role" in kql_lower:
-                return "Queries AuditLogs to track role assignments, privilege escalations, and administrative actions."
-            else:
-                return "Queries AuditLogs to retrieve administrative actions, configuration changes, and security operations."
-
-        elif "identityinfo" in kql_lower:
-            return "Queries IdentityInfo to retrieve user profile data, organizational information, and VIP status."
-
-        elif "threatintelligenceindicator" in kql_lower:
-            return "Cross-references against threat intelligence feeds to identify known malicious indicators and IP reputations."
-
-        elif "deviceinfo" in kql_lower:
-            return "Queries device inventory to retrieve endpoint information and compliance status."
-
-        else:
-            return "Queries security logs to retrieve relevant data for investigation."
-
-    def _generate_step_name_fast(
-        self, original_name: str, explanation: str, step_num: int
-    ) -> str:
-        """Generate step name with AGGRESSIVE cleaning"""
-
-        # If original is good, clean and use it
-        if self._is_good_step_name(original_name):
-            return self._clean_step_name(original_name)
-
-        # ✅ EVEN SHORTER prompt
-        prompt = f"""Generate 1 clear SOC step name.
-
-Original: {original_name[:80]}
-
-Rules:
-- ONE verb only: Verify/Analyze/Review/Check
-- 3-6 words
-- No artifacts
-
-Example: "Verify User VIP Status"
-
-Name:"""
-
-        try:
-            result = self._quick_llm_call(prompt, max_tokens=30)
-            step_name = self._ultra_clean_llm_output(result)
-
-            # Validate
-            if 5 <= len(step_name) <= 80 and self._is_clean_step_name(step_name):
-                return step_name
-
-        except:
-            pass
-
-        return self._clean_step_name(original_name) or f"Investigation Step {step_num}"
-
-    def _enhance_explanation_fast(self, step_name: str, original: str) -> str:
-        """Enhance explanation with length limit"""
-
-        if len(original) > 50:
-            return self._enforce_explanation_length(original)
-
-        prompt = f"""Write SOC instruction for: {step_name}
-
-Be specific:
-- What to investigate
-- Which tools/logs
-- 2 sentences max
-
-Instruction:"""
-
-        try:
-            result = self._quick_llm_call(prompt, max_tokens=80)
-            explanation = self._ultra_clean_llm_output(result)
-            explanation = self._enforce_explanation_length(explanation, max_sentences=2)
-
-            return explanation if len(explanation) > 20 else original
-        except:
-            return original or "Complete investigation and document findings."
-
-    def _is_valid_kql(self, kql: str) -> bool:
-        """Validate KQL"""
-        if not kql or len(kql) < 20:
-            return False
-
-        tables = [
-            "SigninLogs",
-            "AuditLogs",
-            "IdentityInfo",
-            "ThreatIntelligenceIndicator",
-            "DeviceInfo",
-        ]
-        if not any(table in kql for table in tables):
-            return False
-
-        if not any(
-            op in kql.lower() for op in ["where", "extend", "project", "summarize"]
-        ):
-            return False
-
-        return True
-
-    def _needs_kql(self, text: str) -> bool:
-        """Check if step needs KQL"""
-
-        skip_keywords = [
-            "document",
-            "close",
-            "escalate",
-            "inform",
-            "notify",
-            "report",
-            "classify",
-            "confirmation",
-            "user confirms",
-            "scenarios",
-            "true positive",
-            "false positive",
-        ]
-
-        if any(keyword in text for keyword in skip_keywords):
-            return False
-
-        kql_keywords = [
-            "check",
-            "verify",
-            "review",
-            "analyze",
-            "query",
-            "sign-in",
-            "logs",
-            "audit",
-            "ip",
-            "device",
-            "user",
-            "role",
-        ]
-
-        return any(keyword in text for keyword in kql_keywords)
+        return text
 
     def _quick_llm_call(self, prompt: str, max_tokens: int = 100) -> str:
-        """Make quick LLM call with timeout"""
+        """Make quick LLM call"""
 
         agent = Agent(
             role="SOC Analyst",
-            goal="Generate concise output",
-            backstory="Security expert",
+            goal="Generate concise security content",
+            backstory="Expert security analyst",
             llm=self.llm,
             verbose=False,
         )
@@ -525,36 +359,24 @@ Instruction:"""
 
         return str(result)
 
-    def _ultra_clean_llm_output(self, text: str) -> str:
-        """✅ ULTRA AGGRESSIVE cleaning"""
+    def _aggressive_clean(self, text: str) -> str:
+        """Aggressively remove LLM artifacts"""
 
-        # Remove ALL common artifacts
         artifacts = [
-            "I now can give a great answer",
+            "I now can give",
             "FINAL ANSWER:",
             "Final Answer:",
-            "I MUST use these formats",
-            "my job depends on it",
-            "Here is the",
-            "Here's the",
             "Here is",
             "Here's",
             "The answer is:",
             "Answer:",
             "Step:",
-            "Step Name:",
             "Name:",
             "Explanation:",
-            "Query:",
-            "Thought:",
-            "User:",
-            "Current Task:",
-            "### User:",
             "Output:",
-            "The task",
+            "Current Task:",
             "My final response",
-            "ready for submission",
-            "has been completed",
+            "successfully",
         ]
 
         text_lower = text.lower()
@@ -562,15 +384,13 @@ Instruction:"""
             if artifact.lower() in text_lower:
                 parts = text.split(artifact, 1)
                 text = parts[-1] if len(parts) > 1 else parts[0]
-                text = text.replace(artifact, "")
 
         # Remove quotes, markdown, numbering
         text = re.sub(r'^["\'`\-\*\.]+', "", text.strip())
-        text = re.sub(r'["\'`]+$', "", text.strip())
+        text = re.sub(r'["\'`]+', "", text.strip())
         text = re.sub(r"\*\*", "", text)
         text = re.sub(r"```[a-z]*\n?", "", text)
         text = re.sub(r"^\d+\.\s*", "", text)
-        text = re.sub(r'^-\s*"?', "", text)
         text = re.sub(r"^:\s*", "", text)
 
         # Clean whitespace
@@ -578,33 +398,6 @@ Instruction:"""
         text = text.strip('" \n\r:.-')
 
         return text
-
-    def _is_clean_step_name(self, name: str) -> bool:
-        """Check if step name is clean (no artifacts)"""
-        name_lower = name.lower()
-
-        # Check for artifacts
-        artifacts = [
-            "i must",
-            "job depends",
-            "final answer",
-            "task completed",
-            "ready for submission",
-            "my final response",
-            "here is",
-            "---",
-            "the task",
-            "successfully",
-        ]
-
-        if any(artifact in name_lower for artifact in artifacts):
-            return False
-
-        # Check for reasonable length
-        if len(name) < 10 or len(name) > 80:
-            return False
-
-        return True
 
     def _is_good_step_name(self, name: str) -> bool:
         """Check if step name is good"""
@@ -627,24 +420,35 @@ Instruction:"""
         name_lower = name.lower()
         starts_with_verb = any(name_lower.startswith(verb) for verb in action_verbs)
 
-        if len(name) > 80:
-            return False
-
-        if not self._is_clean_step_name(name):
+        if len(name) > 100 or not self._is_clean_name(name):
             return False
 
         return starts_with_verb
+
+    def _is_clean_name(self, name: str) -> bool:
+        """Check if name is clean"""
+        name_lower = name.lower()
+
+        artifacts = [
+            "i must",
+            "job depends",
+            "final answer",
+            "task completed",
+            "ready for submission",
+            "---",
+            "successfully",
+        ]
+
+        return not any(artifact in name_lower for artifact in artifacts)
 
     def _clean_step_name(self, name: str) -> str:
         """Clean step name"""
         name = re.sub(r"^\d+\.?\s*", "", name)
         name = re.sub(r"^Step\s*\d+:?\s*", "", name, flags=re.IGNORECASE)
-
-        # Remove "---" artifacts
         name = re.sub(r"\s*---\s*\w+", "", name)
 
-        if len(name) > 80:
-            name = name[:77] + "..."
+        if len(name) > 100:
+            name = name[:97] + "..."
 
         return name.strip()
 
@@ -663,7 +467,7 @@ Instruction:"""
             "Name": self._clean_step_name(
                 original_step.get("step_name", f"Step {step_num}")
             ),
-            "Explanation": self._enforce_explanation_length(
+            "Explanation": self._enforce_length(
                 original_step.get("explanation", "Complete investigation step.")
             ),
             "KQL Query": "",
@@ -703,14 +507,14 @@ Instruction:"""
             cell.alignment = header_alignment
 
         column_widths = {
-            "A": 8,
-            "B": 30,
-            "C": 45,
-            "D": 60,
-            "E": 35,
-            "F": 12,
-            "G": 25,
-            "H": 30,
+            "A": 8,  # Step
+            "B": 30,  # Name
+            "C": 50,  # Explanation
+            "D": 70,  # KQL Query (wider for better readability)
+            "E": 40,  # KQL Explanation
+            "F": 12,  # Execute
+            "G": 30,  # Output
+            "H": 35,  # Remarks
         }
 
         for col_letter, width in column_widths.items():
@@ -740,8 +544,10 @@ Instruction:"""
 
 # Compatibility wrapper
 class EnhancedTemplateGenerator:
+    """Wrapper to maintain backward compatibility"""
+
     def __init__(self):
-        self.generator = OptimizedTemplateGenerator()
+        self.generator = ImprovedTemplateGenerator()
         self.template_columns = self.generator.template_columns
 
     def generate_clean_template(

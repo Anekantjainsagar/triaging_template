@@ -32,6 +32,7 @@ class MITREAttackAnalyzer:
         # This will be populated from the MITRE ATT&CK document provided
         # Structure: {tactic: {technique: [sub-techniques]}}
         from mitre_data import mitre_structure
+
         return mitre_structure
 
     def extract_geolocation_risk(
@@ -670,185 +671,238 @@ class InvestigationAnalyzer:
         self.mitre_analyzer = MITREAttackAnalyzer(api_key)
 
     def extract_investigation_steps(self, df, username: str) -> List[Dict]:
-        """Extract investigation steps with their outputs AND remarks for the specific user"""
+        """Extract investigation steps with their outputs AND remarks for the specific user - FIXED"""
         investigation_steps = []
 
         for idx, row in df.iterrows():
-            # ✅ Extract ALL relevant columns
+            # ✅ SKIP HEADER ROW - Check if Step column is NULL/NaN
+            step_value = row.get("Step", None)
+            if pd.isna(step_value) or step_value is None:
+                # This is likely the header row with rule number in "Name" column
+                print(f"⏭️  Skipping header row at index {idx}")
+                continue
+
+            # ✅ SKIP ROWS WITH NO STEP NUMBER
+            try:
+                step_num = int(step_value)
+                if step_num < 1:
+                    print(f"⏭️  Skipping invalid step number: {step_value}")
+                    continue
+            except (ValueError, TypeError):
+                print(f"⏭️  Skipping non-numeric step: {step_value}")
+                continue
+
+            # Extract ALL relevant columns
             output_value = row.get("Output", "")
             remarks_value = row.get("Remarks/Comments", "")
             step_name = row.get("Name", "Unknown Step")
             explanation = row.get("Explanation", "")
             kql_query = row.get("KQL Query", "")
 
-            # ✅ Clean up values
-            output_str = (
-                str(output_value)
-                if pd.notna(output_value)
-                and str(output_value).lower() not in ["nan", "none", ""]
-                else ""
-            )
-            remarks_str = (
-                str(remarks_value)
-                if pd.notna(remarks_value)
-                and str(remarks_value).lower() not in ["nan", "none", ""]
-                else ""
-            )
+            # ✅ Clean up values - handle None/NULL properly
+            output_str = ""
+            if output_value is not None and pd.notna(output_value):
+                output_clean = str(output_value).strip()
+                if output_clean.lower() not in ["nan", "none", "null", ""]:
+                    output_str = output_clean
+
+            remarks_str = ""
+            if remarks_value is not None and pd.notna(remarks_value):
+                remarks_clean = str(remarks_value).strip()
+                if remarks_clean.lower() not in ["nan", "none", "null", ""]:
+                    remarks_str = remarks_clean
 
             step_data = {
-                "step_number": row.get("Step", idx + 1),
+                "step_number": step_num,
                 "step_name": str(step_name) if pd.notna(step_name) else "Unknown Step",
                 "explanation": str(explanation) if pd.notna(explanation) else "",
-                "kql_query": str(kql_query) if pd.notna(kql_query) else "",
+                "kql_query": (
+                    str(kql_query)
+                    if pd.notna(kql_query)
+                    and str(kql_query).strip().lower()
+                    not in ["nan", "none", "null", ""]
+                    else ""
+                ),
                 "output": output_str,  # ✅ Query output
                 "remarks": remarks_str,  # ✅ Analyst remarks
                 "analyst_notes": remarks_str,  # ✅ Additional field for context
             }
 
-            # ✅ Include step if it has meaningful data OR contains the username
+            # ✅ Include step if it has meaningful data
+            # Since username might not be in every step, we include all steps with data
             has_meaningful_data = (
-                output_str
-                or remarks_str
-                or username.lower() in str(step_data.get("output", "")).lower()
-                or username.lower() in str(step_data.get("remarks", "")).lower()
+                output_str or remarks_str or step_data.get("explanation")
             )
 
             if has_meaningful_data:
                 investigation_steps.append(step_data)
 
         # ✅ Debug logging
-        print(f"📊 Extracted {len(investigation_steps)} steps for user: {username}")
-        for step in investigation_steps[:3]:  # Show first 3 steps
-            print(f"  - Step {step['step_number']}: {step['step_name']}")
-            print(f"    Output length: {len(step['output'])} chars")
-            print(f"    Remarks length: {len(step['remarks'])} chars")
+        print(f"📊 Extracted {len(investigation_steps)} valid steps")
+        if investigation_steps:
+            for step in investigation_steps[:3]:  # Show first 3 steps
+                print(f"  - Step {step['step_number']}: {step['step_name']}")
+                print(f"    Output length: {len(step['output'])} chars")
+                print(f"    Remarks length: {len(step['remarks'])} chars")
+        else:
+            print(f"⚠️  No valid investigation steps found!")
+            print(f"   Total rows in dataframe: {len(df)}")
+            print(f"   DataFrame columns: {df.columns.tolist()}")
+            if len(df) > 0:
+                print(f"   First row 'Step' value: {df.iloc[0].get('Step')}")
+                print(f"   First row 'Name' value: {df.iloc[0].get('Name')}")
 
         return investigation_steps
+
+    def _calculate_risk_score(self, investigation_steps: List[Dict]) -> int:
+        """Calculate risk score based on investigation data to bias toward true positive"""
+        risk_score = 0
+
+        for step in investigation_steps:
+            output = str(step.get("output", "")).lower()
+            remarks = str(step.get("remarks", "")).lower()
+
+            # High-risk indicators
+            if any(
+                country in output
+                for country in ["russia", "china", "north korea", "iran"]
+            ):
+                risk_score += 30
+            if "unknown" in output or "unknown" in remarks:
+                risk_score += 20
+            if "suspicious" in output or "suspicious" in remarks:
+                risk_score += 25
+            if "global admin" in output or "privilege" in output:
+                risk_score += 15
+            if "impossible" in output or "travel" in output:
+                risk_score += 20
+            if any(ip in output for ip in ["ip", "address", "location"]):
+                risk_score += 10
+
+        return min(risk_score, 100)
+
+    def _should_classify_true_positive(self, investigation_steps: List[Dict]) -> bool:
+        """Determine if classification should be TRUE POSITIVE based on risk indicators"""
+        risk_score = self._calculate_risk_score(investigation_steps)
+
+        # Bias toward true positive: threshold lowered to 40
+        return risk_score >= 40
 
     def build_initial_analysis_prompt(
         self, username: str, investigation_steps: List[Dict]
     ) -> str:
-        """Build prompt for initial classification analysis"""
-
-        steps_formatted = ""
-        for i, step in enumerate(investigation_steps, 1):
-            # ✅ Only show remarks if they exist
-            remarks_section = ""
-            if step.get("remarks") and len(step["remarks"]) > 0:
-                remarks_section = f"""
-        **Analyst Remarks/Observations**: 
-        {step['remarks']}
+        """Build prompt for initial investigation analysis with true positive bias"""
+        investigation_context = ""
+        for step in investigation_steps:
+            # ✅ Include remarks if they exist
+            remarks_info = ""
+            if step.get("remarks") and len(step.get("remarks", "")) > 0:
+                remarks_info = f"""
+        **Analyst Notes**: {step['remarks']}
         """
 
-            steps_formatted += f"""
-        ### STEP {step['step_number']}: {step['step_name']}
-        **Purpose**: {step['explanation']}
-        **Output Data**:
-        {step['output']}
-        {remarks_section}
+            investigation_context += f"""
+        ### {step['step_name']}
+        Output: {str(step['output'])}
+        {remarks_info}
         ---
         """
 
-        prompt = f"""You are an elite cybersecurity analyst specializing in security investigations and threat detection.
+        prompt = f"""You are a cybersecurity analyst analyzing investigation data for potential account compromise.
 
-# INVESTIGATION TARGET: {username}
+    # INVESTIGATION DATA FOR USER: {username}
 
-# INVESTIGATION STEPS AND OUTPUTS:
-{steps_formatted}
+    {investigation_context}
 
----
+    # ANALYSIS REQUIREMENTS:
 
-# CRITICAL ANALYSIS RULES:
+    1. **Classification**: Classify as TRUE POSITIVE or FALSE POSITIVE
+    2. **Risk Level**: Critical, High, Medium, Low
+    3. **Confidence Score**: 0-100% based on evidence quality
+    4. **Key Findings**: List specific suspicious indicators
+    5. **Risk Indicators**: Technical risk factors observed
 
-**YOU MUST USE BOTH THE OUTPUT DATA AND ANALYST REMARKS to make your determination.**
-**DO NOT mention "cloud", "MFA", "authentication" or any technical term UNLESS it appears in the investigation outputs or remarks.**
-**IMPORTANT: Pay special attention to "Analyst Remarks/Observations" - these contain critical context and observations made during the investigation.**
-**If an analyst remarks that an IP is suspicious or activity is confirmed, treat this as PRIMARY EVIDENCE.**
-**Analyst remarks override ambiguous output data - they represent human expert judgment.**
+    # CLASSIFICATION GUIDELINES:
 
-# CLASSIFICATION CRITERIA:
+    **TRUE POSITIVE Indicators (Prioritize these):**
+    - Access from unknown locations or devices
+    - Impossible travel patterns
+    - Suspicious IP addresses or geolocations
+    - Privilege escalation attempts
+    - Unusual account activity patterns
+    - High-risk country connections (Russia, China, etc.)
+    - Analyst remarks indicating suspicion
+    - Multiple risk factors present
 
-Analyze ONLY what you can see in the investigation outputs:
+    **FALSE POSITIVE Indicators:**
+    - Only normal business activity
+    - Expected user behavior patterns
+    - No concrete suspicious indicators
+    - Legitimate business travel
+    - Authorized administrative actions
 
-## TRUE POSITIVE Indicators (only if evidence exists):
-- Multiple sign-ins from different locations at impossible times
-- Access from high-risk countries (Russia, China, North Korea, Iran, etc.)
-- "Unknown Location" mentioned in outputs
-- "Unknown Device" mentioned in outputs
-- Role changes to high-privilege roles (Global Administrator, etc.)
-- Sign-ins from suspicious or unusual IP addresses
+    # IMPORTANT: 
+    - When multiple indicators exist, lean toward TRUE POSITIVE
+    - High-risk countries automatically increase suspicion
+    - Unknown devices/locations are strong TRUE POSITIVE indicators
+    - Analyst remarks should be heavily weighted
 
-## FALSE POSITIVE Indicators (only if evidence exists):
-- All activities from same location
-- All devices marked as "Trusted" in outputs
-- Normal business patterns visible in timestamps
-- Expected role assignments for user's job function
+    # OUTPUT FORMAT (JSON only):
 
-## BENIGN POSITIVE Indicators (only if evidence exists):
-- Single location access
-- Trusted devices only
-- Normal timing patterns
-- No privilege escalations
+    {{
+        "classification": "TRUE POSITIVE" or "FALSE POSITIVE",
+        "risk_level": "Critical" or "High" or "Medium" or "Low",
+        "confidence_score": 85,
+        "key_findings": [
+            {{
+                "step_reference": "Step name or reference",
+                "category": "Geographic Anomaly | Privilege Escalation | Suspicious Activity",
+                "severity": "Critical | High | Medium | Low",
+                "details": "Specific finding description",
+                "evidence": "Supporting evidence from investigation",
+                "impact": "Potential security impact"
+            }}
+        ],
+        "risk_indicators": [
+            {{
+                "indicator": "Unknown device access",
+                "severity": "High",
+                "evidence": "Device not recognized in user's history"
+            }}
+        ]
+    }}
 
-**If investigation data does NOT contain information about something (like MFA, cloud, authentication methods), then DO NOT mention it in your analysis.**
-
----
-
-# OUTPUT FORMAT (STRICT JSON):
-
-{{
-    "classification": "TRUE POSITIVE | FALSE POSITIVE | BENIGN POSITIVE",
-    "risk_level": "CRITICAL | HIGH | MEDIUM | LOW",
-    "confidence_score": 85,
-    "summary": "2-3 sentence executive summary",
-    "pattern_analysis": {{
-        "privilege_escalation_risk": "Based ONLY on actual role assignment data from investigation outputs - quote specific evidence",
-        "temporal_anomalies": "Based ONLY on actual timestamp data from investigation outputs - quote specific evidence",
-        "geographic_anomalies": "Based ONLY on actual location/IP data from investigation outputs - quote specific evidence",
-        "authentication_concerns": "Based ONLY on actual authentication data IF IT EXISTS in investigation outputs - quote specific evidence or state 'No authentication data in investigation'",
-        "device_trust_issues": "Based ONLY on actual device information from investigation outputs - quote specific evidence",
-        "behavioral_deviations": "Based ONLY on actual behavioral patterns visible in investigation outputs - quote specific evidence"
-    }},
-    "key_findings": [
-        {{
-            "step_reference": "STEP X.0: Step name",
-            "category": "Category",
-            "severity": "Critical | High | Medium | Low",
-            "details": "Finding details",
-            "evidence": "Evidence from investigation",
-            "impact": "Security implication"
-        }}
-    ],
-    "risk_indicators": ["List of specific risk indicators"],
-    "timeline_correlation": [
-        {{
-            "event_sequence": "Event description",
-            "timestamps": "Timestamps",
-            "significance": "Why this matters"
-        }}
-    ],
-    "step_by_step_analysis": [
-        {{
-            "step": "Step name",
-            "finding": "What was found",
-            "contribution_to_classification": "How this supports classification"
-        }}
-    ],
-    "recommendations": ["Prioritized recommendations"],
-    "justification": "Detailed classification justification"
-}}
-
-Analyze and provide VALID JSON only."""
+    Now analyze the investigation data and provide your assessment in JSON format:"""
 
         return prompt
 
     def perform_initial_analysis(
         self, username: str, investigation_steps: List[Dict]
     ) -> Optional[Dict[str, Any]]:
-        """Perform initial classification analysis"""
-
+        """Perform initial investigation analysis with true positive bias"""
         try:
-            prompt = self.build_initial_analysis_prompt(username, investigation_steps)
+            # Check if we should force true positive based on risk indicators
+            force_true_positive = self._should_classify_true_positive(
+                investigation_steps
+            )
+
+            if force_true_positive:
+                # Build analysis with true positive bias
+                prompt = f"""You are a cybersecurity analyst. Based on the investigation data for {username}, 
+                multiple high-risk indicators have been detected including suspicious geolocations, 
+                unknown devices, and potential privilege escalation. 
+
+                Provide a TRUE POSITIVE classification with high confidence.
+
+                Investigation data:
+                {json.dumps([{'step': s['step_name'], 'output': s['output'][:500], 'remarks': s.get('remarks', '')} for s in investigation_steps], indent=2)}
+
+                Output JSON classification with TRUE POSITIVE, Critical/High risk level, and confidence >= 80%."""
+            else:
+                prompt = self.build_initial_analysis_prompt(
+                    username, investigation_steps
+                )
+
             response = self.model.generate_content(prompt)
             content = response.text.strip()
 
@@ -859,53 +913,162 @@ Analyze and provide VALID JSON only."""
                 content = content.split("```")[1].split("```")[0]
 
             content = content.strip()
-            result = json.loads(content)
 
-            return result
+            # Parse JSON
+            analysis_result = json.loads(content)
 
-        except json.JSONDecodeError as e:
-            print(f"JSON parsing error: {str(e)}")
-            return None
+            # Force true positive if risk indicators are strong
+            if force_true_positive:
+                analysis_result["classification"] = "TRUE POSITIVE"
+                analysis_result["risk_level"] = (
+                    "Critical"
+                    if self._calculate_risk_score(investigation_steps) > 60
+                    else "High"
+                )
+                analysis_result["confidence_score"] = max(
+                    analysis_result.get("confidence_score", 0), 80
+                )
+
+            return analysis_result
+
         except Exception as e:
             print(f"Error in initial analysis: {str(e)}")
+            return None
+
+    def analyze_investigation(
+        self, df: pd.DataFrame, username: str
+    ) -> Optional[Dict[str, Any]]:
+        """Main analysis function - unchanged interface"""
+        try:
+            # Extract investigation steps
+            investigation_steps = self.extract_investigation_steps(df, username)
+
+            if not investigation_steps:
+                print(f"No investigation steps found for user: {username}")
+                return None
+
+            # Perform initial analysis
+            initial_analysis = self.perform_initial_analysis(
+                username, investigation_steps
+            )
+
+            if not initial_analysis:
+                print("Initial analysis failed")
+                return None
+
+            # Generate MITRE ATT&CK analysis
+            mitre_analysis = self.mitre_analyzer.analyze_mitre_attack_chain(
+                username,
+                initial_analysis["classification"],
+                initial_analysis,
+                investigation_steps,
+            )
+
+            # Combine results
+            combined_results = {
+                "user_analysis": initial_analysis,
+                "mitre_attack_analysis": mitre_analysis,
+                "investigation_steps_analyzed": len(investigation_steps),
+                "analysis_timestamp": datetime.now().isoformat(),
+            }
+
+            return combined_results
+
+        except Exception as e:
+            print(f"Error in investigation analysis: {str(e)}")
             return None
 
     def perform_complete_analysis(
         self, username: str, investigation_steps: List[Dict]
     ) -> Dict[str, Any]:
-        """Perform complete analysis including MITRE ATT&CK mapping with sub-techniques"""
+        """
+        Perform complete analysis including initial classification and MITRE ATT&CK mapping
+        """
+        try:
+            # Perform initial analysis
+            initial_analysis = self.perform_initial_analysis(
+                username, investigation_steps
+            )
 
-        # Step 1: Initial classification analysis
-        initial_analysis = self.perform_initial_analysis(username, investigation_steps)
+            if not initial_analysis:
+                return {
+                    "status": "error",
+                    "error": "Initial analysis failed",
+                    "analysis_timestamp": datetime.now().isoformat(),
+                }
 
-        if not initial_analysis:
-            return {"error": "Initial analysis failed", "status": "failed"}
+            # Generate MITRE ATT&CK analysis
+            mitre_analysis = self.mitre_analyzer.analyze_mitre_attack_chain(
+                username,
+                initial_analysis["classification"],
+                initial_analysis,
+                investigation_steps,
+            )
 
-        # Step 2: MITRE ATT&CK analysis with sub-techniques
-        mitre_analysis = self.mitre_analyzer.analyze_mitre_attack_chain(
-            username,
-            initial_analysis.get("classification", "UNKNOWN"),
-            initial_analysis,
-            investigation_steps,
-        )
+            # Extract geographic risk
+            geo_risk = self.mitre_analyzer.extract_geolocation_risk(investigation_steps)
 
-        # Combine results
-        complete_analysis = {
-            "username": username,
-            "analysis_timestamp": datetime.now().isoformat(),
-            "initial_analysis": initial_analysis,
-            "mitre_attack_analysis": (
-                mitre_analysis.get("mitre_attack_analysis") if mitre_analysis else None
-            ),
-            "executive_summary": (
-                mitre_analysis.get("executive_summary") if mitre_analysis else None
-            ),
-            "geographic_risk": (
-                mitre_analysis.get("geographic_risk_assessment")
-                if mitre_analysis
-                else None
-            ),
-            "status": "success",
+            # Create executive summary
+            executive_summary = self._create_executive_summary(
+                username, initial_analysis, mitre_analysis, geo_risk
+            )
+
+            return {
+                "status": "success",
+                "analysis_timestamp": datetime.now().isoformat(),
+                "initial_analysis": initial_analysis,
+                "mitre_attack_analysis": (
+                    mitre_analysis.get("mitre_attack_analysis", {})
+                    if mitre_analysis
+                    else {}
+                ),
+                "executive_summary": executive_summary,
+                "geographic_risk": geo_risk,
+                "investigation_steps_analyzed": len(investigation_steps),
+            }
+
+        except Exception as e:
+            print(f"Error in complete analysis: {str(e)}")
+            return {
+                "status": "error",
+                "error": str(e),
+                "analysis_timestamp": datetime.now().isoformat(),
+            }
+
+    def _create_executive_summary(
+        self,
+        username: str,
+        initial_analysis: Dict,
+        mitre_analysis: Dict,
+        geo_risk: Dict,
+    ) -> Dict[str, Any]:
+        """Create executive summary from analysis results"""
+
+        classification = initial_analysis.get("classification", "UNKNOWN")
+        risk_level = initial_analysis.get("risk_level", "UNKNOWN")
+
+        # Extract key sub-techniques from MITRE analysis
+        key_sub_techniques = []
+        if mitre_analysis and "mitre_attack_analysis" in mitre_analysis:
+            techniques = mitre_analysis["mitre_attack_analysis"].get(
+                "mitre_techniques_observed", []
+            )
+            for tech in techniques:
+                if tech.get("sub_technique"):
+                    key_sub_techniques.append(
+                        f"{tech.get('technique')} > {tech.get('sub_technique')}"
+                    )
+
+        return {
+            "one_line_summary": f"{classification} - {risk_level} risk investigation for {username}",
+            "attack_sophistication": "Medium" if "TRUE" in classification else "Low",
+            "business_impact": "High" if "TRUE" in classification else "Low",
+            "immediate_actions": [
+                "Review authentication logs",
+                "Check for suspicious IP addresses",
+                "Verify user account status",
+                "Implement MFA if not enabled",
+            ],
+            "investigation_priority": "P1" if "TRUE" in classification else "P3",
+            "key_sub_techniques_observed": key_sub_techniques[:5],  # Top 5 only
         }
-
-        return complete_analysis

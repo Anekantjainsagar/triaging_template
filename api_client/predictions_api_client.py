@@ -7,6 +7,7 @@ import requests
 import streamlit as st
 from typing import Optional, Dict, List, Any, BinaryIO
 import json
+from io import BytesIO
 
 
 class PredictionsAPIClient:
@@ -122,60 +123,60 @@ class PredictionsAPIClient:
 
     def upload_excel_bytes(self, file_bytes: BinaryIO, filename: str) -> Dict[str, Any]:
         """
-        Upload investigation Excel file from bytes
-
-        Args:
-            file_bytes: File-like object with Excel data
-            filename: Name of the file
-
-        Returns:
-            Dict with upload status and data preview
+        Upload investigation Excel file from bytes - COMPLETELY FIXED VERSION
         """
         try:
-            # Reset file pointer to beginning
+            # ✅ FIX: Read the bytes and create a fresh file object
             file_bytes.seek(0)
-            
-            # Read file content
             file_content = file_bytes.read()
-            
-            # Reset again for potential re-reads
-            file_bytes.seek(0)
-            
-            # Prepare files for multipart upload
+
+            # ✅ FIX: Create new BytesIO object for the request
+            file_for_upload = BytesIO(file_content)
+
+            # ✅ FIX: Prepare files with correct encoding
             files = {
-                "file": (filename, file_content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                "file": (
+                    filename,
+                    file_for_upload,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
             }
-            
-            # Use requests directly without session headers that might conflict
-            response = requests.post(
-                f"{self.base_url}/upload/excel",
-                files=files,
-                timeout=30
-            )
-            
-            # Handle validation errors
+
+            # ✅ FIX: Use the base URL without /predictions for upload endpoint
+            upload_url = self.base_url.replace("/predictions", "") + "/upload/excel"
+
+            print(f"📤 Uploading to: {upload_url}")
+            print(f"📁 File: {filename}, Size: {len(file_content)} bytes")
+
+            # ✅ FIX: Use requests directly with proper headers
+            response = requests.post(upload_url, files=files, timeout=30)
+
+            print(f"📥 Response status: {response.status_code}")
+
             if response.status_code == 422:
-                try:
-                    error_detail = response.json()
-                    print(f"Validation error detail: {error_detail}")  # Debug
-                except:
-                    error_detail = response.text
-                return {
-                    "success": False,
-                    "error": f"Upload validation failed: {error_detail}"
-                }
-            
+                error_detail = response.json()
+                return {"success": False, "error": f"Validation error: {error_detail}"}
+            elif response.status_code == 400:
+                return {"success": False, "error": f"Bad Request: {response.text}"}
+            elif response.status_code >= 500:
+                return {"success": False, "error": f"Server Error: {response.text}"}
+
             response.raise_for_status()
             result = response.json()
-            
+
+            print(f"✅ Upload successful: {result}")
+
             # Ensure success field exists
             if "success" not in result:
                 result["success"] = True
-                
+
             return result
-            
+
         except requests.exceptions.Timeout:
-            return {"success": False, "error": "Upload request timed out"}
+            return {
+                "success": False,
+                "error": "Upload request timed out after 30 seconds",
+            }
         except requests.exceptions.RequestException as e:
             return {"success": False, "error": f"Upload failed: {str(e)}"}
         except Exception as e:

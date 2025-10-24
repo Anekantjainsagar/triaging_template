@@ -52,18 +52,27 @@ def _check_virustotal_auto(ip_address: str) -> dict:
 
 
 def _unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
-    """Callback to unlock predictions tab after download"""
+    """Callback to unlock predictions tab AND immediately upload file"""
     st.session_state.triaging_complete = True
     st.session_state.predictions_excel_data = excel_data
     st.session_state.predictions_excel_filename = filename
     st.session_state.predictions_rule_number = rule_number
 
-    # ✅ ADD: Force save before upload
-    st.session_state.download_triggered = True
+    # ✅ IMMEDIATELY upload to predictions API
+    success = _upload_to_predictions_api(excel_data, filename)
+
+    if success:
+        st.session_state.predictions_uploaded = True
+        st.session_state.show_predictions_unlock_message = True
+        print(f"✅ Successfully uploaded {filename} to predictions API")
+    else:
+        st.session_state.predictions_uploaded = False
+        st.session_state.show_predictions_unlock_message = True
+        print(f"❌ Failed to upload {filename} to predictions API")
 
 
 def _upload_to_predictions_api(excel_data: bytes, filename: str):
-    """Upload Excel file to predictions API immediately"""
+    """Upload Excel file to predictions API immediately - FIXED VERSION"""
     try:
         import os
         from api_client.predictions_api_client import get_predictions_client
@@ -73,27 +82,33 @@ def _upload_to_predictions_api(excel_data: bytes, filename: str):
 
         client = get_predictions_client(predictions_api_url, final_api_key)
 
-        # ✅ FIX: Use BytesIO to create proper file object
+        # ✅ FIX: Create a fresh file object each time
         file_obj = BytesIO(excel_data)
 
         with st.spinner("📤 Uploading to predictions API..."):
+            # ✅ FIX: Use the correct endpoint path
             upload_result = client.upload_excel_bytes(file_obj, filename)
 
         if upload_result.get("success"):
             st.session_state.predictions_uploaded = True
             st.session_state.predictions_upload_result = upload_result
+            st.session_state.predictions_file_data = excel_data
+            st.session_state.predictions_filename = filename
             print(
                 f"✅ Successfully uploaded {upload_result.get('total_rows', 0)} rows to predictions API"
             )
+            return True
         else:
             st.session_state.predictions_upload_error = upload_result.get(
                 "error", "Unknown error"
             )
             print(f"❌ Upload failed: {upload_result.get('error')}")
+            return False
 
     except Exception as e:
         st.session_state.predictions_upload_error = str(e)
         print(f"❌ Upload exception: {str(e)}")
+        return False
 
 
 def _get_enhancement_cache_key(rule_number: str, template_path: str) -> str:
@@ -678,7 +693,7 @@ def _display_enhancement_results(
                             st.session_state.current_open_step = step_num + 1
                             st.rerun()
 
-        # Final Download Section
+        # In the Final Download Section, replace the download button section with:
         if len(st.session_state.completed_steps) == len(enhanced_steps):
             st.markdown("---")
             st.success("🎉 All steps completed!")
@@ -717,13 +732,21 @@ def _display_enhancement_results(
                     ),
                 )
 
-                # Check if download was clicked
-                if st.session_state.get("triaging_complete"):
-                    if not st.session_state.get("predictions_uploaded"):
-                        _upload_to_predictions_api(excel_with_data, filename)
-                        st.success(
-                            "✅ Ready for predictions! Switch to Predictions tab."
-                        )
+            # Show upload status immediately
+            if st.session_state.get("show_predictions_unlock_message"):
+                if st.session_state.get("predictions_uploaded"):
+                    st.success(
+                        "✅ Template uploaded to predictions API! Switch to Predictions tab."
+                    )
+                else:
+                    st.error(
+                        f"❌ Upload failed: {st.session_state.get('predictions_upload_error', 'Unknown error')}"
+                    )
+                    if st.button("🔄 Retry Upload"):
+                        success = _upload_to_predictions_api(excel_with_data, filename)
+                        if success:
+                            st.session_state.predictions_uploaded = True
+                            st.rerun()
 
     # TAB 2: Excel Template Preview & Download
     with tab2:

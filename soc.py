@@ -10,6 +10,30 @@ from components.triaging_integrated import display_triaging_workflow
 import streamlit as st
 import shutil
 import os
+import tempfile
+
+
+def clear_media_cache():
+    """Clear Streamlit media cache to prevent file handler errors"""
+    try:
+        # Clear Streamlit's internal cache
+        st.cache_data.clear()
+        st.cache_resource.clear()
+
+        # Clear media cache directories
+        media_cache_paths = [
+            os.path.join(os.path.expanduser("~"), ".streamlit", "cache"),
+            os.path.join(tempfile.gettempdir(), "streamlit"),
+        ]
+
+        for cache_path in media_cache_paths:
+            if os.path.exists(cache_path):
+                shutil.rmtree(cache_path, ignore_errors=True)
+
+        print("✅ Media cache cleared successfully")
+    except Exception as e:
+        print(f"⚠️ Cache clearing warning: {str(e)}")
+
 
 # Page configuration
 st.set_page_config(
@@ -26,9 +50,17 @@ apply_custom_css()
 media_cache = os.path.join(os.path.expanduser("~"), ".streamlit", "cache")
 if os.path.exists(media_cache):
     try:
-        shutil.rmtree(media_cache)
+        shutil.rmtree(media_cache, ignore_errors=True)
     except:
         pass
+
+temp_streamlit = os.path.join(tempfile.gettempdir(), "streamlit")
+if os.path.exists(temp_streamlit):
+    try:
+        shutil.rmtree(temp_streamlit, ignore_errors=True)
+    except:
+        pass
+
 
 # ============================================================================
 # Session State Management
@@ -290,17 +322,6 @@ def display_predictions_tab_integrated():
 
     st.markdown("### 🔮 True/False Positive Analyzer with MITRE ATT&CK")
 
-    # Check if file was already uploaded during triaging
-    if st.session_state.get("predictions_uploaded"):
-        st.success("✅ Template already uploaded to predictions API")
-
-        # Show upload stats if available
-        upload_result = st.session_state.get("predictions_upload_result")
-        if upload_result:
-            st.info(
-                f"📊 Loaded {upload_result.get('total_rows', 0)} investigation steps"
-            )
-
     # Get the Excel file from session state
     excel_data = st.session_state.get("predictions_excel_data")
     excel_filename = st.session_state.get("predictions_excel_filename")
@@ -311,7 +332,7 @@ def display_predictions_tab_integrated():
 
     st.info(f"📄 Using triaging template: {excel_filename}")
 
-    # Auto-upload to predictions API if not already done
+    # Initialize API client
     import os
     from io import BytesIO
 
@@ -323,24 +344,42 @@ def display_predictions_tab_integrated():
     try:
         client = get_predictions_client(predictions_api_url, final_api_key)
 
-        # Upload the Excel file if not already uploaded
+        # ✅ FIX: Always re-upload to ensure data is fresh
         if not st.session_state.get("predictions_uploaded"):
-            with st.spinner("📤 Uploading triaging data to predictions API..."):
-                file_obj = BytesIO(excel_data)
-                upload_result = client.upload_excel_bytes(file_obj, excel_filename)
+            st.info("📤 Uploading triaging template to analysis engine...")
 
-            if upload_result.get("success"):
+            with st.spinner("Uploading investigation data..."):
+                upload_success = _upload_to_predictions_api(excel_data, excel_filename)
+
+            if upload_success:
+                st.success("✅ Template uploaded successfully!")
                 st.session_state.predictions_uploaded = True
-                st.session_state.predictions_upload_result = upload_result
-                st.success(
-                    f"✅ Loaded {upload_result.get('total_rows', 0)} investigation steps"
-                )
             else:
-                st.error(f"❌ Upload failed: {upload_result.get('error')}")
-
-                with st.expander("🔍 View Error Details"):
-                    st.json(upload_result)
+                st.error(
+                    f"❌ Upload failed: {st.session_state.get('predictions_upload_error', 'Unknown error')}"
+                )
                 return
+        else:
+            st.success("✅ Template already uploaded to predictions API")
+
+        # ✅ FIX: Verify upload with preview
+        st.info("🔍 Verifying uploaded data...")
+        preview_result = client.get_upload_preview()
+
+        if preview_result.get("success"):
+            st.success(
+                f"✅ Data verified: {preview_result.get('total_rows', 0)} investigation steps loaded"
+            )
+
+            # Show preview
+            with st.expander("👁️ Preview Uploaded Data", expanded=False):
+                preview_data = preview_result.get("preview_data", [])
+                if preview_data:
+                    st.dataframe(preview_data, width="stretch")
+                else:
+                    st.info("No preview data available")
+        else:
+            st.warning("⚠️ Data verification failed, but continuing...")
 
         # Username input
         st.markdown("---")

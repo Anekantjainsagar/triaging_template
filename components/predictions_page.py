@@ -254,54 +254,67 @@ def perform_mitre_analysis(client, username: str):
 
 
 def perform_complete_analysis(client, username: str):
-    """Perform complete investigation analysis"""
+    """Perform complete investigation analysis with better error handling"""
 
-    with st.spinner(
-        f"🤖 AI analyzing investigation with MITRE ATT&CK framework for {username}..."
-    ):
-        complete_analysis = client.analyze_complete(username)
+    try:
+        with st.spinner(
+            f"🤖 AI analyzing investigation with MITRE ATT&CK framework for {username}..."
+        ):
+            # First, let's verify the data was uploaded properly
+            preview_result = client.get_upload_preview()
 
-    if complete_analysis.get("success"):
-        st.success("✅ Complete analysis finished!")
+            if not preview_result.get("success"):
+                st.error(f"❌ Data preview failed: {preview_result.get('error')}")
+                return
 
-        # Display initial analysis results
-        display_analysis_results(complete_analysis, username)
-
-        # Display MITRE analysis with sub-techniques
-        if complete_analysis.get("mitre_attack_analysis"):
-            display_mitre_analysis(
-                complete_analysis["mitre_attack_analysis"],
-                username,
+            st.info(
+                f"📊 Data preview: {preview_result.get('total_rows', 0)} rows loaded"
             )
 
-        # Download section
-        st.markdown("---")
-        st.markdown("### 📥 Download Complete Report")
+            # Now perform the complete analysis
+            complete_analysis = client.analyze_complete(username)
 
-        col1, col2, col3 = st.columns(3)
+        if complete_analysis.get("success"):
+            st.success("✅ Complete analysis finished!")
 
-        with col1:
-            # Full JSON report
-            report_json = json.dumps(complete_analysis, indent=2)
-            st.download_button(
-                label="📄 Full Analysis (JSON)",
-                data=report_json,
-                file_name=f"complete_analysis_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                mime="application/json",
-                width="stretch",
-            )
+            # Display initial analysis results
+            display_analysis_results(complete_analysis, username)
 
-        with col2:
-            # Executive summary
-            exec_summary = complete_analysis.get("executive_summary", {})
+            # Display MITRE analysis with sub-techniques
+            if complete_analysis.get("mitre_attack_analysis"):
+                display_mitre_analysis(
+                    complete_analysis["mitre_attack_analysis"],
+                    username,
+                )
 
-            if exec_summary and isinstance(exec_summary, dict):
-                subtechniques_text = ""
-                if exec_summary.get("key_sub_techniques_observed"):
-                    subtechniques_text = f"\n\nKEY SUB-TECHNIQUES OBSERVED:\n{chr(10).join([f'- {st}' for st in exec_summary.get('key_sub_techniques_observed', [])])}"
+            # Download section
+            st.markdown("---")
+            st.markdown("### 📥 Download Complete Report")
 
-                summary_text = f"""SECURITY INVESTIGATION REPORT
-                                        
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                # Full JSON report
+                report_json = json.dumps(complete_analysis, indent=2)
+                st.download_button(
+                    label="📄 Full Analysis (JSON)",
+                    data=report_json,
+                    file_name=f"complete_analysis_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json",
+                    width="stretch",
+                )
+
+            with col2:
+                # Executive summary
+                exec_summary = complete_analysis.get("executive_summary", {})
+
+                if exec_summary and isinstance(exec_summary, dict):
+                    subtechniques_text = ""
+                    if exec_summary.get("key_sub_techniques_observed"):
+                        subtechniques_text = f"\n\nKEY SUB-TECHNIQUES OBSERVED:\n{chr(10).join([f'- {st}' for st in exec_summary.get('key_sub_techniques_observed', [])])}"
+
+                    summary_text = f"""SECURITY INVESTIGATION REPORT
+                                            
 User: {username}
 Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
@@ -323,9 +336,9 @@ IMMEDIATE ACTIONS:
 PRIORITY: {exec_summary.get('investigation_priority', 'N/A')}
 {subtechniques_text}
 """
-            else:
-                summary_text = f"""SECURITY INVESTIGATION REPORT
-                                        
+                else:
+                    summary_text = f"""SECURITY INVESTIGATION REPORT
+                                            
 User: {username}
 Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
@@ -337,73 +350,97 @@ SUMMARY:
 {complete_analysis.get('initial_analysis', {}).get('summary', 'Analysis completed - see detailed report for findings')}
 """
 
-            st.download_button(
-                label="📋 Executive Summary (TXT)",
-                data=summary_text,
-                file_name=f"executive_summary_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                mime="text/plain",
-                width="stretch",
-            )
-
-        with col3:
-            # MITRE Navigator layer
-            if complete_analysis.get("mitre_attack_analysis"):
-                navigator_data = complete_analysis["mitre_attack_analysis"].get(
-                    "mitre_navigator_layer", {}
+                st.download_button(
+                    label="📋 Executive Summary (TXT)",
+                    data=summary_text,
+                    file_name=f"executive_summary_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                    mime="text/plain",
+                    width="stretch",
                 )
-                if navigator_data:
-                    navigator_json = json.dumps(navigator_data, indent=2)
-                    st.download_button(
-                        label="🗺️ MITRE Navigator Layer",
-                        data=navigator_json,
-                        file_name=f"mitre_layer_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                        mime="application/json",
-                        width="stretch",
+
+            with col3:
+                # MITRE Navigator layer
+                if complete_analysis.get("mitre_attack_analysis"):
+                    navigator_data = complete_analysis["mitre_attack_analysis"].get(
+                        "mitre_navigator_layer", {}
                     )
+                    if navigator_data:
+                        navigator_json = json.dumps(navigator_data, indent=2)
+                        st.download_button(
+                            label="🗺️ MITRE Navigator Layer",
+                            data=navigator_json,
+                            file_name=f"mitre_layer_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                            mime="application/json",
+                            width="stretch",
+                        )
 
-        # Display sub-technique coverage summary
-        if complete_analysis.get("mitre_attack_analysis"):
-            coverage = complete_analysis["mitre_attack_analysis"].get(
-                "sub_technique_coverage"
-            )
+            # Display sub-technique coverage summary
+            if complete_analysis.get("mitre_attack_analysis"):
+                coverage = complete_analysis["mitre_attack_analysis"].get(
+                    "sub_technique_coverage"
+                )
 
-            if coverage and isinstance(coverage, dict):
-                st.markdown("---")
-                st.markdown("### 📊 Analysis Summary")
+                if coverage and isinstance(coverage, dict):
+                    st.markdown("---")
+                    st.markdown("### 📊 Analysis Summary")
 
-                col1, col2, col3 = st.columns(3)
+                    col1, col2, col3 = st.columns(3)
 
-                with col1:
-                    st.metric(
-                        "Total Techniques Mapped",
-                        coverage.get("total_techniques_mapped", 0),
-                    )
+                    with col1:
+                        st.metric(
+                            "Total Techniques Mapped",
+                            coverage.get("total_techniques_mapped", 0),
+                        )
 
-                with col2:
-                    st.metric(
-                        "With Sub-Techniques",
-                        coverage.get("techniques_with_sub_techniques", 0),
-                    )
+                    with col2:
+                        st.metric(
+                            "With Sub-Techniques",
+                            coverage.get("techniques_with_sub_techniques", 0),
+                        )
 
-                with col3:
-                    st.metric(
-                        "Sub-Technique Coverage",
-                        coverage.get("sub_technique_percentage", "0%"),
-                    )
+                    with col3:
+                        st.metric(
+                            "Sub-Technique Coverage",
+                            coverage.get("sub_technique_percentage", "0%"),
+                        )
 
-                # Check coverage percentage
+                    # Check coverage percentage
+                    try:
+                        coverage_pct = coverage.get("sub_technique_percentage", "0%")
+                        if isinstance(coverage_pct, str):
+                            coverage_value = float(coverage_pct.rstrip("%"))
+                            if coverage_value < 50:
+                                st.warning(
+                                    "⚠️ Low sub-technique coverage detected. Consider reviewing the analysis for more specific sub-technique identification."
+                                )
+                    except (ValueError, AttributeError):
+                        pass
+
+        else:
+            error_msg = complete_analysis.get("error", "Unknown error")
+            st.error(f"❌ Analysis failed: {error_msg}")
+
+            # Enhanced error debugging
+            with st.expander("🔍 Debug Information", expanded=True):
+                st.write("**Upload Status:**")
+                preview = client.get_upload_preview()
+                st.json(preview)
+
+                st.write("**API Status:**")
+                status = client.analyzer_status()
+                st.json(status)
+
+                # Try initial analysis to isolate the issue
+                st.write("**Testing Initial Analysis:**")
                 try:
-                    coverage_pct = coverage.get("sub_technique_percentage", "0%")
-                    if isinstance(coverage_pct, str):
-                        coverage_value = float(coverage_pct.rstrip("%"))
-                        if coverage_value < 50:
-                            st.warning(
-                                "⚠️ Low sub-technique coverage detected. Consider reviewing the analysis for more specific sub-technique identification."
-                            )
-                except (ValueError, AttributeError):
-                    pass
+                    initial_result = client.analyze_initial(username)
+                    st.json(initial_result)
+                except Exception as e:
+                    st.error(f"Initial analysis also failed: {str(e)}")
 
-    else:
-        st.error(
-            f"❌ Analysis failed: {complete_analysis.get('error', 'Unknown error')}"
-        )
+    except Exception as e:
+        st.error(f"❌ Analysis error: {str(e)}")
+        with st.expander("🔍 View Full Error Details"):
+            import traceback
+
+            st.code(traceback.format_exc())

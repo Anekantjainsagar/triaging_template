@@ -1,5 +1,4 @@
-mitre_st
-ructure = {
+mitre_structure = {
     "Reconnaissance": {
         "Active Scanning": [
             "Scanning IP Blocks",
