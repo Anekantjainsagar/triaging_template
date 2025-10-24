@@ -120,7 +120,7 @@ class MITREAttackAnalyzer:
             geo_risk_data = self.extract_geolocation_risk(investigation_steps)
 
             # Build prompt (using existing method from your code)
-            prompt = self._build_mitre_prompt(
+            prompt = self.build_mitre_analysis_prompt(
                 username, classification, investigation_summary, 
                 geo_risk_data, investigation_steps
             )
@@ -138,7 +138,7 @@ class MITREAttackAnalyzer:
             content = clean_json_response(content)
 
             logger.info(f"Cleaned MITRE response length: {len(content)}")
-            logger.info(f"First 200 chars: {content[:200]}")
+            logger.info(f"First 20 chars: {content[:20]}")
 
             # Parse JSON
             mitre_analysis = json.loads(content)
