@@ -6,6 +6,7 @@ from components.historical_analysis import display_historical_analysis_tab
 
 # Triaging imports
 from components.triaging_integrated import display_triaging_workflow
+from components.triaging.step2_enhance import _upload_to_predictions_api
 
 import streamlit as st
 import shutil

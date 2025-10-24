@@ -143,7 +143,7 @@ class PredictionsAPIClient:
             }
 
             # ✅ FIX: Use the base URL without /predictions for upload endpoint
-            upload_url = self.base_url.replace("/predictions", "") + "/upload/excel"
+            upload_url = self.base_url + "/upload/excel"
 
             print(f"📤 Uploading to: {upload_url}")
             print(f"📁 File: {filename}, Size: {len(file_content)} bytes")
