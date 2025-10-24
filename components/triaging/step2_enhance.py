@@ -78,7 +78,9 @@ def _upload_to_predictions_api(excel_data: bytes, filename: str):
         from api_client.predictions_api_client import get_predictions_client
 
         final_api_key = os.getenv("GOOGLE_API_KEY")
-        predictions_api_url = os.getenv("PREDICTIONS_API_URL", "http://localhost:8000")
+        predictions_api_url = os.getenv(
+            "PREDICTIONS_API_URL", "http://localhost:8000/predictions"
+        )
 
         client = get_predictions_client(predictions_api_url, final_api_key)
 
@@ -687,7 +689,7 @@ def _display_enhancement_results(
                             "✅ Mark as Complete",
                             key=f"complete_step_{step_num}",
                             type="primary",
-                            use_container_width=True,
+                            width="stretch",
                         ):
                             st.session_state.completed_steps.add(step_num)
                             st.session_state.current_open_step = step_num + 1
@@ -725,7 +727,7 @@ def _display_enhancement_results(
                     file_name=filename,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
-                    use_container_width=True,
+                    width="stretch",
                     key="download_and_proceed",
                     on_click=lambda: _unlock_predictions(
                         excel_with_data, filename, rule_number
@@ -768,7 +770,7 @@ def _display_enhancement_results(
             session_state.template_dataframe = template_df
 
         # Display dataframe
-        st.dataframe(template_df, use_container_width=True, height=500)
+        st.dataframe(template_df, width="stretch", height=500)
 
         st.markdown("---")
 
@@ -782,7 +784,7 @@ def _display_enhancement_results(
                 data=session_state.excel_template_data,
                 file_name=f"triaging_template_{rule_number.replace('#', '_')}_base.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
                 key="download_base_excel",
             )
 
@@ -803,7 +805,7 @@ def _display_enhancement_results(
                 data=st.session_state[complete_excel_key],
                 file_name=f"triaging_template_{rule_number.replace('#', '_')}_complete.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
                 type="primary",
                 key="download_complete_excel",
             )

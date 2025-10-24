@@ -35,7 +35,7 @@ class MITREAttackAnalyzer:
         """Load MITRE ATT&CK framework data from the document"""
         # This will be populated from the MITRE ATT&CK document provided
         # Structure: {tactic: {technique: [sub-techniques]}}
-        from mitre_data import mitre_structure
+        from backend.mitre_data import mitre_structure
 
         return mitre_structure
 
@@ -686,7 +686,7 @@ class InvestigationAnalyzer:
         except Exception as e:
             # 🚨 If this block is hit, the initialization failed.
             logger.error(f"FATAL ERROR during InvestigationAnalyzer init: {str(e)}")
-            raise # Re-raise to be caught by predictions_router
+            raise  # Re-raise to be caught by predictions_router
 
     def extract_investigation_steps(self, df, username: str) -> List[Dict]:
         """Extract investigation steps with their outputs AND remarks for the specific user - FIXED"""

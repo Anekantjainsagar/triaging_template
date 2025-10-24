@@ -139,7 +139,7 @@ def display_rule_suggestion(rule_data, index):
         f"{match_indicator} {display_rule}\n📊 {incident_count} incidents | 🎯 Score: {score:.1%} | Type: {match_type}",
         key=f"rule_btn_{index}",
         help=f"Click to analyze: {rule_name}",
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -167,7 +167,7 @@ def display_soc_dashboard():
         key="search_input",
     )
 
-    if st.button("🔎 Search Rules", use_container_width=True) and user_query:
+    if st.button("🔎 Search Rules", width="stretch") and user_query:
         with st.spinner(f"🔍 Searching for: '{user_query}'"):
             result = api_client.get_rule_suggestions(user_query, top_k=5)
 
@@ -376,7 +376,7 @@ def display_predictions_tab_integrated():
             with st.expander("👁️ Preview Uploaded Data", expanded=False):
                 preview_data = preview_result.get("preview_data", [])
                 if preview_data:
-                    st.dataframe(preview_data, use_container_width=True)
+                    st.dataframe(preview_data, width="stretch")
                 else:
                     st.info("No preview data available")
         else:
@@ -456,7 +456,7 @@ def display_alert_analysis_tab_api(rule_name: str, api_client):
                     data=analysis,
                     file_name=f"threat_analysis_{rule_name[:30]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                     mime="text/markdown",
-                    use_container_width=True,
+                    width="stretch",
                 )
         else:
             st.error(f"❌ Analysis failed: {result.get('error')}")
@@ -519,7 +519,7 @@ def display_alert_analysis_tab_api(rule_name: str, api_client):
                     data=analysis,
                     file_name=f"threat_analysis_{rule_name[:30]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                     mime="text/markdown",
-                    use_container_width=True,
+                    width="stretch",
                 )
         else:
             progress_bar.empty()
