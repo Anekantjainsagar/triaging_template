@@ -588,8 +588,17 @@ class MITREAttackAnalyzer:
 
             content = content.strip()
             
+            # --- 👇 FIX START: Sanitize BOTH control characters and non-ASCII whitespace 👇 ---
+            # 1. Replace unescaped newlines/tabs inside JSON strings (from previous fix)
             content_safe = re.sub(r'(?<!\\)\n', r'\\n', content)
             content_safe = re.sub(r'(?<!\\)\t', r'\\t', content_safe)
+
+            # 2. Remove all non-ASCII control characters and non-standard whitespace
+            content_safe = content_safe.replace('\xa0', ' ') # Replace non-breaking space
+            content_safe = re.sub(r'[\x00-\x09\x0B\x0C\x0E-\x1F]', '', content_safe) # Remove non-printing control characters
+            
+            # Ensure it's stripped again after cleaning
+            content_safe = content_safe.strip()
 
             # Parse JSON
             mitre_analysis = json.loads(content_safe)
@@ -977,8 +986,23 @@ class InvestigationAnalyzer:
 
             content = content.strip()
             
+            # --- 👇 FIX START: Sanitize BOTH control characters and non-ASCII whitespace 👇 ---
+            # 1. Replace unescaped newlines/tabs inside JSON strings (from previous fix)
             content_safe = re.sub(r'(?<!\\)\n', r'\\n', content)
             content_safe = re.sub(r'(?<!\\)\t', r'\\t', content_safe)
+            
+            # 2. Remove all non-ASCII control characters and non-standard whitespace (e.g., em space)
+            # This addresses the 'line 1 column 2' error caused by hidden/non-standard leading whitespace.
+            # \s includes standard space, tab, newline. We want to target the non-standard ones.
+            # The regex r'[\x00-\x1F\x80-\xFF]' targets control characters and non-ASCII chars.
+            # Let's try to remove non-printing control characters and replace non-standard spaces with standard ones.
+            
+            # First, strip non-breaking space (U+00A0) and other non-standard spaces
+            content_safe = content_safe.replace('\xa0', ' ') # Replace non-breaking space
+            content_safe = re.sub(r'[\x00-\x09\x0B\x0C\x0E-\x1F]', '', content_safe) # Remove non-printing control characters
+            
+            # Ensure it's stripped again after cleaning
+            content_safe = content_safe.strip()
 
             # ✅ LOG RAW RESPONSE for debugging
             logger.info(f"Cleaned response preview: {content_safe[:200]}")
