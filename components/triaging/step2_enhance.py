@@ -7,6 +7,24 @@ import traceback
 import hashlib
 import pandas as pd
 from io import BytesIO
+from routes.src.virustotal_integration import VirusTotalChecker
+
+
+def contains_ip_not_vip(text):
+    """Check if text contains 'ip' but not as part of 'vip'"""
+    if "ip" not in text:
+        return False
+    # Check if 'ip' appears standalone (not as part of 'vip')
+    import re
+
+    # Match 'ip' with word boundaries or common patterns
+    ip_patterns = [
+        r"\bip\b",  # Standalone 'ip'
+        r"ip\s+address",  # 'ip address'
+        r"ip\s+reputation",  # 'ip reputation'
+        r"source\s+ip",  # 'source ip'
+    ]
+    return any(re.search(pattern, text, re.IGNORECASE) for pattern in ip_patterns)
 
 
 def _save_step_data(step_num: int, rule_number: str, data_type: str):
@@ -22,6 +40,15 @@ def _save_step_data(step_num: int, rule_number: str, data_type: str):
         input_key = f"output_input_{step_num}"
         if input_key in st.session_state:
             st.session_state.step_outputs[output_key] = st.session_state[input_key]
+
+
+def _check_virustotal_auto(ip_address: str) -> dict:
+    """Auto-check IP reputation using VirusTotal"""
+    if "vt_checker" not in st.session_state:
+        st.session_state.vt_checker = VirusTotalChecker()
+
+    checker = st.session_state.vt_checker
+    return checker.check_ip_reputation(ip_address, method="auto")
 
 
 def _unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
@@ -436,6 +463,7 @@ def _display_enhancement_results(
             with st.expander(
                 f"{status_icon} Step {step_num}: {step_name}", expanded=is_expanded
             ):
+                # Move VirusTotal check OUTSIDE the KQL block
                 if is_locked:
                     st.warning("🔒 Complete the previous step to unlock this one")
                 else:
@@ -451,7 +479,32 @@ def _display_enhancement_results(
                         if kql_query.lower() in ["nan", "none", "n/a", ""]:
                             kql_query = ""
 
-                    # KQL Query Section
+                    # ✅ MOVED: Check for VirusTotal BEFORE KQL section
+                    step_name_lower = step_name.lower()
+                    explanation_lower = explanation.lower()
+
+                    is_ip_reputation_step = (
+                        ("virustotal" in step_name_lower)
+                        or ("virustotal" in explanation_lower)
+                        or ("virus total" in step_name_lower)
+                        or ("virus total" in explanation_lower)
+                        or (
+                            contains_ip_not_vip(step_name_lower)
+                            and "reputation" in step_name_lower
+                        )
+                        or (
+                            step_num == 4
+                            and (
+                                contains_ip_not_vip(step_name_lower)
+                                or contains_ip_not_vip(explanation_lower)
+                                or "virustotal" in explanation_lower
+                            )
+                        )
+                    )
+
+                    # ========================================
+                    # KQL Query Section (OPTIONAL)
+                    # ========================================
                     if kql_query and len(kql_query) > 5:
                         st.markdown("##### 🔎 KQL Query")
                         if kql_explanation and str(kql_explanation).strip() not in [
@@ -463,14 +516,117 @@ def _display_enhancement_results(
                             st.write(kql_explanation)
                         st.code(kql_query, language="kql")
 
-                        # Output Section
-                        if testing_mode:
-                            st.markdown("##### 📊 Output")
-                            output_key = f"output_step_{step_num}_{rule_number}"
-                            existing_output = st.session_state.step_outputs.get(
-                                output_key, ""
-                            )
+                    # ========================================
+                    # Output Section (ALWAYS SHOWN if VT step OR has KQL)
+                    # ========================================
+                    if is_ip_reputation_step or (kql_query and len(kql_query) > 5):
+                        st.markdown("##### 📊 Output")
+                        output_key = f"output_step_{step_num}_{rule_number}"
+                        existing_output = st.session_state.step_outputs.get(
+                            output_key, ""
+                        )
 
+                        # ✅ VIRUSTOTAL INTEGRATION
+                        if is_ip_reputation_step:
+                            st.info("🎯 **VirusTotal IP Reputation Check**")
+
+                            # Try to extract IP from previous steps
+                            default_ip = ""
+                            for prev_step in range(1, step_num):
+                                prev_output_key = (
+                                    f"output_step_{prev_step}_{rule_number}"
+                                )
+                                prev_output = st.session_state.step_outputs.get(
+                                    prev_output_key, ""
+                                )
+
+                                import re
+
+                                ip_pattern = r"\b(?:\d{1,3}\.){3}\d{1,3}\b"
+                                ips_found = re.findall(ip_pattern, prev_output)
+                                if ips_found:
+                                    default_ip = ips_found[0]
+                                    break
+
+                            col1, col2 = st.columns([4, 1])
+
+                            with col1:
+                                ip_input = st.text_input(
+                                    "Enter IP Address:",
+                                    value=default_ip,
+                                    placeholder="e.g., 192.168.1.1",
+                                    key=f"vt_ip_step_{step_num}",
+                                )
+
+                            with col2:
+                                st.write("")  # Spacing
+                                st.write("")
+                                check_button = st.button(
+                                    "🔍 Check",
+                                    key=f"vt_check_step_{step_num}",
+                                    type="primary",
+                                )
+
+                            # Check VirusTotal
+                            if check_button and ip_input:
+                                with st.spinner("🔍 Checking VirusTotal..."):
+                                    vt_result = _check_virustotal_auto(ip_input)
+
+                                if vt_result.get("success"):
+                                    # Get BOTH formats
+                                    formatted_output_ui = vt_result.get(
+                                        "formatted_output", ""
+                                    )
+                                    formatted_output_excel = vt_result.get(
+                                        "formatted_output_excel", formatted_output_ui
+                                    )
+
+                                    # ✅ SAVE EXCEL FORMAT to session state (for export)
+                                    st.session_state.step_outputs[output_key] = (
+                                        formatted_output_excel
+                                    )
+
+                                    # ✅ DISPLAY UI FORMAT on screen (with markdown)
+                                    st.markdown(formatted_output_ui)
+                                    st.success(
+                                        "✅ VirusTotal check complete! Output saved for Excel export."
+                                    )
+
+                                    # Show risk level prominently
+                                    risk_level = vt_result.get("risk_level", "UNKNOWN")
+                                    if risk_level == "HIGH":
+                                        st.error(
+                                            "🚨 **HIGH RISK IP** - Immediate action recommended"
+                                        )
+                                    elif risk_level == "MEDIUM":
+                                        st.warning(
+                                            "⚠️ **SUSPICIOUS IP** - Further investigation needed"
+                                        )
+                                    elif risk_level == "LOW":
+                                        st.success(
+                                            "✅ **CLEAN IP** - No threats detected"
+                                        )
+                                else:
+                                    st.error(
+                                        f"❌ {vt_result.get('error', 'Check failed')}"
+                                    )
+                                    if vt_result.get("manual_check"):
+                                        st.markdown(
+                                            vt_result.get("formatted_output", "")
+                                        )
+
+                            # Show existing output if available
+                            if existing_output:
+                                with st.expander(
+                                    "📋 View Saved Output (Excel Format)",
+                                    expanded=False,
+                                ):
+                                    st.text(
+                                        existing_output
+                                    )  # Use st.text instead of st.markdown for plain text
+
+                        else:
+                            # Regular manual output for non-VT steps with KQL
                             manual_output = st.text_area(
                                 "Enter the KQL query output:",
                                 value=existing_output,
@@ -487,24 +643,10 @@ def _display_enhancement_results(
                                 st.success(
                                     f"✅ Output saved ({len(manual_output)} characters)"
                                 )
-                        else:
-                            col_space, col_execute = st.columns([4, 1])
-                            with col_execute:
-                                if st.button(
-                                    "▶️ Execute",
-                                    key=f"execute_step_{step_num}",
-                                    type="primary",
-                                ):
-                                    st.info(
-                                        "🚀 Query execution would be triggered here"
-                                    )
 
-                            st.markdown("##### 📊 Output")
-                            st.info(
-                                "Output will be displayed here after query execution"
-                            )
-
-                    # Remarks Section
+                    # ========================================
+                    # Remarks Section (ALWAYS SHOWN)
+                    # ========================================
                     st.markdown("##### 💬 Remarks/Comments")
                     remark_key = f"remark_step_{step_num}_{rule_number}"
                     existing_remark = st.session_state.step_remarks.get(remark_key, "")
@@ -530,7 +672,7 @@ def _display_enhancement_results(
                             "✅ Mark as Complete",
                             key=f"complete_step_{step_num}",
                             type="primary",
-                            width="stretch",
+                            use_container_width=True,
                         ):
                             st.session_state.completed_steps.add(step_num)
                             st.session_state.current_open_step = step_num + 1
@@ -541,24 +683,28 @@ def _display_enhancement_results(
             st.markdown("---")
             st.success("🎉 All steps completed!")
 
-            # Generate complete template
-            template_df = session_state.template_dataframe
-            excel_with_data = _export_template_with_remarks_and_outputs(
-                template_df,
-                st.session_state.step_remarks,
-                st.session_state.step_outputs,
-                rule_number,
-            )
-
-            filename = (
-                f"triaging_template_{rule_number.replace('#', '_')}_complete.xlsx"
-            )
-            st.session_state.final_excel_data = excel_with_data
-            st.session_state.final_excel_filename = filename
+            # Generate complete template ONLY ONCE
+            excel_key = f"final_excel_{rule_number}"
+            if excel_key not in st.session_state:
+                template_df = session_state.template_dataframe
+                excel_with_data = _export_template_with_remarks_and_outputs(
+                    template_df,
+                    st.session_state.step_remarks,
+                    st.session_state.step_outputs,
+                    rule_number,
+                )
+                filename = (
+                    f"triaging_template_{rule_number.replace('#', '_')}_complete.xlsx"
+                )
+                st.session_state[excel_key] = excel_with_data
+                st.session_state.final_excel_filename = filename
+            else:
+                excel_with_data = st.session_state[excel_key]
+                filename = st.session_state.final_excel_filename
 
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                if st.download_button(
+                st.download_button(
                     label="📥 Download & Proceed to Predictions",
                     data=excel_with_data,
                     file_name=filename,
@@ -566,10 +712,18 @@ def _display_enhancement_results(
                     type="primary",
                     width="stretch",
                     key="download_and_proceed",
-                ):
-                    _unlock_predictions(excel_with_data, filename, rule_number)
-                    _upload_to_predictions_api(excel_with_data, filename)
-                    st.rerun()
+                    on_click=lambda: _unlock_predictions(
+                        excel_with_data, filename, rule_number
+                    ),
+                )
+
+                # Check if download was clicked
+                if st.session_state.get("triaging_complete"):
+                    if not st.session_state.get("predictions_uploaded"):
+                        _upload_to_predictions_api(excel_with_data, filename)
+                        st.success(
+                            "✅ Ready for predictions! Switch to Predictions tab."
+                        )
 
     # TAB 2: Excel Template Preview & Download
     with tab2:
@@ -599,28 +753,34 @@ def _display_enhancement_results(
         col1, col2 = st.columns(2)
 
         with col1:
+            # Base template (already cached)
             st.download_button(
                 label="📥 Download Base Template",
                 data=session_state.excel_template_data,
                 file_name=f"triaging_template_{rule_number.replace('#', '_')}_base.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 width="stretch",
+                key="download_base_excel",
             )
 
         with col2:
-            # Generate template with remarks and outputs
-            remarks_dict = st.session_state.step_remarks
-            outputs_dict = st.session_state.step_outputs
-
-            excel_with_data = _export_template_with_remarks_and_outputs(
-                template_df, remarks_dict, outputs_dict, rule_number
-            )
+            # Complete template - cache it
+            complete_excel_key = f"complete_excel_{rule_number}"
+            if complete_excel_key not in st.session_state:
+                remarks_dict = st.session_state.step_remarks
+                outputs_dict = st.session_state.step_outputs
+                st.session_state[complete_excel_key] = (
+                    _export_template_with_remarks_and_outputs(
+                        template_df, remarks_dict, outputs_dict, rule_number
+                    )
+                )
 
             st.download_button(
                 label="📥 Download Complete Template",
-                data=excel_with_data,
+                data=st.session_state[complete_excel_key],
                 file_name=f"triaging_template_{rule_number.replace('#', '_')}_complete.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 width="stretch",
                 type="primary",
+                key="download_complete_excel",
             )
