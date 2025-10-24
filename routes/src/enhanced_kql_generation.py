@@ -21,7 +21,6 @@ class EnhancedKQLGenerator:
     2. Multi-LLM support (Gemini + Ollama)
     3. Strict validation and cleaning
     4. Context-aware generation
-    5. Smart step classification (investigative vs verification/closure)
     """
 
     def __init__(self):
@@ -32,11 +31,11 @@ class EnhancedKQLGenerator:
         try:
             self.web_search = SerperDevTool()
             self.has_web = True
-            print("✅ Web search enabled (Serper)")
+            print("âœ… Web search enabled (Serper)")
         except Exception as e:
             self.web_search = None
             self.has_web = False
-            print(f"⚠️ Web search unavailable: {str(e)}")
+            print(f"âš ï¸ Web search unavailable: {str(e)}")
 
         # KQL validation patterns
         self.valid_tables = [
@@ -80,10 +79,10 @@ class EnhancedKQLGenerator:
                 model="gemini/gemini-1.5-flash", api_key=gemini_key, temperature=0.3
             )
             self.primary_llm = self.gemini_llm
-            print("✅ Primary LLM: Gemini 1.5 Flash")
+            print("âœ… Primary LLM: Gemini 1.5 Flash")
         else:
             self.gemini_llm = None
-            print("⚠️ Gemini API key not found")
+            print("âš ï¸ Gemini API key not found")
 
         # Fallback: Ollama (local)
         ollama_model = os.getenv("OLLAMA_CHAT", "ollama/qwen2.5:3b")
@@ -96,161 +95,9 @@ class EnhancedKQLGenerator:
 
         if not self.gemini_llm:
             self.primary_llm = self.ollama_llm
-            print(f"✅ Primary LLM: {ollama_model}")
+            print(f"âœ… Primary LLM: {ollama_model}")
         else:
-            print(f"✅ Fallback LLM: {ollama_model}")
-
-    def is_investigative_step(
-        self, step_name: str, explanation: str, step_number: int
-    ) -> bool:
-        """
-        🎯 CORE CLASSIFICATION: Determine if step is investigative or verification/closure
-
-        Returns:
-            True if step involves actual investigation (data gathering)
-            False if step is verification, decision-making, or administrative
-        """
-        combined = f"{step_name} {explanation}".lower()
-
-        # ❌ SKIP: Verification/Decision Steps (IF/THEN logic)
-        verification_patterns = [
-            # User confirmation scenarios
-            "if user confirms",
-            "if user says",
-            "user confirmation",
-            "get confirmation",
-            "user says they are not aware",
-            "user says no",
-            "user says yes",
-            "based on the investigation",
-            "if you still find it suspicious",
-            # True/False positive classification
-            "true positive",
-            "false positive",
-            "treat it as",
-            "close it as",
-            "classify as",
-            # Conditional logic
-            "if malicious",
-            "if suspicious",
-            "if clean",
-            "then close",
-            "then treat",
-            # Decision points
-            "scenarios",
-            "confirmation received",
-        ]
-
-        if any(pattern in combined for pattern in verification_patterns):
-            print(f"   ⏭️  Step {step_number}: VERIFICATION/DECISION - Skipping")
-            return False
-
-        # ❌ SKIP: Administrative/Closure Actions
-        admin_patterns = [
-            # Communication actions
-            "inform",
-            "notify",
-            "reach out",
-            "contact",
-            "escalate to",
-            "send email",
-            "alert team",
-            # Remediation actions
-            "reset password",
-            "disable account",
-            "revoke token",
-            "block ip",
-            "reset the account",
-            "temporary disable",
-            # Closure activities
-            "close incident",
-            "track for closer",
-            "closer confirmation",
-            "document the steps",
-            "document findings",
-            "after all the investigation",
-            # Reporting
-            "create report",
-            "generate ticket",
-            "update documentation",
-        ]
-
-        if any(pattern in combined for pattern in admin_patterns):
-            print(f"   ⏭️  Step {step_number}: ADMINISTRATIVE - Skipping")
-            return False
-
-        # ❌ SKIP: Generic/Non-Technical Steps
-        generic_patterns = [
-            "awareness",
-            "training",
-            "policy",
-            "procedure",
-            "guideline",
-        ]
-
-        if any(pattern in combined for pattern in generic_patterns):
-            print(f"   ⏭️  Step {step_number}: NON-TECHNICAL - Skipping")
-            return False
-
-        # ✅ INCLUDE: Data Investigation Steps
-        investigation_patterns = [
-            # Data gathering
-            "gather details",
-            "collect information",
-            "extract data",
-            "pull logs",
-            # Data analysis
-            "check",
-            "verify",
-            "review",
-            "analyze",
-            "investigate",
-            "examine",
-            "inspect",
-            "validate",
-            "assess",
-            # Specific data sources
-            "sign-in logs",
-            "signin logs",
-            "audit logs",
-            "authentication logs",
-            "activity logs",
-            # Technical checks
-            "run kql",
-            "query",
-            "search logs",
-            "filter events",
-            # Specific investigations
-            "ip address",
-            "ip reputation",
-            "user activity",
-            "device info",
-            "location",
-            "geo location",
-            "user agent",
-            "authentication",
-            "mfa",
-            "role",
-            "permission",
-            "login patterns",
-            "failed attempts",
-            # Threat intelligence
-            "virustotal",
-            "virus total",
-            "threat intelligence",
-            "reputation check",
-        ]
-
-        is_investigative = any(
-            pattern in combined for pattern in investigation_patterns
-        )
-
-        if is_investigative:
-            print(f"   ✅ Step {step_number}: INVESTIGATIVE - Including")
-        else:
-            print(f"   ⏭️  Step {step_number}: UNCLEAR - Skipping by default")
-
-        return is_investigative
+            print(f"âœ… Fallback LLM: {ollama_model}")
 
     def generate_kql_query(
         self, step_name: str, explanation: str, step_number: int, rule_context: str = ""
@@ -261,80 +108,90 @@ class EnhancedKQLGenerator:
         Returns:
             Tuple[kql_query, kql_explanation]
         """
-        print(f"\n🔍 Generating KQL for Step {step_number}: {step_name}")
+        print(f"\nðŸ” Generating KQL for Step {step_number}: {step_name}")
 
-        # Strategy 1: Check if this is even an investigative step
-        if not self.is_investigative_step(step_name, explanation, step_number):
-            return "", ""
-
-        # Strategy 2: Check if KQL is specifically needed (some steps are investigative but manual)
+        # Strategy 1: Check if KQL is actually needed
         if not self._needs_kql(step_name, explanation):
-            print("   ⏭️  No KQL needed for this step (manual investigation)")
+            print("   â­ï¸  No KQL needed for this step")
             return "", ""
 
-        # Strategy 3: Web search for real examples
+        # Strategy 2: Web search for real examples
         if self.has_web:
             kql, explanation = self._search_and_generate(
                 step_name, explanation, rule_context
             )
             if kql and self._validate_kql(kql):
-                print("   ✅ Generated from web research")
+                print("   âœ… Generated from web research")
                 return kql, explanation
 
-        # Strategy 4: LLM generation with context
+        # Strategy 3: LLM generation with context
         kql, explanation = self._llm_generate_with_context(
             step_name, explanation, step_number, rule_context
         )
         if kql and self._validate_kql(kql):
-            print("   ✅ Generated using LLM")
+            print("   âœ… Generated using LLM")
             return kql, explanation
 
-        # Strategy 5: Template-based fallback
+        # Strategy 4: Template-based fallback
         kql, explanation = self._template_based_generation(step_name, explanation)
         if kql:
-            print("   ✅ Generated from template")
+            print("   âœ… Generated from template")
             return kql, explanation
 
-        print("   ⚠️  No valid KQL generated")
+        print("   âš ï¸  No valid KQL generated")
         return "", ""
 
     def _needs_kql(self, step_name: str, explanation: str) -> bool:
-        """
-        Determine if investigative step needs KQL query (vs manual investigation)
-
-        This is called AFTER is_investigative_step() confirms it's investigative
-        """
+        """Determine if step needs KQL query"""
         combined = f"{step_name} {explanation}".lower()
 
-        # Some investigative steps are MANUAL (e.g., VirusTotal, VIP list checks)
-        manual_investigation_patterns = [
-            "virustotal",
-            "virus total",
-            "vip list",
-            "vip user",
-            "cross-check",
-            "cross check",
-            "validate against",
-            "compare with",
+        # Skip these types of steps
+        skip_keywords = [
+            "document",
+            "close incident",
+            "escalate",
+            "inform",
+            "notify",
+            "report",
+            "classify",
+            "user confirms",
+            "confirmation",
+            "scenarios",
+            "true positive",
+            "false positive",
+            "get confirmation",
+            "awareness",
+            "training",
+            "policy",
+            "procedure",
         ]
 
-        # If it's a manual investigation, no KQL needed
-        if any(pattern in combined for pattern in manual_investigation_patterns):
+        if any(keyword in combined for keyword in skip_keywords):
             return False
 
-        # Otherwise, if it's investigative and mentions data sources, it needs KQL
-        needs_kql_patterns = [
+        # Needs KQL if investigating data
+        needs_keywords = [
             "sign-in",
-            "signin",
             "login",
             "audit",
             "logs",
             "query",
-            "kql",
-            "sentinel",
+            "check",
+            "verify",
+            "review",
+            "analyze",
+            "investigate",
+            "ip address",
+            "user activity",
+            "device",
+            "role",
+            "permission",
+            "authentication",
+            "mfa",
+            "location",
         ]
 
-        return any(pattern in combined for pattern in needs_kql_patterns)
+        return any(keyword in combined for keyword in needs_keywords)
 
     def _search_and_generate(
         self, step_name: str, explanation: str, context: str
@@ -345,7 +202,7 @@ class EnhancedKQLGenerator:
             search_terms = self._extract_key_terms(step_name, explanation)
             search_query = f"Microsoft Sentinel KQL query {search_terms} site:learn.microsoft.com OR site:github.com"
 
-            print(f"   🌐 Searching: {search_query[:80]}...")
+            print(f"   ðŸŒ Searching: {search_query[:80]}...")
 
             # Create search agent
             search_agent = Agent(
@@ -389,7 +246,7 @@ Return the most relevant KQL example found.
                     return adapted_kql, kql_explanation
 
         except Exception as e:
-            print(f"   ⚠️  Web search failed: {str(e)[:100]}")
+            print(f"   âš ï¸  Web search failed: {str(e)[:100]}")
 
         return "", ""
 
@@ -500,7 +357,7 @@ OUTPUT ONLY THE ADAPTED KQL QUERY, NO EXPLANATIONS:"""
             return adapted if len(adapted) > 20 else None
 
         except Exception as e:
-            print(f"   ⚠️  Adaptation failed: {str(e)[:50]}")
+            print(f"   âš ï¸  Adaptation failed: {str(e)[:50]}")
             return None
 
     def _llm_generate_with_context(
@@ -558,7 +415,7 @@ KQL Query:"""
                 return kql, explanation
 
         except Exception as e:
-            print(f"   ⚠️  LLM generation failed: {str(e)[:100]}")
+            print(f"   âš ï¸  LLM generation failed: {str(e)[:100]}")
 
         return "", ""
 
@@ -635,17 +492,17 @@ KQL Query:"""
 
         # Must contain at least one valid table
         if not self._contains_valid_table(kql):
-            print("   ❌ No valid table found")
+            print("   âŒ No valid table found")
             return False
 
         # Must contain at least one operator
         if not any(op in kql.lower() for op in self.kql_operators):
-            print("   ❌ No valid KQL operators")
+            print("   âŒ No valid KQL operators")
             return False
 
         # Should not be too long
         if len(kql) > 1500:
-            print("   ❌ Query too long")
+            print("   âŒ Query too long")
             return False
 
         # Should not contain artifacts
@@ -658,7 +515,7 @@ KQL Query:"""
             "Note:",
         ]
         if any(artifact in kql for artifact in artifacts):
-            print("   ❌ Contains artifacts")
+            print("   âŒ Contains artifacts")
             return False
 
         return True
