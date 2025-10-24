@@ -5,6 +5,10 @@ from datetime import datetime
 import google.generativeai as genai
 from typing import Dict, List, Any, Optional
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class MITREAttackAnalyzer:
     def __init__(self, api_key: str):
@@ -879,32 +883,74 @@ class InvestigationAnalyzer:
     def perform_initial_analysis(
         self, username: str, investigation_steps: List[Dict]
     ) -> Optional[Dict[str, Any]]:
-        """Perform initial investigation analysis with true positive bias"""
+        """Perform initial investigation analysis with better error handling"""
         try:
-            # Check if we should force true positive based on risk indicators
-            force_true_positive = self._should_classify_true_positive(
-                investigation_steps
-            )
+            # ✅ VALIDATE we have enough data
+            steps_with_output = [s for s in investigation_steps if s.get("output")]
 
-            if force_true_positive:
-                # Build analysis with true positive bias
-                prompt = f"""You are a cybersecurity analyst. Based on the investigation data for {username}, 
-                multiple high-risk indicators have been detected including suspicious geolocations, 
-                unknown devices, and potential privilege escalation. 
+            logger.info(f"Initial analysis for {username}")
+            logger.info(f"Total steps: {len(investigation_steps)}")
+            logger.info(f"Steps with output: {len(steps_with_output)}")
 
-                Provide a TRUE POSITIVE classification with high confidence.
-
-                Investigation data:
-                {json.dumps([{'step': s['step_name'], 'output': s['output'][:500], 'remarks': s.get('remarks', '')} for s in investigation_steps], indent=2)}
-
-                Output JSON classification with TRUE POSITIVE, Critical/High risk level, and confidence >= 80%."""
-            else:
-                prompt = self.build_initial_analysis_prompt(
-                    username, investigation_steps
+            if len(steps_with_output) < 2:
+                logger.warning(
+                    f"Only {len(steps_with_output)} steps with output - using fallback analysis"
                 )
+                return self._fallback_analysis(username, investigation_steps)
 
+            # Build simplified context
+            investigation_context = ""
+            for step in investigation_steps:
+                if step.get("output") or step.get("explanation"):
+                    investigation_context += f"""
+    ### Step {step['step_number']}: {step['step_name']}
+    Explanation: {step.get('explanation', 'N/A')}
+    Output: {step.get('output', 'No output data')}
+    Remarks: {step.get('remarks', 'None')}
+    ---
+    """
+
+            # ✅ SIMPLIFIED PROMPT - Less strict requirements
+            prompt = f"""You are a cybersecurity analyst. Analyze this investigation for user: {username}
+
+    INVESTIGATION DATA:
+    {investigation_context}
+
+    Classify as TRUE POSITIVE or FALSE POSITIVE based on available evidence.
+
+    GUIDELINES:
+    - TRUE POSITIVE: Suspicious activity, unusual patterns, high-risk indicators
+    - FALSE POSITIVE: Normal business activity, no concrete threats
+
+    Respond ONLY with valid JSON:
+    {{
+        "classification": "TRUE POSITIVE" or "FALSE POSITIVE",
+        "risk_level": "Critical" or "High" or "Medium" or "Low",
+        "confidence_score": 0-100,
+        "key_findings": [
+            {{
+                "step_reference": "Step name",
+                "category": "Category",
+                "severity": "High/Medium/Low",
+                "details": "Finding description",
+                "evidence": "Supporting evidence",
+                "impact": "Security impact"
+            }}
+        ],
+        "risk_indicators": [
+            {{
+                "indicator": "Risk indicator",
+                "severity": "High/Medium/Low",
+                "evidence": "Evidence"
+            }}
+        ]
+    }}"""
+
+            logger.info("Sending prompt to Gemini API...")
             response = self.model.generate_content(prompt)
             content = response.text.strip()
+
+            logger.info(f"Gemini response length: {len(content)}")
 
             # Clean response
             if "```json" in content:
@@ -914,26 +960,82 @@ class InvestigationAnalyzer:
 
             content = content.strip()
 
-            # Parse JSON
-            analysis_result = json.loads(content)
+            # ✅ LOG RAW RESPONSE for debugging
+            logger.info(f"Cleaned response preview: {content[:200]}")
 
-            # Force true positive if risk indicators are strong
-            if force_true_positive:
-                analysis_result["classification"] = "TRUE POSITIVE"
-                analysis_result["risk_level"] = (
-                    "Critical"
-                    if self._calculate_risk_score(investigation_steps) > 60
-                    else "High"
+            try:
+                analysis_result = json.loads(content)
+                logger.info(
+                    f"✅ JSON parsed successfully: {analysis_result.get('classification')}"
                 )
-                analysis_result["confidence_score"] = max(
-                    analysis_result.get("confidence_score", 0), 80
-                )
-
-            return analysis_result
+                return analysis_result
+            except json.JSONDecodeError as je:
+                logger.error(f"JSON parse error: {str(je)}")
+                logger.error(f"Raw content: {content}")
+                return self._fallback_analysis(username, investigation_steps)
 
         except Exception as e:
-            print(f"Error in initial analysis: {str(e)}")
-            return None
+            logger.exception(f"Error in initial analysis: {str(e)}")
+            return self._fallback_analysis(username, investigation_steps)
+
+    def _fallback_analysis(
+        self, username: str, investigation_steps: List[Dict]
+    ) -> Dict[str, Any]:
+        """Fallback analysis when LLM fails"""
+        logger.info("Using fallback analysis")
+
+        # Simple heuristic analysis
+        risk_score = 0
+        findings = []
+
+        for step in investigation_steps:
+            output = str(step.get("output", "")).lower()
+            if "failed" in output or "suspicious" in output:
+                risk_score += 30
+                findings.append(
+                    {
+                        "step_reference": step["step_name"],
+                        "category": "Suspicious Activity",
+                        "severity": "High",
+                        "details": "Failed attempts or suspicious indicators detected",
+                        "evidence": output[:200],
+                        "impact": "Potential security concern",
+                    }
+                )
+            elif "unknown" in output:
+                risk_score += 20
+
+        classification = "TRUE POSITIVE" if risk_score >= 40 else "FALSE POSITIVE"
+        risk_level = (
+            "High" if risk_score >= 60 else ("Medium" if risk_score >= 40 else "Low")
+        )
+
+        return {
+            "classification": classification,
+            "risk_level": risk_level,
+            "confidence_score": min(risk_score, 95),
+            "key_findings": (
+                findings
+                if findings
+                else [
+                    {
+                        "step_reference": "Overall Assessment",
+                        "category": "General",
+                        "severity": "Low",
+                        "details": "Limited investigation data available",
+                        "evidence": f"Analysis based on {len(investigation_steps)} steps",
+                        "impact": "Requires manual review",
+                    }
+                ]
+            ),
+            "risk_indicators": [
+                {
+                    "indicator": "Investigation completeness",
+                    "severity": "Low",
+                    "evidence": f"Only {len([s for s in investigation_steps if s.get('output')])} steps have output data",
+                }
+            ],
+        }
 
     def analyze_investigation(
         self, df: pd.DataFrame, username: str

@@ -14,6 +14,11 @@ from backend.predictions_backend import InvestigationAnalyzer
 # Create router
 router = APIRouter()
 
+import logging
+from backend.backed_fixes import extract_investigation_steps_fixed, clean_dataframe
+
+logger = logging.getLogger(__name__)
+
 # Global cache for analyzers and data
 _investigation_analyzer: Optional[InvestigationAnalyzer] = None
 _uploaded_data: Optional[pd.DataFrame] = None
@@ -360,20 +365,21 @@ async def get_upload_preview():
 # ============================================================================
 
 
-@router.post(
-    "/analyze/initial",
-    response_model=InitialAnalysisResponse,
-    summary="Initial classification analysis",
-    description="Analyze investigation for TRUE/FALSE POSITIVE classification",
-)
-# Update analysis endpoints to use fixed extraction
+@router.post("/analyze/initial", response_model=InitialAnalysisResponse)
 async def analyze_initial(request: AnalyzeInvestigationRequest, api_key: str = ""):
     """Perform initial classification analysis - FIXED VERSION"""
+
+    logger.info(f"=" * 60)
+    logger.info(f"ANALYZE INITIAL REQUEST: {request.username}")
+
     if _uploaded_data is None or _uploaded_data.empty:
+        logger.error("No data uploaded")
         raise HTTPException(
-            status_code=400,
-            detail="No data uploaded. Please upload an Excel file first.",
+            status_code=400, detail="No data uploaded. Upload Excel first."
         )
+
+    logger.info(f"Uploaded data shape: {_uploaded_data.shape}")
+    logger.info(f"Uploaded data columns: {_uploaded_data.columns.tolist()}")
 
     if not request.username.strip():
         raise HTTPException(status_code=400, detail="Username cannot be empty")
@@ -381,24 +387,37 @@ async def analyze_initial(request: AnalyzeInvestigationRequest, api_key: str = "
     try:
         analyzer = get_analyzer(api_key)
 
-        # Use the fixed extraction function
+        # ✅ Use fixed extraction
         investigation_steps = extract_investigation_steps_fixed(
             _uploaded_data, request.username
         )
 
+        logger.info(f"Extracted {len(investigation_steps)} steps")
+
         if not investigation_steps:
+            logger.error(f"No investigation data found for: {request.username}")
             raise HTTPException(
                 status_code=404,
                 detail=f"No investigation data found for user: {request.username}",
             )
+
+        # ✅ Log first step for verification
+        if investigation_steps:
+            first_step = investigation_steps[0]
+            logger.info(f"First step: {first_step['step_name']}")
+            logger.info(f"First step output length: {len(first_step['output'])}")
 
         initial_analysis = analyzer.perform_initial_analysis(
             request.username, investigation_steps
         )
 
         if not initial_analysis:
+            logger.error("Initial analysis returned None")
             raise HTTPException(status_code=500, detail="Initial analysis failed")
 
+        logger.info(f"Analysis complete: {initial_analysis.get('classification')}")
+
+        # Update statistics
         _api_statistics["total_analyses"] += 1
         _api_statistics["last_analysis_time"] = datetime.now().isoformat()
         classification = initial_analysis.get("classification", "UNKNOWN")
@@ -411,16 +430,19 @@ async def analyze_initial(request: AnalyzeInvestigationRequest, api_key: str = "
             classification=initial_analysis.get("classification", "UNKNOWN"),
             risk_level=initial_analysis.get("risk_level", "UNKNOWN"),
             confidence_score=initial_analysis.get("confidence_score", 0),
-            summary=str(initial_analysis.get("summary", "")),
+            summary=str(
+                initial_analysis.get("key_findings", [{}])[0].get(
+                    "details", "Analysis complete"
+                )
+            ),
             timestamp=datetime.now().isoformat(),
         )
 
-    except HTTPException as he:
-        raise he
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error in initial analysis: {str(e)}"
-        )
+        logger.exception(f"Error in initial analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analysis error: {str(e)}")
 
 
 @router.post(
@@ -511,7 +533,7 @@ async def analyze_complete(request: AnalyzeInvestigationRequest, api_key: str = 
 
     try:
         analyzer = get_analyzer(api_key)
-        investigation_steps = analyzer.extract_investigation_steps(
+        investigation_steps = analyzer.extract_investigation_steps_fixed(
             _uploaded_data, request.username
         )
 
