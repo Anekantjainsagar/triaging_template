@@ -587,9 +587,12 @@ class MITREAttackAnalyzer:
                 content = content.split("```")[1].split("```")[0]
 
             content = content.strip()
+            
+            content_safe = re.sub(r'(?<!\\)\n', r'\\n', content)
+            content_safe = re.sub(r'(?<!\\)\t', r'\\t', content_safe)
 
             # Parse JSON
-            mitre_analysis = json.loads(content)
+            mitre_analysis = json.loads(content_safe)
 
             # Add geo-risk metadata
             mitre_analysis["geographic_risk_assessment"] = geo_risk_data
@@ -973,12 +976,15 @@ class InvestigationAnalyzer:
                 content = content.split("```")[1].split("```")[0]
 
             content = content.strip()
+            
+            content_safe = re.sub(r'(?<!\\)\n', r'\\n', content)
+            content_safe = re.sub(r'(?<!\\)\t', r'\\t', content_safe)
 
             # ✅ LOG RAW RESPONSE for debugging
-            logger.info(f"Cleaned response preview: {content[:200]}")
+            logger.info(f"Cleaned response preview: {content_safe[:200]}")
 
             try:
-                analysis_result = json.loads(content)
+                analysis_result = json.loads(content_safe)
                 logger.info(
                     f"✅ JSON parsed successfully: {analysis_result.get('classification')}"
                 )
