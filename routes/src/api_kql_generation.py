@@ -1,9 +1,17 @@
+"""
+Enhanced KQL Query Generator with Dynamic Query Building
+Uses step context analysis + dynamic query construction (inspired by kqlsearch.com approach)
+Now integrates with kqlsearch.com API for query generation
+"""
+
 import re
 import os
-from dotenv import load_dotenv
-from crewai_tools import SerperDevTool
-from crewai import LLM, Agent, Task, Crew
 from typing import Optional, Tuple, Dict, List
+from crewai import LLM, Agent, Task, Crew
+from crewai_tools import SerperDevTool
+from dotenv import load_dotenv
+import json
+import requests
 
 load_dotenv()
 
@@ -192,14 +200,73 @@ class DynamicKQLBuilder:
         return f"| project {fields_str}"
 
 
+class KQLSearchAPIClient:
+    """
+    Client for kqlsearch.com API integration
+    """
+
+    def __init__(self, api_url: str = "https://www.kqlsearch.com/api/querygenerator"):
+        self.api_url = api_url
+        self.timeout = 30
+
+    def generate_query(self, input_text: str) -> Optional[str]:
+        """
+        Generate KQL query using kqlsearch.com API
+
+        Args:
+            input_text: Description of what to query
+
+        Returns:
+            KQL query string or None if failed
+        """
+        payload = {"input": input_text}
+
+        try:
+            print(f"   🌐 Calling kqlsearch.com API...")
+            response = requests.post(self.api_url, json=payload, timeout=self.timeout)
+            response.raise_for_status()
+
+            result = response.json()
+
+            if "content" in result:
+                kql_query = result["content"]
+
+                # Clean the query from markdown markers
+                if "```kql" in kql_query:
+                    kql_query = kql_query.split("```kql")[1].split("```")[0].strip()
+                elif "```" in kql_query:
+                    kql_query = kql_query.split("```")[1].split("```")[0].strip()
+
+                print(f"   ✅ KQL received from API ({len(kql_query)} chars)")
+                return kql_query.strip()
+            else:
+                print("   ⚠️ No content in API response")
+                return None
+
+        except requests.exceptions.Timeout:
+            print(f"   ⚠️ API timeout after {self.timeout}s")
+            return None
+        except requests.exceptions.RequestException as e:
+            print(f"   ⚠️ API request failed: {str(e)[:100]}")
+            return None
+        except json.JSONDecodeError as e:
+            print(f"   ⚠️ JSON parsing error: {str(e)[:100]}")
+            return None
+        except Exception as e:
+            print(f"   ⚠️ Unexpected error: {str(e)[:100]}")
+            return None
+
+
 class EnhancedKQLGenerator:
     """
     Advanced KQL Generator with dynamic query building
+    Now integrates kqlsearch.com API as primary generation method
     """
 
     def __init__(self):
         self._init_llms()
         self.query_builder = DynamicKQLBuilder()
+        self.kql_api = KQLSearchAPIClient()
 
         # Initialize web search
         try:
@@ -238,7 +305,10 @@ class EnhancedKQLGenerator:
         self, step_name: str, explanation: str, step_number: int, rule_context: str = ""
     ) -> Tuple[str, str]:
         """
-        Generate KQL query using context-aware approach
+        Generate KQL query using multi-tier approach:
+        1. Try kqlsearch.com API first
+        2. Fallback to dynamic query builder
+        3. Final fallback to LLM generation
 
         Returns:
             Tuple[kql_query, kql_explanation]
@@ -257,15 +327,30 @@ class EnhancedKQLGenerator:
 
         print(f"   📊 Context: {step_context.get('intent', 'unknown')}")
 
-        # Step 3: Try dynamic query building first
+        # Step 3: Try kqlsearch.com API FIRST
+        api_input = self._build_api_input(step_name, explanation, step_context)
+        kql = self.kql_api.generate_query(api_input)
+
+        if kql and self._validate_kql(kql):
+            explanation_text = self._generate_explanation_with_llm(
+                kql, step_name, explanation
+            )
+            print("   ✅ Generated from kqlsearch.com API")
+            return kql, explanation_text
+
+        # Step 4: Fallback to dynamic query builder
+        print("   🔄 Trying dynamic query builder...")
         kql = self.query_builder.build_query(step_context)
 
         if kql and self._validate_kql(kql):
-            explanation_text = self._generate_explanation(kql)
+            explanation_text = self._generate_explanation_with_llm(
+                kql, step_name, explanation
+            )
             print("   ✅ Generated from dynamic builder")
             return kql, explanation_text
 
-        # Step 4: Fallback to LLM with better context
+        # Step 5: Final fallback to LLM with better context
+        print("   🔄 Trying LLM generation...")
         kql, explanation_text = self._llm_generate_with_context(
             step_name, explanation, step_number, rule_context, step_context
         )
@@ -276,6 +361,49 @@ class EnhancedKQLGenerator:
 
         print("   ⚠️  No valid KQL generated")
         return "", ""
+
+    def _build_api_input(
+        self, step_name: str, explanation: str, step_context: Dict
+    ) -> str:
+        """
+        Build comprehensive input for kqlsearch.com API
+
+        Args:
+            step_name: Name of the investigation step
+            explanation: Detailed explanation of the step
+            step_context: Parsed context dictionary
+
+        Returns:
+            Formatted input string for API
+        """
+        # Combine step name and explanation
+        base_input = f"{step_name}\t{explanation}"
+
+        # Add context-specific details
+        intent = step_context.get("intent", "")
+        focus = step_context.get("focus", "")
+        timeframe = step_context.get("timeframe", "last_7d")
+
+        # Enhance with specific requirements
+        enhancements = []
+
+        if focus:
+            enhancements.append(f"focus on {focus}")
+
+        if timeframe:
+            time_text = timeframe.replace("_", " ").replace("last ", "last ")
+            enhancements.append(f"for {time_text}")
+
+        if step_context.get("aggregation_needed"):
+            enhancements.append("with aggregation and statistics")
+
+        # Combine everything
+        if enhancements:
+            enhanced_input = f"{base_input} ({', '.join(enhancements)})"
+        else:
+            enhanced_input = base_input
+
+        return enhanced_input
 
     def _analyze_step_context(
         self, step_name: str, explanation: str, step_number: int, rule_context: str
@@ -400,6 +528,83 @@ class EnhancedKQLGenerator:
 
         return any(keyword in combined for keyword in needs_keywords)
 
+    def _generate_explanation_with_llm(
+        self, kql: str, step_name: str, explanation: str
+    ) -> str:
+        """
+        Generate detailed explanation for KQL query using LLM
+
+        Args:
+            kql: The KQL query to explain
+            step_name: Name of the step
+            explanation: Step explanation
+
+        Returns:
+            Human-readable explanation of what the query does
+        """
+        try:
+            prompt = f"""Explain this KQL query in 1-2 clear sentences.
+
+STEP: {step_name}
+PURPOSE: {explanation}
+
+KQL QUERY:
+{kql}
+
+Provide a concise explanation focusing on:
+1. What data source it queries
+2. What it's looking for
+3. Key filters or aggregations used
+
+Output only the explanation (no preamble):"""
+
+            agent = Agent(
+                role="KQL Query Explainer",
+                goal="Explain KQL queries clearly and concisely",
+                backstory="Expert at translating technical KQL queries into plain English",
+                llm=self.primary_llm,
+                verbose=False,
+            )
+
+            task = Task(
+                description=prompt,
+                expected_output="Clear 1-2 sentence explanation",
+                agent=agent,
+            )
+
+            crew = Crew(agents=[agent], tasks=[task], verbose=False)
+            result = str(crew.kickoff()).strip()
+
+            # Clean up any LLM artifacts
+            result = self._clean_explanation(result)
+
+            return result if result else self._generate_explanation(kql)
+
+        except Exception as e:
+            print(f"   ⚠️  LLM explanation failed: {str(e)[:100]}")
+            # Fallback to simple explanation
+            return self._generate_explanation(kql)
+
+    def _clean_explanation(self, explanation: str) -> str:
+        """Clean explanation from LLM artifacts"""
+        # Remove common prefixes
+        prefixes = [
+            "This query",
+            "The query",
+            "Explanation:",
+            "Output:",
+            "Here's",
+            "Here is",
+        ]
+
+        for prefix in prefixes:
+            if explanation.lower().startswith(prefix.lower()):
+                explanation = explanation[len(prefix) :].strip()
+                if explanation.startswith(":"):
+                    explanation = explanation[1:].strip()
+
+        return explanation.strip()
+
     def _llm_generate_with_context(
         self,
         step_name: str,
@@ -460,7 +665,9 @@ OUTPUT ONLY THE KQL QUERY:"""
             kql = self._deep_clean_kql(result)
 
             if kql and self._validate_kql(kql):
-                explanation_text = self._generate_explanation(kql)
+                explanation_text = self._generate_explanation_with_llm(
+                    kql, step_name, explanation
+                )
                 return kql, explanation_text
 
         except Exception as e:
@@ -530,7 +737,7 @@ OUTPUT ONLY THE KQL QUERY:"""
         return "\n".join(lines).strip()
 
     def _generate_explanation(self, kql: str) -> str:
-        """Generate explanation from KQL"""
+        """Generate simple explanation from KQL (fallback method)"""
         kql_lower = kql.lower()
 
         if "signinlogs" in kql_lower:

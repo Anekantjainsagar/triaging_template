@@ -1,44 +1,81 @@
-import os
-from dotenv import load_dotenv
-from routes.src.enhanced_kql_generator import EnhancedKQLGenerator
+# test_integration.py
+import sys
 
-load_dotenv()
+sys.path.append(".")
 
-print("🔍 Checking Configuration...\n")
+from routes.src.enhanced_kql_generation import EnhancedKQLGenerator
 
-# Check Serper
-serper = os.getenv("SERPER_API_KEY")
-print(f"✅ Serper API: {'Configured' if serper else '❌ Missing'}")
 
-# Check Gemini
-gemini = os.getenv("GOOGLE_API_KEY")
-print(f"✅ Gemini API: {'Configured' if gemini else '⚠️ Missing (will use Ollama)'}")
-
-# Check Ollama
-ollama = os.getenv("OLLAMA_CHAT", "ollama/qwen2.5:3b")
-print(f"✅ Ollama Model: {ollama}")
-
-# Test KQL Generator
-print("\n🧪 Testing KQL Generator...")
-try:
+def test_unique_generation():
     generator = EnhancedKQLGenerator()
-    print("✅ KQL Generator initialized successfully")
 
-    # Test query generation
-    kql, explanation = generator.generate_kql_query(
-        step_name="Verify User Sign-in Activity",
-        explanation="Check user authentication logs for suspicious activity",
-        step_number=1,
-        rule_context="User authentication investigation",
-    )
+    # Simulate your 4 steps
+    steps = [
+        {
+            "name": "Verify User Count Impact",
+            "explanation": "Gather details of all users - (By adding sheet to this excel)",
+            "number": 1,
+        },
+        {
+            "name": "Verify Users Against VIP List",
+            "explanation": "Verify user activity against VIP list by reviewing login logs",
+            "number": 2,
+        },
+        {
+            "name": "Verify User & IP Address Details",
+            "explanation": "Review login event details (user account, IP address, time, Geo location)",
+            "number": 3,
+        },
+        {
+            "name": "Verify IP Reputation using VirusTotal",
+            "explanation": "Check IP reputation using VirusTotal If bad score, take a screenshot",
+            "number": 4,
+        },
+    ]
 
-    if kql:
-        print(f"✅ Generated KQL query ({len(kql)} characters)")
-        print(f"✅ Explanation: {explanation[:100]}...")
+    print("🔍 Testing KQL Generation for Each Step\n")
+    print("=" * 80)
+
+    generated_queries = []
+
+    for step in steps:
+        kql, explanation = generator.generate_kql_query(
+            step_name=step["name"],
+            explanation=step["explanation"],
+            step_number=step["number"],
+            rule_context="User authentication and access investigation",
+        )
+
+        generated_queries.append(
+            {
+                "step": step["number"],
+                "name": step["name"],
+                "kql": kql,
+                "explanation": explanation,
+            }
+        )
+
+        print(f"\n📌 STEP {step['number']}: {step['name']}")
+        print("-" * 80)
+        if kql:
+            print(f"✅ KQL Query ({len(kql)} chars):")
+            print(kql)
+            print(f"\n💡 Explanation: {explanation}")
+        else:
+            print("⏭️  No KQL needed (manual step)")
+        print("=" * 80)
+
+    # Verify uniqueness
+    kql_queries = [q["kql"] for q in generated_queries if q["kql"]]
+
+    if len(kql_queries) != len(set(kql_queries)):
+        print("\n❌ FAILED: Some queries are duplicates!")
+        return False
     else:
-        print("⚠️ No KQL generated (may be normal for some steps)")
+        print(f"\n✅ SUCCESS: All {len(kql_queries)} queries are unique!")
+        return True
 
-except Exception as e:
-    print(f"❌ Error: {str(e)}")
 
-print("\n✅ Setup verification complete!")
+if __name__ == "__main__":
+    success = test_unique_generation()
+    sys.exit(0 if success else 1)

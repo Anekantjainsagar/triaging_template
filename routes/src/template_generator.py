@@ -1,36 +1,23 @@
-# template_generator.py - UPDATED
-"""
-Improved Template Generator using Enhanced KQL Generation
-Replaces the existing template_generator.py
-"""
-
 import re
+import os
+import time
 import pandas as pd
 from io import BytesIO
-from typing import List, Dict, Tuple
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from crewai import LLM, Agent, Task, Crew
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-import time
-import os
+from typing import List, Dict
 from dotenv import load_dotenv
-
-# --- New Imports for API Call ---
+from crewai import LLM, Agent, Task, Crew
 from routes.src.utils import extract_alert_name
-from api_client.analyzer_api_client import get_analyzer_client # Assuming a client exists or using direct LLM call
-# ----------------------------------
+from api_client.analyzer_api_client import get_analyzer_client
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+from routes.src.api_kql_generation import EnhancedKQLGenerator
 
 load_dotenv()
 
-# Import the enhanced KQL generator
-from routes.src.enhanced_kql_generation import EnhancedKQLGenerator
 
 
 class ImprovedTemplateGenerator:
-    """
-    Template generator with enhanced KQL generation
-    """
-
     def __init__(self):
         # Initialize LLM for non-KQL tasks
         gemini_key = os.getenv("GOOGLE_API_KEY")
@@ -68,7 +55,6 @@ class ImprovedTemplateGenerator:
         except Exception as e:
             print(f"⚠️ Could not initialize Analyzer API Client: {e}")
             self.analyzer_client = None
-
 
     def generate_template(
         self, rule_number: str, original_steps: List[Dict], rule_context: str = ""
@@ -656,8 +642,6 @@ Output ONLY the instruction:"""
 
 # Compatibility wrapper
 class EnhancedTemplateGenerator:
-    """Wrapper to maintain backward compatibility"""
-
     def __init__(self):
         self.generator = ImprovedTemplateGenerator()
         self.template_columns = self.generator.template_columns
