@@ -9,11 +9,6 @@ load_dotenv()
 
 
 class InvestigationStepMerger:
-    """
-    Merges original template steps with newly generated steps
-    Provides transparency on what was kept, added, or modified
-    """
-
     def __init__(self):
         print("✅ Investigation Step Merger initialized")
 
@@ -40,10 +35,14 @@ class InvestigationStepMerger:
         gemini_key = os.getenv("GOOGLE_API_KEY")
         if gemini_key:
             self.llm = LLM(
-                model="gemini/gemini-2.0-flash-exp",
+                model="gemini/gemini-2.5-flash",  # Stable model
                 api_key=gemini_key,
-                temperature=0.2,  # Very low for classification
+                temperature=0.2,
+                timeout=120,
+                max_retries=3,
+                rpm=5,  # ✅ LIMIT TO 5 REQUESTS PER MINUTE
             )
+            self.use_llm = True
         else:
             ollama_model = os.getenv("OLLAMA_CHAT", "ollama/qwen2.5:3b")
             if not ollama_model.startswith("ollama/"):
@@ -51,6 +50,37 @@ class InvestigationStepMerger:
             self.llm = LLM(
                 model=ollama_model, base_url="http://localhost:11434", temperature=0.2
             )
+            self.use_llm = True
+
+    def _is_non_investigative_step(self, text: str) -> bool:
+        """Use LLM with rate limit protection"""
+        # Quick keyword check first
+        obvious_keywords = [
+            "reset the account",
+            "revoke the mfa",
+            "block the detected",
+            "inform to it team",
+            "reach out to",
+            "temporary disable",
+            "close it as",
+            "track for the closer",
+            "document the steps taken",
+        ]
+
+        if any(keyword in text for keyword in obvious_keywords):
+            return True
+
+        # ✅ SKIP LLM IF RATE LIMITED
+        if not self.use_llm:
+            return False
+
+        try:
+            return self._llm_classify_step_type(text)
+        except Exception as e:
+            if "429" in str(e) or "rate limit" in str(e).lower():
+                print(f"   ⏸️  Rate limited - using fallback classification")
+                self.use_llm = False  # Disable LLM for remaining steps
+            return False
 
     def merge_steps(
         self, original_steps: List[Dict], generated_steps: List[Dict], profile: Dict
@@ -149,36 +179,6 @@ class InvestigationStepMerger:
                 investigative_steps.append(step)
 
         return investigative_steps
-
-    def _is_non_investigative_step(self, text: str) -> bool:
-        """
-        Use LLM to determine if step is remediation/closure instead of hardcoded patterns
-        """
-        # Quick keyword check first (fast path)
-        obvious_keywords = [
-            "reset the account",
-            "revoke the mfa",
-            "block the detected",
-            "inform to it team",
-            "inform it team",
-            "reach out to",
-            "temporary disable",
-            "close it as",
-            "track for the closer",
-            "closer confirmation",
-            "final confirmation",
-            "document the steps taken",
-            "after all the investigation",
-            "if user confirms",
-            "escalate to",
-            "notify the user",
-        ]
-
-        if any(keyword in text for keyword in obvious_keywords):
-            return True
-
-        # Use LLM for ambiguous cases
-        return self._llm_classify_step_type(text)
 
     def _llm_classify_step_type(self, step_text: str) -> bool:
         """

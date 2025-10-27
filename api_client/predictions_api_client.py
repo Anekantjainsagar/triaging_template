@@ -1,13 +1,8 @@
-"""
-FastAPI Client for Predictions & MITRE Analysis Backend
-Client for interacting with the Investigation Analysis API
-"""
-
-import requests
-import streamlit as st
-from typing import Optional, Dict, List, Any, BinaryIO
 import json
+import requests
 from io import BytesIO
+import streamlit as st
+from typing import Dict, Any, BinaryIO
 
 
 class PredictionsAPIClient:
@@ -304,43 +299,6 @@ class PredictionsAPIClient:
         except requests.exceptions.RequestException as e:
             return {"success": False, "error": str(e)}
 
-    # ========================================================================
-    # Utility Methods
-    # ========================================================================
-
-    def get_api_info(self) -> Dict[str, Any]:
-        """
-        Get API information and available routes
-
-        Returns:
-            Dict with API name, version, status, and available routes
-        """
-        try:
-            response = self.session.get(f"{self.base_url}", timeout=5)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            return {"error": str(e)}
-
-    def set_api_key(self, api_key: str):
-        """
-        Update API key for analysis
-
-        Args:
-            api_key: Google API key
-        """
-        self.api_key = api_key
-
-    def set_base_url(self, base_url: str):
-        """
-        Update base URL
-
-        Args:
-            base_url: New base URL
-        """
-        self.base_url = base_url.rstrip("/")
-
-
 # ============================================================================
 # Streamlit Integration
 # ============================================================================
@@ -383,7 +341,6 @@ def cache_analysis_result(username: str, analysis_data: Dict[str, Any]) -> str:
 # Utility Functions for Streamlit Integration
 # ============================================================================
 
-
 def validate_api_connection(base_url: str) -> tuple[bool, str]:
     """
     Validate connection to predictions API
@@ -399,31 +356,6 @@ def validate_api_connection(base_url: str) -> tuple[bool, str]:
         return True, "✅ Connected to Predictions API"
     else:
         return False, "❌ Cannot connect to Predictions API"
-
-
-def format_analysis_for_display(analysis: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Format analysis result for Streamlit display
-
-    Args:
-        analysis: Raw analysis from API
-
-    Returns:
-        Formatted analysis data
-    """
-    if not analysis.get("success"):
-        return {"error": analysis.get("error", "Unknown error")}
-
-    return {
-        "classification": analysis.get("initial_analysis", {}).get("classification"),
-        "risk_level": analysis.get("initial_analysis", {}).get("risk_level"),
-        "confidence": analysis.get("initial_analysis", {}).get("confidence_score"),
-        "summary": analysis.get("initial_analysis", {}).get("summary"),
-        "mitre_analysis": analysis.get("mitre_attack_analysis"),
-        "executive_summary": analysis.get("executive_summary"),
-        "geographic_risk": analysis.get("geographic_risk"),
-    }
-
 
 def export_analysis_json(
     analysis: Dict[str, Any], filename: str = "analysis.json"

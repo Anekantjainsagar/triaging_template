@@ -9,11 +9,6 @@ load_dotenv()
 
 
 class InvestigationStepLibrary:
-    """
-    Dynamically generates investigation steps using LLM + Web Search
-    Based on alert analysis and threat intelligence
-    """
-
     def __init__(self):
         self._init_llm()
 
@@ -239,106 +234,6 @@ Focus on what a SOC analyst should DO, not just theory.""",
                 return True
         
         return False
-
-    def _is_generic_name(self, step_name: str) -> bool:
-        """Check if step name is too generic"""
-        step_lower = step_name.lower().strip()
-        
-        # Single word or very short names are too generic
-        if len(step_name.split()) <= 2:
-            return True
-        
-        # Generic standalone verbs
-        generic_verbs = [
-            "query", "check", "verify", "analyze", "review", 
-            "investigate", "examine", "assess"
-        ]
-        
-        if step_lower in generic_verbs:
-            return True
-        
-        # Check if it's just a verb + generic noun
-        generic_patterns = [
-            r"^(query|check|verify|analyze|review)\s+(data|logs|activity|information)$",
-            r"^(investigate|examine|assess)\s+(issue|problem|alert)$"
-        ]
-        
-        return any(re.match(pattern, step_lower) for pattern in generic_patterns)
-
-    def _get_step_type(self, step_name: str) -> str:
-        """Determine step type to detect duplicates"""
-        step_lower = step_name.lower()
-        
-        if "ip" in step_lower and "reputation" in step_lower:
-            return "ip_reputation"
-        elif "sign" in step_lower or "login" in step_lower or "auth" in step_lower:
-            return "authentication"
-        elif "device" in step_lower:
-            return "device"
-        elif "role" in step_lower or "permission" in step_lower:
-            return "role_permission"
-        elif "mfa" in step_lower:
-            return "mfa"
-        elif "vip" in step_lower or "user" in step_lower:
-            return "user_context"
-        else:
-            return step_name[:20]  # Use first 20 chars as type
-
-    def _is_valid_investigation_step(self, step_name: str, explanation: str) -> bool:
-        """
-        Use LLM to validate if step is a proper investigation step
-        Returns True if valid, False if remediation/closure/duplicate
-        """
-        try:
-            combined = f"{step_name} - {explanation}"
-            
-            prompt = f"""Is this a valid SOC INVESTIGATION step?
-
-    Step: {combined[:300]}
-
-    A valid investigation step:
-    ✅ Queries a log source (SigninLogs, AuditLogs, etc.)
-    ✅ Uses an external tool (VirusTotal, AbuseIPDB)
-    ✅ Extracts/analyzes data
-    ✅ Checks user/device/IP information
-    
-    An INVALID step (must be rejected):
-    ❌ Remediation (reset, revoke, block, disable, temporary)
-    ❌ Notification (inform, notify, reach out, escalate)
-    ❌ Documentation (document, track, closure, confirmation)
-    ❌ Classification (TP/FP, close incident, mark as)
-    ❌ Generic/vague (assess baseline, correlate, timeline)
-
-    Answer with ONLY: VALID or INVALID"""
-
-            agent = Agent(
-                role="SOC Step Validator",
-                goal="Validate investigation step",
-                backstory="Expert at identifying proper investigation steps",
-                llm=self.llm,
-                verbose=False,
-            )
-
-            task = Task(
-                description=prompt,
-                expected_output="Single word: VALID or INVALID",
-                agent=agent,
-            )
-            crew = Crew(agents=[agent], tasks=[task], verbose=False)
-            result = str(crew.kickoff()).strip().upper()
-
-            return "VALID" in result
-
-        except Exception as e:
-            print(f"   ⚠️ Validation failed: {str(e)[:100]}")
-            # If LLM fails, use strict keyword check
-            invalid_keywords = [
-                "reset", "revoke", "block", "disable", "inform", "notify",
-                "escalate", "document", "track", "closure", "confirmation",
-                "close incident", "mark as", "temporary", "reach out"
-            ]
-            combined_lower = f"{step_name} {explanation}".lower()
-            return not any(keyword in combined_lower for keyword in invalid_keywords)
 
     def _parse_llm_steps(self, llm_output: str) -> List[Dict]:
         """Parse LLM output into structured step dictionaries"""

@@ -6,9 +6,7 @@ from io import BytesIO
 from typing import List, Dict
 from dotenv import load_dotenv
 from crewai import LLM, Agent, Task, Crew
-from routes.src.utils import extract_alert_name
 from api_client.analyzer_api_client import get_analyzer_client
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 from difflib import SequenceMatcher
@@ -233,76 +231,28 @@ class ImprovedTemplateGenerator:
         return self._enforce_length(explanation, max_sentences=3)
 
     def _needs_kql(self, step_name: str, explanation: str) -> bool:
-        """Determine if step needs KQL query - be more selective"""
+        """Determine if step needs KQL query - MORE INCLUSIVE"""
         combined = f"{step_name} {explanation}".lower()
 
-        # ❌ Skip these types (NO KQL needed)
+        # ❌ Skip only external tools
         skip_keywords = [
-            "virustotal",
-            "virus total", 
-            "abuseipdb",
-            "abuse",
-            "ip reputation",  # Uses external tools
-            "domain reputation",
-            "document",
-            "close incident",
-            "escalate",
-            "inform",
-            "notify",
-            "report",
-            "classify",
-            "confirmation",
-            "true positive",
-            "false positive",
-            "baseline behavior",  # Manual analysis
-            "correlate",
-            "timeline",
-            "assess",
-            "compare",
+            "virustotal", "virus total", "abuseipdb", "abuse",
+            "document", "close incident", "escalate", "inform", "notify"
         ]
 
         if any(keyword in combined for keyword in skip_keywords):
             return False
 
-        # ✅ Needs KQL if investigating data sources
+        # ✅ Include role/permission checks (they need AuditLogs)
         needs_keywords = [
-            "sign-in",
-            "signin",
-            "login", 
-            "audit",
-            "logs",
-            "query",
-            "check user",
-            "verify user",
-            "review",
-            "analyze",
-            "investigate",
-            "count",
-            "gather",
-            "extract",
-            "device",
-            "endpoint",
-            "role",
-            "permission",
-            "mfa",
-            "authentication",
-            "location",
+            "sign-in", "signin", "login", "audit", "logs", "query",
+            "check user", "verify user", "review", "analyze", "investigate",
+            "count", "gather", "extract", "device", "endpoint",
+            "role", "permission", "assignment", "group", "membership",  # ✅ ADDED
+            "mfa", "authentication", "location", "oauth", "grant"  # ✅ ADDED
         ]
 
         return any(keyword in combined for keyword in needs_keywords)
-
-    def _enforce_length(self, text: str, max_sentences: int = 3) -> str:
-        """Enforce maximum sentence length"""
-        if not text:
-            return text
-
-        sentences = re.split(r"(?<=[.!?])\s+", text.strip())
-
-        if len(sentences) > max_sentences:
-            limited = " ".join(sentences[:max_sentences])
-            return limited
-
-        return text
 
     def generate_intelligent_template(
         self, rule_number: str, original_steps: List[Dict], rule_context: str = ""
@@ -387,253 +337,6 @@ class ImprovedTemplateGenerator:
 
         return pd.DataFrame(template_rows)
 
-    # --- NEW HELPER METHOD FOR FILTERING ---
-    def _is_investigative_step(self, step: Dict) -> bool:
-        """Filter out non-investigative/meta/remediation steps"""
-        name = step.get("step_name", "").lower()
-        explanation = step.get("explanation", "").lower()
-
-        # Patterns for post-investigation, remediation, or final documentation
-        non_investigative_patterns = [
-            "reset the account",
-            "revoke the mfa",
-            "block the detected",
-            "inform to it team",
-            "track for the closer",
-            "document the steps taken",
-            "after all the investigation",
-            "close it as:",
-            "treat it as :",
-            "if user confirms then close",
-            "reach out to the network/edr",
-            "final confirmation received",
-        ]
-
-        combined = f"{name} {explanation}"
-
-        # If it is a step to confirm or finalize the incident, it is not investigative
-        if any(p in combined for p in non_investigative_patterns):
-            return False
-
-        # If it contains core investigative verbs and is not caught by the above, keep it
-        investigative_verbs = ["check", "verify", "analyze", "review", "run the kql"]
-        if any(v in name for v in investigative_verbs):
-            return True
-
-        # Default to keeping if it's not explicitly filtered and not too short
-        return len(name) > 10
-
-    # --- NEW HELPER METHOD FOR TECHNICAL OVERVIEW ---
-    def _get_alert_technical_overview(self, rule_number: str) -> str:
-        """Fetch the Technical Overview from the AI Alert Analysis API"""
-        if not self.analyzer_client:
-            return ""
-
-        try:
-            # 1. Extract alert name from rule number (e.g., "Rule#297 - Unusual Login" -> "Unusual Login")
-            alert_name = extract_alert_name(rule_number)
-
-            # If the extraction fails, use a generic name
-            if not alert_name or alert_name.lower() in ["n/a", rule_number.lower()]:
-                return ""
-
-            # 2. Call the analysis API
-            result = self.analyzer_client.analyze_alert(alert_name)
-
-            if result.get("success"):
-                analysis_text = result.get("analysis", "")
-
-                # 3. Extract only the Technical Overview section
-                # Pattern to find '## TECHNICAL OVERVIEW' and everything until the next '##'
-                match = re.search(
-                    r"##\s*TECHNICAL\s*OVERVIEW\s*([\s\S]*?)(?=##|\Z)",
-                    analysis_text,
-                    re.IGNORECASE,
-                )
-
-                if match:
-                    overview = match.group(1).strip()
-                    # Further clean up any sub-headers or extra newlines
-                    overview = re.sub(r"\n{2,}", " ", overview).strip()
-                    return overview
-
-            return ""
-
-        except Exception as e:
-            print(f"⚠️ Failed to get technical overview for {rule_number}: {e}")
-            return ""
-
-    def _extract_rule_context(self, rule_number: str, steps: List[Dict]) -> str:
-        """Extract context from rule number and steps"""
-        # Analyze step names to determine context
-        all_text = " ".join(
-            [s.get("step_name", "") + " " + s.get("explanation", "") for s in steps]
-        ).lower()
-
-        if "role" in all_text and ("assign" in all_text or "privilege" in all_text):
-            return "Privileged role assignment and RBAC investigation"
-        elif "sign-in" in all_text or "login" in all_text:
-            return "User authentication and sign-in activity investigation"
-        elif "ip" in all_text and "reputation" in all_text:
-            return "IP reputation and network threat investigation"
-        elif "device" in all_text or "endpoint" in all_text:
-            return "Device compliance and endpoint security investigation"
-        else:
-            return "Security incident investigation and analysis"
-
-    def _process_steps_parallel(
-        self, original_steps: List[Dict], rule_number: str, rule_context: str
-    ) -> List[Dict]:
-        """Process multiple steps in parallel"""
-
-        enhanced_steps = [None] * len(original_steps)
-
-        # Use ThreadPoolExecutor for parallel processing
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            future_to_index = {
-                executor.submit(
-                    self._process_single_step,
-                    i + 1,
-                    step,
-                    rule_number,
-                    rule_context,
-                ): i
-                for i, step in enumerate(original_steps)
-            }
-
-            for future in as_completed(future_to_index):
-                index = future_to_index[future]
-                try:
-                    # Longer timeout for web search and LLM calls
-                    result = future.result(timeout=180)
-                    enhanced_steps[index] = result
-                    print(f"✅ Step {index + 1} completed")
-                except Exception as e:
-                    print(f"⚠️ Step {index + 1} failed: {str(e)}")
-                    enhanced_steps[index] = self._fallback_step(
-                        index + 1, original_steps[index]
-                    )
-
-        # Filter out any potential None if a step failed unexpectedly and fallback was missed
-        return [step for step in enhanced_steps if step is not None]
-
-    def _process_single_step(
-        self,
-        step_num: int,
-        original_step: Dict,
-        rule_number: str,
-        rule_context: str,
-    ) -> Dict:
-        """Process single step with enhanced KQL generation"""
-
-        original_name = original_step.get("step_name", "")
-        original_explanation = original_step.get("explanation", "")
-
-        # 1. Generate/improve step name
-        step_name = self._enhance_step_name(
-            original_name, original_explanation, step_num
-        )
-
-        # 2. Enhance explanation
-        explanation = self._enhance_explanation(step_name, original_explanation)
-
-        # 3. Generate KQL using enhanced generator
-        print(f"\n📊 Processing Step {step_num}: {step_name}")
-        kql_query, kql_explanation = self.kql_generator.generate_kql_query(
-            step_name=step_name,
-            explanation=explanation,
-            step_number=step_num,
-            rule_context=rule_context,  # Use the full_context passed from generate_intelligent_template
-        )
-
-        # 4. Add manual investigation steps if no KQL
-        if not kql_query and self._needs_investigation_guidance(step_name, explanation):
-            explanation = self._add_manual_investigation_steps(explanation, step_name)
-
-        # Enforce length limits
-        explanation = self._enforce_length(explanation, max_sentences=3)
-
-        return {
-            "Step": step_num,
-            "Name": step_name,
-            "Explanation": explanation,
-            "KQL Query": kql_query,
-            "KQL Explanation": kql_explanation,
-            "Execute": "",
-            "Output": "",
-            "Remarks/Comments": "",
-        }
-
-    def _enhance_step_name(
-        self, original_name: str, explanation: str, step_num: int
-    ) -> str:
-        """Enhance step name if needed"""
-
-        # If original is good, clean and use it
-        if self._is_good_step_name(original_name):
-            return self._clean_step_name(original_name)
-
-        # Generate improved name
-        prompt = f"""Generate a clear SOC investigation step name.
-
-Original name: {original_name[:100]}
-Context: {explanation[:100]}
-
-Requirements:
-- Start with action verb: Verify, Analyze, Review, Check, Investigate
-- Be specific and clear
-- 4-8 words maximum
-- No numbering or prefixes
-
-Example: "Verify User Sign-in Activity"
-
-Output ONLY the step name:"""
-
-        try:
-            result = self._quick_llm_call(prompt, max_tokens=30)
-            step_name = self._aggressive_clean(result)
-
-            if 5 <= len(step_name) <= 100 and self._is_clean_name(step_name):
-                return step_name
-
-        except Exception as e:
-            print(f"   ⚠️ Name generation failed: {str(e)[:50]}")
-
-        return self._clean_step_name(original_name) or f"Investigation Step {step_num}"
-
-    def _enhance_explanation(self, step_name: str, original: str) -> str:
-        """Enhance explanation if needed"""
-
-        # If original is detailed enough, keep it
-        if len(original) > 50 and not self._is_vague(original):
-            return self._enforce_length(original, max_sentences=3)
-
-        # Generate enhanced explanation
-        prompt = f"""Write a concise SOC investigation instruction.
-
-Step: {step_name}
-Current: {original[:150]}
-
-Include:
-- What to investigate
-- Which logs/tools to use
-- What to look for
-- Maximum 2-3 sentences
-
-Output ONLY the instruction:"""
-
-        try:
-            result = self._quick_llm_call(prompt, max_tokens=100)
-            explanation = self._aggressive_clean(result)
-
-            if len(explanation) > 20:
-                return self._enforce_length(explanation, max_sentences=3)
-
-        except Exception as e:
-            print(f"   ⚠️ Explanation generation failed: {str(e)[:50]}")
-
-        return original or "Complete investigation and document findings."
-
     def _deduplicate_kql_queries(self, template_rows: List[Dict]) -> List[Dict]:
         """Remove steps with duplicate or nearly-identical KQL queries"""
         seen_queries = {}
@@ -666,71 +369,6 @@ Output ONLY the instruction:"""
                 print(f"   🗑️ Removed duplicate KQL step: {row.get('Name', '')}")
 
         return deduplicated
-
-    def _needs_investigation_guidance(self, step_name: str, explanation: str) -> bool:
-        """Check if step needs manual investigation guidance"""
-        combined = f"{step_name} {explanation}".lower()
-
-        needs_guidance = [
-            "verify",
-            "check",
-            "review",
-            "analyze",
-            "validate",
-            "investigate",
-            "examine",
-            "assess",
-            "inspect",
-        ]
-
-        skip = [
-            "document",
-            "close",
-            "escalate",
-            "inform",
-            "notify",
-            "report",
-            "classify",
-            "confirmation",
-        ]
-
-        if any(word in combined for word in skip):
-            return False
-
-        return any(word in combined for word in needs_guidance)
-
-    def _add_manual_investigation_steps(self, explanation: str, step_name: str) -> str:
-        """Add manual investigation steps when KQL isn't available"""
-
-        step_lower = step_name.lower()
-        manual_steps = ""
-
-        if "ip" in step_lower and "reputation" in step_lower:
-            manual_steps = " Manually check the IP address using VirusTotal, AbuseIPDB, or similar threat intelligence platforms. Document the reputation score and any malicious indicators found."
-
-        elif "user" in step_lower and ("vip" in step_lower or "status" in step_lower):
-            manual_steps = " Cross-reference the username against the organization's VIP user list. Verify user role, department, and access level in the identity management system."
-
-        elif "device" in step_lower or "endpoint" in step_lower:
-            manual_steps = " Check device compliance status in Endpoint Management console. Verify device registration, last check-in time, and compliance policy status."
-
-        elif "mfa" in step_lower or "multi-factor" in step_lower:
-            manual_steps = " Review user's MFA settings in Azure AD/Identity Provider. Verify enrolled authentication methods and recent MFA challenge results."
-
-        elif "location" in step_lower or "geographic" in step_lower:
-            manual_steps = " Analyze geographic location patterns from sign-in logs. Compare with user's known locations and identify any unusual or impossible travel scenarios."
-
-        elif "role" in step_lower or "permission" in step_lower:
-            manual_steps = " Review user's assigned roles and permissions in the identity management system. Verify role assignment history and check for any recent privilege escalations."
-
-        else:
-            manual_steps = " Review relevant logs and documentation. Gather evidence from available security tools and systems. Document all findings with timestamps and sources."
-
-        if manual_steps and manual_steps.strip() not in explanation:
-            combined = explanation + manual_steps
-            return self._enforce_length(combined, max_sentences=4)
-
-        return explanation
 
     def _enforce_length(self, text: str, max_sentences: int = 3) -> str:
         """Enforce maximum sentence length"""
@@ -807,59 +445,6 @@ Output ONLY the instruction:"""
 
         return text
 
-    def _is_good_step_name(self, name: str) -> bool:
-        """Check if step name is good"""
-        if not name or len(name) < 5:
-            return False
-
-        action_verbs = [
-            "verify",
-            "validate",
-            "check",
-            "review",
-            "analyze",
-            "examine",
-            "investigate",
-            "extract",
-            "query",
-            "assess",
-        ]
-
-        name_lower = name.lower()
-        starts_with_verb = any(name_lower.startswith(verb) for verb in action_verbs)
-
-        if len(name) > 100 or not self._is_clean_name(name):
-            return False
-
-        return starts_with_verb
-
-    def _is_clean_name(self, name: str) -> bool:
-        """Check if name is clean"""
-        name_lower = name.lower()
-
-        artifacts = [
-            "i must",
-            "job depends",
-            "final answer",
-            "task completed",
-            "ready for submission",
-            "---",
-            "successfully",
-        ]
-
-        return not any(artifact in name_lower for artifact in artifacts)
-
-    def _clean_step_name(self, name: str) -> str:
-        """Clean step name"""
-        name = re.sub(r"^\d+\.?\s*", "", name)
-        name = re.sub(r"^Step\s*\d+:?\s*", "", name, flags=re.IGNORECASE)
-        name = re.sub(r"\s*---\s*\w+", "", name)
-
-        if len(name) > 100:
-            name = name[:97] + "..."
-
-        return name.strip()
-
     def _is_vague(self, text: str) -> bool:
         """Check if text is vague"""
         if not text or len(text) < 30:
@@ -867,23 +452,6 @@ Output ONLY the instruction:"""
 
         vague = ["n/a", "tbd", "complete the step", "document findings"]
         return any(phrase in text.lower() for phrase in vague)
-
-    def _fallback_step(self, step_num: int, original_step: Dict) -> Dict:
-        """Create fallback step if processing fails"""
-        return {
-            "Step": step_num,
-            "Name": self._clean_step_name(
-                original_step.get("step_name", f"Step {step_num}")
-            ),
-            "Explanation": self._enforce_length(
-                original_step.get("explanation", "Complete investigation step.")
-            ),
-            "KQL Query": "",
-            "KQL Explanation": "",
-            "Execute": "",
-            "Output": "",
-            "Remarks/Comments": "",
-        }
 
     def export_to_excel(self, df: pd.DataFrame, rule_number: str) -> BytesIO:
         """Export to formatted Excel"""
@@ -955,13 +523,6 @@ class EnhancedTemplateGenerator:
     def __init__(self):
         self.generator = ImprovedTemplateGenerator()
         self.template_columns = self.generator.template_columns
-
-    def generate_clean_template(
-        self, rule_number: str, enhanced_steps: List[Dict]
-    ) -> pd.DataFrame:
-        return self.generator.generate_intelligent_template(
-            rule_number=rule_number, original_steps=enhanced_steps, rule_context=""
-        )
 
     def export_to_excel(self, df: pd.DataFrame, rule_number: str) -> BytesIO:
         return self.generator.export_to_excel(df, rule_number)

@@ -172,7 +172,7 @@ def _export_template_with_remarks_and_outputs(
     return output.getvalue()
 
 
-def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGenerator):
+def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
     """Main page function - UPDATED TO USE INTELLIGENT GENERATOR"""
 
     selected_alert = session_state.get("triaging_selected_alert", None)

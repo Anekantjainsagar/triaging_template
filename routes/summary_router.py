@@ -191,74 +191,6 @@ async def summary_root():
 
 
 @router.post(
-    "/generate/single",
-    response_model=GenerateSummaryResponse,
-    summary="Generate single summary",
-    description="Generate LLM-powered summary for a specific section with provided data",
-)
-async def generate_single_summary(request: GenerateSummaryRequest):
-    """
-    Generate AI summary for a single section
-
-    This endpoint generates a professional 2-3 line summary using either
-    Google Gemini or Ollama LLM based on the provided metrics.
-
-    Args:
-        request: GenerateSummaryRequest with section_name and data
-
-    Returns:
-        GenerateSummaryResponse with generated summary
-    """
-    if not request.section_name.strip():
-        raise HTTPException(status_code=400, detail="Section name cannot be empty")
-
-    if not request.data:
-        raise HTTPException(status_code=400, detail="Data cannot be empty")
-
-    # Create cache key
-    import hashlib
-    import json
-
-    cache_key = hashlib.md5(
-        (request.section_name + json.dumps(request.data, sort_keys=True)).encode()
-    ).hexdigest()
-
-    # Check cache
-    if cache_key in _summary_cache:
-        cached_result = _summary_cache[cache_key]
-        return GenerateSummaryResponse(
-            success=True,
-            section_name=request.section_name,
-            summary=cached_result["summary"],
-            timestamp=cached_result["timestamp"],
-            cached=True,
-        )
-
-    try:
-        # Generate summary using backend function
-        summary = generate_data_summary_with_llm(request.section_name, request.data)
-
-        # Cache result
-        _summary_cache[cache_key] = {
-            "summary": summary,
-            "timestamp": datetime.now().isoformat(),
-        }
-
-        return GenerateSummaryResponse(
-            success=True,
-            section_name=request.section_name,
-            summary=summary,
-            timestamp=datetime.now().isoformat(),
-            cached=False,
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error generating summary: {str(e)}"
-        )
-
-
-@router.post(
     "/generate/multiple",
     response_model=GenerateMultipleSummariesResponse,
     summary="Generate multiple summaries",
@@ -401,27 +333,6 @@ async def generate_multiple_summaries(request: GenerateMultipleSummariesRequest)
         raise HTTPException(
             status_code=500, detail=f"Error generating summaries: {str(e)}"
         )
-
-
-@router.get(
-    "/cache/info",
-    response_model=SummaryCacheInfo,
-    summary="Get cache information",
-    description="Get information about cached summaries",
-)
-async def get_cache_info():
-    """
-    Get information about summary cache
-
-    Returns:
-        SummaryCacheInfo with cache statistics
-    """
-    return SummaryCacheInfo(
-        success=True,
-        total_cached_summaries=len(_summary_cache),
-        cache_keys=list(_summary_cache.keys())[:10],  # First 10 keys only
-        timestamp=datetime.now().isoformat(),
-    )
 
 
 @router.delete(

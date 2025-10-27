@@ -1,16 +1,9 @@
-"""
-FastAPI Client for SOC Analyzer Backend
-Client for interacting with the SOC Intelligence API
-"""
-
 import requests
 import streamlit as st
 from typing import Dict, Any
 
 
 class AnalyzerAPIClient:
-    """Client for interacting with the SOC Analyzer FastAPI Backend"""
-
     def __init__(self, base_url: str = "http://localhost:8000"):
         """
         Initialize API client
@@ -141,20 +134,6 @@ class AnalyzerAPIClient:
         except requests.exceptions.RequestException as e:
             return {"success": False, "error": str(e)}
 
-    def get_api_info(self) -> Dict[str, Any]:
-        """
-        Get API information and available routes
-
-        Returns:
-            Dict with API name, version, status, documentation links, and available routes
-        """
-        try:
-            response = self.session.get(f"{self.base_url}/", timeout=5)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            return {"error": str(e)}
-
     def system_health(self) -> Dict[str, Any]:
         """
         Check system-wide health
@@ -168,19 +147,6 @@ class AnalyzerAPIClient:
             return response.json()
         except requests.exceptions.RequestException as e:
             return {"status": "error", "error": str(e)}
-
-    def is_api_available(self) -> bool:
-        """
-        Quick check if API is reachable
-
-        Returns:
-            True if API is available, False otherwise
-        """
-        try:
-            response = self.session.get(f"{self.base_url}/health", timeout=3)
-            return response.status_code == 200
-        except:
-            return False
 
 
 # ============================================================================

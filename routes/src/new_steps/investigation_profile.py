@@ -10,11 +10,6 @@ load_dotenv()
 
 
 class InvestigationProfileBuilder:
-    """
-    Builds structured investigation profile from AI threat analysis
-    This guides intelligent step generation
-    """
-
     def __init__(self):
         self._init_llm()
 

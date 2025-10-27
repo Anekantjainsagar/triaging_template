@@ -3,7 +3,6 @@ import traceback
 
 # Template processing imports
 from routes.src.template_parser import TemplateParser
-from routes.src.web_llm_enhancer import WebLLMEnhancer
 from routes.src.template_generator import EnhancedTemplateGenerator
 
 # Individual step imports
@@ -95,7 +94,6 @@ def display_triaging_workflow(rule_number: str):
             step2_enhance(
                 st.session_state,
                 TemplateParser,
-                WebLLMEnhancer,
                 EnhancedTemplateGenerator,
             )
         else:

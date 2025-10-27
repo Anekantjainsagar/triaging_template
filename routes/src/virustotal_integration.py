@@ -1,23 +1,16 @@
-import os
-import requests
-from typing import Dict, Optional, List
-from crewai import LLM, Agent, Task, Crew
-from crewai_tools import SerperDevTool, ScrapeWebsiteTool
-from dotenv import load_dotenv
-import time
 import re
+import os
+import time
+import requests
+from crewai import LLM
+from typing import Dict
+from dotenv import load_dotenv
+from crewai_tools import ScrapeWebsiteTool
 
 load_dotenv()
 
 
 class IPReputationChecker:
-    """
-    Unified IP reputation checker using multiple sources:
-    - VirusTotal
-    - AbuseIPDB
-    Provides aggregated risk assessment
-    """
-
     def __init__(self):
         self.vt_api_key = os.getenv("VIRUSTOTAL_API_KEY")
         self.abuseipdb_key = os.getenv("ABUSE_DB_KEY")
@@ -475,6 +468,3 @@ class VirusTotalChecker(IPReputationChecker):
     """Maintains backward compatibility with existing code"""
 
     pass
-
-
-# Streamlit Integration Helper

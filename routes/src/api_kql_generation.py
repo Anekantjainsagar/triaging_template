@@ -282,8 +282,13 @@ class EnhancedKQLGenerator:
         """Initialize LLMs"""
         gemini_key = os.getenv("GOOGLE_API_KEY")
         if gemini_key:
+            # ✅ USE STABLE MODEL NAME
             self.gemini_llm = LLM(
-                model="gemini/gemini-1.5-flash", api_key=gemini_key, temperature=0.3
+                model="gemini/gemini-2.5-flash",  # NOT gemini-2.5-flash
+                api_key=gemini_key,
+                temperature=0.3,
+                timeout=120,
+                max_retries=2,
             )
             self.primary_llm = self.gemini_llm
             print("✅ Primary LLM: Gemini 1.5 Flash")
@@ -532,16 +537,22 @@ class EnhancedKQLGenerator:
         self, kql: str, step_name: str, explanation: str
     ) -> str:
         """Generate SPECIFIC, UNIQUE KQL explanation"""
-        
+
         # Extract key elements from KQL
         has_summarize = "summarize" in kql.lower()
         has_dcount = "dcount" in kql.lower()
         has_join = "join" in kql.lower()
-        
-        table = "SigninLogs" if "signinlogs" in kql.lower() else \
-                "AuditLogs" if "auditlogs" in kql.lower() else \
-                "DeviceInfo" if "deviceinfo" in kql.lower() else "logs"
-        
+
+        table = (
+            "SigninLogs"
+            if "signinlogs" in kql.lower()
+            else (
+                "AuditLogs"
+                if "auditlogs" in kql.lower()
+                else "DeviceInfo" if "deviceinfo" in kql.lower() else "logs"
+            )
+        )
+
         prompt = f"""Write ONE unique sentence explaining this KQL query.
 
     KQL: {kql[:200]}
@@ -572,18 +583,21 @@ class EnhancedKQLGenerator:
 
             task = Task(description=prompt, expected_output="One sentence", agent=agent)
             crew = Crew(agents=[agent], tasks=[task], verbose=False, max_rpm=5)
-            
+
             result = str(crew.kickoff()).strip()
             result = self._clean_explanation(result)
-            
+
             # Ensure it's one sentence
-            if '.' in result:
-                result = result.split('.')[0] + '.'
-            
+            if "." in result:
+                result = result.split(".")[0] + "."
+
             # Fallback if too generic
-            if len(result.split()) < 8 or any(generic in result.lower() for generic in ["queries data", "analyzes logs", "checks information"]):
+            if len(result.split()) < 8 or any(
+                generic in result.lower()
+                for generic in ["queries data", "analyzes logs", "checks information"]
+            ):
                 return self._generate_explanation(kql)
-            
+
             return result
 
         except Exception as e:
@@ -594,14 +608,21 @@ class EnhancedKQLGenerator:
         """Clean explanation from LLM artifacts"""
         # Remove common prefixes
         prefixes = [
-            "This query", "The query", "Explanation:", "Output:",
-            "Here's", "Here is", "The KQL", "This KQL",
-            "Answer:", "Result:"
+            "This query",
+            "The query",
+            "Explanation:",
+            "Output:",
+            "Here's",
+            "Here is",
+            "The KQL",
+            "This KQL",
+            "Answer:",
+            "Result:",
         ]
 
         for prefix in prefixes:
             if explanation.lower().startswith(prefix.lower()):
-                explanation = explanation[len(prefix):].strip()
+                explanation = explanation[len(prefix) :].strip()
                 if explanation.startswith(":"):
                     explanation = explanation[1:].strip()
 
@@ -763,39 +784,62 @@ OUTPUT ONLY THE KQL QUERY:"""
         return "\n".join(lines).strip()
 
     def _generate_explanation(self, kql: str) -> str:
-        """Generate simple explanation from KQL structure"""
+        """Generate SPECIFIC explanation from KQL structure"""
         kql_lower = kql.lower()
-        
-        # Identify the primary action
-        if "summarize" in kql_lower and "dcount" in kql_lower:
-            action = "Aggregates data and counts unique values"
-        elif "summarize" in kql_lower and "count" in kql_lower:
-            action = "Aggregates and counts"
-        elif "summarize" in kql_lower:
-            action = "Summarizes"
-        elif "join" in kql_lower:
-            action = "Correlates"
-        elif "project" in kql_lower:
-            action = "Extracts specific fields"
-        else:
-            action = "Queries"
-        
-        # Identify the data source
-        if "signinlogs" in kql_lower:
-            source = "sign-in logs"
-        elif "auditlogs" in kql_lower:
-            source = "audit logs"
-        elif "deviceinfo" in kql_lower:
-            source = "device information"
-        elif "identityinfo" in kql_lower:
-            source = "user identity data"
-        elif "cloudappevents" in kql_lower:
-            source = "cloud app activity"
-        elif "securityevent" in kql_lower:
-            source = "security events"
-        else:
-            source = "data"
-        
-        # Build explanation
-        return f"{action} from {source}."
 
+        # Identify table
+        table = (
+            "SigninLogs"
+            if "signinlogs" in kql_lower
+            else (
+                "AuditLogs"
+                if "auditlogs" in kql_lower
+                else (
+                    "DeviceInfo"
+                    if "deviceinfo" in kql_lower
+                    else (
+                        "CloudAppEvents"
+                        if "cloudappevents" in kql_lower
+                        else "security logs"
+                    )
+                )
+            )
+        )
+
+        # Identify timeframe
+        if "ago(1d)" in kql_lower or "ago(24h)" in kql_lower:
+            timeframe = "last 24 hours"
+        elif "ago(7d)" in kql_lower:
+            timeframe = "last 7 days"
+        elif "ago(30d)" in kql_lower:
+            timeframe = "last 30 days"
+        else:
+            timeframe = "specified timeframe"
+
+        # Identify key operations
+        if "dcount" in kql_lower and "userprincipalname" in kql_lower:
+            action = f"Counts unique user accounts from {table} over {timeframe}"
+        elif (
+            "summarize" in kql_lower
+            and "count()" in kql_lower
+            and "ipaddress" in kql_lower
+        ):
+            action = f"Aggregates sign-in attempts by IP address from {table} over {timeframe}"
+        elif "join" in kql_lower:
+            action = f"Correlates data from multiple log sources over {timeframe}"
+        elif "where" in kql_lower and "location" in kql_lower:
+            action = f"Filters {table} by geographic location over {timeframe}"
+        elif "where" in kql_lower and "resulttype" in kql_lower:
+            action = f"Filters authentication results from {table} over {timeframe}"
+        elif "oauth" in kql_lower or "grant" in kql_lower:
+            action = f"Queries OAuth permission grants from {table} over {timeframe}"
+        elif "failed" in kql_lower or 'resulttype != "0"' in kql_lower:
+            action = f"Identifies failed authentication attempts from {table} over {timeframe}"
+        elif "summarize" in kql_lower:
+            action = f"Aggregates authentication data from {table} over {timeframe}"
+        elif "project" in kql_lower:
+            action = f"Extracts specific fields from {table} over {timeframe}"
+        else:
+            action = f"Queries {table} data over {timeframe}"
+
+        return f"{action}."
