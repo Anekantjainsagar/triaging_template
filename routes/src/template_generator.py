@@ -16,7 +16,6 @@ from routes.src.api_kql_generation import EnhancedKQLGenerator
 load_dotenv()
 
 
-
 class ImprovedTemplateGenerator:
     def __init__(self):
         # Initialize LLM for non-KQL tasks
@@ -56,15 +55,133 @@ class ImprovedTemplateGenerator:
             print(f"⚠️ Could not initialize Analyzer API Client: {e}")
             self.analyzer_client = None
 
-    def generate_template(
+    def _filter_investigative_steps(self, steps: List[Dict]) -> List[Dict]:
+        """Filter non-investigative steps (remediation, closure, etc.)"""
+        from routes.src.new_steps.step_merger import InvestigationStepMerger
+
+        merger = InvestigationStepMerger()
+        return merger._filter_investigative_steps(steps)
+
+    def _process_merged_steps_with_kql(
+        self, merged_steps: List[Dict], rule_number: str, profile: Dict
+    ) -> List[Dict]:
+        """
+        Process merged steps and generate KQL for each
+        Returns template rows ready for DataFrame
+        """
+        template_rows = []
+
+        for idx, step in enumerate(merged_steps, 1):
+            step_name = step.get("step_name", "")
+            explanation = step.get("explanation", "")
+            source = step.get("source", "unknown")
+            priority = step.get("priority", "MEDIUM")
+            confidence = step.get("confidence", "MEDIUM")
+
+            print(f"\n   Step {idx}: {step_name}")
+            print(
+                f"      Source: {source} | Priority: {priority} | Confidence: {confidence}"
+            )
+
+            # Generate KQL if this step needs it
+            kql_query = ""
+            kql_explanation = ""
+
+            if self._needs_kql(step_name, explanation):
+                print(f"      🔍 Generating KQL...")
+                kql_query, kql_explanation = self.kql_generator.generate_kql_query(
+                    step_name=step_name,
+                    explanation=explanation,
+                    step_number=idx,
+                    rule_context=profile.get("technical_overview", ""),
+                )
+
+                if kql_query:
+                    print(f"      ✅ KQL generated ({len(kql_query)} chars)")
+                else:
+                    print(f"      ℹ️  No KQL needed for this step")
+            else:
+                print(f"      ℹ️  Step doesn't require KQL")
+
+            # Build template row
+            row = {
+                "Step": idx,
+                "Name": step_name,
+                "Explanation": self._enforce_length(explanation, max_sentences=3),
+                "KQL Query": kql_query,
+                "KQL Explanation": kql_explanation,
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": f"[{source.upper()}] {priority}",  # Track source
+            }
+
+            template_rows.append(row)
+
+        return template_rows
+
+    def _needs_kql(self, step_name: str, explanation: str) -> bool:
+        """Determine if step needs KQL query"""
+        combined = f"{step_name} {explanation}".lower()
+
+        # Skip for these
+        skip_keywords = [
+            "virustotal",
+            "virus total",
+            "abuseipdb",
+            "document",
+            "classification",
+            "confirmation",
+            "close",
+            "remediate",
+            "notify",
+            "inform",
+        ]
+
+        if any(keyword in combined for keyword in skip_keywords):
+            return False
+
+        # Needs KQL for these
+        needs_keywords = [
+            "sign-in",
+            "login",
+            "verify",
+            "check",
+            "analyze",
+            "audit",
+            "query",
+            "review",
+            "count",
+            "investigate",
+        ]
+
+        return any(keyword in combined for keyword in needs_keywords)
+
+    def _enforce_length(self, text: str, max_sentences: int = 3) -> str:
+        """Enforce maximum sentence length"""
+        if not text:
+            return text
+
+        sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+
+        if len(sentences) > max_sentences:
+            limited = " ".join(sentences[:max_sentences])
+            return limited
+
+        return text
+
+    def generate_intelligent_template(
         self, rule_number: str, original_steps: List[Dict], rule_context: str = ""
     ) -> pd.DataFrame:
-        """Generate enhanced template with improved KQL generation"""
         print(f"\n{'='*80}")
-        print(f"🎯 IMPROVED TEMPLATE GENERATION FOR {rule_number}")
+        print(f"ðŸ§  INTELLIGENT TEMPLATE GENERATION FOR {rule_number}")
         print(f"{'='*80}\n")
 
         start_time = time.time()
+        
+        # ADD THIS DEBUG:
+        print(f"DEBUG: rule_number = {rule_number}")
+        print(f"DEBUG: original_steps count = {len(original_steps)}")
+        print(f"DEBUG: First original step: {original_steps[0] if original_steps else 'NONE'}")
 
         # Header row
         template_rows = []
@@ -72,40 +189,59 @@ class ImprovedTemplateGenerator:
         header_row["Name"] = rule_number
         template_rows.append(header_row)
 
-        # 1. Get rule context if not provided
-        if not rule_context:
-            rule_context = self._extract_rule_context(rule_number, original_steps)
-
-        # 2. Get the Technical Overview from the AI Analysis
-        technical_overview = self._get_alert_technical_overview(rule_number)
-        
-        # Merge context for LLM guidance
-        full_context = rule_context
-        if technical_overview:
-            print(f"💡 Technical Overview loaded: {technical_overview[:50]}...")
-            full_context = f"{rule_context}. Technical focus: {technical_overview}"
-        
-        # 3. Filter non-investigative steps (NEW LOGIC)
-        investigative_steps = [
-            step for step in original_steps if self._is_investigative_step(step)
-        ]
-        
-        print(f"🗑️ Filtered {len(original_steps) - len(investigative_steps)} non-investigative steps.")
-        
-        if not investigative_steps:
-             print("❌ No investigative steps remaining after filtering.")
-             return pd.DataFrame(template_rows)
-
-        # 4. Process filtered steps in parallel
-        enhanced_steps = self._process_steps_parallel(
-            investigative_steps, rule_number, full_context
+        # STEP 1: BUILD INVESTIGATION PROFILE (No hardcoding)
+        print(f"📊 PHASE 1: Building investigation profile...")
+        from routes.src.new_steps.investigation_profile import (
+            InvestigationProfileBuilder,
         )
 
-        template_rows.extend(enhanced_steps)
+        profile_builder = InvestigationProfileBuilder()
+        profile = profile_builder.build_profile(rule_number, rule_context)
+
+        print(f"   ✅ Profile complete:")
+        print(f"      - MITRE Techniques: {len(profile['mitre_techniques'])}")
+        print(f"      - Threat Actors: {len(profile['threat_actors'])}")
+        print(f"      - Investigation Focus: {profile['investigation_focus']}")
+
+        # STEP 2: GENERATE INVESTIGATION STEPS (Dynamic, LLM + Web Search)
+        print(f"\n🤖 PHASE 2: Generating investigation steps...")
+        from routes.src.new_steps.step_library import InvestigationStepLibrary
+
+        step_library = InvestigationStepLibrary()
+        generated_steps = step_library.generate_investigation_steps(profile)
+
+        print(f"   ✅ Generated {len(generated_steps)} investigation steps")
+
+        # STEP 3: FILTER & MERGE STEPS
+        print(f"\n🔄 PHASE 3: Merging with original template...")
+
+        # Filter non-investigative steps from original
+        investigative_original = self._filter_investigative_steps(original_steps)
+        print(f"   ✅ Original steps (investigative): {len(investigative_original)}")
+
+        # Use merger to combine intelligently
+        from routes.src.new_steps.step_merger import InvestigationStepMerger
+
+        merger = InvestigationStepMerger()
+        merged_steps, merge_report = merger.merge_steps(
+            investigative_original, generated_steps, profile
+        )
+
+        # Print merge transparency report
+        merger.print_merge_report(merge_report)
+
+        # STEP 4: ADD KQL & CONVERT TO TEMPLATE ROWS
+        print(f"\n⚙️  PHASE 4: Generating KQL queries and finalizing...")
+
+        template_rows.extend(
+            self._process_merged_steps_with_kql(merged_steps, rule_number, profile)
+        )
 
         elapsed = time.time() - start_time
         print(f"\n{'='*80}")
-        print(f"✅ COMPLETED in {elapsed:.1f}s: {len(enhanced_steps)} steps")
+        print(
+            f"✅ COMPLETED in {elapsed:.1f}s: {len(template_rows)-1} investigation steps"
+        )
         print(f"{'='*80}\n")
 
         return pd.DataFrame(template_rows)
@@ -115,7 +251,7 @@ class ImprovedTemplateGenerator:
         """Filter out non-investigative/meta/remediation steps"""
         name = step.get("step_name", "").lower()
         explanation = step.get("explanation", "").lower()
-        
+
         # Patterns for post-investigation, remediation, or final documentation
         non_investigative_patterns = [
             "reset the account",
@@ -131,7 +267,7 @@ class ImprovedTemplateGenerator:
             "reach out to the network/edr",
             "final confirmation received",
         ]
-        
+
         combined = f"{name} {explanation}"
 
         # If it is a step to confirm or finalize the incident, it is not investigative
@@ -155,31 +291,31 @@ class ImprovedTemplateGenerator:
         try:
             # 1. Extract alert name from rule number (e.g., "Rule#297 - Unusual Login" -> "Unusual Login")
             alert_name = extract_alert_name(rule_number)
-            
+
             # If the extraction fails, use a generic name
             if not alert_name or alert_name.lower() in ["n/a", rule_number.lower()]:
-                 return ""
+                return ""
 
             # 2. Call the analysis API
             result = self.analyzer_client.analyze_alert(alert_name)
 
             if result.get("success"):
                 analysis_text = result.get("analysis", "")
-                
+
                 # 3. Extract only the Technical Overview section
                 # Pattern to find '## TECHNICAL OVERVIEW' and everything until the next '##'
                 match = re.search(
-                    r"##\s*TECHNICAL\s*OVERVIEW\s*([\s\S]*?)(?=##|\Z)", 
-                    analysis_text, 
-                    re.IGNORECASE
+                    r"##\s*TECHNICAL\s*OVERVIEW\s*([\s\S]*?)(?=##|\Z)",
+                    analysis_text,
+                    re.IGNORECASE,
                 )
-                
+
                 if match:
                     overview = match.group(1).strip()
                     # Further clean up any sub-headers or extra newlines
                     overview = re.sub(r"\n{2,}", " ", overview).strip()
                     return overview
-                
+
             return ""
 
         except Exception as e:
@@ -228,7 +364,7 @@ class ImprovedTemplateGenerator:
                 index = future_to_index[future]
                 try:
                     # Longer timeout for web search and LLM calls
-                    result = future.result(timeout=180) 
+                    result = future.result(timeout=180)
                     enhanced_steps[index] = result
                     print(f"✅ Step {index + 1} completed")
                 except Exception as e:
@@ -266,7 +402,7 @@ class ImprovedTemplateGenerator:
             step_name=step_name,
             explanation=explanation,
             step_number=step_num,
-            rule_context=rule_context, # Use the full_context passed from generate_template
+            rule_context=rule_context,  # Use the full_context passed from generate_intelligent_template
         )
 
         # 4. Add manual investigation steps if no KQL
@@ -649,7 +785,7 @@ class EnhancedTemplateGenerator:
     def generate_clean_template(
         self, rule_number: str, enhanced_steps: List[Dict]
     ) -> pd.DataFrame:
-        return self.generator.generate_template(
+        return self.generator.generate_intelligent_template(
             rule_number=rule_number, original_steps=enhanced_steps, rule_context=""
         )
 

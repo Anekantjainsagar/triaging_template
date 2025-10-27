@@ -279,9 +279,9 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
         progress_bar.progress(30, text="🧠 Analyzing with AI intelligence...")
 
         # Initialize the intelligent generator
-        from routes.src.template_generator import IntelligentTemplateGenerator
+        from routes.src.template_generator import ImprovedTemplateGenerator
 
-        intelligent_gen = IntelligentTemplateGenerator()
+        intelligent_gen = ImprovedTemplateGenerator()
 
         progress_bar.progress(40, text="📡 Gathering threat intelligence...")
 
@@ -289,7 +289,7 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
 
         # Generate intelligent template
         template_df = intelligent_gen.generate_intelligent_template(
-            rule_number=rule_number, old_template_steps=original_steps
+            rule_number=rule_number, original_steps=original_steps
         )
 
         elapsed = time.time() - start_time
