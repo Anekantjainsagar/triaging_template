@@ -531,58 +531,64 @@ class EnhancedKQLGenerator:
     def _generate_explanation_with_llm(
         self, kql: str, step_name: str, explanation: str
     ) -> str:
-        """
-        Generate detailed explanation for KQL query using LLM
-
-        Args:
-            kql: The KQL query to explain
-            step_name: Name of the step
-            explanation: Step explanation
-
-        Returns:
-            Human-readable explanation of what the query does
-        """
+        """Generate concise KQL explanation"""
         try:
-            prompt = f"""Explain this KQL query in 1-2 clear sentences.
-
-STEP: {step_name}
-PURPOSE: {explanation}
-
-KQL QUERY:
-{kql}
-
-Provide a concise explanation focusing on:
-1. What data source it queries
-2. What it's looking for
-3. Key filters or aggregations used
-
-Output only the explanation (no preamble):"""
-
-            agent = Agent(
-                role="KQL Query Explainer",
-                goal="Explain KQL queries clearly and concisely",
-                backstory="Expert at translating technical KQL queries into plain English",
-                llm=self.primary_llm,
-                verbose=False,
-            )
-
-            task = Task(
-                description=prompt,
-                expected_output="Clear 1-2 sentence explanation",
-                agent=agent,
-            )
-
-            crew = Crew(agents=[agent], tasks=[task], verbose=False)
-            result = str(crew.kickoff()).strip()
-
-            # Clean up any LLM artifacts
-            result = self._clean_explanation(result)
-
-            return result if result else self._generate_explanation(kql)
+            # Analyze what the query actually does
+            kql_lower = kql.lower()
+            
+            # Smart explanation based on query content
+            if "summarize" in kql_lower and "dcount" in kql_lower:
+                action = "Counts unique values and aggregates"
+            elif "summarize" in kql_lower:
+                action = "Aggregates and summarizes"
+            elif "where" in kql_lower and "project" in kql_lower:
+                action = "Filters and extracts specific fields from"
+            elif "where" in kql_lower:
+                action = "Queries and filters"
+            elif "join" in kql_lower:
+                action = "Correlates data across"
+            else:
+                action = "Queries"
+            
+            # Identify data source
+            if "signinlogs" in kql_lower:
+                source = "sign-in logs"
+            elif "auditlogs" in kql_lower:
+                source = "audit logs"
+            elif "deviceinfo" in kql_lower:
+                source = "device information"
+            elif "identityinfo" in kql_lower:
+                source = "identity data"
+            else:
+                source = "security logs"
+            
+            # Build concise explanation
+            explanation_parts = [action, source]
+            
+            # Add specific details if present
+            if "timegenerated" in kql_lower:
+                if "7d" in kql_lower:
+                    explanation_parts.append("for the last 7 days")
+                elif "24h" in kql_lower or "1d" in kql_lower:
+                    explanation_parts.append("for the last 24 hours")
+                elif "30d" in kql_lower:
+                    explanation_parts.append("for the last 30 days")
+            
+            if "dcount" in kql_lower:
+                explanation_parts.append("to identify unique patterns")
+            
+            if "countif" in kql_lower:
+                explanation_parts.append("with conditional counting")
+            
+            final_explanation = " ".join(explanation_parts).strip() + "."
+            
+            # Capitalize first letter
+            final_explanation = final_explanation[0].upper() + final_explanation[1:]
+            
+            return final_explanation
 
         except Exception as e:
-            print(f"   ⚠️  LLM explanation failed: {str(e)[:100]}")
-            # Fallback to simple explanation
+            print(f"   ⚠️ Explanation generation failed: {str(e)[:100]}")
             return self._generate_explanation(kql)
 
     def _clean_explanation(self, explanation: str) -> str:
@@ -737,26 +743,41 @@ OUTPUT ONLY THE KQL QUERY:"""
         return "\n".join(lines).strip()
 
     def _generate_explanation(self, kql: str) -> str:
-        """Generate simple explanation from KQL (fallback method)"""
+        """Generate simple explanation from KQL structure"""
         kql_lower = kql.lower()
-
-        if "signinlogs" in kql_lower:
-            base = "Analyzes user sign-in activity"
-        elif "auditlogs" in kql_lower:
-            base = "Queries administrative actions and changes"
-        elif "identityinfo" in kql_lower:
-            base = "Retrieves user identity details"
-        elif "deviceinfo" in kql_lower:
-            base = "Checks device compliance status"
+        
+        # Identify the primary action
+        if "summarize" in kql_lower and "dcount" in kql_lower:
+            action = "Aggregates data and counts unique values"
+        elif "summarize" in kql_lower and "count" in kql_lower:
+            action = "Aggregates and counts"
+        elif "summarize" in kql_lower:
+            action = "Summarizes"
+        elif "join" in kql_lower:
+            action = "Correlates"
+        elif "project" in kql_lower:
+            action = "Extracts specific fields"
         else:
-            base = "Queries security logs"
-
-        if "summarize" in kql_lower:
-            base += " with statistical analysis"
-        if "dcount" in kql_lower:
-            base += " counting unique values"
-
-        return base + "."
+            action = "Queries"
+        
+        # Identify the data source
+        if "signinlogs" in kql_lower:
+            source = "sign-in logs"
+        elif "auditlogs" in kql_lower:
+            source = "audit logs"
+        elif "deviceinfo" in kql_lower:
+            source = "device information"
+        elif "identityinfo" in kql_lower:
+            source = "user identity data"
+        elif "cloudappevents" in kql_lower:
+            source = "cloud app activity"
+        elif "securityevent" in kql_lower:
+            source = "security events"
+        else:
+            source = "data"
+        
+        # Build explanation
+        return f"{action} from {source}."
 
 
 # Compatibility wrapper

@@ -11,6 +11,7 @@ from api_client.analyzer_api_client import get_analyzer_client
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
+from difflib import SequenceMatcher
 from routes.src.api_kql_generation import EnhancedKQLGenerator
 
 load_dotenv()
@@ -105,14 +106,14 @@ class ImprovedTemplateGenerator:
 
             # Build template row
             row = {
-                "Step": idx,
+                "Step": str(idx),  # ✅ Force string type
                 "Name": step_name,
                 "Explanation": self._enforce_length(explanation, max_sentences=3),
                 "KQL Query": kql_query,
                 "KQL Explanation": kql_explanation,
                 "Execute": "",
                 "Output": "",
-                "Remarks/Comments": f"[{source.upper()}] {priority}",  # Track source
+                "Remarks/Comments": f"[{source.upper()}] {priority}",
             }
 
             template_rows.append(row)
@@ -120,38 +121,60 @@ class ImprovedTemplateGenerator:
         return template_rows
 
     def _needs_kql(self, step_name: str, explanation: str) -> bool:
-        """Determine if step needs KQL query"""
+        """Determine if step needs KQL query - be more selective"""
         combined = f"{step_name} {explanation}".lower()
 
-        # Skip for these
+        # ❌ Skip these types (NO KQL needed)
         skip_keywords = [
             "virustotal",
-            "virus total",
+            "virus total", 
             "abuseipdb",
+            "abuse",
+            "ip reputation",  # Uses external tools
+            "domain reputation",
             "document",
-            "classification",
-            "confirmation",
-            "close",
-            "remediate",
-            "notify",
+            "close incident",
+            "escalate",
             "inform",
+            "notify",
+            "report",
+            "classify",
+            "confirmation",
+            "true positive",
+            "false positive",
+            "baseline behavior",  # Manual analysis
+            "correlate",
+            "timeline",
+            "assess",
+            "compare",
         ]
 
         if any(keyword in combined for keyword in skip_keywords):
             return False
 
-        # Needs KQL for these
+        # ✅ Needs KQL if investigating data sources
         needs_keywords = [
             "sign-in",
-            "login",
-            "verify",
-            "check",
-            "analyze",
+            "signin",
+            "login", 
             "audit",
+            "logs",
             "query",
+            "check user",
+            "verify user",
             "review",
-            "count",
+            "analyze",
             "investigate",
+            "count",
+            "gather",
+            "extract",
+            "device",
+            "endpoint",
+            "role",
+            "permission",
+            "mfa",
+            "authentication",
+            "location",
         ]
 
         return any(keyword in combined for keyword in needs_keywords)
@@ -177,11 +200,13 @@ class ImprovedTemplateGenerator:
         print(f"{'='*80}\n")
 
         start_time = time.time()
-        
+
         # ADD THIS DEBUG:
         print(f"DEBUG: rule_number = {rule_number}")
         print(f"DEBUG: original_steps count = {len(original_steps)}")
-        print(f"DEBUG: First original step: {original_steps[0] if original_steps else 'NONE'}")
+        print(
+            f"DEBUG: First original step: {original_steps[0] if original_steps else 'NONE'}"
+        )
 
         # Header row
         template_rows = []
@@ -236,6 +261,8 @@ class ImprovedTemplateGenerator:
         template_rows.extend(
             self._process_merged_steps_with_kql(merged_steps, rule_number, profile)
         )
+        
+        template_rows = self._deduplicate_kql_queries(template_rows)
 
         elapsed = time.time() - start_time
         print(f"\n{'='*80}")
@@ -492,6 +519,39 @@ Output ONLY the instruction:"""
             print(f"   ⚠️ Explanation generation failed: {str(e)[:50]}")
 
         return original or "Complete investigation and document findings."
+
+    def _deduplicate_kql_queries(self, template_rows: List[Dict]) -> List[Dict]:
+        """Remove steps with duplicate or nearly-identical KQL queries"""
+        seen_queries = {}
+        deduplicated = []
+
+        for row in template_rows:
+            kql = row.get("KQL Query", "").strip()
+
+            # Always keep steps without KQL (header, manual steps)
+            if not kql or len(kql) < 20:
+                deduplicated.append(row)
+                continue
+
+            # Normalize KQL for comparison (remove whitespace, lowercase)
+            normalized = re.sub(r"\s+", " ", kql.lower())
+
+            # Check if we've seen this query before
+            is_duplicate = False
+            for seen_query in seen_queries.values():
+                # If queries are 90%+ similar, consider duplicate
+                similarity = SequenceMatcher(None, normalized, seen_query).ratio()
+                if similarity > 0.9:
+                    is_duplicate = True
+                    break
+
+            if not is_duplicate:
+                seen_queries[row.get("Name", "")] = normalized
+                deduplicated.append(row)
+            else:
+                print(f"   🗑️ Removed duplicate KQL step: {row.get('Name', '')}")
+
+        return deduplicated
 
     def _needs_investigation_guidance(self, step_name: str, explanation: str) -> bool:
         """Check if step needs manual investigation guidance"""

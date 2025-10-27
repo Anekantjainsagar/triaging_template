@@ -1,12 +1,7 @@
-"""
-Investigation Step Merger
-Intelligently merges original template steps with dynamically generated steps
-Removes duplicates, maintains logical order, and provides transparency
-"""
-
-import re
+import os
 from typing import List, Dict, Tuple
 from difflib import SequenceMatcher
+from crewai import LLM, Agent, Task, Crew
 
 
 class InvestigationStepMerger:
@@ -17,6 +12,9 @@ class InvestigationStepMerger:
 
     def __init__(self):
         print("✅ Investigation Step Merger initialized")
+
+        # Initialize LLM for step classification
+        self._init_llm()
 
         # Step categories for logical ordering
         self.step_categories = {
@@ -33,15 +31,32 @@ class InvestigationStepMerger:
             "classification": 11,  # TP/FP determination
         }
 
+    def _init_llm(self):
+        """Initialize LLM for intelligent step classification"""
+        gemini_key = os.getenv("GOOGLE_API_KEY")
+        if gemini_key:
+            self.llm = LLM(
+                model="gemini/gemini-2.0-flash-exp",
+                api_key=gemini_key,
+                temperature=0.2,  # Very low for classification
+            )
+        else:
+            ollama_model = os.getenv("OLLAMA_CHAT", "ollama/qwen2.5:3b")
+            if not ollama_model.startswith("ollama/"):
+                ollama_model = f"ollama/{ollama_model}"
+            self.llm = LLM(
+                model=ollama_model, base_url="http://localhost:11434", temperature=0.2
+            )
+
     def merge_steps(
         self, original_steps: List[Dict], generated_steps: List[Dict], profile: Dict
     ) -> Tuple[List[Dict], Dict]:
         print(f"\nMerging investigation steps...")
-        
+
         # ADD THIS DEBUG:
         print(f"DEBUG: Original steps received: {len(original_steps)}")
         print(f"DEBUG: Generated steps received: {len(generated_steps)}")
-        
+
         if len(generated_steps) == 0:
             print("❌ WARNING: No generated steps! Using only original.")
 
@@ -79,47 +94,120 @@ class InvestigationStepMerger:
         return merged_steps, merge_report
 
     def _filter_investigative_steps(self, steps: List[Dict]) -> List[Dict]:
-        """Filter out non-investigative steps (remediation, closure, etc.)"""
-
+        """
+        Filter out non-investigative steps
+        Keep ONLY steps that can produce KQL queries or use tools (VirusTotal/AbuseIPDB)
+        """
         investigative_steps = []
 
         for step in steps:
             step_name = step.get("step_name", "").lower()
             explanation = step.get("explanation", "").lower()
+            tool = step.get("tool", "").lower()
             combined = f"{step_name} {explanation}"
 
-            # Skip patterns for non-investigative steps
-            non_investigative_patterns = [
-                "reset the account",
-                "revoke the mfa",
-                "block the detected",
-                "inform to it team",
-                "inform it team",
-                "reach out to",
-                "track for the closer",
-                "track for closer",
-                "document the steps taken",
-                "close it as",
-                "treat it as",
-                "if user confirms then close",
-                "final confirmation received",
-                "escalate to",
-                "remediate",
-                "remediation",
-                "closure",
-                "closing",
-                "user confirmation",
-                "after all the investigation",
-            ]
-
-            is_non_investigative = any(
-                pattern in combined for pattern in non_investigative_patterns
-            )
-
-            if not is_non_investigative:
+            # ✅ KEEP if has tool integration
+            if tool and tool in ["virustotal", "abuseipdb"]:
                 investigative_steps.append(step)
+                continue
+
+            # ❌ SKIP remediation/closure/manual steps - USE LLM FOR DECISION
+            if self._is_non_investigative_step(combined):
+                continue
+
+            # ✅ KEEP if has data source (requires KQL)
+            data_source = step.get("data_source", "").lower()
+            if data_source and data_source != "manual":
+                investigative_steps.append(step)
+                continue
+
+            # ✅ KEEP if needs KQL
+            kql_needed = step.get("kql_needed", True)
+            if kql_needed:
+                investigative_steps.append(step)
+                continue
 
         return investigative_steps
+
+    def _is_non_investigative_step(self, text: str) -> bool:
+        """
+        Use LLM to determine if step is remediation/closure instead of hardcoded patterns
+        """
+        # Quick keyword check first (fast path)
+        obvious_keywords = [
+            "reset the account",
+            "revoke the mfa",
+            "block the detected",
+            "inform to it team",
+            "inform it team",
+            "reach out to",
+            "temporary disable",
+            "close it as",
+            "track for the closer",
+            "closer confirmation",
+            "final confirmation",
+            "document the steps taken",
+            "after all the investigation",
+            "if user confirms",
+            "escalate to",
+            "notify the user",
+        ]
+
+        if any(keyword in text for keyword in obvious_keywords):
+            return True
+
+        # Use LLM for ambiguous cases
+        return self._llm_classify_step_type(text)
+
+    def _llm_classify_step_type(self, step_text: str) -> bool:
+        """
+        Use LLM to classify if step is investigative or remediation/closure
+        Returns True if NON-investigative (should be filtered out)
+        """
+        try:
+            prompt = f"""Classify this SOC step as either INVESTIGATIVE or NON-INVESTIGATIVE.
+
+    Step: {step_text[:300]}
+
+    INVESTIGATIVE steps:
+    - Query logs/data sources
+    - Check external tools (VirusTotal, AbuseIPDB)
+    - Analyze patterns, anomalies
+    - Extract specific data points
+    - Verify user/device/IP information
+
+    NON-INVESTIGATIVE steps (filter these out):
+    - Remediation actions (reset, revoke, block, disable)
+    - Notification/escalation (inform, notify, reach out)
+    - Documentation (document findings, track closure)
+    - Classification decisions (mark as TP/FP, close incident)
+    - User confirmation requests
+
+    Answer with ONLY one word: INVESTIGATIVE or NON-INVESTIGATIVE"""
+
+            agent = Agent(
+                role="SOC Step Classifier",
+                goal="Classify step type accurately",
+                backstory="Expert at distinguishing investigation from remediation",
+                llm=self.llm,
+                verbose=False,
+            )
+
+            task = Task(
+                description=prompt,
+                expected_output="Single word: INVESTIGATIVE or NON-INVESTIGATIVE",
+                agent=agent,
+            )
+
+            crew = Crew(agents=[agent], tasks=[task], verbose=False)
+            result = str(crew.kickoff()).strip().upper()
+
+            return "NON-INVESTIGATIVE" in result
+
+        except Exception as e:
+            print(f"   ⚠️ LLM classification failed: {str(e)[:100]}")
+            # Default to keeping if classification fails
+            return False
 
     def _identify_duplicates(
         self, original_steps: List[Dict], generated_steps: List[Dict]

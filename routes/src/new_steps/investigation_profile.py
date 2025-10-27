@@ -213,49 +213,116 @@ class InvestigationProfileBuilder:
                 profile["data_sources"].append("DeviceInfo")
 
     def _determine_investigation_requirements(self, profile: Dict):
-        """Determine what investigation checks are needed - DYNAMIC"""
+        """Determine what investigation checks are needed - FULLY DYNAMIC using LLM"""
 
+        tech_overview = profile["technical_overview"]
+        
+        if not tech_overview:
+            # Fallback to basic requirements
+            profile["investigation_focus"] = ["user_activity", "authentication_analysis"]
+            profile["required_checks"] = ["user_verification", "signin_analysis"]
+            profile["data_sources"] = ["SigninLogs"]
+            return
+
+        # Use LLM to analyze technical overview
+        focus_areas, required_checks, data_sources = self._llm_analyze_requirements(tech_overview)
+        
+        profile["investigation_focus"] = focus_areas
+        profile["required_checks"] = required_checks
+        profile["data_sources"] = data_sources if data_sources else ["SigninLogs"]
+
+    def _llm_analyze_requirements(self, tech_overview: str) -> tuple:
+        """
+        Use LLM to analyze technical overview and determine investigation requirements
+        Returns: (focus_areas, required_checks, data_sources)
+        """
+        try:
+            prompt = f"""Analyze this security alert and determine investigation requirements.
+
+    TECHNICAL OVERVIEW:
+    {tech_overview[:800]}
+
+    Extract and list:
+
+    1. FOCUS AREAS (what to investigate):
+    Examples: network_analysis, authentication_analysis, device_compliance, privilege_analysis
+
+    2. REQUIRED CHECKS (specific verifications needed):
+    Examples: ip_reputation, user_verification, mfa_verification, role_verification
+
+    3. DATA SOURCES (Azure/M365 log sources to query):
+    Examples: SigninLogs, AuditLogs, DeviceInfo, IdentityInfo, CloudAppEvents
+
+    Format your response as:
+    FOCUS: area1, area2, area3
+    CHECKS: check1, check2, check3
+    SOURCES: source1, source2, source3
+
+    Be specific and concise."""
+
+            agent = Agent(
+                role="SOC Requirements Analyst",
+                goal="Determine investigation requirements from alert analysis",
+                backstory="Expert at translating threat analysis into investigation steps",
+                llm=self.llm,
+                verbose=False,
+            )
+
+            task = Task(
+                description=prompt,
+                expected_output="Structured list of focus areas, checks, and data sources",
+                agent=agent,
+            )
+
+            crew = Crew(agents=[agent], tasks=[task], verbose=False)
+            result = str(crew.kickoff())
+
+            # Parse LLM output
+            focus_areas = []
+            required_checks = []
+            data_sources = []
+
+            for line in result.split('\n'):
+                line = line.strip()
+                if line.startswith('FOCUS:'):
+                    focus_areas = [x.strip() for x in line.replace('FOCUS:', '').split(',')]
+                elif line.startswith('CHECKS:'):
+                    required_checks = [x.strip() for x in line.replace('CHECKS:', '').split(',')]
+                elif line.startswith('SOURCES:'):
+                    data_sources = [x.strip() for x in line.replace('SOURCES:', '').split(',')]
+
+            return focus_areas, required_checks, data_sources
+
+        except Exception as e:
+            print(f"   ⚠️ LLM requirements analysis failed: {str(e)[:100]}")
+            # Fallback to basic parsing
+            return self._fallback_requirements_parsing(tech_overview)
+
+    def _fallback_requirements_parsing(self, tech_overview: str) -> tuple:
+        """Fallback parsing if LLM fails"""
         focus_areas = set()
         required_checks = set()
-        data_sources = set(profile["data_sources"])
-
-        # Based on alert type
-        alert_type = profile["alert_type"]
-        tech_overview = profile["technical_overview"].lower()
-
-        # ✅ DYNAMIC: Parse from technical overview
-        if "ip" in tech_overview or "address" in tech_overview:
+        data_sources = set()
+        
+        tech_lower = tech_overview.lower()
+        
+        # Simple keyword matching as fallback
+        if "ip" in tech_lower or "address" in tech_lower:
             required_checks.add("ip_reputation")
             focus_areas.add("network_analysis")
-
-        if "user" in tech_overview or "account" in tech_overview:
+        
+        if "user" in tech_lower or "account" in tech_lower:
             required_checks.add("user_verification")
             focus_areas.add("user_activity")
-
-        if "device" in tech_overview or "endpoint" in tech_overview:
+            data_sources.add("SigninLogs")
+        
+        if "device" in tech_lower or "endpoint" in tech_lower:
             required_checks.add("device_verification")
             focus_areas.add("device_compliance")
-
-        if "mfa" in tech_overview or "multi-factor" in tech_overview:
-            required_checks.add("mfa_verification")
-
-        if "role" in tech_overview or "permission" in tech_overview:
+            data_sources.add("DeviceInfo")
+        
+        if "role" in tech_lower or "permission" in tech_lower:
             required_checks.add("role_verification")
             data_sources.add("AuditLogs")
-
-        # ✅ DYNAMIC: From MITRE techniques
-        for technique in profile["mitre_techniques"]:
-            if technique.startswith("T1078"):  # Valid Accounts
-                required_checks.add("credential_verification")
-                focus_areas.add("authentication_analysis")
-            elif technique.startswith("T1133"):  # External Remote Services
-                required_checks.add("remote_access_analysis")
-                focus_areas.add("vpn_analysis")
-            elif technique.startswith("T1098"):  # Account Manipulation
-                required_checks.add("account_change_audit")
-                focus_areas.add("privilege_analysis")
-
-        # Update profile
-        profile["investigation_focus"] = list(focus_areas)
-        profile["required_checks"] = list(required_checks)
-        profile["data_sources"] = list(data_sources) if data_sources else ["SigninLogs"]
+        
+        return list(focus_areas), list(required_checks), list(data_sources)
