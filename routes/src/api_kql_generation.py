@@ -531,65 +531,63 @@ class EnhancedKQLGenerator:
     def _generate_explanation_with_llm(
         self, kql: str, step_name: str, explanation: str
     ) -> str:
-        """Generate concise, UNIQUE KQL explanation using LLM"""
-        try:
-            prompt = f"""You are explaining a KQL query to a SOC analyst.
+        """Generate SPECIFIC, UNIQUE KQL explanation"""
+        
+        # Extract key elements from KQL
+        has_summarize = "summarize" in kql.lower()
+        has_dcount = "dcount" in kql.lower()
+        has_join = "join" in kql.lower()
+        
+        table = "SigninLogs" if "signinlogs" in kql.lower() else \
+                "AuditLogs" if "auditlogs" in kql.lower() else \
+                "DeviceInfo" if "deviceinfo" in kql.lower() else "logs"
+        
+        prompt = f"""Write ONE unique sentence explaining this KQL query.
 
-    KQL Query: {kql}
-
-    Step Context: {step_name}
-
-    Generate a ONE-SENTENCE explanation that describes:
-    1. What data source is queried
-    2. What time range is used
-    3. What the query does (aggregates/filters/extracts)
+    KQL: {kql[:200]}
+    Step: {step_name}
 
     Requirements:
-    - ONE sentence only (max 25 words)
+    - ONE sentence ONLY (max 25 words)
     - Be SPECIFIC about what's being analyzed
-    - Use technical terms (SigninLogs, aggregates, filters, etc.)
+    - Include: data source, timeframe, aggregation type
     - NO generic phrases like "queries data" or "analyzes logs"
+    - Make it UNIQUE - don't reuse explanations
 
-    Examples:
-    ✅ "Aggregates sign-in attempts from SigninLogs over 7 days, counting failed authentications by user and IP address."
-    ✅ "Filters AuditLogs for role assignment changes in the last 30 days and extracts user, role, and timestamp details."
-    ✅ "Queries DeviceInfo to identify non-compliant devices accessed by the affected user within 24 hours."
+    Example formats:
+    âœ… "Counts distinct user accounts from SigninLogs over 7 days and groups by authentication method."
+    âœ… "Aggregates failed sign-in attempts by IP address and identifies IPs with 5+ failures."
+    âœ… "Joins SigninLogs with AuditLogs to correlate authentication with privilege changes."
 
-    Generate explanation NOW (one sentence only):"""
+    Generate ONE specific sentence:"""
 
+        try:
             agent = Agent(
                 role="KQL Query Explainer",
-                goal="Generate concise, specific KQL explanation",
-                backstory="Expert at explaining KQL queries clearly",
+                goal="Generate one unique, specific KQL explanation",
+                backstory="Expert at explaining queries concisely",
                 llm=self.primary_llm,
                 verbose=False,
             )
 
-            task = Task(
-                description=prompt,
-                expected_output="One sentence KQL explanation",
-                agent=agent,
-            )
-
-            crew = Crew(agents=[agent], tasks=[task], verbose=False)
+            task = Task(description=prompt, expected_output="One sentence", agent=agent)
+            crew = Crew(agents=[agent], tasks=[task], verbose=False, max_rpm=5)
+            
             result = str(crew.kickoff()).strip()
-
-            # Clean the result
             result = self._clean_explanation(result)
             
             # Ensure it's one sentence
             if '.' in result:
                 result = result.split('.')[0] + '.'
             
-            # Validate length
-            if len(result.split()) > 30:
-                # Fallback to simple explanation
+            # Fallback if too generic
+            if len(result.split()) < 8 or any(generic in result.lower() for generic in ["queries data", "analyzes logs", "checks information"]):
                 return self._generate_explanation(kql)
             
-            return result if len(result) > 20 else self._generate_explanation(kql)
+            return result
 
         except Exception as e:
-            print(f"   ⚠️ Explanation generation failed: {str(e)[:100]}")
+            print(f"   ⚠️ Explanation failed: {str(e)[:50]}")
             return self._generate_explanation(kql)
 
     def _clean_explanation(self, explanation: str) -> str:
@@ -801,9 +799,3 @@ OUTPUT ONLY THE KQL QUERY:"""
         # Build explanation
         return f"{action} from {source}."
 
-
-# Compatibility wrapper
-class DynamicKQLGenerator(EnhancedKQLGenerator):
-    """Wrapper to maintain backward compatibility"""
-
-    pass

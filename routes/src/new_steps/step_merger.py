@@ -98,38 +98,55 @@ class InvestigationStepMerger:
         return merged_steps, merge_report
 
     def _filter_investigative_steps(self, steps: List[Dict]) -> List[Dict]:
-        """
-        Filter out non-investigative steps
-        Keep ONLY steps that can produce KQL queries or use tools (VirusTotal/AbuseIPDB)
-        """
+        """Filter out non-investigative steps with hardcoded patterns + LLM"""
         investigative_steps = []
+
+        # HARDCODED DECISION/CLOSURE PATTERNS (fast filter)
+        decision_patterns = [
+            r"user\s+confirm",
+            r"if\s+user\s+(says|confirms)",
+            r"treat\s+it\s+as",
+            r"true\s+positive",
+            r"false\s+positive",
+            r"close\s+(it|incident)",
+            r"final\s+confirmation",
+            r"mark\s+as",
+            r"classify\s+as",
+            r"escalate\s+to",
+            r"inform\s+(it\s+)?team",
+            r"notify\s+user",
+            r"document\s+the\s+steps",
+            r"after\s+all.*investigation",
+            r"reset\s+the\s+account",
+            r"revoke.*mfa",
+            r"block.*detected",
+        ]
 
         for step in steps:
             step_name = step.get("step_name", "").lower()
             explanation = step.get("explanation", "").lower()
-            tool = step.get("tool", "").lower()
             combined = f"{step_name} {explanation}"
 
-            # ✅ KEEP if has tool integration
+            # Quick hardcoded filter
+            if any(re.search(pattern, combined) for pattern in decision_patterns):
+                print(f"   ⏭️ Filtered (hardcoded): {step.get('step_name', '')[:60]}")
+                continue
+
+            # Has tool = investigative
+            tool = step.get("tool", "").lower()
             if tool and tool in ["virustotal", "abuseipdb"]:
                 investigative_steps.append(step)
                 continue
 
-            # ❌ SKIP remediation/closure/manual steps - USE LLM FOR DECISION
-            if self._is_non_investigative_step(combined):
-                continue
-
-            # ✅ KEEP if has data source (requires KQL)
+            # Has data source = investigative
             data_source = step.get("data_source", "").lower()
-            if data_source and data_source != "manual":
+            if data_source and data_source not in ["manual", ""]:
                 investigative_steps.append(step)
                 continue
 
-            # ✅ KEEP if needs KQL
-            kql_needed = step.get("kql_needed", True)
-            if kql_needed:
+            # Use LLM for ambiguous cases only
+            if len(combined) > 50 and not self._is_non_investigative_step(combined):
                 investigative_steps.append(step)
-                continue
 
         return investigative_steps
 

@@ -146,165 +146,99 @@ Focus on what a SOC analyst should DO, not just theory.""",
         return "\n\n".join(all_findings) if all_findings else ""
 
     def _generate_steps_with_llm(self, profile: Dict, guidance: str) -> List[Dict]:
-        """Generate investigation steps using LLM - FULLY DYNAMIC"""
+        """Generate investigation steps with STRICT anti-duplication"""
+        
+        # Get existing step names from profile
+        existing_steps = profile.get("existing_step_names", [])
+        existing_str = "\n".join([f"- {s}" for s in existing_steps]) if existing_steps else "None"
 
-        alert_name = profile.get("alert_name", "Unknown Alert")
-        alert_type = profile.get("alert_type", "general_security")
-        tech_overview = profile.get("technical_overview", "")
-        mitre_techniques = profile.get("mitre_techniques", [])
-        mitre_details = profile.get("mitre_details", {})
-        threat_actors = profile.get("threat_actors", [])
-        data_sources = profile.get("data_sources", [])
-        business_impact = profile.get("business_impact", {})
-        detection_mechanism = profile.get("detection_mechanism", [])
+        prompt = f"""Generate NEW investigation steps that DON'T duplicate these existing ones:
 
-        # Build context strings
-        mitre_context = "\n".join(
-            [
-                f"• {tid}: {mitre_details.get(tid, 'Unknown')}"
-                for tid in mitre_techniques
-            ]
-        )
+    EXISTING STEPS (DO NOT REPEAT):
+    {existing_str}
 
-        separator = "=" * 80
+    ALERT: {profile.get('alert_name', '')}
+    TECHNICAL OVERVIEW: {profile.get('technical_overview', '')[:600]}
 
-        prompt = f"""You are a senior SOC analyst designing an investigation playbook.
+    CRITICAL ANTI-DUPLICATION RULES:
+    1. If "user count" or "impacted users" exists, DO NOT generate "Determine Total Number of Users"
+    2. If "IP reputation" or "IP validation" exists, DO NOT generate IP reputation steps
+    3. If "VIP users" exists, DO NOT generate user context steps
+    4. Generate ONLY truly unique steps that investigate DIFFERENT aspects
 
-    ALERT DETAILS:
-    {separator}
-    Alert Name: {alert_name}
-    Alert Type: {alert_type}
-    Risk Level: {business_impact.get('risk_level', 'UNKNOWN')}
+    REQUIRED NEW STEPS (generate 3-4 UNIQUE ones):
+    - Advanced behavioral analysis (time patterns, impossible travel)
+    - Credential usage analysis (password sprays, brute force)
+    - Session analysis (concurrent logins, session hijacking)
+    - Application access patterns (risky apps, OAuth grants)
+    - Privilege escalation checks (role changes, permission grants)
+    - Conditional access policy violations
 
-    CRITICAL CONSTRAINTS:
-    1. Generate 10-15 UNIQUE investigation steps - NO duplicates, NO similar steps
-    2. Each step MUST have a DESCRIPTIVE name (NOT just "Query" or "Check")
-    3. Each step MUST query a DIFFERENT aspect (user activity, IP location, MFA status, device compliance, etc.)
-    4. NO remediation steps (reset/revoke/block/disable/inform/notify/escalate)
-    5. NO documentation steps (document/track/close/confirm)
-    6. Step names must be SPECIFIC: "Query Sign-in Activity" NOT just "Query"
+    Each step MUST:
+    1. NOT duplicate existing steps
+    2. Have specific, descriptive name (8-12 words)
+    3. Target different data aspect
+    4. Need KQL query (SigninLogs/AuditLogs/DeviceInfo)
 
-    TECHNICAL OVERVIEW:
-    {tech_overview[:600]}
-
-    MITRE ATT&CK TECHNIQUES:
-    {mitre_context if mitre_context else 'Not specified'}
-
-    AVAILABLE DATA SOURCES:
-    {', '.join(data_sources) if data_sources else 'SigninLogs, AuditLogs'}
-
-    WEB RESEARCH FINDINGS:
-    {guidance[:1500] if guidance else "No web research available"}
-
-    STEP GENERATION RULES:
-    ✅ GENERATE: Descriptive action names (e.g., "Analyze Sign-in Patterns from Unusual Locations")
-    ✅ GENERATE: Each step investigates a DIFFERENT data aspect
-    ✅ GENERATE: 10-15 unique, non-overlapping steps
-    ❌ NEVER: Generic names like "Query", "Check", "Verify" without context
-    ❌ NEVER: Duplicate or similar steps (only ONE IP reputation check, ONE sign-in analysis, etc.)
-    ❌ NEVER: Remediation (reset/revoke/block)
-    ❌ NEVER: Notifications (inform/notify/escalate)
-
-    REQUIRED STEP CATEGORIES (generate ONE step for each):
-    1. Scope Assessment: Count affected users/systems
-    2. User Context: VIP status, roles, department
-    3. Authentication Patterns: Sign-in times, frequencies, locations
-    4. Threat Intelligence: IP/domain reputation (ONCE only)
-    5. Geographic Analysis: Sign-in locations, impossible travel
-    6. MFA Verification: Authentication methods, bypass attempts
-    7. Device Analysis: Compliance status, trust level
-    8. Access Patterns: Resource access, privilege usage
-    9. Historical Baseline: Compare with normal behavior
-    10. Concurrent Activity: Other sessions at same time
-
-    FORMAT (use EXACTLY this):
-    STEP: [Descriptive action with context - e.g., "Analyze Sign-in Activity from High-Risk Countries"]
-    EXPLANATION: [What to investigate, Why it matters, What to look for - 2-3 UNIQUE sentences, NO repetition]
-    NEEDS_KQL: [YES/NO]
-    DATA_SOURCE: [SigninLogs/AuditLogs/DeviceInfo/IdentityInfo/CloudAppEvents OR "TOOL"]
-    TOOL: [virustotal/abuseipdb/None]
+    FORMAT:
+    STEP: [Unique descriptive name that's clearly different from existing]
+    EXPLANATION: [What to investigate and why - 2-3 sentences]
+    NEEDS_KQL: YES
+    DATA_SOURCE: [SigninLogs/AuditLogs/DeviceInfo/CloudAppEvents]
+    TOOL: None
     PRIORITY: [CRITICAL/HIGH/MEDIUM]
     ---
 
-    EXAMPLES OF GOOD STEP NAMES:
-    ✅ "Analyze Sign-in Activity from Unusual Geographic Locations"
-    ✅ "Verify Multi-Factor Authentication Status and Recent Changes"
-    ✅ "Review Failed Authentication Attempts Preceding Successful Sign-in"
-    ✅ "Examine Device Compliance Status for Affected Endpoints"
+    Generate 3-4 UNIQUE steps NOW:"""
 
-    EXAMPLES OF BAD STEP NAMES (DO NOT USE):
-    ❌ "Query" (too vague)
-    ❌ "Check" (too generic)
-    ❌ "Verify" (needs context)
-    ❌ "Analyze" (incomplete)
+        # Rest of LLM call...
+        agent = Agent(
+            role="SOC Investigation Playbook Designer",
+            goal="Generate 3-4 unique investigation steps that don't duplicate existing ones",
+            backstory="Expert at identifying gaps in investigation coverage and avoiding duplicates",
+            llm=self.llm,
+            verbose=False,
+        )
 
-    Generate 10-15 DESCRIPTIVE, UNIQUE steps NOW. Each step name must be 6-12 words and describe WHAT you're checking."""
+        task = Task(description=prompt, expected_output="3-4 unique investigation steps", agent=agent)
+        crew = Crew(agents=[agent], tasks=[task], verbose=False)
+        result = str(crew.kickoff())
 
-        try:
-            agent = Agent(
-                role="SOC Investigation Playbook Designer",
-                goal="Generate 10-15 unique, descriptive investigation steps",
-                backstory="""You are a senior SOC analyst who creates detailed investigation playbooks. 
-                Every step has a clear, descriptive name that explains what's being investigated.
-                You never repeat similar checks and ensure each step examines a different aspect.""",
-                llm=self.llm,
-                verbose=False,
-            )
+        steps = self._parse_llm_steps(result)
+        
+        # Post-filter against existing
+        unique_steps = []
+        for step in steps:
+            if not self._is_duplicate_of_existing(step, existing_steps):
+                unique_steps.append(step)
+            else:
+                print(f"   ⏭️ Filtered duplicate: {step.get('step_name', '')[:60]}")
+        
+        return unique_steps
 
-            task = Task(
-                description=prompt,
-                expected_output="10-15 unique investigation steps with descriptive names",
-                agent=agent,
-            )
-
-            crew = Crew(agents=[agent], tasks=[task], verbose=False)
-            result = str(crew.kickoff())
-
-            # Parse LLM output
-            steps = self._parse_llm_steps(result)
-
-            if len(steps) < 2:
-                print(f"   ⚠️ Only {len(steps)} steps generated - need more coverage")
-
-            # ✅ POST-PROCESSING: Remove duplicates and validate
-            valid_steps = []
-            seen_types = set()
-            seen_explanations = set()
+    def _is_duplicate_of_existing(self, step: Dict, existing_names: List[str]) -> bool:
+        """Check if step duplicates existing steps"""
+        step_name = step.get("step_name", "").lower()
+        
+        # Semantic similarity check
+        from difflib import SequenceMatcher
+        
+        for existing in existing_names:
+            existing_lower = existing.lower()
+            similarity = SequenceMatcher(None, step_name, existing_lower).ratio()
             
-            for step in steps:
-                step_name = step.get("step_name", "")
-                explanation = step.get("explanation", "")
-                
-                # Skip if name is too generic
-                if self._is_generic_name(step_name):
-                    print(f"   ❌ Filtered generic name: {step_name}")
-                    continue
-                
-                # Check for duplicate step types
-                step_type = self._get_step_type(step_name)
-                if step_type in seen_types:
-                    print(f"   ❌ Filtered duplicate type: {step_name}")
-                    continue
-                
-                # Check for repeated explanations
-                exp_hash = hash(explanation[:100].lower())
-                if exp_hash in seen_explanations:
-                    print(f"   ❌ Filtered repeated explanation: {step_name}")
-                    continue
-                
-                # Validate using LLM
-                if self._is_valid_investigation_step(step_name, explanation):
-                    valid_steps.append(step)
-                    seen_types.add(step_type)
-                    seen_explanations.add(exp_hash)
-                else:
-                    print(f"   ❌ Filtered invalid: {step_name}")
-
-            return valid_steps
-
-        except Exception as e:
-            print(f"   ❌ LLM generation failed: {str(e)[:100]}")
-            return []
+            if similarity > 0.6:  # 60% similar = duplicate
+                return True
+            
+            # Keyword overlap check
+            step_keywords = set(step_name.split())
+            existing_keywords = set(existing_lower.split())
+            common = step_keywords & existing_keywords
+            
+            if len(common) >= 3:  # 3+ common words = likely duplicate
+                return True
+        
+        return False
 
     def _is_generic_name(self, step_name: str) -> bool:
         """Check if step name is too generic"""

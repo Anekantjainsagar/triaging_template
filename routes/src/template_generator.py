@@ -334,6 +334,8 @@ class ImprovedTemplateGenerator:
 
         profile_builder = InvestigationProfileBuilder()
         profile = profile_builder.build_profile(rule_number, rule_context)
+        
+        profile["existing_step_names"] = [s.get("step_name", "") for s in original_steps]
 
         print(f"   ✅ Profile complete:")
         print(f"      - MITRE Techniques: {len(profile['mitre_techniques'])}")

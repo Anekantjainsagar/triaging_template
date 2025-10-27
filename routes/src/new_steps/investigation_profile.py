@@ -26,11 +26,16 @@ class InvestigationProfileBuilder:
             print(f"⚠️ Analyzer client unavailable: {e}")
 
     def _init_llm(self):
-        """Initialize LLM for dynamic analysis"""
+        """Initialize LLM for dynamic analysis with retry logic"""
         gemini_key = os.getenv("GOOGLE_API_KEY")
         if gemini_key:
             self.llm = LLM(
-                model="gemini/gemini-2.0-flash-exp", api_key=gemini_key, temperature=0.2
+                model="gemini/gemini-2.0-flash-exp",
+                api_key=gemini_key,
+                temperature=0.2,
+                timeout=180,  # 3 minute timeout
+                max_retries=3,
+                rpm=10,  # Rate limit to 10 requests per minute
             )
         else:
             ollama_model = os.getenv("OLLAMA_CHAT", "ollama/qwen2.5:3b")
@@ -39,7 +44,6 @@ class InvestigationProfileBuilder:
             self.llm = LLM(
                 model=ollama_model, base_url="http://localhost:11434", temperature=0.2
             )
-
 
     def build_profile(self, rule_number: str, rule_context: str = "") -> Dict:
         """
@@ -78,7 +82,7 @@ class InvestigationProfileBuilder:
                 profile["alert_name"] = alert_name
 
                 print(f"   Fetching AI analysis for: {alert_name}")
-                
+
                 # Implement retry logic for rate limiting
                 result = self._get_analysis_with_retry(alert_name, max_retries=2)
 
@@ -87,7 +91,7 @@ class InvestigationProfileBuilder:
                     self._parse_analysis(analysis_text, profile)
                     print(f"   âœ… Parsed AI analysis successfully")
                 else:
-                    error_msg = result.get('error', 'Unknown error')
+                    error_msg = result.get("error", "Unknown error")
                     if "429" in error_msg or "rate limit" in error_msg.lower():
                         print(f"   âš ï¸ Rate limit hit - using fallback profile")
                     else:
@@ -115,50 +119,59 @@ class InvestigationProfileBuilder:
     def _get_analysis_with_retry(self, alert_name: str, max_retries: int = 2) -> Dict:
         """
         Get AI analysis with retry logic for rate limiting
-        
+
         Args:
             alert_name: Alert name to analyze
             max_retries: Number of retries (default: 2)
-            
+
         Returns:
             Analysis result dictionary
         """
         import time
-        
+
         last_error = None
-        
+
         for attempt in range(max_retries):
             try:
                 result = self.analyzer_client.analyze_alert(alert_name)
                 if result.get("success"):
                     return result
-                
-                error_msg = result.get('error', '')
+
+                error_msg = result.get("error", "")
                 if "429" in error_msg or "rate limit" in error_msg.lower():
-                    wait_time = min(2 ** attempt * 3, 30)
+                    wait_time = min(2**attempt * 3, 30)
                     print(f"   ⏳ Rate limited. Waiting {wait_time}s before retry...")
                     time.sleep(wait_time)
                     last_error = result
                     continue
                 else:
                     return result
-                    
+
             except Exception as e:
                 last_error = e
                 error_str = str(e).lower()
-                
-                if "429" in str(e) or "rate limit" in error_str or "too many" in error_str:
-                    wait_time = min(2 ** attempt * 3, 30)
-                    print(f"   ⏳ Rate limited (attempt {attempt + 1}/{max_retries}). Waiting {wait_time}s...")
+
+                if (
+                    "429" in str(e)
+                    or "rate limit" in error_str
+                    or "too many" in error_str
+                ):
+                    wait_time = min(2**attempt * 3, 30)
+                    print(
+                        f"   ⏳ Rate limited (attempt {attempt + 1}/{max_retries}). Waiting {wait_time}s..."
+                    )
                     time.sleep(wait_time)
                     continue
                 else:
                     # Not rate limit, return error
                     return {"success": False, "error": str(e)}
-        
+
         # All retries exhausted
-        return {"success": False, "error": f"Rate limit exceeded after {max_retries} attempts"}
-    
+        return {
+            "success": False,
+            "error": f"Rate limit exceeded after {max_retries} attempts",
+        }
+
     def _classify_alert_type(self, rule_number: str, context: str) -> str:
         """Classify alert into broad category"""
         combined = f"{rule_number} {context}".lower()
@@ -287,27 +300,56 @@ class InvestigationProfileBuilder:
 
     def _determine_investigation_requirements(self, profile: Dict):
         """Determine what investigation checks are needed - FULLY DYNAMIC using LLM"""
-
         tech_overview = profile["technical_overview"]
 
         if not tech_overview:
-            # Fallback to basic requirements
+            # Better fallback with more focus areas
             profile["investigation_focus"] = [
                 "user_activity",
                 "authentication_analysis",
+                "ip_reputation",
+                "device_compliance",
+                "behavioral_patterns",
             ]
-            profile["required_checks"] = ["user_verification", "signin_analysis"]
-            profile["data_sources"] = ["SigninLogs"]
+            profile["required_checks"] = [
+                "user_verification",
+                "signin_analysis",
+                "ip_reputation",
+                "mfa_verification",
+                "device_check",
+            ]
+            profile["data_sources"] = ["SigninLogs", "AuditLogs", "DeviceInfo"]
             return
 
-        # Use LLM to analyze technical overview
+        # Use LLM with minimum 4-5 focus areas requirement
         focus_areas, required_checks, data_sources = self._llm_analyze_requirements(
             tech_overview
         )
 
-        profile["investigation_focus"] = focus_areas
-        profile["required_checks"] = required_checks
-        profile["data_sources"] = data_sources if data_sources else ["SigninLogs"]
+        # Ensure minimum coverage
+        if len(focus_areas) < 4:
+            base_focus = [
+                "user_activity",
+                "authentication_analysis",
+                "ip_reputation",
+                "device_compliance",
+            ]
+            focus_areas.extend([f for f in base_focus if f not in focus_areas])
+
+        if len(required_checks) < 4:
+            base_checks = [
+                "user_verification",
+                "signin_analysis",
+                "ip_reputation",
+                "mfa_verification",
+            ]
+            required_checks.extend([c for c in base_checks if c not in required_checks])
+
+        profile["investigation_focus"] = focus_areas[:5]  # Max 5
+        profile["required_checks"] = required_checks[:5]
+        profile["data_sources"] = (
+            data_sources if data_sources else ["SigninLogs", "AuditLogs"]
+        )
 
     def _llm_analyze_requirements(self, tech_overview: str) -> tuple:
         """
