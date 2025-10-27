@@ -1,4 +1,4 @@
-# step2_enhance.py - FIXED WITH PROPER FILE UPLOAD
+# step2_enhance.py - UPDATED TO USE INTELLIGENT TEMPLATE GENERATOR
 import streamlit as st
 import os
 import re
@@ -14,15 +14,13 @@ def contains_ip_not_vip(text):
     """Check if text contains 'ip' but not as part of 'vip'"""
     if "ip" not in text:
         return False
-    # Check if 'ip' appears standalone (not as part of 'vip')
     import re
 
-    # Match 'ip' with word boundaries or common patterns
     ip_patterns = [
-        r"\bip\b",  # Standalone 'ip'
-        r"ip\s+address",  # 'ip address'
-        r"ip\s+reputation",  # 'ip reputation'
-        r"source\s+ip",  # 'source ip'
+        r"\bip\b",
+        r"ip\s+address",
+        r"ip\s+reputation",
+        r"source\s+ip",
     ]
     return any(re.search(pattern, text, re.IGNORECASE) for pattern in ip_patterns)
 
@@ -58,7 +56,6 @@ def _unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
     st.session_state.predictions_excel_filename = filename
     st.session_state.predictions_rule_number = rule_number
 
-    # ✅ IMMEDIATELY upload to predictions API
     success = _upload_to_predictions_api(excel_data, filename)
 
     if success:
@@ -72,7 +69,7 @@ def _unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
 
 
 def _upload_to_predictions_api(excel_data: bytes, filename: str):
-    """Upload Excel file to predictions API immediately - FIXED VERSION"""
+    """Upload Excel file to predictions API immediately"""
     try:
         import os
         from api_client.predictions_api_client import get_predictions_client
@@ -84,11 +81,9 @@ def _upload_to_predictions_api(excel_data: bytes, filename: str):
 
         client = get_predictions_client(predictions_api_url, final_api_key)
 
-        # ✅ FIX: Create a fresh file object each time
         file_obj = BytesIO(excel_data)
 
         with st.spinner("📤 Uploading to predictions API..."):
-            # ✅ FIX: Use the correct endpoint path
             upload_result = client.upload_excel_bytes(file_obj, filename)
 
         if upload_result.get("success"):
@@ -96,9 +91,7 @@ def _upload_to_predictions_api(excel_data: bytes, filename: str):
             st.session_state.predictions_upload_result = upload_result
             st.session_state.predictions_file_data = excel_data
             st.session_state.predictions_filename = filename
-            print(
-                f"✅ Successfully uploaded {upload_result.get('total_rows', 0)} rows to predictions API"
-            )
+            print(f"✅ Successfully uploaded {upload_result.get('total_rows', 0)} rows")
             return True
         else:
             st.session_state.predictions_upload_error = upload_result.get(
@@ -122,51 +115,43 @@ def _export_template_with_remarks_and_outputs(
     template_df, remarks_dict, outputs_dict, rule_number
 ):
     """Export template with remarks AND outputs columns added"""
-    # Create a copy of the dataframe
     export_df = template_df.copy()
 
-    # Add remarks and outputs columns
     remarks_list = []
     outputs_list = []
     step_counter = 1
 
     for idx, row in export_df.iterrows():
-        # Skip header row
         if pd.isna(row["Step"]) or str(row["Step"]).strip() == "":
             remarks_list.append("")
             outputs_list.append("")
         else:
-            # Get remark
             remark_key = f"remark_step_{step_counter}_{rule_number}"
             remark = remarks_dict.get(remark_key, "")
             remarks_list.append(remark)
 
-            # Get output
             output_key = f"output_step_{step_counter}_{rule_number}"
             output = outputs_dict.get(output_key, "")
             outputs_list.append(output)
 
             step_counter += 1
 
-    export_df["Output"] = outputs_list  # ✅ Add Output column
+    export_df["Output"] = outputs_list
     export_df["Remarks/Comments"] = remarks_list
 
-    # Export to Excel with formatting
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         export_df.to_excel(writer, index=False, sheet_name="Triaging Steps")
 
         worksheet = writer.sheets["Triaging Steps"]
 
-        # Set column widths
-        worksheet.column_dimensions["A"].width = 8  # Step
-        worksheet.column_dimensions["B"].width = 30  # Name
-        worksheet.column_dimensions["C"].width = 50  # Explanation
-        worksheet.column_dimensions["D"].width = 60  # KQL Query
-        worksheet.column_dimensions["E"].width = 50  # Output ✅ NEW
-        worksheet.column_dimensions["F"].width = 40  # Remarks
+        worksheet.column_dimensions["A"].width = 8
+        worksheet.column_dimensions["B"].width = 30
+        worksheet.column_dimensions["C"].width = 50
+        worksheet.column_dimensions["D"].width = 60
+        worksheet.column_dimensions["E"].width = 50
+        worksheet.column_dimensions["F"].width = 40
 
-        # Format header row
         from openpyxl.styles import Font, PatternFill, Alignment
 
         header_fill = PatternFill(
@@ -179,7 +164,6 @@ def _export_template_with_remarks_and_outputs(
             cell.font = header_font
             cell.alignment = Alignment(horizontal="center", vertical="center")
 
-        # Wrap text for all cells
         for row in worksheet.iter_rows(min_row=2):
             for cell in row:
                 cell.alignment = Alignment(wrap_text=True, vertical="top")
@@ -189,7 +173,8 @@ def _export_template_with_remarks_and_outputs(
 
 
 def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGenerator):
-    # Get alert information
+    """Main page function - UPDATED TO USE INTELLIGENT GENERATOR"""
+
     selected_alert = session_state.get("triaging_selected_alert", None)
 
     if selected_alert is None:
@@ -268,14 +253,13 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
         )
         return
 
-    # ✅ RUN ENHANCEMENT (ONLY ONCE)
+    # ✅ RUN INTELLIGENT ENHANCEMENT (ONLY ONCE)
     st.info(f"📄 Processing template: {template_files[0]}")
 
-    # Create progress tracking
-    progress_bar = st.progress(0, text="📄 Starting enhancement...")
+    progress_bar = st.progress(0, text="📄 Starting intelligent enhancement...")
 
     try:
-        # STEP 1: Parse Template
+        # STEP 1: Parse Old Template
         progress_bar.progress(10, text="📋 Parsing original template...")
 
         parser = TemplateParser()
@@ -291,39 +275,28 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
 
         progress_bar.progress(20, text=f"✅ Extracted {len(original_steps)} steps")
 
-        # STEP 2: Enhancement (this doesn't add KQL yet)
-        progress_bar.progress(30, text="🚀 Enhancing with AI...")
+        # STEP 2: Use Intelligent Template Generator (NEW!)
+        progress_bar.progress(30, text="🧠 Analyzing with AI intelligence...")
 
-        enhancer = WebLLMEnhancer()
+        # Initialize the intelligent generator
+        from routes.src.template_generator import IntelligentTemplateGenerator
+
+        intelligent_gen = IntelligentTemplateGenerator()
+
+        progress_bar.progress(40, text="📡 Gathering threat intelligence...")
+
         start_time = time.time()
 
-        enhanced_steps = enhancer.enhance_template_steps(
-            rule_number=rule_number,
-            original_steps=original_steps,
+        # Generate intelligent template
+        template_df = intelligent_gen.generate_intelligent_template(
+            rule_number=rule_number, old_template_steps=original_steps
         )
 
         elapsed = time.time() - start_time
 
-        progress_bar.progress(50, text=f"⚡ Enhanced {len(enhanced_steps)} steps")
+        progress_bar.progress(80, text="📊 Finalizing template...")
 
-        # STEP 3: Generate Full Template with KQL
-        progress_bar.progress(60, text="🔎 Generating KQL queries...")
-
-        template_gen = EnhancedTemplateGenerator()
-
-        template_df = template_gen.generate_clean_template(
-            rule_number=rule_number, enhanced_steps=enhanced_steps
-        )
-
-        template_df["Step"] = template_df["Step"].astype(str)
-
-        progress_bar.progress(80, text="📊 Finalizing Excel template...")
-
-        excel_file = template_gen.export_to_excel(template_df, rule_number)
-
-        progress_bar.progress(90, text="💾 Converting to display format...")
-
-        # ✅ CONVERT DataFrame back to dictionary format with KQL included
+        # Convert DataFrame back to dictionary format for display
         enhanced_steps_with_kql = []
 
         for idx, row in template_df.iterrows():
@@ -331,7 +304,6 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
             if pd.isna(row["Step"]) or str(row["Step"]).strip() == "":
                 continue
 
-            # Extract KQL
             kql_raw = row["KQL Query"]
             kql_str = str(kql_raw) if pd.notna(kql_raw) else ""
             kql_cleaned = kql_str.strip().lower()
@@ -359,9 +331,12 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
 
             enhanced_steps_with_kql.append(step_dict)
 
-        progress_bar.progress(95, text="💾 Caching results...")
+        progress_bar.progress(90, text="💾 Caching results...")
 
-        # ✅ CACHE WITH KQL INCLUDED
+        # Export to Excel
+        excel_file = intelligent_gen.export_to_excel(template_df, rule_number)
+
+        # ✅ CACHE RESULTS
         st.session_state[cache_key] = {
             "original_steps": original_steps,
             "enhanced_steps": enhanced_steps_with_kql,
@@ -370,7 +345,6 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
             "elapsed_time": elapsed,
         }
 
-        # Store in session state
         session_state.original_steps = original_steps
         session_state.enhanced_steps = enhanced_steps_with_kql
         session_state.excel_template_data = excel_file
@@ -380,6 +354,8 @@ def show_page(session_state, TemplateParser, WebLLMEnhancer, EnhancedTemplateGen
 
         time.sleep(0.5)
         progress_bar.empty()
+
+        st.success(f"🎉 Intelligent template generated in {elapsed:.1f}s!")
 
         # Display results
         _display_enhancement_results(
@@ -417,8 +393,6 @@ def _display_enhancement_results(
     if "current_open_step" not in st.session_state:
         st.session_state.current_open_step = 1
 
-    testing_mode = os.getenv("TESTING", "false").lower() == "true"
-
     # TWO MAIN TABS
     tab1, tab2 = st.tabs(["📋 Triaging Steps", "📊 Excel Template"])
 
@@ -452,35 +426,24 @@ def _display_enhancement_results(
             step_num = idx + 1
             step_name = step.get("step_name", f"Step {step_num}")
 
-            # Check if step is completed
             is_completed = step_num in st.session_state.completed_steps
-
-            # Determine if this step should be expanded
             is_expanded = (
                 step_num == st.session_state.current_open_step and not is_completed
             )
-
-            # Determine if step is locked (previous step not completed)
             is_locked = (
                 step_num > 1 and (step_num - 1) not in st.session_state.completed_steps
             )
 
-            # Build step header with status icon
             if is_completed:
                 status_icon = "✅"
-                header_color = "#d4edda"  # Light green
             elif is_locked:
                 status_icon = "🔒"
-                header_color = "#f8d7da"  # Light red
             else:
                 status_icon = "⏳"
-                header_color = "#fff3cd"  # Light yellow
 
-            # Create expander with custom styling
             with st.expander(
                 f"{status_icon} Step {step_num}: {step_name}", expanded=is_expanded
             ):
-                # Move VirusTotal check OUTSIDE the KQL block
                 if is_locked:
                     st.warning("🔒 Complete the previous step to unlock this one")
                 else:
@@ -490,13 +453,12 @@ def _display_enhancement_results(
                     kql_query = step.get("kql_query", "")
                     kql_explanation = step.get("kql_explanation", "")
 
-                    # Clean KQL
                     if kql_query:
                         kql_query = str(kql_query).strip()
                         if kql_query.lower() in ["nan", "none", "n/a", ""]:
                             kql_query = ""
 
-                    # ✅ MOVED: Check for VirusTotal BEFORE KQL section
+                    # Check for VirusTotal step
                     step_name_lower = step_name.lower()
                     explanation_lower = explanation.lower()
 
@@ -509,19 +471,9 @@ def _display_enhancement_results(
                             contains_ip_not_vip(step_name_lower)
                             and "reputation" in step_name_lower
                         )
-                        or (
-                            step_num == 4
-                            and (
-                                contains_ip_not_vip(step_name_lower)
-                                or contains_ip_not_vip(explanation_lower)
-                                or "virustotal" in explanation_lower
-                            )
-                        )
                     )
 
-                    # ========================================
-                    # KQL Query Section (OPTIONAL)
-                    # ========================================
+                    # KQL Query Section
                     if kql_query and len(kql_query) > 5:
                         st.markdown("##### 🔎 KQL Query")
                         if kql_explanation and str(kql_explanation).strip() not in [
@@ -533,9 +485,7 @@ def _display_enhancement_results(
                             st.write(kql_explanation)
                         st.code(kql_query, language="kql")
 
-                    # ========================================
-                    # Output Section (ALWAYS SHOWN if VT step OR has KQL)
-                    # ========================================
+                    # Output Section
                     if is_ip_reputation_step or (kql_query and len(kql_query) > 5):
                         st.markdown("##### 📊 Output")
                         output_key = f"output_step_{step_num}_{rule_number}"
@@ -543,11 +493,10 @@ def _display_enhancement_results(
                             output_key, ""
                         )
 
-                        # ✅ VIRUSTOTAL INTEGRATION
+                        # VirusTotal Integration
                         if is_ip_reputation_step:
-                            st.info("🎯 **VirusTotal IP Reputation Check**")
+                            st.info("🎯 **IP Reputation Check using Virus Total & Abuse DB**")
 
-                            # Try to extract IP from previous steps
                             default_ip = ""
                             for prev_step in range(1, step_num):
                                 prev_output_key = (
@@ -576,7 +525,7 @@ def _display_enhancement_results(
                                 )
 
                             with col2:
-                                st.write("")  # Spacing
+                                st.write("")
                                 st.write("")
                                 check_button = st.button(
                                     "🔍 Check",
@@ -584,13 +533,11 @@ def _display_enhancement_results(
                                     type="primary",
                                 )
 
-                            # Check VirusTotal
                             if check_button and ip_input:
                                 with st.spinner("🔍 Checking VirusTotal..."):
                                     vt_result = _check_virustotal_auto(ip_input)
 
                                 if vt_result.get("success"):
-                                    # Get BOTH formats
                                     formatted_output_ui = vt_result.get(
                                         "formatted_output", ""
                                     )
@@ -598,18 +545,15 @@ def _display_enhancement_results(
                                         "formatted_output_excel", formatted_output_ui
                                     )
 
-                                    # ✅ SAVE EXCEL FORMAT to session state (for export)
                                     st.session_state.step_outputs[output_key] = (
                                         formatted_output_excel
                                     )
 
-                                    # ✅ DISPLAY UI FORMAT on screen (with markdown)
                                     st.markdown(formatted_output_ui)
                                     st.success(
                                         "✅ VirusTotal check complete! Output saved for Excel export."
                                     )
 
-                                    # Show risk level prominently
                                     risk_level = vt_result.get("risk_level", "UNKNOWN")
                                     if risk_level == "HIGH":
                                         st.error(
@@ -632,18 +576,15 @@ def _display_enhancement_results(
                                             vt_result.get("formatted_output", "")
                                         )
 
-                            # Show existing output if available
                             if existing_output:
                                 with st.expander(
                                     "📋 View Saved Output (Excel Format)",
                                     expanded=False,
                                 ):
-                                    st.text(
-                                        existing_output
-                                    )  # Use st.text instead of st.markdown for plain text
+                                    st.text(existing_output)
 
                         else:
-                            # Regular manual output for non-VT steps with KQL
+                            # Regular manual output
                             manual_output = st.text_area(
                                 "Enter the KQL query output:",
                                 value=existing_output,
@@ -661,9 +602,7 @@ def _display_enhancement_results(
                                     f"✅ Output saved ({len(manual_output)} characters)"
                                 )
 
-                    # ========================================
-                    # Remarks Section (ALWAYS SHOWN)
-                    # ========================================
+                    # Remarks Section
                     st.markdown("##### 💬 Remarks/Comments")
                     remark_key = f"remark_step_{step_num}_{rule_number}"
                     existing_remark = st.session_state.step_remarks.get(remark_key, "")
@@ -695,12 +634,11 @@ def _display_enhancement_results(
                             st.session_state.current_open_step = step_num + 1
                             st.rerun()
 
-        # In the Final Download Section, replace the download button section with:
+        # Final Download Section
         if len(st.session_state.completed_steps) == len(enhanced_steps):
             st.markdown("---")
             st.success("🎉 All steps completed!")
 
-            # Generate complete template ONLY ONCE
             excel_key = f"final_excel_{rule_number}"
             if excel_key not in st.session_state:
                 template_df = session_state.template_dataframe
@@ -734,7 +672,6 @@ def _display_enhancement_results(
                     ),
                 )
 
-            # Show upload status immediately
             if st.session_state.get("show_predictions_unlock_message"):
                 if st.session_state.get("predictions_uploaded"):
                     st.success(
@@ -754,31 +691,22 @@ def _display_enhancement_results(
     with tab2:
         st.markdown("### 📊 Excel Template Preview")
 
-        # Use cached dataframe
         if (
             hasattr(session_state, "template_dataframe")
             and session_state.template_dataframe is not None
         ):
             template_df = session_state.template_dataframe
         else:
-            # Fallback
-            template_gen = EnhancedTemplateGenerator()
-            template_df = template_gen.generate_clean_template(
-                rule_number=rule_number, enhanced_steps=enhanced_steps
-            )
-            template_df["Step"] = template_df["Step"].astype(str)
-            session_state.template_dataframe = template_df
+            st.warning("Template not generated yet")
+            return
 
-        # Display dataframe
         st.dataframe(template_df, width="stretch", height=500)
 
         st.markdown("---")
 
-        # Download Buttons
         col1, col2 = st.columns(2)
 
         with col1:
-            # Base template (already cached)
             st.download_button(
                 label="📥 Download Base Template",
                 data=session_state.excel_template_data,
@@ -789,7 +717,6 @@ def _display_enhancement_results(
             )
 
         with col2:
-            # Complete template - cache it
             complete_excel_key = f"complete_excel_{rule_number}"
             if complete_excel_key not in st.session_state:
                 remarks_dict = st.session_state.step_remarks
