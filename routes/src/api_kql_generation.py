@@ -531,65 +531,87 @@ class EnhancedKQLGenerator:
     def _generate_explanation_with_llm(
         self, kql: str, step_name: str, explanation: str
     ) -> str:
-        """Generate concise KQL explanation"""
+        """Generate concise, UNIQUE KQL explanation using LLM"""
         try:
-            # Analyze what the query actually does
-            kql_lower = kql.lower()
+            prompt = f"""You are explaining a KQL query to a SOC analyst.
+
+    KQL Query: {kql}
+
+    Step Context: {step_name}
+
+    Generate a ONE-SENTENCE explanation that describes:
+    1. What data source is queried
+    2. What time range is used
+    3. What the query does (aggregates/filters/extracts)
+
+    Requirements:
+    - ONE sentence only (max 25 words)
+    - Be SPECIFIC about what's being analyzed
+    - Use technical terms (SigninLogs, aggregates, filters, etc.)
+    - NO generic phrases like "queries data" or "analyzes logs"
+
+    Examples:
+    ✅ "Aggregates sign-in attempts from SigninLogs over 7 days, counting failed authentications by user and IP address."
+    ✅ "Filters AuditLogs for role assignment changes in the last 30 days and extracts user, role, and timestamp details."
+    ✅ "Queries DeviceInfo to identify non-compliant devices accessed by the affected user within 24 hours."
+
+    Generate explanation NOW (one sentence only):"""
+
+            agent = Agent(
+                role="KQL Query Explainer",
+                goal="Generate concise, specific KQL explanation",
+                backstory="Expert at explaining KQL queries clearly",
+                llm=self.primary_llm,
+                verbose=False,
+            )
+
+            task = Task(
+                description=prompt,
+                expected_output="One sentence KQL explanation",
+                agent=agent,
+            )
+
+            crew = Crew(agents=[agent], tasks=[task], verbose=False)
+            result = str(crew.kickoff()).strip()
+
+            # Clean the result
+            result = self._clean_explanation(result)
             
-            # Smart explanation based on query content
-            if "summarize" in kql_lower and "dcount" in kql_lower:
-                action = "Counts unique values and aggregates"
-            elif "summarize" in kql_lower:
-                action = "Aggregates and summarizes"
-            elif "where" in kql_lower and "project" in kql_lower:
-                action = "Filters and extracts specific fields from"
-            elif "where" in kql_lower:
-                action = "Queries and filters"
-            elif "join" in kql_lower:
-                action = "Correlates data across"
-            else:
-                action = "Queries"
+            # Ensure it's one sentence
+            if '.' in result:
+                result = result.split('.')[0] + '.'
             
-            # Identify data source
-            if "signinlogs" in kql_lower:
-                source = "sign-in logs"
-            elif "auditlogs" in kql_lower:
-                source = "audit logs"
-            elif "deviceinfo" in kql_lower:
-                source = "device information"
-            elif "identityinfo" in kql_lower:
-                source = "identity data"
-            else:
-                source = "security logs"
+            # Validate length
+            if len(result.split()) > 30:
+                # Fallback to simple explanation
+                return self._generate_explanation(kql)
             
-            # Build concise explanation
-            explanation_parts = [action, source]
-            
-            # Add specific details if present
-            if "timegenerated" in kql_lower:
-                if "7d" in kql_lower:
-                    explanation_parts.append("for the last 7 days")
-                elif "24h" in kql_lower or "1d" in kql_lower:
-                    explanation_parts.append("for the last 24 hours")
-                elif "30d" in kql_lower:
-                    explanation_parts.append("for the last 30 days")
-            
-            if "dcount" in kql_lower:
-                explanation_parts.append("to identify unique patterns")
-            
-            if "countif" in kql_lower:
-                explanation_parts.append("with conditional counting")
-            
-            final_explanation = " ".join(explanation_parts).strip() + "."
-            
-            # Capitalize first letter
-            final_explanation = final_explanation[0].upper() + final_explanation[1:]
-            
-            return final_explanation
+            return result if len(result) > 20 else self._generate_explanation(kql)
 
         except Exception as e:
             print(f"   ⚠️ Explanation generation failed: {str(e)[:100]}")
             return self._generate_explanation(kql)
+
+    def _clean_explanation(self, explanation: str) -> str:
+        """Clean explanation from LLM artifacts"""
+        # Remove common prefixes
+        prefixes = [
+            "This query", "The query", "Explanation:", "Output:",
+            "Here's", "Here is", "The KQL", "This KQL",
+            "Answer:", "Result:"
+        ]
+
+        for prefix in prefixes:
+            if explanation.lower().startswith(prefix.lower()):
+                explanation = explanation[len(prefix):].strip()
+                if explanation.startswith(":"):
+                    explanation = explanation[1:].strip()
+
+        # Capitalize first letter
+        if explanation:
+            explanation = explanation[0].upper() + explanation[1:]
+
+        return explanation.strip()
 
     def _clean_explanation(self, explanation: str) -> str:
         """Clean explanation from LLM artifacts"""

@@ -1,12 +1,12 @@
-"""
-Investigation Profile Builder
-Extracts intelligence from AI Threat Analysis to guide investigation step generation
-"""
-
+import os
 import re
 from typing import Dict, List, Optional
 from api_client.analyzer_api_client import get_analyzer_client
 from routes.src.utils import extract_alert_name
+from crewai import LLM, Agent, Task, Crew
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class InvestigationProfileBuilder:
@@ -16,12 +16,30 @@ class InvestigationProfileBuilder:
     """
 
     def __init__(self):
+        self._init_llm()
+
         self.analyzer_client = None
         try:
             self.analyzer_client = get_analyzer_client()
             print("✅ Investigation Profile Builder initialized")
         except Exception as e:
             print(f"⚠️ Analyzer client unavailable: {e}")
+
+    def _init_llm(self):
+        """Initialize LLM for dynamic analysis"""
+        gemini_key = os.getenv("GOOGLE_API_KEY")
+        if gemini_key:
+            self.llm = LLM(
+                model="gemini/gemini-2.0-flash-exp", api_key=gemini_key, temperature=0.2
+            )
+        else:
+            ollama_model = os.getenv("OLLAMA_CHAT", "ollama/qwen2.5:3b")
+            if not ollama_model.startswith("ollama/"):
+                ollama_model = f"ollama/{ollama_model}"
+            self.llm = LLM(
+                model=ollama_model, base_url="http://localhost:11434", temperature=0.2
+            )
+
 
     def build_profile(self, rule_number: str, rule_context: str = "") -> Dict:
         """
@@ -34,7 +52,7 @@ class InvestigationProfileBuilder:
         Returns:
             Investigation profile dictionary
         """
-        print(f"\n🔍 Building Investigation Profile for {rule_number}")
+        print(f"\n Building Investigation Profile for {rule_number}")
 
         # Initialize profile with defaults
         profile = {
@@ -43,9 +61,9 @@ class InvestigationProfileBuilder:
             "alert_type": self._classify_alert_type(rule_number, rule_context),
             "technical_overview": "",
             "mitre_techniques": [],
-            "mitre_details": {},  # ✅ NEW: Store technique details
+            "mitre_details": {},
             "threat_actors": [],
-            "threat_actor_ttps": {},  # ✅ NEW: Store actor TTPs
+            "threat_actor_ttps": {},
             "data_sources": [],
             "investigation_focus": [],
             "required_checks": [],
@@ -53,39 +71,94 @@ class InvestigationProfileBuilder:
             "detection_mechanism": [],
         }
 
-        # Get AI analysis if available
+        # Try to get AI analysis with retry logic
         if self.analyzer_client:
             try:
                 alert_name = extract_alert_name(rule_number)
                 profile["alert_name"] = alert_name
 
-                print(f"   📡 Fetching AI analysis for: {alert_name}")
-                result = self.analyzer_client.analyze_alert(alert_name)
+                print(f"   Fetching AI analysis for: {alert_name}")
+                
+                # Implement retry logic for rate limiting
+                result = self._get_analysis_with_retry(alert_name, max_retries=2)
 
                 if result.get("success"):
                     analysis_text = result.get("analysis", "")
                     self._parse_analysis(analysis_text, profile)
-                    print(f"   ✅ Parsed AI analysis successfully")
+                    print(f"   âœ… Parsed AI analysis successfully")
                 else:
-                    print(f"   ⚠️ AI analysis failed: {result.get('error')}")
+                    error_msg = result.get('error', 'Unknown error')
+                    if "429" in error_msg or "rate limit" in error_msg.lower():
+                        print(f"   âš ï¸ Rate limit hit - using fallback profile")
+                    else:
+                        print(f"   âš ï¸ AI analysis failed: {error_msg[:100]}")
+                    # Continue with empty profile - fallback will handle it
 
             except Exception as e:
-                print(f"   ⚠️ Error getting AI analysis: {str(e)[:100]}")
+                error_str = str(e)
+                print(f"   âš ï¸ Error getting AI analysis: {error_str[:100]}")
 
         # Enhance with rule context
         if rule_context:
             self._enhance_from_context(rule_context, profile)
 
-        # Determine investigation requirements
+        # Determine investigation requirements (uses fallback if no AI analysis)
         self._determine_investigation_requirements(profile)
 
         print(
-            f"   ✅ Profile: {len(profile['mitre_techniques'])} MITRE, "
+            f"   âœ… Profile: {len(profile['mitre_techniques'])} MITRE, "
             f"{len(profile['threat_actors'])} actors, {len(profile['investigation_focus'])} focus areas"
         )
 
         return profile
 
+    def _get_analysis_with_retry(self, alert_name: str, max_retries: int = 2) -> Dict:
+        """
+        Get AI analysis with retry logic for rate limiting
+        
+        Args:
+            alert_name: Alert name to analyze
+            max_retries: Number of retries (default: 2)
+            
+        Returns:
+            Analysis result dictionary
+        """
+        import time
+        
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                result = self.analyzer_client.analyze_alert(alert_name)
+                if result.get("success"):
+                    return result
+                
+                error_msg = result.get('error', '')
+                if "429" in error_msg or "rate limit" in error_msg.lower():
+                    wait_time = min(2 ** attempt * 3, 30)
+                    print(f"   ⏳ Rate limited. Waiting {wait_time}s before retry...")
+                    time.sleep(wait_time)
+                    last_error = result
+                    continue
+                else:
+                    return result
+                    
+            except Exception as e:
+                last_error = e
+                error_str = str(e).lower()
+                
+                if "429" in str(e) or "rate limit" in error_str or "too many" in error_str:
+                    wait_time = min(2 ** attempt * 3, 30)
+                    print(f"   ⏳ Rate limited (attempt {attempt + 1}/{max_retries}). Waiting {wait_time}s...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    # Not rate limit, return error
+                    return {"success": False, "error": str(e)}
+        
+        # All retries exhausted
+        return {"success": False, "error": f"Rate limit exceeded after {max_retries} attempts"}
+    
     def _classify_alert_type(self, rule_number: str, context: str) -> str:
         """Classify alert into broad category"""
         combined = f"{rule_number} {context}".lower()
@@ -216,17 +289,22 @@ class InvestigationProfileBuilder:
         """Determine what investigation checks are needed - FULLY DYNAMIC using LLM"""
 
         tech_overview = profile["technical_overview"]
-        
+
         if not tech_overview:
             # Fallback to basic requirements
-            profile["investigation_focus"] = ["user_activity", "authentication_analysis"]
+            profile["investigation_focus"] = [
+                "user_activity",
+                "authentication_analysis",
+            ]
             profile["required_checks"] = ["user_verification", "signin_analysis"]
             profile["data_sources"] = ["SigninLogs"]
             return
 
         # Use LLM to analyze technical overview
-        focus_areas, required_checks, data_sources = self._llm_analyze_requirements(tech_overview)
-        
+        focus_areas, required_checks, data_sources = self._llm_analyze_requirements(
+            tech_overview
+        )
+
         profile["investigation_focus"] = focus_areas
         profile["required_checks"] = required_checks
         profile["data_sources"] = data_sources if data_sources else ["SigninLogs"]
@@ -282,14 +360,20 @@ class InvestigationProfileBuilder:
             required_checks = []
             data_sources = []
 
-            for line in result.split('\n'):
+            for line in result.split("\n"):
                 line = line.strip()
-                if line.startswith('FOCUS:'):
-                    focus_areas = [x.strip() for x in line.replace('FOCUS:', '').split(',')]
-                elif line.startswith('CHECKS:'):
-                    required_checks = [x.strip() for x in line.replace('CHECKS:', '').split(',')]
-                elif line.startswith('SOURCES:'):
-                    data_sources = [x.strip() for x in line.replace('SOURCES:', '').split(',')]
+                if line.startswith("FOCUS:"):
+                    focus_areas = [
+                        x.strip() for x in line.replace("FOCUS:", "").split(",")
+                    ]
+                elif line.startswith("CHECKS:"):
+                    required_checks = [
+                        x.strip() for x in line.replace("CHECKS:", "").split(",")
+                    ]
+                elif line.startswith("SOURCES:"):
+                    data_sources = [
+                        x.strip() for x in line.replace("SOURCES:", "").split(",")
+                    ]
 
             return focus_areas, required_checks, data_sources
 
@@ -303,26 +387,26 @@ class InvestigationProfileBuilder:
         focus_areas = set()
         required_checks = set()
         data_sources = set()
-        
+
         tech_lower = tech_overview.lower()
-        
+
         # Simple keyword matching as fallback
         if "ip" in tech_lower or "address" in tech_lower:
             required_checks.add("ip_reputation")
             focus_areas.add("network_analysis")
-        
+
         if "user" in tech_lower or "account" in tech_lower:
             required_checks.add("user_verification")
             focus_areas.add("user_activity")
             data_sources.add("SigninLogs")
-        
+
         if "device" in tech_lower or "endpoint" in tech_lower:
             required_checks.add("device_verification")
             focus_areas.add("device_compliance")
             data_sources.add("DeviceInfo")
-        
+
         if "role" in tech_lower or "permission" in tech_lower:
             required_checks.add("role_verification")
             data_sources.add("AuditLogs")
-        
+
         return list(focus_areas), list(required_checks), list(data_sources)

@@ -68,47 +68,119 @@ class ImprovedTemplateGenerator:
     ) -> List[Dict]:
         """
         Process merged steps and generate KQL for each
+        ✅ KEEP all ORIGINAL steps (from template) regardless of KQL
+        ✅ FILTER AI-GENERATED steps that don't have KQL
         Returns template rows ready for DataFrame
         """
         template_rows = []
-
-        for idx, step in enumerate(merged_steps, 1):
+        
+        # Separate original and AI-generated steps
+        original_steps = []
+        ai_generated_steps = []
+        
+        for step in merged_steps:
+            if step.get("source") == "original_template":
+                original_steps.append(step)
+            else:
+                ai_generated_steps.append(step)
+        
+        print(f"   📊 Original steps: {len(original_steps)}")
+        print(f"   🤖 AI-generated steps: {len(ai_generated_steps)}")
+        
+        # FIRST: Process ORIGINAL steps - keep ALL regardless of KQL
+        print(f"\n   ✅ Processing ORIGINAL steps (keeping all)...")
+        original_processed = 0
+        for idx, step in enumerate(original_steps, 1):
             step_name = step.get("step_name", "")
             explanation = step.get("explanation", "")
             source = step.get("source", "unknown")
             priority = step.get("priority", "MEDIUM")
             confidence = step.get("confidence", "MEDIUM")
 
-            print(f"\n   Step {idx}: {step_name}")
-            print(
-                f"      Source: {source} | Priority: {priority} | Confidence: {confidence}"
-            )
+            print(f"\n      Step {idx}: {step_name}")
+            print(f"         Source: {source} | Priority: {priority}")
 
-            # Generate KQL if this step needs it
+            # Try to generate KQL for original steps too
             kql_query = ""
             kql_explanation = ""
-
+            
             if self._needs_kql(step_name, explanation):
-                print(f"      🔍 Generating KQL...")
+                print(f"         🔍 Generating KQL...")
                 kql_query, kql_explanation = self.kql_generator.generate_kql_query(
                     step_name=step_name,
                     explanation=explanation,
                     step_number=idx,
                     rule_context=profile.get("technical_overview", ""),
                 )
-
-                if kql_query:
-                    print(f"      ✅ KQL generated ({len(kql_query)} chars)")
+                
+                if kql_query and len(kql_query.strip()) > 30:
+                    print(f"         ✅ KQL generated ({len(kql_query)} chars)")
                 else:
-                    print(f"      ℹ️  No KQL needed for this step")
+                    print(f"         ℹ️  No KQL for this step (external tool/manual)")
+                    kql_query = ""
             else:
-                print(f"      ℹ️  Step doesn't require KQL")
+                print(f"         ℹ️  Step doesn't require KQL (external tool)")
 
-            # Build template row
+            # Build template row - KEEP ORIGINAL EVEN IF NO KQL
             row = {
-                "Step": str(idx),  # ✅ Force string type
+                "Step": str(idx),
                 "Name": step_name,
-                "Explanation": self._enforce_length(explanation, max_sentences=3),
+                "Explanation": self._enhance_step_explanation(explanation),
+                "KQL Query": kql_query,
+                "KQL Explanation": kql_explanation,
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": f"[{source.upper()}] {priority}",
+            }
+            
+            template_rows.append(row)
+            original_processed += 1
+
+        print(f"\n   ✅ Kept all {original_processed} ORIGINAL steps")
+
+        # SECOND: Process AI-GENERATED steps - FILTER if no KQL
+        print(f"\n   ✅ Processing AI-GENERATED steps (filtering if no KQL)...")
+        ai_processed = 0
+        ai_skipped = 0
+        
+        for idx, step in enumerate(ai_generated_steps, 1):
+            step_name = step.get("step_name", "")
+            explanation = step.get("explanation", "")
+            source = step.get("source", "unknown")
+            priority = step.get("priority", "MEDIUM")
+            confidence = step.get("confidence", "MEDIUM")
+
+            # ✅ FOR AI-GENERATED: Check if KQL is needed FIRST
+            if not self._needs_kql(step_name, explanation):
+                print(f"      ⏭️  Skipping AI step (no KQL needed): {step_name}")
+                ai_skipped += 1
+                continue
+
+            print(f"\n      Step {original_processed + ai_processed + 1}: {step_name}")
+            print(f"         Source: {source} | Priority: {priority}")
+            print(f"         🔍 Generating KQL...")
+            
+            kql_query, kql_explanation = self.kql_generator.generate_kql_query(
+                step_name=step_name,
+                explanation=explanation,
+                step_number=original_processed + ai_processed + 1,
+                rule_context=profile.get("technical_overview", ""),
+            )
+
+            # ✅ FOR AI-GENERATED: Skip if KQL generation failed
+            if not (kql_query and len(kql_query.strip()) > 30):
+                print(f"         ⏭️  Skipping (KQL generation failed)")
+                ai_skipped += 1
+                continue
+
+            print(f"         ✅ KQL generated ({len(kql_query)} chars)")
+            print(f"         📝 Explanation: {kql_explanation[:80]}...")
+
+            # Build template row for AI-generated step
+            row = {
+                "Step": str(original_processed + ai_processed + 1),
+                "Name": step_name,
+                "Explanation": self._enhance_step_explanation(explanation),
                 "KQL Query": kql_query,
                 "KQL Explanation": kql_explanation,
                 "Execute": "",
@@ -117,8 +189,48 @@ class ImprovedTemplateGenerator:
             }
 
             template_rows.append(row)
+            ai_processed += 1
 
+        print(f"\n   ✅ Processed {ai_processed} AI-GENERATED steps")
+        print(f"   ⏭️  Skipped {ai_skipped} AI-GENERATED steps (no KQL)")
+        print(f"\n   📊 Final template: {len(template_rows)} total steps")
+        print(f"      - {original_processed} from ORIGINAL")
+        print(f"      - {ai_processed} from AI-GENERATED")
+        
         return template_rows
+
+    def _enhance_step_explanation(self, explanation: str) -> str:
+        """Enhance step explanation - make it clear and concise"""
+        if not explanation or len(explanation.strip()) == 0:
+            return ""
+        
+        # If explanation is already reasonable, just enforce length
+        if len(explanation) > 30 and not self._is_vague(explanation):
+            return self._enforce_length(explanation, max_sentences=3)
+        
+        # If explanation is too vague or short, try to enhance it
+        prompt = f"""Improve this SOC investigation instruction to be clear and actionable.
+
+    Current: {explanation[:150]}
+
+    Requirements:
+    - Be specific and clear
+    - Include what to investigate and what to look for
+    - Maximum 2-3 sentences
+    - Use imperative voice (e.g., "Check", "Review", "Verify")
+
+    Output ONLY the improved instruction:"""
+        
+        try:
+            result = self._quick_llm_call(prompt, max_tokens=100)
+            enhanced = self._aggressive_clean(result)
+            
+            if len(enhanced) > 20:
+                return self._enforce_length(enhanced, max_sentences=3)
+        except Exception as e:
+            print(f"   ⚠️ Explanation enhancement failed: {str(e)[:50]}")
+        
+        return self._enforce_length(explanation, max_sentences=3)
 
     def _needs_kql(self, step_name: str, explanation: str) -> bool:
         """Determine if step needs KQL query - be more selective"""

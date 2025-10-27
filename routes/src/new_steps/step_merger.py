@@ -1,7 +1,11 @@
 import os
+import re
 from typing import List, Dict, Tuple
 from difflib import SequenceMatcher
 from crewai import LLM, Agent, Task, Crew
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class InvestigationStepMerger:

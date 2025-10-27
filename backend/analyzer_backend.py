@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from typing import Dict
 from crewai_tools import SerperDevTool
 from crewai import Agent, Task, Crew, Process, LLM
@@ -16,20 +17,22 @@ class SecurityAlertAnalyzerCrew:
 
     def __init__(self):
         # Initialize LLM based on configuration
-
         if USE_OLLAMA:
-            # Use Ollama
             print("Using OLLAMA", OLLAMA_CHAT)
             self.llm = LLM(
                 model=f"ollama/{OLLAMA_CHAT}", base_url="http://localhost:11434"
             )
         else:
-            # Use Google Gemini
             print("Using GEMINI")
             if not GOOGLE_API_KEY:
                 raise ValueError("GOOGLE_API_KEY environment variable must be set")
+            # Add rate limit handling to LiteLLM config
             self.llm = LLM(
-                model="gemini/gemini-2.5-flash", temperature=0.7, api_key=GOOGLE_API_KEY
+                model="gemini/gemini-2.5-flash",
+                temperature=0.7,
+                api_key=GOOGLE_API_KEY,
+                timeout=60,
+                max_retries=3,  # Enable retries
             )
 
         print(self.llm, USE_OLLAMA)
@@ -99,136 +102,114 @@ class SecurityAlertAnalyzerCrew:
             llm=self.llm,
             verbose=False,
             allow_delegation=False,
-            max_iter=12,
+            max_iter=5,  # Reduced iterations to reduce API calls
         )
         return {"threat_intel": threat_intel_agent}
 
     def _create_tasks(self, alert_name: str, agents: Dict[str, Agent]):
         """Create focused task for security alert analysis"""
         threat_intel_task = Task(
-            description=f"""Analyze: {alert_name}
+            description=f"""Analyze the security alert: {alert_name}
 
-REQUIREMENTS:
-- NO placeholders
-- Use web search for threat actors
-- Keep sections brief
-- NO meta-text
+Provide analysis in the following sections:
 
-═══════════════════════════════════════════════════════════════
-
-## TECHNICAL OVERVIEW
-
-Write 2-3 sentences covering:
+1. TECHNICAL OVERVIEW (2-3 sentences)
 - What this alert detects
-- Key detection mechanism (event IDs, protocols)
+- Key detection mechanism
 - Normal vs suspicious behavior
 
-═══════════════════════════════════════════════════════════════
+2. MITRE ATT&CK TECHNIQUES (3 techniques max)
+For each: ID, Name, Overview, Relevance, Key Indicators
 
-## MITRE ATT&CK TECHNIQUES
+3. THREAT ACTORS (2-3 actors, use web search)
+For each: Name, Profile, TTPs, Notable Attack, Relevance
 
-**What is MITRE ATT&CK?**
-MITRE ATT&CK is a globally-accessible knowledge base of adversary tactics and techniques based on real-world observations. It provides a common language for describing cyber threats and helps security teams understand attacker behavior patterns.
+4. BUSINESS IMPACT
+- Data at Risk
+- Compliance implications
+- Reputation Impact
+- Risk Level: CRITICAL/HIGH/MEDIUM/LOW with rationale
 
-**Why It Matters:**
-Understanding the MITRE ATT&CK techniques associated with this alert enables security teams to anticipate attacker next steps, identify gaps in defenses, and prioritize detection and response efforts based on proven attack patterns used by threat actors worldwide.
-
-Provide EXACTLY 3 most relevant techniques:
-
-### T[ID] - [Name]
-
-**Overview:** (2 sentences on the attack method)
-
-**Relevance:** (1-2 sentences on connection to this alert)
-
-**Indicators:**
-- Key indicator 1
-- Key indicator 2
-
-═══════════════════════════════════════════════════════════════
-
-## THREAT ACTORS
-
-**What are Threat Actors?**
-Threat actors are individuals, groups, or nation-states that conduct malicious cyber activities. They range from sophisticated state-sponsored APT groups to organized cybercrime syndicates, each with distinct motivations, capabilities, and targeting patterns.
-
-**Why It Matters:**
-Identifying threat actors associated with this alert helps organizations understand attacker motivations, predict future tactics, assess risk severity, and implement targeted defenses. Knowing who might use these techniques enables proactive threat hunting and informed security investment decisions.
-
-
-Provide 2-3 most relevant actors. USE WEB SEARCH.
-
-### [Name] ([Main Alias])
-
-**Profile:** [Nation/Type] | Active since [Year] | Targets: [Sectors]
-
-**Key TTPs:** T[ID], T[ID], T[ID]
-
-**Notable Attack:** [One major campaign with year and impact]
-
-**Why it is Relevant:** (1 sentence on why this alert matters for this actor)
-
-═══════════════════════════════════════════════════════════════
-
-## BUSINESS IMPACT
-
-### Risk Assessment
-
-**Data at Risk:** [Types: PII, PHI, financial, IP]
-
-**Compliance:**
-- GDPR: Up to €20M or 4%
-- HIPAA: $100-$50K per violation
-- PCI-DSS: Fines + audits
-
-**Reputation Impact:** [Expected customer/market impact]
-
-### Overall Risk: [CRITICAL/HIGH/MEDIUM/LOW]
-
-**Rationale:** (2-3 sentences justifying the rating based on likelihood and impact)
-
-═══════════════════════════════════════════════════════════════
-
-FINAL CHECK:
-✅ No placeholders?
-✅ Concise and scannable?
-✅ Searched for threat actors?
-✅ All sections under 5 sentences?""",
+Keep all sections brief and actionable. No placeholder text.""",
             agent=agents["threat_intel"],
-            expected_output="""Brief, actionable analysis with all sections complete. 
-            Total output should be readable in under 2 minutes.""",
+            expected_output="""Complete security analysis with all four sections. 
+            Actionable and readable in under 2 minutes.""",
         )
         return [threat_intel_task]
 
-    def analyze_alert(self, alert_name: str) -> str:
-        try:
-            agents = self._create_agents()
-            tasks = self._create_tasks(alert_name, agents)
+    def analyze_alert(self, alert_name: str, max_retries: int = 3) -> str:
+        """
+        Analyze alert with retry logic for rate limiting
 
-            crew = Crew(
-                agents=list(agents.values()),
-                tasks=tasks,
-                process=Process.sequential,
-                verbose=False,
-            )
+        Args:
+            alert_name: Name of the alert to analyze
+            max_retries: Maximum number of retry attempts (default: 3)
 
-            result = crew.kickoff()
+        Returns:
+            Analysis text
 
-            if hasattr(result, "raw"):
-                analysis_text = str(result.raw)
-            elif hasattr(result, "output"):
-                analysis_text = str(result.output)
-            elif hasattr(result, "__str__"):
-                analysis_text = str(result)
-            else:
-                analysis_text = repr(result)
+        Raises:
+            Exception: If analysis fails after all retries
+        """
+        last_error = None
 
-            analysis_text = self._clean_output(analysis_text)
+        for attempt in range(max_retries):
+            try:
+                print(
+                    f"Analyzing alert: {alert_name} (Attempt {attempt + 1}/{max_retries})"
+                )
 
-            if not analysis_text.startswith("#"):
-                analysis_text = f"## Security Alert Analysis\n\n{analysis_text}"
+                agents = self._create_agents()
+                tasks = self._create_tasks(alert_name, agents)
 
-            return analysis_text
+                crew = Crew(
+                    agents=list(agents.values()),
+                    tasks=tasks,
+                    process=Process.sequential,
+                    verbose=False,
+                )
 
-        except Exception as e:
-            raise Exception(str(e))
+                result = crew.kickoff()
+
+                if hasattr(result, "raw"):
+                    analysis_text = str(result.raw)
+                elif hasattr(result, "output"):
+                    analysis_text = str(result.output)
+                elif hasattr(result, "__str__"):
+                    analysis_text = str(result)
+                else:
+                    analysis_text = repr(result)
+
+                analysis_text = self._clean_output(analysis_text)
+
+                if not analysis_text.startswith("#"):
+                    analysis_text = f"## Security Alert Analysis\n\n{analysis_text}"
+
+                return analysis_text
+
+            except Exception as e:
+                last_error = e
+                error_str = str(e).lower()
+
+                # Check if it's a rate limit error
+                if (
+                    "429" in str(e)
+                    or "rate limit" in error_str
+                    or "too many requests" in error_str
+                ):
+                    wait_time = min(
+                        2**attempt * 5, 60
+                    )  # Exponential backoff: 5s, 10s, 20s, 60s max
+                    print(
+                        f"Rate limit hit. Waiting {wait_time} seconds before retry..."
+                    )
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    # Not a rate limit error, re-raise immediately
+                    raise
+
+        # All retries failed
+        raise Exception(
+            f"Failed to analyze alert after {max_retries} attempts. Last error: {str(last_error)}"
+        )

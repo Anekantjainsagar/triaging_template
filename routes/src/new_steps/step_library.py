@@ -177,12 +177,12 @@ Focus on what a SOC analyst should DO, not just theory.""",
     Risk Level: {business_impact.get('risk_level', 'UNKNOWN')}
 
     CRITICAL CONSTRAINTS:
-    1. Generate ONLY data collection steps - NO remediation, NO closure, NO notifications
-    2. Each step MUST query a log source OR use an external tool
-    3. NO steps that say "inform", "notify", "reset", "revoke", "block", "disable", "escalate"
-    4. NO steps that say "document", "track closure", "final confirmation", "close incident"
-    5. NO duplicate or similar steps (check IP reputation only ONCE)
-    6. Stay strictly within alert scope: {tech_overview[:200]}
+    1. Generate 10-15 UNIQUE investigation steps - NO duplicates, NO similar steps
+    2. Each step MUST have a DESCRIPTIVE name (NOT just "Query" or "Check")
+    3. Each step MUST query a DIFFERENT aspect (user activity, IP location, MFA status, device compliance, etc.)
+    4. NO remediation steps (reset/revoke/block/disable/inform/notify/escalate)
+    5. NO documentation steps (document/track/close/confirm)
+    6. Step names must be SPECIFIC: "Query Sign-in Activity" NOT just "Query"
 
     TECHNICAL OVERVIEW:
     {tech_overview[:600]}
@@ -197,56 +197,63 @@ Focus on what a SOC analyst should DO, not just theory.""",
     {guidance[:1500] if guidance else "No web research available"}
 
     STEP GENERATION RULES:
-    ✅ GENERATE: Query/Check/Verify/Analyze/Extract/Review actions
-    ✅ GENERATE: Steps with concrete data sources (SigninLogs, AuditLogs, etc.)
-    ✅ GENERATE: Tool-based checks (VirusTotal, AbuseIPDB) - ONCE per type
-    ❌ NEVER GENERATE: Remediation (reset/revoke/block/disable)
-    ❌ NEVER GENERATE: Notifications (inform/notify/escalate/reach out)
-    ❌ NEVER GENERATE: Documentation (document findings/track closure)
-    ❌ NEVER GENERATE: Classification (TP/FP determination)
-    ❌ NEVER GENERATE: Duplicate checks (don't repeat IP reputation)
+    ✅ GENERATE: Descriptive action names (e.g., "Analyze Sign-in Patterns from Unusual Locations")
+    ✅ GENERATE: Each step investigates a DIFFERENT data aspect
+    ✅ GENERATE: 10-15 unique, non-overlapping steps
+    ❌ NEVER: Generic names like "Query", "Check", "Verify" without context
+    ❌ NEVER: Duplicate or similar steps (only ONE IP reputation check, ONE sign-in analysis, etc.)
+    ❌ NEVER: Remediation (reset/revoke/block)
+    ❌ NEVER: Notifications (inform/notify/escalate)
 
-    STEP SEQUENCE (8-12 unique steps):
-    1. Scope Verification (count affected users/systems)
-    2. User Context (VIP status, roles) - if user-related alert
-    3. Authentication Analysis (sign-ins, MFA) - if auth-related
-    4. Threat Intelligence (IP/domain reputation) - ONCE only
-    5. Network Activity (connections, locations) - if network-related
-    6. Device/Endpoint (compliance) - if device-related
-    7. Identity/Access (roles, permissions) - if IAM-related
-    8. MITRE-specific checks (based on techniques listed above)
+    REQUIRED STEP CATEGORIES (generate ONE step for each):
+    1. Scope Assessment: Count affected users/systems
+    2. User Context: VIP status, roles, department
+    3. Authentication Patterns: Sign-in times, frequencies, locations
+    4. Threat Intelligence: IP/domain reputation (ONCE only)
+    5. Geographic Analysis: Sign-in locations, impossible travel
+    6. MFA Verification: Authentication methods, bypass attempts
+    7. Device Analysis: Compliance status, trust level
+    8. Access Patterns: Resource access, privilege usage
+    9. Historical Baseline: Compare with normal behavior
+    10. Concurrent Activity: Other sessions at same time
 
     FORMAT (use EXACTLY this):
-    STEP: [Action verb: Query/Check/Verify/Analyze/Extract]
-    EXPLANATION: [What to investigate, Why it matters, What to look for - 2-3 sentences]
+    STEP: [Descriptive action with context - e.g., "Analyze Sign-in Activity from High-Risk Countries"]
+    EXPLANATION: [What to investigate, Why it matters, What to look for - 2-3 UNIQUE sentences, NO repetition]
     NEEDS_KQL: [YES/NO]
     DATA_SOURCE: [SigninLogs/AuditLogs/DeviceInfo/IdentityInfo/CloudAppEvents OR "TOOL"]
     TOOL: [virustotal/abuseipdb/None]
     PRIORITY: [CRITICAL/HIGH/MEDIUM]
+    ---
 
-    EXAMPLES OF INVALID STEPS (DO NOT GENERATE):
-    ❌ Correlate with Other Security Events
-    ❌ Assess User Baseline Behavior
-    ❌ Build Comprehensive Timeline
-    ❌ Determine True/False Positive
-    ❌ Investigate PowerShell Execution (unless alert is about PowerShell)
+    EXAMPLES OF GOOD STEP NAMES:
+    ✅ "Analyze Sign-in Activity from Unusual Geographic Locations"
+    ✅ "Verify Multi-Factor Authentication Status and Recent Changes"
+    ✅ "Review Failed Authentication Attempts Preceding Successful Sign-in"
+    ✅ "Examine Device Compliance Status for Affected Endpoints"
 
-    Generate steps NOW. Be specific to THIS alert only."""
+    EXAMPLES OF BAD STEP NAMES (DO NOT USE):
+    ❌ "Query" (too vague)
+    ❌ "Check" (too generic)
+    ❌ "Verify" (needs context)
+    ❌ "Analyze" (incomplete)
+
+    Generate 10-15 DESCRIPTIVE, UNIQUE steps NOW. Each step name must be 6-12 words and describe WHAT you're checking."""
 
         try:
             agent = Agent(
                 role="SOC Investigation Playbook Designer",
-                goal="Generate executable investigation steps with concrete data sources",
-                backstory="""You are a senior SOC analyst who creates precise, executable 
-                investigation playbooks. Every step you design has a clear data source or tool.
-                You never include manual analysis or abstract correlation steps.""",
+                goal="Generate 10-15 unique, descriptive investigation steps",
+                backstory="""You are a senior SOC analyst who creates detailed investigation playbooks. 
+                Every step has a clear, descriptive name that explains what's being investigated.
+                You never repeat similar checks and ensure each step examines a different aspect.""",
                 llm=self.llm,
                 verbose=False,
             )
 
             task = Task(
                 description=prompt,
-                expected_output="8-12 structured investigation steps in specified format",
+                expected_output="10-15 unique investigation steps with descriptive names",
                 agent=agent,
             )
 
@@ -256,23 +263,40 @@ Focus on what a SOC analyst should DO, not just theory.""",
             # Parse LLM output
             steps = self._parse_llm_steps(result)
 
-            # ✅ POST-PROCESSING: Filter out invalid steps
+            if len(steps) < 2:
+                print(f"   ⚠️ Only {len(steps)} steps generated - need more coverage")
+
+            # ✅ POST-PROCESSING: Remove duplicates and validate
             valid_steps = []
             seen_types = set()
+            seen_explanations = set()
+            
             for step in steps:
-                step_name = step.get("step_name", "").lower()
+                step_name = step.get("step_name", "")
                 explanation = step.get("explanation", "")
-
-                # Check for duplicates
+                
+                # Skip if name is too generic
+                if self._is_generic_name(step_name):
+                    print(f"   ❌ Filtered generic name: {step_name}")
+                    continue
+                
+                # Check for duplicate step types
                 step_type = self._get_step_type(step_name)
                 if step_type in seen_types:
-                    print(f"   ❌ Filtered duplicate: {step_name}")
+                    print(f"   ❌ Filtered duplicate type: {step_name}")
                     continue
-
-                # Use LLM to validate
+                
+                # Check for repeated explanations
+                exp_hash = hash(explanation[:100].lower())
+                if exp_hash in seen_explanations:
+                    print(f"   ❌ Filtered repeated explanation: {step_name}")
+                    continue
+                
+                # Validate using LLM
                 if self._is_valid_investigation_step(step_name, explanation):
                     valid_steps.append(step)
                     seen_types.add(step_type)
+                    seen_explanations.add(exp_hash)
                 else:
                     print(f"   ❌ Filtered invalid: {step_name}")
 
@@ -281,6 +305,31 @@ Focus on what a SOC analyst should DO, not just theory.""",
         except Exception as e:
             print(f"   ❌ LLM generation failed: {str(e)[:100]}")
             return []
+
+    def _is_generic_name(self, step_name: str) -> bool:
+        """Check if step name is too generic"""
+        step_lower = step_name.lower().strip()
+        
+        # Single word or very short names are too generic
+        if len(step_name.split()) <= 2:
+            return True
+        
+        # Generic standalone verbs
+        generic_verbs = [
+            "query", "check", "verify", "analyze", "review", 
+            "investigate", "examine", "assess"
+        ]
+        
+        if step_lower in generic_verbs:
+            return True
+        
+        # Check if it's just a verb + generic noun
+        generic_patterns = [
+            r"^(query|check|verify|analyze|review)\s+(data|logs|activity|information)$",
+            r"^(investigate|examine|assess)\s+(issue|problem|alert)$"
+        ]
+        
+        return any(re.match(pattern, step_lower) for pattern in generic_patterns)
 
     def _get_step_type(self, step_name: str) -> str:
         """Determine step type to detect duplicates"""
