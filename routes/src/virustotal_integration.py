@@ -3,7 +3,7 @@ import os
 import time
 import requests
 from crewai import LLM
-from typing import Dict
+from typing import Dict, List
 from dotenv import load_dotenv
 from crewai_tools import ScrapeWebsiteTool
 
@@ -41,6 +41,59 @@ class IPReputationChecker:
         except:
             self.scraper = None
             self.has_scraper = False
+
+    def _classify_ip_type(self, ip_address: str) -> str:
+        """Classify IP as Public, Private, or IPv6"""
+        import ipaddress
+        
+        try:
+            ip_obj = ipaddress.ip_address(ip_address)
+            
+            if isinstance(ip_obj, ipaddress.IPv6Address):
+                return "IPv6"
+            elif ip_obj.is_private:
+                return "Private"
+            elif ip_obj.is_loopback:
+                return "Loopback"
+            elif ip_obj.is_reserved:
+                return "Reserved"
+            else:
+                return "Public"
+        except ValueError:
+            return "Invalid"
+
+    def check_multiple_ips(self, ip_list: List[str], method: str = "auto") -> Dict:
+        """
+        Check reputation for multiple IPs
+        
+        Args:
+            ip_list: List of IP addresses to check
+            method: "api" or "auto"
+            
+        Returns:
+            Dictionary with results for all IPs
+        """
+        results = {}
+        
+        for ip in ip_list:
+            ip = ip.strip()
+            ip_type = self._classify_ip_type(ip)
+            
+            # Skip private/loopback IPs for reputation check
+            if ip_type in ["Private", "Loopback", "Reserved"]:
+                results[ip] = {
+                    "success": True,
+                    "ip_type": ip_type,
+                    "risk_level": "N/A",
+                    "message": f"{ip_type} IP - No reputation check needed"
+                }
+                continue
+            
+            # Check IPv6 and Public IPs
+            results[ip] = self.check_ip_reputation(ip, method)
+            results[ip]["ip_type"] = ip_type
+        
+        return results
 
     def check_ip_reputation(self, ip_address: str, method: str = "auto") -> Dict:
         """

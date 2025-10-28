@@ -493,98 +493,239 @@ def _display_enhancement_results(
                             output_key, ""
                         )
 
-                        # VirusTotal Integration
+                        # VirusTotal Integration - MULTI-IP SUPPORT
                         if is_ip_reputation_step:
                             st.info("🎯 **IP Reputation Check using Virus Total & Abuse DB**")
+                            st.markdown("---")
 
-                            default_ip = ""
+                            # Extract ALL IPs from previous steps
+                            default_ips = []
                             for prev_step in range(1, step_num):
-                                prev_output_key = (
-                                    f"output_step_{prev_step}_{rule_number}"
-                                )
-                                prev_output = st.session_state.step_outputs.get(
-                                    prev_output_key, ""
-                                )
+                                prev_output_key = f"output_step_{prev_step}_{rule_number}"
+                                prev_output = st.session_state.step_outputs.get(prev_output_key, "")
 
                                 import re
-
+                                # IPv4 pattern
                                 ip_pattern = r"\b(?:\d{1,3}\.){3}\d{1,3}\b"
                                 ips_found = re.findall(ip_pattern, prev_output)
-                                if ips_found:
-                                    default_ip = ips_found[0]
-                                    break
+                                default_ips.extend(ips_found)
 
-                            col1, col2 = st.columns([4, 1])
+                            # Remove duplicates while preserving order
+                            seen = set()
+                            unique_ips = []
+                            for ip in default_ips:
+                                if ip not in seen:
+                                    seen.add(ip)
+                                    unique_ips.append(ip)
 
+                            st.markdown("##### 📝 Enter IP Addresses to Check")
+                            st.caption("You can enter multiple IPs (one per line or comma-separated)")
+                            
+                            ip_input = st.text_area(
+                                "IP Addresses:",
+                                value="\n".join(unique_ips) if unique_ips else "",
+                                placeholder="Enter IPs here:\n192.168.1.1\n10.0.0.5\n8.8.8.8\n\nOr comma-separated: 192.168.1.1, 8.8.8.8",
+                                key=f"vt_ip_step_{step_num}",
+                                height=150,
+                                label_visibility="collapsed"
+                            )
+
+                            col1, col2, col3 = st.columns([2, 2, 1])
+                            
                             with col1:
-                                ip_input = st.text_input(
-                                    "Enter IP Address:",
-                                    value=default_ip,
-                                    placeholder="e.g., 192.168.1.1",
-                                    key=f"vt_ip_step_{step_num}",
-                                )
-
-                            with col2:
-                                st.write("")
-                                st.write("")
+                                if unique_ips:
+                                    st.info(f"ℹ️ Found {len(unique_ips)} IP(s) from previous steps")
+                            
+                            with col3:
                                 check_button = st.button(
-                                    "🔍 Check",
+                                    "🔍 Check All IPs",
                                     key=f"vt_check_step_{step_num}",
                                     type="primary",
+                                    use_container_width=True
                                 )
 
                             if check_button and ip_input:
-                                with st.spinner("🔍 Checking VirusTotal..."):
-                                    vt_result = _check_virustotal_auto(ip_input)
-
-                                if vt_result.get("success"):
-                                    formatted_output_ui = vt_result.get(
-                                        "formatted_output", ""
-                                    )
-                                    formatted_output_excel = vt_result.get(
-                                        "formatted_output_excel", formatted_output_ui
-                                    )
-
-                                    st.session_state.step_outputs[output_key] = (
-                                        formatted_output_excel
-                                    )
-
-                                    st.markdown(formatted_output_ui)
-                                    st.success(
-                                        "✅ VirusTotal check complete! Output saved for Excel export."
-                                    )
-
-                                    risk_level = vt_result.get("risk_level", "UNKNOWN")
-                                    if risk_level == "HIGH":
-                                        st.error(
-                                            "🚨 **HIGH RISK IP** - Immediate action recommended"
-                                        )
-                                    elif risk_level == "MEDIUM":
-                                        st.warning(
-                                            "⚠️ **SUSPICIOUS IP** - Further investigation needed"
-                                        )
-                                    elif risk_level == "LOW":
-                                        st.success(
-                                            "✅ **CLEAN IP** - No threats detected"
-                                        )
+                                # Parse multiple IPs (handles newlines and commas)
+                                import re
+                                ip_list = re.split(r'[,\n\s]+', ip_input)
+                                ip_list = [ip.strip() for ip in ip_list if ip.strip()]
+                                
+                                if not ip_list:
+                                    st.error("❌ No valid IP addresses found. Please enter at least one IP.")
                                 else:
-                                    st.error(
-                                        f"❌ {vt_result.get('error', 'Check failed')}"
-                                    )
-                                    if vt_result.get("manual_check"):
-                                        st.markdown(
-                                            vt_result.get("formatted_output", "")
-                                        )
+                                    st.info(f"🔄 Processing {len(ip_list)} IP address(es)...")
+                                    
+                                    # Initialize checker
+                                    if "vt_checker" not in st.session_state:
+                                        st.session_state.vt_checker = VirusTotalChecker()
+                                    
+                                    checker = st.session_state.vt_checker
+                                    
+                                    # Progress tracking
+                                    progress_bar = st.progress(0)
+                                    status_text = st.empty()
+                                    
+                                    all_results = {}
+                                    formatted_output_excel = ""
+                                    
+                                    # Check each IP
+                                    for idx, ip in enumerate(ip_list):
+                                        progress = (idx + 1) / len(ip_list)
+                                        progress_bar.progress(progress)
+                                        status_text.text(f"Checking IP {idx + 1}/{len(ip_list)}: {ip}")
+                                        
+                                        # Classify IP type first
+                                        import ipaddress
+                                        try:
+                                            ip_obj = ipaddress.ip_address(ip)
+                                            
+                                            # Determine IP type
+                                            if isinstance(ip_obj, ipaddress.IPv6Address):
+                                                ip_type = "IPv6"
+                                            elif ip_obj.is_private:
+                                                ip_type = "Private"
+                                            elif ip_obj.is_loopback:
+                                                ip_type = "Loopback"
+                                            elif ip_obj.is_reserved:
+                                                ip_type = "Reserved"
+                                            else:
+                                                ip_type = "Public"
+                                            
+                                            # Skip reputation check for private/loopback/reserved
+                                            if ip_type in ["Private", "Loopback", "Reserved"]:
+                                                all_results[ip] = {
+                                                    "success": True,
+                                                    "ip_type": ip_type,
+                                                    "risk_level": "N/A",
+                                                    "message": f"{ip_type} IP - No reputation check needed",
+                                                    "skip_check": True
+                                                }
+                                                formatted_output_excel += f"\n{'='*60}\nIP: {ip}\nType: {ip_type}\nStatus: {ip_type} IP - No external reputation check needed\n{'='*60}\n\n"
+                                            else:
+                                                # Perform reputation check for Public/IPv6
+                                                vt_result = checker.check_ip_reputation(ip, method="auto")
+                                                vt_result["ip_type"] = ip_type
+                                                all_results[ip] = vt_result
+                                                
+                                                if vt_result.get("success"):
+                                                    formatted_output_excel += vt_result.get("formatted_output_excel", "") + "\n\n"
+                                        
+                                        except ValueError:
+                                            # Invalid IP format
+                                            all_results[ip] = {
+                                                "success": False,
+                                                "error": "Invalid IP address format",
+                                                "ip_type": "Invalid"
+                                            }
+                                            formatted_output_excel += f"\n{'='*60}\nIP: {ip}\nStatus: Invalid IP address format\n{'='*60}\n\n"
+                                    
+                                    # Clear progress indicators
+                                    progress_bar.empty()
+                                    status_text.empty()
+                                    
+                                    # Save combined output to session state
+                                    st.session_state.step_outputs[output_key] = formatted_output_excel.strip()
+                                    
+                                    st.markdown("---")
+                                    st.success(f"✅ Completed checking {len(ip_list)} IP address(es)!")
+                                    st.markdown("---")
+                                    
+                                    # Display results for each IP
+                                    high_risk_count = 0
+                                    medium_risk_count = 0
+                                    clean_count = 0
+                                    skipped_count = 0
+                                    
+                                    for ip, result in all_results.items():
+                                        # Create expander for each IP
+                                        ip_type = result.get("ip_type", "Unknown")
+                                        
+                                        if result.get("skip_check"):
+                                            # Private/Loopback/Reserved IP
+                                            with st.expander(f"ℹ️ {ip} ({ip_type}) - Skipped", expanded=False):
+                                                st.info(result.get("message", ""))
+                                            skipped_count += 1
+                                        
+                                        elif result.get("success"):
+                                            risk_level = result.get("risk_level", "UNKNOWN")
+                                            
+                                            # Count risk levels
+                                            if risk_level == "HIGH":
+                                                high_risk_count += 1
+                                                icon = "🔴"
+                                                expanded = True
+                                            elif risk_level == "MEDIUM":
+                                                medium_risk_count += 1
+                                                icon = "🟡"
+                                                expanded = True
+                                            elif risk_level in ["LOW", "CLEAN"]:
+                                                clean_count += 1
+                                                icon = "🟢"
+                                                expanded = False
+                                            else:
+                                                icon = "⚪"
+                                                expanded = False
+                                            
+                                            with st.expander(f"{icon} {ip} ({ip_type}) - {risk_level}", expanded=expanded):
+                                                formatted_output_ui = result.get("formatted_output", "")
+                                                st.markdown(formatted_output_ui)
+                                                
+                                                # Show risk-specific messages
+                                                if risk_level == "HIGH":
+                                                    st.error("🚨 **HIGH RISK IP** - Immediate action recommended")
+                                                elif risk_level == "MEDIUM":
+                                                    st.warning("⚠️ **SUSPICIOUS IP** - Further investigation needed")
+                                                elif risk_level in ["LOW", "CLEAN"]:
+                                                    st.success("✅ **CLEAN IP** - No significant threats detected")
+                                        
+                                        else:
+                                            # Error checking IP
+                                            with st.expander(f"❌ {ip} ({ip_type}) - Check Failed", expanded=True):
+                                                st.error(f"Error: {result.get('error', 'Unknown error')}")
+                                                if result.get("manual_check"):
+                                                    st.markdown(result.get("formatted_output", ""))
+                                    
+                                    # Summary section
+                                    st.markdown("---")
+                                    st.markdown("### 📊 Summary")
+                                    
+                                    col1, col2, col3, col4 = st.columns(4)
+                                    
+                                    with col1:
+                                        if high_risk_count > 0:
+                                            st.metric("🔴 High Risk", high_risk_count)
+                                        else:
+                                            st.metric("High Risk", high_risk_count)
+                                    
+                                    with col2:
+                                        if medium_risk_count > 0:
+                                            st.metric("🟡 Suspicious", medium_risk_count)
+                                        else:
+                                            st.metric("Suspicious", medium_risk_count)
+                                    
+                                    with col3:
+                                        st.metric("🟢 Clean", clean_count)
+                                    
+                                    with col4:
+                                        st.metric("ℹ️ Skipped", skipped_count)
+                                    
+                                    # Overall recommendation
+                                    if high_risk_count > 0:
+                                        st.error(f"⚠️ **CRITICAL**: {high_risk_count} high-risk IP(s) detected. Immediate investigation required!")
+                                    elif medium_risk_count > 0:
+                                        st.warning(f"⚠️ **CAUTION**: {medium_risk_count} suspicious IP(s) found. Further investigation recommended.")
+                                    else:
+                                        st.success("✅ All checked IPs appear clean or are private addresses.")
+                                    
+                                    st.info("💾 All results have been saved to the Output field for Excel export.")
 
+                            # Show existing saved output
                             if existing_output:
-                                with st.expander(
-                                    "📋 View Saved Output (Excel Format)",
-                                    expanded=False,
-                                ):
+                                with st.expander("📋 View Saved Output (Excel Format)", expanded=False):
                                     st.text(existing_output)
 
                         else:
-                            # Regular manual output
+                            # Regular manual output (for non-IP reputation steps)
                             manual_output = st.text_area(
                                 "Enter the KQL query output:",
                                 value=existing_output,
@@ -601,7 +742,8 @@ def _display_enhancement_results(
                                 st.success(
                                     f"✅ Output saved ({len(manual_output)} characters)"
                                 )
-
+                        
+                        
                     # Remarks Section
                     st.markdown("##### 💬 Remarks/Comments")
                     remark_key = f"remark_step_{step_num}_{rule_number}"
