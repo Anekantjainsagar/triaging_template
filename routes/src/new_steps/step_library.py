@@ -1,9 +1,9 @@
 import os
 import re
 from typing import Dict, List
-from crewai import LLM, Agent, Task, Crew
-from crewai_tools import SerperDevTool
 from dotenv import load_dotenv
+from crewai_tools import SerperDevTool
+from crewai import LLM, Agent, Task, Crew
 
 load_dotenv()
 
@@ -40,6 +40,24 @@ class InvestigationStepLibrary:
                 model=ollama_model, base_url="http://localhost:11434", temperature=0.3
             )
             print(f"✅ Using {ollama_model} for step generation")
+
+    def _get_alert_impact_context(self, profile: Dict) -> str:
+        """Generate context about why investigating this alert matters"""
+        alert_type = profile.get("alert_type", "general_security")
+
+        impact_map = {
+            "authentication": "Compromised authentication can lead to unauthorized access, data breaches, and account takeovers. Attackers use stolen credentials to access sensitive data, deploy ransomware, or move laterally through your network.",
+            "identity_access": "Privilege escalation allows attackers to gain admin rights, modify security settings, create backdoors, and access all company data. This is often the final step before a major breach.",
+            "endpoint_security": "Compromised endpoints serve as entry points for malware, ransomware, and data exfiltration. Attackers use non-compliant devices to bypass security controls.",
+            "network_activity": "Suspicious network activity indicates potential data exfiltration, command-and-control communication, or reconnaissance by attackers mapping your network for future attacks.",
+            "data_security": "Data breaches expose sensitive customer information, intellectual property, and confidential business data, leading to regulatory fines, lawsuits, and reputation damage.",
+            "threat_detection": "Active threats indicate ongoing attacks that could result in system compromise, data theft, ransomware deployment, or complete network takeover if not stopped immediately.",
+        }
+
+        return impact_map.get(
+            alert_type,
+            "This security alert indicates potential compromise that could lead to data breach, system damage, or unauthorized access to sensitive resources.",
+        )
 
     def generate_investigation_steps(self, profile: Dict) -> List[Dict]:
         print(f"\nGenerating investigation steps for {profile['alert_name']}")
@@ -142,10 +160,11 @@ Focus on what a SOC analyst should DO, not just theory.""",
 
     def _generate_steps_with_llm(self, profile: Dict, guidance: str) -> List[Dict]:
         """Generate investigation steps with STRICT anti-duplication"""
-        
-        # Get existing step names from profile
+
         existing_steps = profile.get("existing_step_names", [])
-        existing_str = "\n".join([f"- {s}" for s in existing_steps]) if existing_steps else "None"
+        existing_str = (
+            "\n".join([f"- {s}" for s in existing_steps]) if existing_steps else "None"
+        )
 
         prompt = f"""Generate NEW investigation steps that DON'T duplicate these existing ones:
 
@@ -153,7 +172,11 @@ Focus on what a SOC analyst should DO, not just theory.""",
     {existing_str}
 
     ALERT: {profile.get('alert_name', '')}
+    ALERT TYPE: {profile.get('alert_type', '')}
     TECHNICAL OVERVIEW: {profile.get('technical_overview', '')[:600]}
+
+    WHY THIS MATTERS:
+    {self._get_alert_impact_context(profile)}
 
     CRITICAL ANTI-DUPLICATION RULES:
     1. If "user count" or "impacted users" exists, DO NOT generate "Determine Total Number of Users"
@@ -161,32 +184,47 @@ Focus on what a SOC analyst should DO, not just theory.""",
     3. If "VIP users" exists, DO NOT generate user context steps
     4. Generate ONLY truly unique steps that investigate DIFFERENT aspects
 
-    REQUIRED NEW STEPS (generate 3-4 UNIQUE ones):
-    - Advanced behavioral analysis (time patterns, impossible travel)
-    - Credential usage analysis (password sprays, brute force)
-    - Session analysis (concurrent logins, session hijacking)
-    - Application access patterns (risky apps, OAuth grants)
-    - Privilege escalation checks (role changes, permission grants)
-    - Conditional access policy violations
+    REQUIRED NEW STEPS (generate 3-4 UNIQUE ones that address gaps):
+    Focus on aspects NOT covered by existing steps:
+    - Advanced behavioral analysis (time patterns, impossible travel, unusual hours)
+    - Credential usage analysis (password sprays, brute force attempts, account lockouts)
+    - Session analysis (concurrent logins, session hijacking, session duration)
+    - Application access patterns (risky apps, OAuth grants, sensitive data access)
+    - Privilege escalation checks (role changes, permission grants, admin actions)
+    - Conditional access policy violations (bypassed policies, risky sign-ins)
 
     Each step MUST:
     1. NOT duplicate existing steps
-    2. Have specific, descriptive name (8-12 words)
-    3. Target different data aspect
-    4. Need KQL query (SigninLogs/AuditLogs/DeviceInfo)
+    2. Have specific, descriptive name (10-15 words explaining WHAT you're checking)
+    3. Target a different data aspect than existing steps
+    4. Require KQL query (SigninLogs/AuditLogs/DeviceInfo/CloudAppEvents)
+    5. Explain in SIMPLE language WHY this matters for THIS alert
 
-    FORMAT:
-    STEP: [Unique descriptive name that's clearly different from existing]
-    EXPLANATION: [What to investigate and why - 2-3 sentences]
+    FORMAT (follow exactly):
+    STEP: [Descriptive name: "Check for X to detect Y behavior"]
+    EXPLANATION: [3 parts in simple language:
+    1. WHAT to check: "This step examines [specific data/logs]..."
+    2. WHY it matters: "This is important because [how it relates to the alert]..."
+    3. WHAT to look for: "Look for [specific indicators like X, Y, Z]..."]
     NEEDS_KQL: YES
     DATA_SOURCE: [SigninLogs/AuditLogs/DeviceInfo/CloudAppEvents]
     TOOL: None
     PRIORITY: [CRITICAL/HIGH/MEDIUM]
+    RELEVANCE: [How this step specifically helps investigate THIS alert and what risk it mitigates]
     ---
 
-    Generate 3-4 UNIQUE steps NOW:"""
+    Example of GOOD step:
+    STEP: Analyze Sign-in Patterns Across Multiple Time Zones to Detect Impossible Travel Scenarios
+    EXPLANATION: This step examines the user's sign-in locations and timestamps from SigninLogs over the past 7 days. This is important because attackers who compromise credentials often sign in from different countries within impossible timeframes (e.g., USA then China within 1 hour). Look for sign-ins from geographically distant locations within short time periods, multiple countries in one day, or sign-ins from high-risk countries. This pattern strongly indicates credential theft rather than legitimate user activity.
+    NEEDS_KQL: YES
+    DATA_SOURCE: SigninLogs
+    TOOL: None
+    PRIORITY: HIGH
+    RELEVANCE: For this {profile.get('alert_type', 'authentication')} alert, impossible travel indicates compromised credentials being used by attackers, which could lead to data breach, unauthorized access to sensitive systems, or lateral movement across the organization.
+    ---
 
-        # Rest of LLM call...
+    Generate 3-4 UNIQUE, RELEVANT steps NOW:"""
+
         agent = Agent(
             role="SOC Investigation Playbook Designer",
             goal="Generate 3-4 unique investigation steps that don't duplicate existing ones",
@@ -195,12 +233,16 @@ Focus on what a SOC analyst should DO, not just theory.""",
             verbose=False,
         )
 
-        task = Task(description=prompt, expected_output="3-4 unique investigation steps", agent=agent)
+        task = Task(
+            description=prompt,
+            expected_output="3-4 unique investigation steps",
+            agent=agent,
+        )
         crew = Crew(agents=[agent], tasks=[task], verbose=False)
         result = str(crew.kickoff())
 
         steps = self._parse_llm_steps(result)
-        
+
         # Post-filter against existing
         unique_steps = []
         for step in steps:
@@ -208,40 +250,37 @@ Focus on what a SOC analyst should DO, not just theory.""",
                 unique_steps.append(step)
             else:
                 print(f"   ⏭️ Filtered duplicate: {step.get('step_name', '')[:60]}")
-        
+
         return unique_steps
 
     def _is_duplicate_of_existing(self, step: Dict, existing_names: List[str]) -> bool:
         """Check if step duplicates existing steps"""
         step_name = step.get("step_name", "").lower()
-        
+
         # Semantic similarity check
         from difflib import SequenceMatcher
-        
+
         for existing in existing_names:
             existing_lower = existing.lower()
             similarity = SequenceMatcher(None, step_name, existing_lower).ratio()
-            
+
             if similarity > 0.6:  # 60% similar = duplicate
                 return True
-            
+
             # Keyword overlap check
             step_keywords = set(step_name.split())
             existing_keywords = set(existing_lower.split())
             common = step_keywords & existing_keywords
-            
+
             if len(common) >= 3:  # 3+ common words = likely duplicate
                 return True
-        
+
         return False
 
     def _parse_llm_steps(self, llm_output: str) -> List[Dict]:
         """Parse LLM output into structured step dictionaries"""
-
         steps = []
-
-        # Split by step separators (--- or ━━━)
-        step_blocks = re.split(r"\n[-━]{3,}\n", llm_output)
+        step_blocks = re.split(r"\n[-─]{3,}\n", llm_output)
 
         for block in step_blocks:
             if not block.strip() or len(block) < 50:
@@ -250,7 +289,7 @@ Focus on what a SOC analyst should DO, not just theory.""",
             # Extract fields using flexible patterns
             step_match = re.search(r"STEP:\s*(.+?)(?:\n|$)", block, re.IGNORECASE)
             exp_match = re.search(
-                r"EXPLANATION:\s*(.+?)(?=\n(?:NEEDS_KQL|DATA_SOURCE|TOOL|PRIORITY)|$)",
+                r"EXPLANATION:\s*(.+?)(?=\n(?:NEEDS_KQL|DATA_SOURCE|TOOL|PRIORITY|RELEVANCE)|$)",
                 block,
                 re.IGNORECASE | re.DOTALL,
             )
@@ -260,6 +299,12 @@ Focus on what a SOC analyst should DO, not just theory.""",
             priority_match = re.search(
                 r"PRIORITY:\s*(CRITICAL|HIGH|MEDIUM|LOW)", block, re.IGNORECASE
             )
+            # ✅ NEW: Extract relevance
+            relevance_match = re.search(
+                r"RELEVANCE:\s*(.+?)(?=\n(?:STEP|---)|$)",
+                block,
+                re.IGNORECASE | re.DOTALL
+            )
 
             if step_match and exp_match:
                 step_name = step_match.group(1).strip()
@@ -267,32 +312,32 @@ Focus on what a SOC analyst should DO, not just theory.""",
                 needs_kql = kql_match.group(1).upper() == "YES" if kql_match else True
                 data_source = ds_match.group(1).strip() if ds_match else "SigninLogs"
                 tool = tool_match.group(1).strip() if tool_match else "None"
-                priority = (
-                    priority_match.group(1).upper() if priority_match else "MEDIUM"
-                )
+                priority = priority_match.group(1).upper() if priority_match else "MEDIUM"
+                relevance = relevance_match.group(1).strip() if relevance_match else ""
 
                 # Clean up
                 step_name = self._clean_text(step_name)
                 explanation = self._clean_text(explanation)
+                relevance = self._clean_text(relevance)
 
                 # Validation
                 if len(step_name) < 5 or len(explanation) < 20:
                     continue
 
-                # Remove line breaks from explanation
+                # Remove line breaks from explanation and relevance
                 explanation = re.sub(r"\s+", " ", explanation)
+                relevance = re.sub(r"\s+", " ", relevance)
 
-                steps.append(
-                    {
-                        "step_name": step_name,
-                        "explanation": explanation,
-                        "kql_needed": needs_kql,
-                        "data_source": data_source,
-                        "tool": tool.lower() if tool.lower() != "none" else "",
-                        "priority": priority,
-                        "input_required": "",
-                    }
-                )
+                steps.append({
+                    "step_name": step_name,
+                    "explanation": explanation,
+                    "relevance": relevance,  # ✅ NEW FIELD
+                    "kql_needed": needs_kql,
+                    "data_source": data_source,
+                    "tool": tool.lower() if tool.lower() != "none" else "",
+                    "priority": priority,
+                    "input_required": "",
+                })
 
         return steps
 

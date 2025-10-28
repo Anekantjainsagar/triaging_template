@@ -71,20 +71,20 @@ class ImprovedTemplateGenerator:
         Returns template rows ready for DataFrame
         """
         template_rows = []
-        
+
         # Separate original and AI-generated steps
         original_steps = []
         ai_generated_steps = []
-        
+
         for step in merged_steps:
             if step.get("source") == "original_template":
                 original_steps.append(step)
             else:
                 ai_generated_steps.append(step)
-        
+
         print(f"   📊 Original steps: {len(original_steps)}")
         print(f"   🤖 AI-generated steps: {len(ai_generated_steps)}")
-        
+
         # FIRST: Process ORIGINAL steps - keep ALL regardless of KQL
         print(f"\n   ✅ Processing ORIGINAL steps (keeping all)...")
         original_processed = 0
@@ -101,7 +101,7 @@ class ImprovedTemplateGenerator:
             # Try to generate KQL for original steps too
             kql_query = ""
             kql_explanation = ""
-            
+
             if self._needs_kql(step_name, explanation):
                 print(f"         🔍 Generating KQL...")
                 kql_query, kql_explanation = self.kql_generator.generate_kql_query(
@@ -110,7 +110,7 @@ class ImprovedTemplateGenerator:
                     step_number=idx,
                     rule_context=profile.get("technical_overview", ""),
                 )
-                
+
                 if kql_query and len(kql_query.strip()) > 30:
                     print(f"         ✅ KQL generated ({len(kql_query)} chars)")
                 else:
@@ -123,14 +123,18 @@ class ImprovedTemplateGenerator:
             row = {
                 "Step": str(idx),
                 "Name": step_name,
-                "Explanation": self._enhance_step_explanation(explanation),
+                "Explanation": self._build_enhanced_explanation(
+                    explanation,
+                    step.get("relevance", ""),
+                    profile.get("alert_name", ""),
+                ),
                 "KQL Query": kql_query,
                 "KQL Explanation": kql_explanation,
                 "Execute": "",
                 "Output": "",
                 "Remarks/Comments": f"[{source.upper()}] {priority}",
             }
-            
+
             template_rows.append(row)
             original_processed += 1
 
@@ -140,7 +144,7 @@ class ImprovedTemplateGenerator:
         print(f"\n   ✅ Processing AI-GENERATED steps (filtering if no KQL)...")
         ai_processed = 0
         ai_skipped = 0
-        
+
         for idx, step in enumerate(ai_generated_steps, 1):
             step_name = step.get("step_name", "")
             explanation = step.get("explanation", "")
@@ -157,7 +161,7 @@ class ImprovedTemplateGenerator:
             print(f"\n      Step {original_processed + ai_processed + 1}: {step_name}")
             print(f"         Source: {source} | Priority: {priority}")
             print(f"         🔍 Generating KQL...")
-            
+
             kql_query, kql_explanation = self.kql_generator.generate_kql_query(
                 step_name=step_name,
                 explanation=explanation,
@@ -178,7 +182,11 @@ class ImprovedTemplateGenerator:
             row = {
                 "Step": str(original_processed + ai_processed + 1),
                 "Name": step_name,
-                "Explanation": self._enhance_step_explanation(explanation),
+                "Explanation": self._build_enhanced_explanation(  # ✅ CORRECT - uses relevance
+                    explanation,
+                    step.get("relevance", ""),
+                    profile.get("alert_name", ""),
+                ),
                 "KQL Query": kql_query,
                 "KQL Explanation": kql_explanation,
                 "Execute": "",
@@ -194,41 +202,91 @@ class ImprovedTemplateGenerator:
         print(f"\n   📊 Final template: {len(template_rows)} total steps")
         print(f"      - {original_processed} from ORIGINAL")
         print(f"      - {ai_processed} from AI-GENERATED")
-        
+
         return template_rows
 
     def _enhance_step_explanation(self, explanation: str) -> str:
-        """Enhance step explanation - make it clear and concise"""
+        """
+        Enhance step explanation using LLM - make it clear and concise
+        This is used as a helper when explanation is too vague
+        """
         if not explanation or len(explanation.strip()) == 0:
             return ""
-        
+
         # If explanation is already reasonable, just enforce length
         if len(explanation) > 30 and not self._is_vague(explanation):
             return self._enforce_length(explanation, max_sentences=3)
-        
-        # If explanation is too vague or short, try to enhance it
-        prompt = f"""Improve this SOC investigation instruction to be clear and actionable.
 
-    Current: {explanation[:150]}
+        # If explanation is too vague or short, use LLM to enhance it
+        prompt = f"""Improve this SOC investigation instruction to be clear and actionable in simple language.
+
+    Current instruction: {explanation[:200]}
 
     Requirements:
-    - Be specific and clear
-    - Include what to investigate and what to look for
-    - Maximum 2-3 sentences
-    - Use imperative voice (e.g., "Check", "Review", "Verify")
+    1. Write in 3 parts:
+    - WHAT to check: "This step examines..."
+    - WHY it matters: "This is important because..."
+    - WHAT to look for: "Look for indicators like..."
+    2. Use simple, clear language (explain like talking to a junior analyst)
+    3. Be specific about what data/logs to examine
+    4. Maximum 3-4 sentences total
+    5. Use imperative voice (e.g., "Check", "Review", "Verify")
 
-    Output ONLY the improved instruction:"""
-        
+    Output ONLY the improved instruction (no extra text):"""
+
         try:
-            result = self._quick_llm_call(prompt, max_tokens=100)
+            result = self._quick_llm_call(prompt, max_tokens=150)
             enhanced = self._aggressive_clean(result)
-            
-            if len(enhanced) > 20:
-                return self._enforce_length(enhanced, max_sentences=3)
+
+            if len(enhanced) > 40:  # Minimum viable explanation
+                return self._enforce_length(enhanced, max_sentences=4)
         except Exception as e:
             print(f"   ⚠️ Explanation enhancement failed: {str(e)[:50]}")
-        
+
+        # Fallback to original if LLM fails
         return self._enforce_length(explanation, max_sentences=3)
+
+    def _build_enhanced_explanation(
+        self, explanation: str, relevance: str, alert_name: str
+    ) -> str:
+        """
+        Build comprehensive explanation that includes both HOW and WHY
+        Uses LLM enhancement if explanation is vague
+
+        Args:
+            explanation: The step explanation (what to check)
+            relevance: Why this matters for the alert (business impact)
+            alert_name: The alert being investigated
+
+        Returns:
+            Enhanced explanation with clear context
+        """
+        if not explanation:
+            return ""
+
+        # Step 1: Enhance the main explanation if it's vague or unclear
+        main_explanation = explanation.strip()
+
+        if self._is_vague(main_explanation) or len(main_explanation) < 50:
+            # Use LLM to improve vague explanations
+            main_explanation = self._enhance_step_explanation(main_explanation)
+        else:
+            # Just enforce length for clear explanations
+            main_explanation = self._enforce_length(main_explanation, max_sentences=3)
+
+        # Step 2: Add relevance context if available
+        if relevance and len(relevance.strip()) > 20:
+            # Clean up relevance text
+            relevance_clean = self._aggressive_clean(relevance.strip())
+            relevance_clean = self._enforce_length(relevance_clean, max_sentences=2)
+
+            # Combine with visual separator
+            enhanced = f"{main_explanation}\n\n💡 WHY THIS MATTERS: {relevance_clean}"
+        else:
+            enhanced = main_explanation
+
+        # Step 3: Ensure overall length is reasonable
+        return self._enforce_length(enhanced, max_sentences=5)
 
     def _needs_kql(self, step_name: str, explanation: str) -> bool:
         """Determine if step needs KQL query - MORE INCLUSIVE"""
@@ -236,8 +294,15 @@ class ImprovedTemplateGenerator:
 
         # ❌ Skip only external tools
         skip_keywords = [
-            "virustotal", "virus total", "abuseipdb", "abuse",
-            "document", "close incident", "escalate", "inform", "notify"
+            "virustotal",
+            "virus total",
+            "abuseipdb",
+            "abuse",
+            "document",
+            "close incident",
+            "escalate",
+            "inform",
+            "notify",
         ]
 
         if any(keyword in combined for keyword in skip_keywords):
@@ -245,11 +310,32 @@ class ImprovedTemplateGenerator:
 
         # ✅ Include role/permission checks (they need AuditLogs)
         needs_keywords = [
-            "sign-in", "signin", "login", "audit", "logs", "query",
-            "check user", "verify user", "review", "analyze", "investigate",
-            "count", "gather", "extract", "device", "endpoint",
-            "role", "permission", "assignment", "group", "membership",  # ✅ ADDED
-            "mfa", "authentication", "location", "oauth", "grant"  # ✅ ADDED
+            "sign-in",
+            "signin",
+            "login",
+            "audit",
+            "logs",
+            "query",
+            "check user",
+            "verify user",
+            "review",
+            "analyze",
+            "investigate",
+            "count",
+            "gather",
+            "extract",
+            "device",
+            "endpoint",
+            "role",
+            "permission",
+            "assignment",
+            "group",
+            "membership",  # ✅ ADDED
+            "mfa",
+            "authentication",
+            "location",
+            "oauth",
+            "grant",  # ✅ ADDED
         ]
 
         return any(keyword in combined for keyword in needs_keywords)
@@ -284,8 +370,10 @@ class ImprovedTemplateGenerator:
 
         profile_builder = InvestigationProfileBuilder()
         profile = profile_builder.build_profile(rule_number, rule_context)
-        
-        profile["existing_step_names"] = [s.get("step_name", "") for s in original_steps]
+
+        profile["existing_step_names"] = [
+            s.get("step_name", "") for s in original_steps
+        ]
 
         print(f"   ✅ Profile complete:")
         print(f"      - MITRE Techniques: {len(profile['mitre_techniques'])}")
@@ -325,7 +413,7 @@ class ImprovedTemplateGenerator:
         template_rows.extend(
             self._process_merged_steps_with_kql(merged_steps, rule_number, profile)
         )
-        
+
         template_rows = self._deduplicate_kql_queries(template_rows)
 
         elapsed = time.time() - start_time
