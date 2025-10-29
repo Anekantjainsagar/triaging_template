@@ -43,13 +43,6 @@ class InvestigationProfileBuilder:
     def build_profile(self, rule_number: str, rule_context: str = "") -> Dict:
         """
         Build comprehensive investigation profile
-
-        Args:
-            rule_number: Rule number (e.g., "Rule#297")
-            rule_context: Additional context
-
-        Returns:
-            Investigation profile dictionary
         """
         print(f"\n Building Investigation Profile for {rule_number}")
 
@@ -71,6 +64,7 @@ class InvestigationProfileBuilder:
         }
 
         # Try to get AI analysis with retry logic
+        analysis_text = ""
         if self.analyzer_client:
             try:
                 alert_name = extract_alert_name(rule_number)
@@ -78,34 +72,33 @@ class InvestigationProfileBuilder:
 
                 print(f"   Fetching AI analysis for: {alert_name}")
 
-                # Implement retry logic for rate limiting
                 result = self._get_analysis_with_retry(alert_name, max_retries=2)
 
                 if result.get("success"):
                     analysis_text = result.get("analysis", "")
                     self._parse_analysis(analysis_text, profile)
-                    print(f"   âœ… Parsed AI analysis successfully")
+                    print(f"   ✅ Parsed AI analysis successfully")
                 else:
                     error_msg = result.get("error", "Unknown error")
                     if "429" in error_msg or "rate limit" in error_msg.lower():
-                        print(f"   âš ï¸ Rate limit hit - using fallback profile")
+                        print(f"   ⚠️ Rate limit hit - using fallback profile")
                     else:
-                        print(f"   âš ï¸ AI analysis failed: {error_msg[:100]}")
-                    # Continue with empty profile - fallback will handle it
+                        print(f"   ⚠️ AI analysis failed: {error_msg[:100]}")
+                    # Continue with empty analysis_text - LLM requirements will handle it
 
             except Exception as e:
                 error_str = str(e)
-                print(f"   âš ï¸ Error getting AI analysis: {error_str[:100]}")
+                print(f"   ⚠️ Error getting AI analysis: {error_str[:100]}")
 
         # Enhance with rule context
         if rule_context:
             self._enhance_from_context(rule_context, profile)
 
-        # Determine investigation requirements (uses fallback if no AI analysis)
-        self._determine_investigation_requirements(profile)
+        # Determine investigation requirements - ALWAYS USE LLM HERE IF POSSIBLE
+        self._determine_investigation_requirements(profile, analysis_text)
 
         print(
-            f"   âœ… Profile: {len(profile['mitre_techniques'])} MITRE, "
+            f"   ✅ Profile: {len(profile['mitre_techniques'])} MITRE, "
             f"{len(profile['threat_actors'])} actors, {len(profile['investigation_focus'])} focus areas"
         )
 
@@ -114,13 +107,6 @@ class InvestigationProfileBuilder:
     def _get_analysis_with_retry(self, alert_name: str, max_retries: int = 2) -> Dict:
         """
         Get AI analysis with retry logic for rate limiting
-
-        Args:
-            alert_name: Alert name to analyze
-            max_retries: Number of retries (default: 2)
-
-        Returns:
-            Analysis result dictionary
         """
         import time
 
@@ -188,7 +174,7 @@ class InvestigationProfileBuilder:
 
     def _parse_analysis(self, analysis_text: str, profile: Dict):
         """Parse AI analysis text and extract structured data"""
-
+        # ... (This method remains the same and relies on the provided analysis text) ...
         # Extract Technical Overview
         tech_match = re.search(
             r"##\s*TECHNICAL\s*OVERVIEW\s*(.*?)(?=##|\Z)",
@@ -293,35 +279,27 @@ class InvestigationProfileBuilder:
             if "DeviceInfo" not in profile["data_sources"]:
                 profile["data_sources"].append("DeviceInfo")
 
-    def _determine_investigation_requirements(self, profile: Dict):
-        """Determine what investigation checks are needed - FULLY DYNAMIC using LLM"""
-        tech_overview = profile["technical_overview"]
-
-        if not tech_overview:
-            # Better fallback with more focus areas
-            profile["investigation_focus"] = [
-                "user_activity",
-                "authentication_analysis",
-                "ip_reputation",
-                "device_compliance",
-                "behavioral_patterns",
-            ]
-            profile["required_checks"] = [
-                "user_verification",
-                "signin_analysis",
-                "ip_reputation",
-                "mfa_verification",
-                "device_check",
-            ]
-            profile["data_sources"] = ["SigninLogs", "AuditLogs", "DeviceInfo"]
-            return
-
-        # Use LLM with minimum 4-5 focus areas requirement
+    def _determine_investigation_requirements(self, profile: Dict, analysis_text: str):
+        """
+        Determine what investigation checks are needed - FULLY DYNAMIC using LLM
+        This is now the *primary* source for focus/checks if the initial API analysis (analysis_text) 
+        was too generic (i.e., when alert_name is 'MANUAL_GEN').
+        """
+        # If the Technical Overview is present from the API, use it.
+        tech_context = profile.get("technical_overview", "")
+        
+        # If the Technical Overview is empty (i.e., API analysis failed/was generic), 
+        # use the generic alert name/type as the context for the LLM.
+        if not tech_context:
+            tech_context = f"Alert Name: {profile['alert_name']}, Alert Type: {profile['alert_type']}"
+        
+        # Priority 1: Use LLM for dynamic analysis
         focus_areas, required_checks, data_sources = self._llm_analyze_requirements(
-            tech_overview
+            tech_context
         )
-
-        # Ensure minimum coverage
+        
+        # Ensure minimum coverage using the newly generated LLM data
+        # We ensure at least 4 items are returned by prioritizing the LLM output.
         if len(focus_areas) < 4:
             base_focus = [
                 "user_activity",
@@ -329,6 +307,7 @@ class InvestigationProfileBuilder:
                 "ip_reputation",
                 "device_compliance",
             ]
+            # Use LLM output, then fill with fallbacks if needed
             focus_areas.extend([f for f in base_focus if f not in focus_areas])
 
         if len(required_checks) < 4:
@@ -339,12 +318,14 @@ class InvestigationProfileBuilder:
                 "mfa_verification",
             ]
             required_checks.extend([c for c in base_checks if c not in required_checks])
+        
+        # Data Sources: Prefer the LLM output, otherwise fallback to SigninLogs/AuditLogs
+        if not data_sources:
+             data_sources = ["SigninLogs", "AuditLogs"]
 
-        profile["investigation_focus"] = focus_areas[:5]  # Max 5
-        profile["required_checks"] = required_checks[:5]
-        profile["data_sources"] = (
-            data_sources if data_sources else ["SigninLogs", "AuditLogs"]
-        )
+        profile["investigation_focus"] = list(set(focus_areas))[:5]  # Max 5 unique
+        profile["required_checks"] = list(set(required_checks))[:5]
+        profile["data_sources"] = list(set(data_sources)) # Unique data sources
 
     def _llm_analyze_requirements(self, tech_overview: str) -> tuple:
         """
@@ -352,18 +333,18 @@ class InvestigationProfileBuilder:
         Returns: (focus_areas, required_checks, data_sources)
         """
         try:
-            prompt = f"""Analyze this security alert and determine investigation requirements.
+            prompt = f"""Analyze this security alert context and determine the key investigation requirements.
 
-    TECHNICAL OVERVIEW:
+    CONTEXT:
     {tech_overview[:800]}
 
     Extract and list:
 
     1. FOCUS AREAS (what to investigate):
-    Examples: network_analysis, authentication_analysis, device_compliance, privilege_analysis
+    Examples: network_analysis, authentication_analysis, device_compliance, privilege_analysis, data_exfiltration
 
     2. REQUIRED CHECKS (specific verifications needed):
-    Examples: ip_reputation, user_verification, mfa_verification, role_verification
+    Examples: ip_reputation_check, user_verification, mfa_verification, role_verification, email_phishing_check
 
     3. DATA SOURCES (Azure/M365 log sources to query):
     Examples: SigninLogs, AuditLogs, DeviceInfo, IdentityInfo, CloudAppEvents
@@ -416,34 +397,13 @@ class InvestigationProfileBuilder:
 
         except Exception as e:
             print(f"   ⚠️ LLM requirements analysis failed: {str(e)[:100]}")
-            # Fallback to basic parsing
+            # Fallback to absolute hardcoded defaults if LLM fails
             return self._fallback_requirements_parsing(tech_overview)
 
     def _fallback_requirements_parsing(self, tech_overview: str) -> tuple:
-        """Fallback parsing if LLM fails"""
-        focus_areas = set()
-        required_checks = set()
-        data_sources = set()
-
-        tech_lower = tech_overview.lower()
-
-        # Simple keyword matching as fallback
-        if "ip" in tech_lower or "address" in tech_lower:
-            required_checks.add("ip_reputation")
-            focus_areas.add("network_analysis")
-
-        if "user" in tech_lower or "account" in tech_lower:
-            required_checks.add("user_verification")
-            focus_areas.add("user_activity")
-            data_sources.add("SigninLogs")
-
-        if "device" in tech_lower or "endpoint" in tech_lower:
-            required_checks.add("device_verification")
-            focus_areas.add("device_compliance")
-            data_sources.add("DeviceInfo")
-
-        if "role" in tech_lower or "permission" in tech_lower:
-            required_checks.add("role_verification")
-            data_sources.add("AuditLogs")
-
+        """ABSOLUTE Fallback parsing if LLM fails"""
+        focus_areas = set(["user_activity", "authentication_analysis", "ip_reputation"])
+        required_checks = set(["user_verification", "signin_analysis", "ip_reputation_check"])
+        data_sources = set(["SigninLogs", "AuditLogs"])
+        
         return list(focus_areas), list(required_checks), list(data_sources)
