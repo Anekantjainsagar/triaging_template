@@ -1,0 +1,80 @@
+{
+    "value": [
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Watchlists/GEO",
+            "name": "GEO",
+            "etag": "\"4e011b49-0000-0100-0000-687146450000\"",
+            "type": "Microsoft.SecurityInsights/Watchlists",
+            "properties": {
+                "watchlistId": "ef32ea70-384b-465c-a4e2-11daa92df786",
+                "displayName": "MAXMIND",
+                "provider": "Microsoft",
+                "source": "Remote file",
+                "sourceType": "AzureStorage",
+                "itemsSearchKey": "network",
+                "created": "2025-07-11T12:21:42.2908475+00:00",
+                "updated": "2025-07-11T12:21:42.2908475+00:00",
+                "createdBy": {
+                    "objectId": "1b3e302e-766d-427b-94df-689bdee2c00c",
+                    "email": "sudheer.karimisetti@yashtechnologies841.onmicrosoft.com",
+                    "name": "cb839289-975f-45e8-b70d-2396b5a8dc86"
+                },
+                "updatedBy": {
+                    "objectId": "1b3e302e-766d-427b-94df-689bdee2c00c",
+                    "email": "sudheer.karimisetti@yashtechnologies841.onmicrosoft.com",
+                    "name": "cb839289-975f-45e8-b70d-2396b5a8dc86"
+                },
+                "description": "",
+                "watchlistType": "watchlist",
+                "watchlistAlias": "GEO",
+                "isDeleted": false,
+                "labels": [],
+                "defaultDuration": "P1DT3H",
+                "tenantId": "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                "numberOfLinesToSkip": 0,
+                "provisioningState": "Succeeded",
+                "sasUri": "",
+                "watchlistCategory": "General",
+                "watchlistKind": "Regular"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Watchlists/GEO2",
+            "name": "GEO2",
+            "etag": "\"31020135-0000-0100-0000-6878b1d40000\"",
+            "type": "Microsoft.SecurityInsights/Watchlists",
+            "properties": {
+                "watchlistId": "6ee0791b-96c4-4fc5-a4d2-e7a3d6b64e97",
+                "displayName": "MAXMIND2",
+                "provider": "Microsoft",
+                "source": "Remote file",
+                "sourceType": "AzureStorage",
+                "itemsSearchKey": "Country",
+                "created": "2025-07-17T07:12:26.6846209+00:00",
+                "updated": "2025-07-17T07:12:26.6846209+00:00",
+                "createdBy": {
+                    "objectId": "1b3e302e-766d-427b-94df-689bdee2c00c",
+                    "email": "sudheer.karimisetti@yashtechnologies841.onmicrosoft.com",
+                    "name": "cb839289-975f-45e8-b70d-2396b5a8dc86"
+                },
+                "updatedBy": {
+                    "objectId": "1b3e302e-766d-427b-94df-689bdee2c00c",
+                    "email": "sudheer.karimisetti@yashtechnologies841.onmicrosoft.com",
+                    "name": "cb839289-975f-45e8-b70d-2396b5a8dc86"
+                },
+                "description": "Country",
+                "watchlistType": "watchlist",
+                "watchlistAlias": "GEO2",
+                "isDeleted": false,
+                "labels": [],
+                "defaultDuration": "P1DT3H",
+                "tenantId": "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                "numberOfLinesToSkip": 0,
+                "provisioningState": "Succeeded",
+                "sasUri": "",
+                "watchlistCategory": "General",
+                "watchlistKind": "Regular"
+            }
+        }
+    ]
+}

@@ -1,0 +1,44 @@
+{
+    "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/5841af33-a201-4621-a206-f3f037c5e5f8",
+    "name": "5841af33-a201-4621-a206-f3f037c5e5f8",
+    "etag": "\"5a02e895-0000-0100-0000-68e01a470000\"",
+    "type": "Microsoft.SecurityInsights/Incidents",
+    "properties": {
+        "title": "Test-Suspicious signins involving multiple users",
+        "severity": "Low",
+        "status": "Closed",
+        "classification": "BenignPositive",
+        "classificationReason": "SuspiciousButExpected",
+        "classificationComment": "",
+        "owner": {
+            "objectId": null,
+            "email": null,
+            "assignedTo": null,
+            "userPrincipalName": null,
+            "ownerType": null
+        },
+        "labels": [],
+        "firstActivityTimeUtc": "2025-10-03T03:37:26.6726975Z",
+        "lastActivityTimeUtc": "2025-10-03T18:06:41.7344975Z",
+        "lastModifiedTimeUtc": "2025-10-03T18:47:35.572098Z",
+        "createdTimeUtc": "2025-10-03T18:45:23.17Z",
+        "incidentNumber": 132,
+        "additionalData": {
+            "alertsCount": 1,
+            "bookmarksCount": 0,
+            "commentsCount": 0,
+            "alertProductNames": [
+                "Azure Sentinel"
+            ],
+            "tactics": [],
+            "techniques": [],
+            "providerIncidentUrl": "https://security.microsoft.com/incident2/431/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+        },
+        "relatedAnalyticRuleIds": [
+            "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/alertRules/32495d2d-27d7-4bb7-8417-c757a5794626"
+        ],
+        "incidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/5841af33-a201-4621-a206-f3f037c5e5f8",
+        "providerName": "Microsoft XDR",
+        "providerIncidentId": "431"
+    }
+}

@@ -1,0 +1,15 @@
+{
+    "value": [
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/3e308218-8fbc-4084-b8c0-e7001e6a58c1/relations/3e308218-8fbc-4084-b8c0-e7001e6a58c1_664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+            "name": "3e308218-8fbc-4084-b8c0-e7001e6a58c1_664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+            "type": "Microsoft.SecurityInsights/Incidents/relations",
+            "properties": {
+                "relatedResourceId": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/entities/664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+                "relatedResourceName": "664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+                "relatedResourceType": "Microsoft.SecurityInsights/entities",
+                "relatedResourceKind": "SecurityAlert"
+            }
+        }
+    ]
+}

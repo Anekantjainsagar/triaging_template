@@ -1,0 +1,413 @@
+{
+    "fetched_at": "2025-10-29T22:31:45.157032",
+    "incident_id": "3e308218-8fbc-4084-b8c0-e7001e6a58c1",
+    "incident_details": {
+        "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/3e308218-8fbc-4084-b8c0-e7001e6a58c1",
+        "name": "3e308218-8fbc-4084-b8c0-e7001e6a58c1",
+        "etag": "\"5002d207-0000-0100-0000-68dfc5e80000\"",
+        "type": "Microsoft.SecurityInsights/Incidents",
+        "properties": {
+            "title": "Test-Suspicious signins involving multiple users",
+            "severity": "Low",
+            "status": "Closed",
+            "classification": "BenignPositive",
+            "classificationReason": "SuspiciousButExpected",
+            "classificationComment": "",
+            "owner": {
+                "objectId": null,
+                "email": null,
+                "assignedTo": null,
+                "userPrincipalName": null,
+                "ownerType": null
+            },
+            "labels": [],
+            "firstActivityTimeUtc": "2025-10-02T14:55:54.7049576Z",
+            "lastActivityTimeUtc": "2025-10-03T05:25:31.7787968Z",
+            "lastModifiedTimeUtc": "2025-10-03T12:47:36.0153162Z",
+            "createdTimeUtc": "2025-10-03T12:45:20.56Z",
+            "incidentNumber": 131,
+            "additionalData": {
+                "alertsCount": 1,
+                "bookmarksCount": 0,
+                "commentsCount": 0,
+                "alertProductNames": [
+                    "Azure Sentinel"
+                ],
+                "tactics": [],
+                "techniques": [],
+                "providerIncidentUrl": "https://security.microsoft.com/incident2/430/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+            },
+            "relatedAnalyticRuleIds": [
+                "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/alertRules/32495d2d-27d7-4bb7-8417-c757a5794626"
+            ],
+            "incidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/3e308218-8fbc-4084-b8c0-e7001e6a58c1",
+            "providerName": "Microsoft XDR",
+            "providerIncidentId": "430"
+        }
+    },
+    "alerts": {
+        "value": [
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+                "name": "664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+                "type": "Microsoft.SecurityInsights/Entities",
+                "kind": "SecurityAlert",
+                "properties": {
+                    "systemAlertId": "664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+                    "tactics": [],
+                    "alertDisplayName": "Test-Suspicious signins",
+                    "description": "Testing the suspicious Sign in logs.",
+                    "confidenceLevel": "Unknown",
+                    "severity": "Low",
+                    "vendorName": "Microsoft",
+                    "productName": "Azure Sentinel",
+                    "productComponentName": "Scheduled Alerts",
+                    "alertType": "674f96b1-63d6-48ca-9fe6-d613e4292c7f_32495d2d-27d7-4bb7-8417-c757a5794626",
+                    "processingEndTime": "2025-10-03T12:45:21.0866667Z",
+                    "status": "New",
+                    "endTimeUtc": "2025-10-03T05:25:31.7787968Z",
+                    "startTimeUtc": "2025-10-02T14:55:54.7049576Z",
+                    "timeGenerated": "2025-10-03T12:45:20.2066667Z",
+                    "providerAlertId": "14554727-3d10-4bf0-a725-a2908d74a79f",
+                    "alertLink": "https://security.microsoft.com/alerts/sn14554727-3d10-4bf0-a725-a2908d74a79f?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                    "resourceIdentifiers": [
+                        {
+                            "type": "LogAnalytics",
+                            "workspaceId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f"
+                        }
+                    ],
+                    "additionalData": {
+                        "Search Query Results Overall Count": "13",
+                        "OriginalProductName": "Azure Sentinel",
+                        "OriginalProductComponentName": "Scheduled Alerts",
+                        "DetectionSource": "scheduledAlerts"
+                    },
+                    "friendlyName": "Test-Suspicious signins"
+                }
+            }
+        ]
+    },
+    "entities": {
+        "entities": [
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/181b2738-5b07-781f-6cb3-0a7514d4b490",
+                "name": "181b2738-5b07-781f-6cb3-0a7514d4b490",
+                "type": "Microsoft.SecurityInsights/Entities",
+                "kind": "Ip",
+                "properties": {
+                    "address": "49.249.104.218",
+                    "friendlyName": "49.249.104.218"
+                }
+            },
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/b5624c73-7e2f-a594-bcf0-c7584657bc08",
+                "name": "b5624c73-7e2f-a594-bcf0-c7584657bc08",
+                "type": "Microsoft.SecurityInsights/Entities",
+                "kind": "Account",
+                "properties": {
+                    "accountName": "aarushi.trivedi",
+                    "upnSuffix": "yashtechnologies841.onmicrosoft.com",
+                    "isDomainJoined": false,
+                    "friendlyName": "aarushi.trivedi"
+                }
+            },
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/66f3c266-8b4f-89ca-adec-0b8457d7cd77",
+                "name": "66f3c266-8b4f-89ca-adec-0b8457d7cd77",
+                "type": "Microsoft.SecurityInsights/Entities",
+                "kind": "Account",
+                "properties": {
+                    "accountName": "saratkumar.indukuri",
+                    "upnSuffix": "yashtechnologies841.onmicrosoft.com",
+                    "isDomainJoined": false,
+                    "friendlyName": "saratkumar.indukuri"
+                }
+            },
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/4419f24c-5e1f-f6b5-8d4a-642243fe30c9",
+                "name": "4419f24c-5e1f-f6b5-8d4a-642243fe30c9",
+                "type": "Microsoft.SecurityInsights/Entities",
+                "kind": "Ip",
+                "properties": {
+                    "address": "14.143.131.254",
+                    "friendlyName": "14.143.131.254"
+                }
+            },
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/17451eae-e192-7b39-c8f8-60db85dc6942",
+                "name": "17451eae-e192-7b39-c8f8-60db85dc6942",
+                "type": "Microsoft.SecurityInsights/Entities",
+                "kind": "Ip",
+                "properties": {
+                    "address": "27.6.153.93",
+                    "friendlyName": "27.6.153.93"
+                }
+            },
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/0deae559-43f4-a80e-df0b-d323fd8c3952",
+                "name": "0deae559-43f4-a80e-df0b-d323fd8c3952",
+                "type": "Microsoft.SecurityInsights/Entities",
+                "kind": "Ip",
+                "properties": {
+                    "address": "111.125.237.218",
+                    "friendlyName": "111.125.237.218"
+                }
+            },
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/a870a64a-2947-9c8a-09f5-cb69b13a6d11",
+                "name": "a870a64a-2947-9c8a-09f5-cb69b13a6d11",
+                "type": "Microsoft.SecurityInsights/Entities",
+                "kind": "Account",
+                "properties": {
+                    "accountName": "shrish.s",
+                    "upnSuffix": "yashtechnologies841.onmicrosoft.com",
+                    "isDomainJoined": false,
+                    "friendlyName": "shrish.s"
+                }
+            },
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/9d863e21-b331-b2a4-e186-d0fe7bc0f6fa",
+                "name": "9d863e21-b331-b2a4-e186-d0fe7bc0f6fa",
+                "type": "Microsoft.SecurityInsights/Entities",
+                "kind": "Account",
+                "properties": {
+                    "accountName": "ketan.patel",
+                    "upnSuffix": "yashtechnologies841.onmicrosoft.com",
+                    "isDomainJoined": false,
+                    "friendlyName": "ketan.patel"
+                }
+            }
+        ],
+        "metaData": [
+            {
+                "entityKind": "Ip",
+                "count": 4
+            },
+            {
+                "entityKind": "Account",
+                "count": 4
+            }
+        ]
+    },
+    "comments": {
+        "value": []
+    },
+    "bookmarks": {
+        "value": []
+    },
+    "relations": {
+        "value": [
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/3e308218-8fbc-4084-b8c0-e7001e6a58c1/relations/3e308218-8fbc-4084-b8c0-e7001e6a58c1_664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+                "name": "3e308218-8fbc-4084-b8c0-e7001e6a58c1_664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+                "type": "Microsoft.SecurityInsights/Incidents/relations",
+                "properties": {
+                    "relatedResourceId": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/entities/664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+                    "relatedResourceName": "664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+                    "relatedResourceType": "Microsoft.SecurityInsights/entities",
+                    "relatedResourceKind": "SecurityAlert"
+                }
+            }
+        ]
+    },
+    "alert_rules": [
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/alertRules/32495d2d-27d7-4bb7-8417-c757a5794626",
+            "name": "32495d2d-27d7-4bb7-8417-c757a5794626",
+            "etag": "\"7706a046-0000-0100-0000-68b5954a0000\"",
+            "type": "Microsoft.SecurityInsights/alertRules",
+            "kind": "Scheduled",
+            "properties": {
+                "queryFrequency": "PT6H",
+                "queryPeriod": "P1D",
+                "triggerOperator": "GreaterThan",
+                "triggerThreshold": 0,
+                "eventGroupingSettings": {
+                    "aggregationKind": "SingleAlert"
+                },
+                "incidentConfiguration": {
+                    "createIncident": true,
+                    "groupingConfiguration": {
+                        "enabled": false,
+                        "reopenClosedIncident": false,
+                        "lookbackDuration": "PT5H",
+                        "matchingMethod": "AllEntities",
+                        "groupByEntities": [],
+                        "groupByAlertDetails": [],
+                        "groupByCustomDetails": []
+                    }
+                },
+                "entityMappings": [
+                    {
+                        "entityType": "Account",
+                        "fieldMappings": [
+                            {
+                                "identifier": "Name",
+                                "columnName": "UserPrincipalName"
+                            }
+                        ]
+                    },
+                    {
+                        "entityType": "IP",
+                        "fieldMappings": [
+                            {
+                                "identifier": "Address",
+                                "columnName": "IPAddress"
+                            }
+                        ]
+                    }
+                ],
+                "severity": "Low",
+                "query": "SigninLogs\r\n| where ResultType in (\"50126\",\"50020\",\"16003\",\"50055\",\"50105\")",
+                "suppressionDuration": "PT5H",
+                "suppressionEnabled": false,
+                "tactics": [],
+                "techniques": [],
+                "displayName": "Test-Suspicious signins",
+                "enabled": true,
+                "description": "Testing the suspicious Sign in logs.",
+                "alertRuleTemplateName": null,
+                "lastModifiedUtc": "2025-09-01T12:44:57.7765934Z"
+            }
+        }
+    ],
+    "alert_evidence": [
+        {
+            "alert_id": "664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+            "alert_name": "Test-Suspicious signins",
+            "confidence_level": "Unknown",
+            "confidence_score": null,
+            "confidence_score_status": null,
+            "remediation_steps": [],
+            "alert_link": "https://security.microsoft.com/alerts/sn14554727-3d10-4bf0-a725-a2908d74a79f?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+            "resource_identifiers": [
+                {
+                    "type": "LogAnalytics",
+                    "workspaceId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f"
+                }
+            ],
+            "additional_data": {
+                "Search Query Results Overall Count": "13",
+                "OriginalProductName": "Azure Sentinel",
+                "OriginalProductComponentName": "Scheduled Alerts",
+                "DetectionSource": "scheduledAlerts"
+            },
+            "compromised_entity": null,
+            "intent": null,
+            "techniques": [],
+            "sub_techniques": []
+        }
+    ],
+    "watchlists": {
+        "value": [
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Watchlists/GEO",
+                "name": "GEO",
+                "etag": "\"4e011b49-0000-0100-0000-687146450000\"",
+                "type": "Microsoft.SecurityInsights/Watchlists",
+                "properties": {
+                    "watchlistId": "ef32ea70-384b-465c-a4e2-11daa92df786",
+                    "displayName": "MAXMIND",
+                    "provider": "Microsoft",
+                    "source": "Remote file",
+                    "sourceType": "AzureStorage",
+                    "itemsSearchKey": "network",
+                    "created": "2025-07-11T12:21:42.2908475+00:00",
+                    "updated": "2025-07-11T12:21:42.2908475+00:00",
+                    "createdBy": {
+                        "objectId": "1b3e302e-766d-427b-94df-689bdee2c00c",
+                        "email": "sudheer.karimisetti@yashtechnologies841.onmicrosoft.com",
+                        "name": "cb839289-975f-45e8-b70d-2396b5a8dc86"
+                    },
+                    "updatedBy": {
+                        "objectId": "1b3e302e-766d-427b-94df-689bdee2c00c",
+                        "email": "sudheer.karimisetti@yashtechnologies841.onmicrosoft.com",
+                        "name": "cb839289-975f-45e8-b70d-2396b5a8dc86"
+                    },
+                    "description": "",
+                    "watchlistType": "watchlist",
+                    "watchlistAlias": "GEO",
+                    "isDeleted": false,
+                    "labels": [],
+                    "defaultDuration": "P1DT3H",
+                    "tenantId": "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                    "numberOfLinesToSkip": 0,
+                    "provisioningState": "Succeeded",
+                    "sasUri": "",
+                    "watchlistCategory": "General",
+                    "watchlistKind": "Regular"
+                }
+            },
+            {
+                "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Watchlists/GEO2",
+                "name": "GEO2",
+                "etag": "\"31020135-0000-0100-0000-6878b1d40000\"",
+                "type": "Microsoft.SecurityInsights/Watchlists",
+                "properties": {
+                    "watchlistId": "6ee0791b-96c4-4fc5-a4d2-e7a3d6b64e97",
+                    "displayName": "MAXMIND2",
+                    "provider": "Microsoft",
+                    "source": "Remote file",
+                    "sourceType": "AzureStorage",
+                    "itemsSearchKey": "Country",
+                    "created": "2025-07-17T07:12:26.6846209+00:00",
+                    "updated": "2025-07-17T07:12:26.6846209+00:00",
+                    "createdBy": {
+                        "objectId": "1b3e302e-766d-427b-94df-689bdee2c00c",
+                        "email": "sudheer.karimisetti@yashtechnologies841.onmicrosoft.com",
+                        "name": "cb839289-975f-45e8-b70d-2396b5a8dc86"
+                    },
+                    "updatedBy": {
+                        "objectId": "1b3e302e-766d-427b-94df-689bdee2c00c",
+                        "email": "sudheer.karimisetti@yashtechnologies841.onmicrosoft.com",
+                        "name": "cb839289-975f-45e8-b70d-2396b5a8dc86"
+                    },
+                    "description": "Country",
+                    "watchlistType": "watchlist",
+                    "watchlistAlias": "GEO2",
+                    "isDeleted": false,
+                    "labels": [],
+                    "defaultDuration": "P1DT3H",
+                    "tenantId": "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                    "numberOfLinesToSkip": 0,
+                    "provisioningState": "Succeeded",
+                    "sasUri": "",
+                    "watchlistCategory": "General",
+                    "watchlistKind": "Regular"
+                }
+            }
+        ]
+    },
+    "workspace_info": {
+        "properties": {
+            "customerId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+            "provisioningState": "Succeeded",
+            "sku": {
+                "name": "pergb2018",
+                "lastSkuUpdate": "2025-07-11T10:48:57.0943406Z"
+            },
+            "retentionInDays": 30,
+            "features": {
+                "legacy": 0,
+                "searchVersion": 1,
+                "enableLogAccessUsingOnlyResourcePermissions": true,
+                "unifiedSentinelBillingOnly": true
+            },
+            "workspaceCapping": {
+                "dailyQuotaGb": -1.0,
+                "quotaNextResetTime": "2025-07-11T23:00:00Z",
+                "dataIngestionStatus": "RespectQuota"
+            },
+            "publicNetworkAccessForIngestion": "Enabled",
+            "publicNetworkAccessForQuery": "Enabled",
+            "createdDate": "2025-07-11T10:48:57.0943406Z",
+            "modifiedDate": "2025-07-11T10:48:59.3336491Z"
+        },
+        "location": "eastus",
+        "tags": {},
+        "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/SentinelSOC/providers/Microsoft.OperationalInsights/workspaces/Testenvr1",
+        "name": "Testenvr1",
+        "type": "Microsoft.OperationalInsights/workspaces",
+        "etag": "\"440098fd-0000-0100-0000-6870ecf60000\""
+    }
+}

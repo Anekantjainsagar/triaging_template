@@ -1,0 +1,27 @@
+[
+    {
+        "alert_id": "664be3c8-fc4f-28d3-c093-0e0a7f3d46e4",
+        "alert_name": "Test-Suspicious signins",
+        "confidence_level": "Unknown",
+        "confidence_score": null,
+        "confidence_score_status": null,
+        "remediation_steps": [],
+        "alert_link": "https://security.microsoft.com/alerts/sn14554727-3d10-4bf0-a725-a2908d74a79f?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+        "resource_identifiers": [
+            {
+                "type": "LogAnalytics",
+                "workspaceId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f"
+            }
+        ],
+        "additional_data": {
+            "Search Query Results Overall Count": "13",
+            "OriginalProductName": "Azure Sentinel",
+            "OriginalProductComponentName": "Scheduled Alerts",
+            "DetectionSource": "scheduledAlerts"
+        },
+        "compromised_entity": null,
+        "intent": null,
+        "techniques": [],
+        "sub_techniques": []
+    }
+]
