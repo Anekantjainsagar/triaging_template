@@ -102,7 +102,12 @@ class ImprovedTemplateGenerator:
             kql_query = ""
             kql_explanation = ""
 
-            if self._needs_kql(step_name, explanation):
+            # Check if KQL is explicitly disabled (e.g., manual step)
+            kql_disabled = (
+                step.get("kql_needed") is False
+            )  # Added this check for injected steps
+
+            if not kql_disabled and self._needs_kql(step_name, explanation):
                 print(f"         🔍 Generating KQL...")
                 kql_query, kql_explanation = self.kql_generator.generate_kql_query(
                     step_name=step_name,
@@ -116,6 +121,9 @@ class ImprovedTemplateGenerator:
                 else:
                     print(f"         ℹ️  No KQL for this step (external tool/manual)")
                     kql_query = ""
+            elif kql_disabled:
+                print(f"         ℹ️  KQL explicitly disabled (Manual/External Check)")
+                kql_query = ""
             else:
                 print(f"         ℹ️  Step doesn't require KQL (external tool)")
 
@@ -303,6 +311,7 @@ class ImprovedTemplateGenerator:
             "escalate",
             "inform",
             "notify",
+            "email",  # ✅ ADDED for custom check
         ]
 
         if any(keyword in combined for keyword in skip_keywords):
@@ -339,6 +348,66 @@ class ImprovedTemplateGenerator:
         ]
 
         return any(keyword in combined for keyword in needs_keywords)
+
+    def _inject_manual_steps(self, original_steps: List[Dict], profile: Dict) -> List[Dict]:
+        """Inject user-requested manual steps: IP Reputation and Email Check"""
+        
+        # Check if IP reputation step already exists in original steps
+        ip_check_exists = any(
+            "ip reputation" in s.get("step_name", "").lower() or 
+            "virustotal" in s.get("explanation", "").lower()
+            for s in original_steps
+        )
+
+        # Check if user confirmation/email check step already exists
+        user_check_exists = any(
+            "user confirm" in s.get("step_name", "").lower() or 
+            "email" in s.get("step_name", "").lower() or
+            "contact user" in s.get("explanation", "").lower()
+            for s in original_steps
+        )
+        
+        injected_steps = []
+
+        # 1. IP Reputation Check (Injected only if it doesn't already exist)
+        if not ip_check_exists:
+            ip_step = {
+                "step_name": "Check IP Reputation of All Involved IP Addresses",
+                "explanation": "Use external threat intelligence tools (VirusTotal, AbuseIPDB) to verify the reputation of all source IP addresses involved in the suspicious logins. This is important because a known malicious IP is a definitive sign of attack.",
+                "relevance": "Verifying IP reputation immediately confirms if the source is malicious, aligning with the threat actor TTPs of using known bad infrastructure.",
+                "kql_needed": False,  # No KQL needed for this external tool
+                "data_source": "External TI",
+                "tool": "virustotal",
+                "priority": "CRITICAL",
+                "input_required": "",
+            }
+            injected_steps.append(ip_step)
+            print("   ✅ Injected IP Reputation Check")
+        
+        # 2. Email Confirmation/Check (Injected only if it doesn't already exist)
+        if not user_check_exists:
+            email_step = {
+                "step_name": "Check User for Confirmation (Email/Phone)",
+                "explanation": "Contact the affected user via a reliable, out-of-band communication channel (phone/text, NOT email) to confirm if the activity was legitimate or if they authorized the login. This is important because it is the fastest way to confirm a false positive.",
+                "relevance": "Direct user confirmation is the quickest way to confirm or deny account compromise, helping to triage the HIGH risk level immediately.",
+                "kql_needed": False, # No KQL needed for this external tool
+                "data_source": "Manual/HR",
+                "tool": "None",
+                "priority": "HIGH",
+                "input_required": "",
+            }
+            injected_steps.append(email_step)
+            print("   ✅ Injected User Confirmation Check")
+
+        # Combine injected steps with original steps
+        # Use simple logic to insert injected steps near the start (after a potential 'scope' step)
+        if not original_steps or any("scope" in s.get("step_name", "").lower() for s in original_steps[:2]):
+            # If original starts with scope or is empty, inject immediately after
+            return injected_steps + original_steps
+        else:
+            # Insert at the beginning
+            return injected_steps + original_steps
+
 
     def generate_intelligent_template(
         self, rule_number: str, original_steps: List[Dict], rule_context: str = ""
@@ -380,6 +449,12 @@ class ImprovedTemplateGenerator:
         print(f"      - Threat Actors: {len(profile['threat_actors'])}")
         print(f"      - Investigation Focus: {profile['investigation_focus']}")
 
+        # **CRITICAL MODIFICATION**: Inject user-requested manual steps now
+        modified_original_steps = self._inject_manual_steps(original_steps, profile)
+        profile["existing_step_names"] = [s.get("step_name", "") for s in modified_original_steps] # Update for step library filtering
+        
+        print(f"DEBUG: Modified original steps count after injection = {len(modified_original_steps)}")
+
         # STEP 2: GENERATE INVESTIGATION STEPS (Dynamic, LLM + Web Search)
         print(f"\n🤖 PHASE 2: Generating investigation steps...")
         from routes.src.new_steps.step_library import InvestigationStepLibrary
@@ -393,7 +468,8 @@ class ImprovedTemplateGenerator:
         print(f"\n🔄 PHASE 3: Merging with original template...")
 
         # Filter non-investigative steps from original
-        investigative_original = self._filter_investigative_steps(original_steps)
+        # Use the MODIFIED list here
+        investigative_original = self._filter_investigative_steps(modified_original_steps)
         print(f"   ✅ Original steps (investigative): {len(investigative_original)}")
 
         # Use merger to combine intelligently
@@ -403,6 +479,11 @@ class ImprovedTemplateGenerator:
         merged_steps, merge_report = merger.merge_steps(
             investigative_original, generated_steps, profile
         )
+
+        # Step 3.5: Use merger to sort and filter again
+        # IMPORTANT: Set step numbers correctly after merge
+        for i, step in enumerate(merged_steps, 1):
+            step["step_number"] = i
 
         # Print merge transparency report
         merger.print_merge_report(merge_report)
