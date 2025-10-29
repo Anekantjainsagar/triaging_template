@@ -188,8 +188,9 @@ def display_soc_dashboard():
                 )
 
                 # Store the query for manual analysis
-                st.session_state.manual_alert_query = user_query
-                st.session_state.show_manual_analysis = True
+            st.session_state.manual_alert_query = user_query
+            st.session_state.show_manual_analysis = True
+            st.session_state.current_suggestions = suggestions
         else:
             st.error(f"❌ Search failed: {result.get('error')}")
 
