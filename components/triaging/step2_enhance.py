@@ -8,6 +8,8 @@ import hashlib
 import pandas as pd
 from io import BytesIO
 from routes.src.virustotal_integration import VirusTotalChecker
+from routes.src.template_generator import ImprovedTemplateGenerator
+from routes.src.template_parser import TemplateParser
 
 
 def contains_ip_not_vip(text):
@@ -110,6 +112,10 @@ def _get_enhancement_cache_key(rule_number: str, template_path: str) -> str:
     """Create unique cache key for template enhancement"""
     return f"enhanced_template_{rule_number}_{hashlib.md5(template_path.encode()).hexdigest()}"
 
+def _get_manual_cache_key(alert_name: str) -> str:
+    """Create unique cache key for manual generation"""
+    return f"manual_template_{hashlib.md5(alert_name.encode()).hexdigest()}"
+
 
 def _export_template_with_remarks_and_outputs(
     template_df, remarks_dict, outputs_dict, rule_number
@@ -122,10 +128,15 @@ def _export_template_with_remarks_and_outputs(
     step_counter = 1
 
     for idx, row in export_df.iterrows():
+        # Use the explicit Step column to track step number
         if pd.isna(row["Step"]) or str(row["Step"]).strip() == "":
             remarks_list.append("")
             outputs_list.append("")
         else:
+            # Match the Step column value for the key
+            step_col_val = str(row["Step"]).strip()
+            
+            # The manual input keys use a sequential counter
             remark_key = f"remark_step_{step_counter}_{rule_number}"
             remark = remarks_dict.get(remark_key, "")
             remarks_list.append(remark)
@@ -134,42 +145,24 @@ def _export_template_with_remarks_and_outputs(
             output = outputs_dict.get(output_key, "")
             outputs_list.append(output)
 
-            step_counter += 1
+            step_counter += 1 # Increment for the next actual step row
 
     export_df["Output"] = outputs_list
     export_df["Remarks/Comments"] = remarks_list
 
     output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        export_df.to_excel(writer, index=False, sheet_name="Triaging Steps")
-
-        worksheet = writer.sheets["Triaging Steps"]
-
-        worksheet.column_dimensions["A"].width = 8
-        worksheet.column_dimensions["B"].width = 30
-        worksheet.column_dimensions["C"].width = 50
-        worksheet.column_dimensions["D"].width = 60
-        worksheet.column_dimensions["E"].width = 50
-        worksheet.column_dimensions["F"].width = 40
-
-        from openpyxl.styles import Font, PatternFill, Alignment
-
-        header_fill = PatternFill(
-            start_color="4472C4", end_color="4472C4", fill_type="solid"
-        )
-        header_font = Font(bold=True, color="FFFFFF")
-
-        for cell in worksheet[1]:
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-
-        for row in worksheet.iter_rows(min_row=2):
-            for cell in row:
-                cell.alignment = Alignment(wrap_text=True, vertical="top")
-
-    output.seek(0)
-    return output.getvalue()
+    
+    # Use the ImprovedTemplateGenerator's exporter for proper formatting
+    try:
+        intelligent_gen = ImprovedTemplateGenerator()
+        return intelligent_gen.export_to_excel(export_df, rule_number).getvalue()
+    except Exception as e:
+        print(f"⚠️ Fallback Excel export used due to error: {e}")
+        # Fallback manual export if the dedicated exporter fails
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            export_df.to_excel(writer, index=False, sheet_name="Triaging Steps")
+        output.seek(0)
+        return output.getvalue()
 
 
 def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
@@ -185,6 +178,7 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
                 "rule_number": rule_number,
                 "incident": f"TEMPLATE_GEN_{rule_number}",
                 "description": f"Template Generation for Rule {rule_number}",
+                "is_manual": False,
             }
             session_state["triaging_selected_alert"] = selected_alert
         else:
@@ -194,6 +188,8 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
     rule_number = selected_alert.get(
         "rule_number", selected_alert.get("rule", "Unknown")
     )
+    alert_name = selected_alert.get("alert_name", rule_number)
+    is_manual = selected_alert.get("is_manual", False)
 
     # Extract rule number for file matching
     rule_num_match = re.search(r"#?(\d+)", rule_number)
@@ -203,172 +199,289 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
         else rule_number.replace("#", "").strip()
     )
 
-    # Find template
     template_dir = "data/triaging_templates"
-
-    if not os.path.exists(template_dir):
-        st.warning(f"⚠️ Template directory not found: {template_dir}")
-        if st.button("📁 Create Template Directory", type="primary"):
-            os.makedirs(template_dir, exist_ok=True)
-            st.success("✅ Directory created! Please upload templates.")
-            st.stop()
-        st.stop()
-
-    all_files = os.listdir(template_dir)
-    template_files = [
-        f
-        for f in all_files
-        if rule_num in f and (f.endswith(".csv") or f.endswith(".xlsx"))
-    ]
-
-    if not template_files:
-        st.error(f"❌ No template found for {rule_number}")
-        st.info(f"🔍 Looking for files containing '{rule_num}' in: {template_dir}")
-        with st.expander("Available Templates", expanded=True):
-            if all_files:
-                st.write("Found templates:")
-                for f in all_files:
-                    st.write(f"- {f}")
-            else:
-                st.write("No templates found in directory")
-        st.stop()
-
-    template_path = os.path.join(template_dir, template_files[0])
-
-    # ✅ CREATE CACHE KEY
-    cache_key = _get_enhancement_cache_key(rule_number, template_path)
-
-    # ✅ CHECK CACHE FIRST
-    if cache_key in st.session_state:
-        cached_data = st.session_state[cache_key]
-        session_state.original_steps = cached_data["original_steps"]
-        session_state.enhanced_steps = cached_data["enhanced_steps"]
-        session_state.excel_template_data = cached_data["excel_template_data"]
-        session_state.template_dataframe = cached_data["template_dataframe"]
-
-        _display_enhancement_results(
-            session_state,
-            rule_number,
-            EnhancedTemplateGenerator,
-        )
-        return
-
-    # ✅ RUN INTELLIGENT ENHANCEMENT (ONLY ONCE)
-    st.info(f"📄 Processing template: {template_files[0]}")
-
-    progress_bar = st.progress(0, text="📄 Starting intelligent enhancement...")
-
-    try:
-        # STEP 1: Parse Old Template
-        progress_bar.progress(10, text="📋 Parsing original template...")
-
-        parser = TemplateParser()
-
-        if template_path.endswith(".csv"):
-            original_steps = parser.parse_csv_template(template_path)
+    template_files = []
+    template_path = ""
+    
+    # Only search for files if not a manual generation
+    if not is_manual:
+        if os.path.exists(template_dir):
+            all_files = os.listdir(template_dir)
+            template_files = [
+                f
+                for f in all_files
+                if rule_num in f and (f.endswith(".csv") or f.endswith(".xlsx"))
+            ]
+            if template_files:
+                template_path = os.path.join(template_dir, template_files[0])
+    
+    
+    # --- INTELLIGENT TEMPLATE GENERATION LOGIC ---
+    
+    
+    # 1. GENERATE FROM MANUAL INPUT (No Template File)
+    if is_manual or not template_files:
+        if is_manual:
+            st.info(f"🤖 Generating investigation steps for: **{alert_name}**")
+            cache_key = _get_manual_cache_key(alert_name)
         else:
-            original_steps = parser.parse_excel_template(template_path)
+            st.info(f"⚠️ No template file found for {rule_number}. Generating dynamic template.")
+            cache_key = _get_manual_cache_key(rule_number) # Fallback key
 
-        if not original_steps:
-            st.error("❌ Template parsing failed - no steps extracted")
-            st.stop()
+        # CHECK CACHE FIRST
+        if cache_key in st.session_state:
+            cached_data = st.session_state[cache_key]
+            session_state.original_steps = cached_data["original_steps"]
+            session_state.enhanced_steps = cached_data["enhanced_steps"]
+            session_state.excel_template_data = cached_data["excel_template_data"]
+            session_state.template_dataframe = cached_data["template_dataframe"]
 
-        progress_bar.progress(20, text=f"✅ Extracted {len(original_steps)} steps")
+            _display_enhancement_results(
+                session_state,
+                rule_number,
+                EnhancedTemplateGenerator,
+            )
+            return
 
-        # STEP 2: Use Intelligent Template Generator (NEW!)
-        progress_bar.progress(30, text="🧠 Analyzing with AI intelligence...")
+        # RUN DYNAMIC GENERATION
+        progress_bar = st.progress(0, text="📄 Starting intelligent generation...")
+        try:
+            # Set original_steps to empty list to force ALL steps to be AI-generated
+            original_steps = [] 
+            
+            progress_bar.progress(30, text="🧠 Analyzing with AI intelligence...")
 
-        # Initialize the intelligent generator
-        from routes.src.template_generator import ImprovedTemplateGenerator
+            intelligent_gen = ImprovedTemplateGenerator()
+            
+            # The rule_context is the alert description/name for manual alerts
+            rule_context = selected_alert.get("description", alert_name) 
 
-        intelligent_gen = ImprovedTemplateGenerator()
+            progress_bar.progress(40, text="📡 Gathering threat intelligence...")
 
-        progress_bar.progress(40, text="📡 Gathering threat intelligence...")
+            start_time = time.time()
 
-        start_time = time.time()
+            # Generate intelligent template - only AI-generated steps will be created
+            template_df = intelligent_gen.generate_intelligent_template(
+                rule_number=rule_number, 
+                original_steps=original_steps, 
+                rule_context=rule_context # Pass context for richer profile
+            )
 
-        # Generate intelligent template
-        template_df = intelligent_gen.generate_intelligent_template(
-            rule_number=rule_number, original_steps=original_steps
-        )
+            elapsed = time.time() - start_time
+            progress_bar.progress(80, text="📊 Finalizing template...")
 
-        elapsed = time.time() - start_time
+            # Convert DataFrame back to dictionary format for display
+            enhanced_steps_with_kql = []
 
-        progress_bar.progress(80, text="📊 Finalizing template...")
+            for idx, row in template_df.iterrows():
+                if pd.isna(row["Step"]) or str(row["Step"]).strip() == "":
+                    continue
 
-        # Convert DataFrame back to dictionary format for display
-        enhanced_steps_with_kql = []
+                kql_raw = row["KQL Query"]
+                kql_str = str(kql_raw) if pd.notna(kql_raw) else ""
+                kql_cleaned = kql_str.strip().lower()
 
-        for idx, row in template_df.iterrows():
-            # Skip header row
-            if pd.isna(row["Step"]) or str(row["Step"]).strip() == "":
-                continue
+                final_kql = str(kql_raw).strip() if pd.notna(kql_raw) and kql_cleaned not in ["nan", "none", ""] else ""
 
-            kql_raw = row["KQL Query"]
-            kql_str = str(kql_raw) if pd.notna(kql_raw) else ""
-            kql_cleaned = kql_str.strip().lower()
+                step_dict = {
+                    "step_name": str(row["Name"]) if pd.notna(row["Name"]) else "",
+                    "explanation": (
+                        str(row["Explanation"]) if pd.notna(row["Explanation"]) else ""
+                    ),
+                    "kql_query": final_kql,
+                    "kql_explanation": (
+                        str(row["KQL Explanation"])
+                        if pd.notna(row["KQL Explanation"])
+                        and str(row["KQL Explanation"]).strip().lower()
+                        not in ["nan", "none", ""]
+                        else ""
+                    ),
+                    "input_required": "",
+                }
 
-            if pd.notna(kql_raw) and kql_cleaned not in ["nan", "none", ""]:
-                final_kql = str(kql_raw)
-            else:
-                final_kql = ""
+                enhanced_steps_with_kql.append(step_dict)
 
-            step_dict = {
-                "step_name": str(row["Name"]) if pd.notna(row["Name"]) else "",
-                "explanation": (
-                    str(row["Explanation"]) if pd.notna(row["Explanation"]) else ""
-                ),
-                "kql_query": final_kql,
-                "kql_explanation": (
-                    str(row["KQL Explanation"])
-                    if pd.notna(row["KQL Explanation"])
-                    and str(row["KQL Explanation"]).strip().lower()
-                    not in ["nan", "none", ""]
-                    else ""
-                ),
-                "input_required": "",
+            progress_bar.progress(90, text="💾 Caching results...")
+
+            # Export to Excel
+            excel_file = intelligent_gen.export_to_excel(template_df, rule_number)
+
+            # ✅ CACHE RESULTS
+            st.session_state[cache_key] = {
+                "original_steps": original_steps,
+                "enhanced_steps": enhanced_steps_with_kql,
+                "excel_template_data": excel_file,
+                "template_dataframe": template_df,
+                "elapsed_time": elapsed,
             }
 
-            enhanced_steps_with_kql.append(step_dict)
+            session_state.original_steps = original_steps
+            session_state.enhanced_steps = enhanced_steps_with_kql
+            session_state.excel_template_data = excel_file
+            session_state.template_dataframe = template_df
 
-        progress_bar.progress(90, text="💾 Caching results...")
+            progress_bar.progress(100, text="✅ Generation complete!")
+            time.sleep(0.5)
+            progress_bar.empty()
 
-        # Export to Excel
-        excel_file = intelligent_gen.export_to_excel(template_df, rule_number)
+            st.success(f"🎉 Dynamic template generated in {elapsed:.1f}s!")
 
-        # ✅ CACHE RESULTS
-        st.session_state[cache_key] = {
-            "original_steps": original_steps,
-            "enhanced_steps": enhanced_steps_with_kql,
-            "excel_template_data": excel_file,
-            "template_dataframe": template_df,
-            "elapsed_time": elapsed,
-        }
+            # Display results
+            _display_enhancement_results(
+                session_state,
+                rule_number,
+                EnhancedTemplateGenerator,
+            )
+            
+            return # Exit after generation
+        
+        except Exception as e:
+            progress_bar.empty()
+            st.error(f"❌ Error during dynamic template generation: {str(e)}")
+            with st.expander("🔍 View Error Details"):
+                st.code(traceback.format_exc())
+            return
+            
+            
+    # 2. ENHANCE EXISTING TEMPLATE FILE (Original Logic)
+    
+    # If a template file was found, proceed with enhancement (original logic)
+    if template_files:
+        st.info(f"📄 Processing existing template: {template_files[0]}")
+        cache_key = _get_enhancement_cache_key(rule_number, template_path)
+        
+        # CHECK CACHE FIRST
+        if cache_key in st.session_state:
+            # ... (Existing cache display logic - simplified for brevity)
+            cached_data = st.session_state[cache_key]
+            session_state.original_steps = cached_data["original_steps"]
+            session_state.enhanced_steps = cached_data["enhanced_steps"]
+            session_state.excel_template_data = cached_data["excel_template_data"]
+            session_state.template_dataframe = cached_data["template_dataframe"]
 
-        session_state.original_steps = original_steps
-        session_state.enhanced_steps = enhanced_steps_with_kql
-        session_state.excel_template_data = excel_file
-        session_state.template_dataframe = template_df
+            _display_enhancement_results(
+                session_state,
+                rule_number,
+                EnhancedTemplateGenerator,
+            )
+            return
+        
+        # RUN INTELLIGENT ENHANCEMENT
+        progress_bar = st.progress(0, text="📄 Starting intelligent enhancement...")
 
-        progress_bar.progress(100, text="✅ Enhancement complete!")
+        try:
+            # STEP 1: Parse Old Template
+            progress_bar.progress(10, text="📋 Parsing original template...")
 
-        time.sleep(0.5)
-        progress_bar.empty()
+            parser = TemplateParser()
 
-        st.success(f"🎉 Intelligent template generated in {elapsed:.1f}s!")
+            if template_path.endswith(".csv"):
+                original_steps = parser.parse_csv_template(template_path)
+            else:
+                original_steps = parser.parse_excel_template(template_path)
 
-        # Display results
-        _display_enhancement_results(
-            session_state,
-            rule_number,
-            EnhancedTemplateGenerator,
-        )
+            if not original_steps:
+                st.error("❌ Template parsing failed - no steps extracted")
+                st.stop()
 
-    except Exception as e:
-        progress_bar.empty()
-        st.error(f"❌ Error: {str(e)}")
-        with st.expander("🔍 View Error Details"):
-            st.code(traceback.format_exc())
+            progress_bar.progress(20, text=f"✅ Extracted {len(original_steps)} steps")
+
+            # STEP 2: Use Intelligent Template Generator (NEW!)
+            progress_bar.progress(30, text="🧠 Analyzing with AI intelligence...")
+
+            # Initialize the intelligent generator
+            intelligent_gen = ImprovedTemplateGenerator()
+
+            progress_bar.progress(40, text="📡 Gathering threat intelligence...")
+
+            start_time = time.time()
+
+            # Generate intelligent template
+            template_df = intelligent_gen.generate_intelligent_template(
+                rule_number=rule_number, original_steps=original_steps
+            )
+
+            elapsed = time.time() - start_time
+
+            progress_bar.progress(80, text="📊 Finalizing template...")
+
+            # Convert DataFrame back to dictionary format for display
+            enhanced_steps_with_kql = []
+
+            for idx, row in template_df.iterrows():
+                # Skip header row
+                if pd.isna(row["Step"]) or str(row["Step"]).strip() == "":
+                    continue
+
+                kql_raw = row["KQL Query"]
+                kql_str = str(kql_raw) if pd.notna(kql_raw) else ""
+                kql_cleaned = kql_str.strip().lower()
+
+                if pd.notna(kql_raw) and kql_cleaned not in ["nan", "none", ""]:
+                    final_kql = str(kql_raw)
+                else:
+                    final_kql = ""
+
+                step_dict = {
+                    "step_name": str(row["Name"]) if pd.notna(row["Name"]) else "",
+                    "explanation": (
+                        str(row["Explanation"]) if pd.notna(row["Explanation"]) else ""
+                    ),
+                    "kql_query": final_kql,
+                    "kql_explanation": (
+                        str(row["KQL Explanation"])
+                        if pd.notna(row["KQL Explanation"])
+                        and str(row["KQL Explanation"]).strip().lower()
+                        not in ["nan", "none", ""]
+                        else ""
+                    ),
+                    "input_required": "",
+                }
+
+                enhanced_steps_with_kql.append(step_dict)
+
+            progress_bar.progress(90, text="💾 Caching results...")
+
+            # Export to Excel
+            excel_file = intelligent_gen.export_to_excel(template_df, rule_number)
+
+            # ✅ CACHE RESULTS
+            st.session_state[cache_key] = {
+                "original_steps": original_steps,
+                "enhanced_steps": enhanced_steps_with_kql,
+                "excel_template_data": excel_file,
+                "template_dataframe": template_df,
+                "elapsed_time": elapsed,
+            }
+
+            session_state.original_steps = original_steps
+            session_state.enhanced_steps = enhanced_steps_with_kql
+            session_state.excel_template_data = excel_file
+            session_state.template_dataframe = template_df
+
+            progress_bar.progress(100, text="✅ Enhancement complete!")
+
+            time.sleep(0.5)
+            progress_bar.empty()
+
+            st.success(f"🎉 Intelligent template generated in {elapsed:.1f}s!")
+
+            # Display results
+            _display_enhancement_results(
+                session_state,
+                rule_number,
+                EnhancedTemplateGenerator,
+            )
+
+        except Exception as e:
+            progress_bar.empty()
+            st.error(f"❌ Error during template enhancement: {str(e)}")
+            with st.expander("🔍 View Error Details"):
+                st.code(tracebox.format_exc())
+
+    else:
+        # Should be caught by the dynamic generation logic above, but as a final fail-safe
+        st.error(f"❌ No template found for {rule_number} and dynamic generation failed.")
 
 
 def _display_enhancement_results(

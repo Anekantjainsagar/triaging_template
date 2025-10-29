@@ -186,8 +186,10 @@ Focus on what a SOC analyst should DO, not just theory.""",
 
     REQUIRED NEW STEPS (generate 3-4 UNIQUE ones that address gaps):
     Focus on aspects NOT covered by existing steps:
+    - **CRITICAL:** Include a check for **IP reputation** of the source address and specify the tool as **VirusTotal**. This must be an explicit step.
     - Advanced behavioral analysis (time patterns, impossible travel, unusual hours)
     - Credential usage analysis (password sprays, brute force attempts, account lockouts)
+    - **CRITICAL:** Include a step to check the **user's email** for related phishing or malware.
     - Session analysis (concurrent logins, session hijacking, session duration)
     - Application access patterns (risky apps, OAuth grants, sensitive data access)
     - Privilege escalation checks (role changes, permission grants, admin actions)
@@ -197,7 +199,7 @@ Focus on what a SOC analyst should DO, not just theory.""",
     1. NOT duplicate existing steps
     2. Have specific, descriptive name (10-15 words explaining WHAT you're checking)
     3. Target a different data aspect than existing steps
-    4. Require KQL query (SigninLogs/AuditLogs/DeviceInfo/CloudAppEvents)
+    4. Require KQL query (SigninLogs/AuditLogs/DeviceInfo/CloudAppEvents) *UNLESS* the step is for an external tool like VirusTotal.
     5. Explain in SIMPLE language WHY this matters for THIS alert
 
     FORMAT (follow exactly):
@@ -206,24 +208,24 @@ Focus on what a SOC analyst should DO, not just theory.""",
     1. WHAT to check: "This step examines [specific data/logs]..."
     2. WHY it matters: "This is important because [how it relates to the alert]..."
     3. WHAT to look for: "Look for [specific indicators like X, Y, Z]..."]
-    NEEDS_KQL: YES
-    DATA_SOURCE: [SigninLogs/AuditLogs/DeviceInfo/CloudAppEvents]
-    TOOL: None
+    NEEDS_KQL: [YES/NO - must be NO for external tool checks]
+    DATA_SOURCE: [SigninLogs/AuditLogs/DeviceInfo/CloudAppEvents/Manual]
+    TOOL: [VirusTotal/None]
     PRIORITY: [CRITICAL/HIGH/MEDIUM]
     RELEVANCE: [How this step specifically helps investigate THIS alert and what risk it mitigates]
     ---
 
-    Example of GOOD step:
-    STEP: Analyze Sign-in Patterns Across Multiple Time Zones to Detect Impossible Travel Scenarios
-    EXPLANATION: This step examines the user's sign-in locations and timestamps from SigninLogs over the past 7 days. This is important because attackers who compromise credentials often sign in from different countries within impossible timeframes (e.g., USA then China within 1 hour). Look for sign-ins from geographically distant locations within short time periods, multiple countries in one day, or sign-ins from high-risk countries. This pattern strongly indicates credential theft rather than legitimate user activity.
-    NEEDS_KQL: YES
-    DATA_SOURCE: SigninLogs
-    TOOL: None
-    PRIORITY: HIGH
-    RELEVANCE: For this {profile.get('alert_type', 'authentication')} alert, impossible travel indicates compromised credentials being used by attackers, which could lead to data breach, unauthorized access to sensitive systems, or lateral movement across the organization.
+    Example of GOOD step (for VirusTotal):
+    STEP: Validate Source IP Reputation using External Threat Intelligence
+    EXPLANATION: This step uses VirusTotal and AbuseIPDB to check the reputation of the external IP address associated with the suspicious sign-in. This is important because a malicious IP address is a strong indicator of compromise. Look for high detection ratios (e.g., 5+ vendors), recent malicious reports, or associations with known threat actors.
+    NEEDS_KQL: NO
+    DATA_SOURCE: Manual
+    TOOL: VirusTotal
+    PRIORITY: CRITICAL
+    RELEVANCE: The integrity of the sign-in is immediately determined by the reputation of the originating IP, providing a critical early verdict on the alert's authenticity.
     ---
 
-    Generate 3-4 UNIQUE, RELEVANT steps NOW:"""
+    Generate 3-4 UNIQUE, RELEVANT steps NOW, ensuring the **VirusTotal** and **Email Check** steps are included:"""
 
         agent = Agent(
             role="SOC Investigation Playbook Designer",

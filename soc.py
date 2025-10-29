@@ -231,7 +231,7 @@ def display_soc_dashboard():
                 # Create manual alert object
                 manual_alert = {
                     "rule_name": alert_title,
-                    "rule_number": "MANUAL",
+                    "rule_number": "MANUAL_GEN", # ✅ UPDATED rule number for generation path
                     "alert_name": alert_title,
                     "description": (
                         alert_description if alert_description else alert_title
@@ -305,6 +305,7 @@ def display_soc_dashboard():
                                 "alert_name": alert_name,  # Just: "Suspicious Auth Activity"
                                 "data": data_df,
                                 "query": user_query,
+                                "is_manual": False, # ✅ Explicitly set to False
                             }
 
                             st.session_state.current_suggestions = []
@@ -333,7 +334,7 @@ def display_soc_dashboard():
                 unsafe_allow_html=True,
             )
             st.info(
-                "ℹ️ **Note**: This is a manual analysis without historical data. Only AI threat intelligence is available."
+                "ℹ️ **Note**: This is a manual analysis without historical data."
             )
         else:
             st.markdown(
@@ -354,8 +355,8 @@ def display_soc_dashboard():
 
         # ✅ CONDITIONAL TAB DISPLAY based on manual vs historical
         if is_manual:
-            # MANUAL MODE: Only AI Analysis tab
-            tab1 = st.tabs(["🤖 AI Threat Analysis"])[0]
+            # MANUAL MODE: Only AI Analysis and AI Triaging tabs
+            tab1, tab2 = st.tabs(["🤖 AI Threat Analysis", "🔍 AI Triaging"])[0:2]
 
             with tab1:
                 display_alert_analysis_tab_api(rule_name, api_client, is_manual=True)
@@ -364,8 +365,7 @@ def display_soc_dashboard():
                 st.markdown("---")
                 st.info(
                     """
-                    **Want Historical Analysis?**  
-                    If you have historical incident data for this alert, search again using the exact rule name 
+                    **Want Historical Analysis?** If you have historical incident data for this alert, search again using the exact rule name 
                     from your SOC tracker to get comprehensive analysis including:
                     - 📊 Historical incident patterns
                     - 📈 Performance metrics (MTTR/MTTD)
@@ -373,6 +373,12 @@ def display_soc_dashboard():
                     - 🎯 True/False positive predictions
                     """
                 )
+            
+            with tab2:
+                # Pass the full alert data to the triaging workflow
+                st.session_state.triaging_selected_alert = st.session_state.selected_rule_data
+                display_triaging_workflow(rule_number)
+                
         else:
             # NORMAL MODE: Full analysis with all tabs
             if predictions_enabled:
@@ -547,8 +553,7 @@ def display_alert_analysis_tab_api(rule_name: str, api_client, is_manual: bool =
             if is_manual:
                 st.info(
                     """
-                    **🤖 AI-Powered Analysis Mode**  
-                    This analysis is based on threat intelligence databases and MITRE ATT&CK framework 
+                    **🤖 AI-Powered Analysis Mode** This analysis is based on threat intelligence databases and MITRE ATT&CK framework 
                     without historical incident data from your environment.
                     """
                 )
@@ -627,7 +632,6 @@ def display_alert_analysis_tab_api(rule_name: str, api_client, is_manual: bool =
                     - Historical incident patterns from your environment
                     - Organization-specific metrics (MTTR/MTTD)
                     - Previous response data
-                    - Triaging workflows
                     
                     For complete analysis, ensure the alert exists in your SOC tracker data.
                     """

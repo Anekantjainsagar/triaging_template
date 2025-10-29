@@ -54,21 +54,11 @@ class ImprovedTemplateGenerator:
             print(f"⚠️ Could not initialize Analyzer API Client: {e}")
             self.analyzer_client = None
 
-    def _filter_investigative_steps(self, steps: List[Dict]) -> List[Dict]:
-        """Filter non-investigative steps (remediation, closure, etc.)"""
-        from routes.src.new_steps.step_merger import InvestigationStepMerger
-
-        merger = InvestigationStepMerger()
-        return merger._filter_investigative_steps(steps)
-
     def _process_merged_steps_with_kql(
         self, merged_steps: List[Dict], rule_number: str, profile: Dict
     ) -> List[Dict]:
         """
         Process merged steps and generate KQL for each
-        ✅ KEEP all ORIGINAL steps (from template) regardless of KQL
-        ✅ FILTER AI-GENERATED steps that don't have KQL
-        Returns template rows ready for DataFrame
         """
         template_rows = []
 
@@ -102,7 +92,13 @@ class ImprovedTemplateGenerator:
             kql_query = ""
             kql_explanation = ""
 
-            if self._needs_kql(step_name, explanation):
+            # Explicit check for external tool usage
+            tool_used = step.get("tool", "").lower()
+
+            # ✅ ENHANCED LOGIC: Check tool first, then general _needs_kql
+            if tool_used in ["virustotal", "abuseipdb"]:
+                 print(f"         ℹ️ Skipping KQL for External Tool: {tool_used}")
+            elif self._needs_kql(step_name, explanation):
                 print(f"         🔍 Generating KQL...")
                 kql_query, kql_explanation = self.kql_generator.generate_kql_query(
                     step_name=step_name,
@@ -114,10 +110,10 @@ class ImprovedTemplateGenerator:
                 if kql_query and len(kql_query.strip()) > 30:
                     print(f"         ✅ KQL generated ({len(kql_query)} chars)")
                 else:
-                    print(f"         ℹ️  No KQL for this step (external tool/manual)")
+                    print(f"         ℹ️  No KQL generated (External Tool/Manual/Fallback)")
                     kql_query = ""
             else:
-                print(f"         ℹ️  Step doesn't require KQL (external tool)")
+                print(f"         ℹ️  Step doesn't require KQL (manual/closure)")
 
             # Build template row - KEEP ORIGINAL EVEN IF NO KQL
             row = {
@@ -144,45 +140,58 @@ class ImprovedTemplateGenerator:
         print(f"\n   ✅ Processing AI-GENERATED steps (filtering if no KQL)...")
         ai_processed = 0
         ai_skipped = 0
+        
+        # Adjusting the step numbering based on processed original steps
+        starting_idx = original_processed + 1
 
-        for idx, step in enumerate(ai_generated_steps, 1):
+        for idx, step in enumerate(ai_generated_steps, starting_idx):
             step_name = step.get("step_name", "")
             explanation = step.get("explanation", "")
             source = step.get("source", "unknown")
             priority = step.get("priority", "MEDIUM")
             confidence = step.get("confidence", "MEDIUM")
+            
+            tool_used = step.get("tool", "").lower()
 
-            # ✅ FOR AI-GENERATED: Check if KQL is needed FIRST
-            if not self._needs_kql(step_name, explanation):
-                print(f"      ⏭️  Skipping AI step (no KQL needed): {step_name}")
+            # ✅ FOR AI-GENERATED: Check tool first (e.g., VirusTotal)
+            if tool_used in ["virustotal", "abuseipdb"]:
+                kql_query = ""
+                kql_explanation = "Requires manual checking using external tools (VirusTotal, AbuseIPDB) or the integrated IP reputation checker in the triaging app."
+                print(f"      ✅ Keeping AI step (External Tool): {step_name}")
+                
+            elif not self._needs_kql(step_name, explanation):
+                print(f"      ⏭️  Skipping AI step (no KQL needed/manual): {step_name}")
                 ai_skipped += 1
                 continue
+            
+            # If KQL needed and not an external tool, try to generate it
+            else:
+                print(f"\n      Step {idx}: {step_name}")
+                print(f"         Source: {source} | Priority: {priority}")
+                print(f"         🔍 Generating KQL...")
 
-            print(f"\n      Step {original_processed + ai_processed + 1}: {step_name}")
-            print(f"         Source: {source} | Priority: {priority}")
-            print(f"         🔍 Generating KQL...")
+                kql_query, kql_explanation = self.kql_generator.generate_kql_query(
+                    step_name=step_name,
+                    explanation=explanation,
+                    step_number=idx,
+                    rule_context=profile.get("technical_overview", ""),
+                )
 
-            kql_query, kql_explanation = self.kql_generator.generate_kql_query(
-                step_name=step_name,
-                explanation=explanation,
-                step_number=original_processed + ai_processed + 1,
-                rule_context=profile.get("technical_overview", ""),
-            )
+                # ✅ FOR AI-GENERATED: Skip if KQL generation failed
+                if not (kql_query and len(kql_query.strip()) > 30):
+                    print(f"         ⏭️  Skipping (KQL generation failed)")
+                    ai_skipped += 1
+                    continue
 
-            # ✅ FOR AI-GENERATED: Skip if KQL generation failed
-            if not (kql_query and len(kql_query.strip()) > 30):
-                print(f"         ⏭️  Skipping (KQL generation failed)")
-                ai_skipped += 1
-                continue
+                print(f"         ✅ KQL generated ({len(kql_query)} chars)")
+                print(f"         📝 Explanation: {kql_explanation[:80]}...")
 
-            print(f"         ✅ KQL generated ({len(kql_query)} chars)")
-            print(f"         📝 Explanation: {kql_explanation[:80]}...")
 
             # Build template row for AI-generated step
             row = {
-                "Step": str(original_processed + ai_processed + 1),
+                "Step": str(idx),
                 "Name": step_name,
-                "Explanation": self._build_enhanced_explanation(  # ✅ CORRECT - uses relevance
+                "Explanation": self._build_enhanced_explanation(
                     explanation,
                     step.get("relevance", ""),
                     profile.get("alert_name", ""),
@@ -210,6 +219,7 @@ class ImprovedTemplateGenerator:
         Enhance step explanation using LLM - make it clear and concise
         This is used as a helper when explanation is too vague
         """
+        # ... (rest of _enhance_step_explanation remains the same)
         if not explanation or len(explanation.strip()) == 0:
             return ""
 
@@ -252,14 +262,6 @@ class ImprovedTemplateGenerator:
         """
         Build comprehensive explanation that includes both HOW and WHY
         Uses LLM enhancement if explanation is vague
-
-        Args:
-            explanation: The step explanation (what to check)
-            relevance: Why this matters for the alert (business impact)
-            alert_name: The alert being investigated
-
-        Returns:
-            Enhanced explanation with clear context
         """
         if not explanation:
             return ""
@@ -292,7 +294,8 @@ class ImprovedTemplateGenerator:
         """Determine if step needs KQL query - MORE INCLUSIVE"""
         combined = f"{step_name} {explanation}".lower()
 
-        # ❌ Skip only external tools
+        # ❌ Skip external tools, reporting, and closure steps
+        # This list must be synchronized with what is explicitly NOT given KQL/data_source by the LLM
         skip_keywords = [
             "virustotal",
             "virus total",
@@ -303,12 +306,15 @@ class ImprovedTemplateGenerator:
             "escalate",
             "inform",
             "notify",
+            "report", 
+            "classify", # e.g. "Classify as TP/FP"
+            "manual" # e.g. "Manual investigation"
         ]
 
         if any(keyword in combined for keyword in skip_keywords):
             return False
 
-        # ✅ Include role/permission checks (they need AuditLogs)
+        # ✅ Include all data investigation types
         needs_keywords = [
             "sign-in",
             "signin",
@@ -330,15 +336,22 @@ class ImprovedTemplateGenerator:
             "permission",
             "assignment",
             "group",
-            "membership",  # ✅ ADDED
+            "membership",
             "mfa",
             "authentication",
             "location",
             "oauth",
-            "grant",  # ✅ ADDED
+            "grant",
         ]
 
         return any(keyword in combined for keyword in needs_keywords)
+
+    def _filter_investigative_steps(self, steps: List[Dict]) -> List[Dict]:
+        """Filter non-investigative steps (remediation, closure, etc.)"""
+        from routes.src.new_steps.step_merger import InvestigationStepMerger
+
+        merger = InvestigationStepMerger()
+        return merger._filter_investigative_steps(steps)
 
     def generate_intelligent_template(
         self, rule_number: str, original_steps: List[Dict], rule_context: str = ""
