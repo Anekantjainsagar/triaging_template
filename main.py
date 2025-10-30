@@ -286,8 +286,13 @@ def check_api_status():
 # ============================================================================
 
 
+# ============================================================================
+# UPDATED: main.py display_ai_analysis function
+# ============================================================================
+
+
 def display_ai_analysis(alert_data):
-    """Display AI analysis with improved validation and proper tab structure"""
+    """Display AI analysis with proper state passing to triaging"""
 
     # VALIDATE alert_data STRUCTURE
     if not alert_data:
@@ -304,25 +309,12 @@ def display_ai_analysis(alert_data):
 
     if not alert_name or alert_name == "undefined":
         st.error("❌ Alert name is undefined or missing")
-        st.info(
-            """
-            **Missing Alert Information**
-            
-            The alert data structure is incomplete. Please ensure:
-            1. An alert has been properly selected
-            2. The alert has a valid title or name field
-            3. Try reloading and selecting the alert again
-            """
-        )
-        if st.button("🔄 Go Back"):
-            st.session_state.current_page = "overview"
-            st.rerun()
         return
 
     st.markdown("---")
     st.title("🤖 SOC Hub - AI-Powered Analysis")
 
-    # Display alert info with validation
+    # Display alert info
     col1, col2 = st.columns([2, 1])
     with col1:
         st.markdown(f"### {alert_name}")
@@ -337,54 +329,13 @@ def display_ai_analysis(alert_data):
     st.markdown("---")
 
     api_client = get_analyzer_client()
-
-    # Check API health
     is_healthy, health_data = check_api_status()
 
     if not is_healthy:
         st.error("❌ SOC Analysis API Not Available")
-        st.info(
-            "**Backend Required**: The AI analysis features require the backend to be running."
-        )
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("### 🔧 Troubleshooting Steps:")
-            st.markdown(
-                """
-                1. **Start Backend:**
-                   ```bash
-                   cd backend
-                   python -m uvicorn main:app --reload
-                   ```
-
-                2. **Check Python Version:** Python 3.10+
-
-                3. **Install Dependencies:**
-                   ```bash
-                   pip install -r requirements.txt
-                   ```
-
-                4. **Check API URL:**
-                   - Frontend expects: `http://localhost:8000`
-                   - Verify in `.env`: `API_URL=http://localhost:8000`
-                """
-            )
-        with col2:
-            st.markdown("### ℹ️ Status Info:")
-            st.markdown(f"API Status: {health_data.get('status', 'Unknown')}")
-            if health_data.get("error"):
-                st.markdown(f"**Error:** {health_data['error']}")
-
-            if st.button("🔄 Retry Connection"):
-                st.cache_data.clear()
-                st.rerun()
-
         return
 
-    # ========================================================================
-    # FIXED: Initialize analysis state
-    # ========================================================================
+    # Create tabs
     sanitized_name = (
         alert_name.replace(" ", "_").replace("/", "_").replace("\\", "_").lower()
     )
@@ -392,19 +343,16 @@ def display_ai_analysis(alert_data):
         f"analysis_{sanitized_name}_{hashlib.md5(alert_name.encode()).hexdigest()}"
     )
 
-    # Initialize analysis if not already done
+    # Initialize if needed
     if analysis_key not in st.session_state:
         st.session_state[f"{analysis_key}_in_progress"] = False
 
-    # ========================================================================
-    # FIXED: Create tab structure (3 tabs for manual, 4 for with historical data)
-    # ========================================================================
+    # Create tab structure
     source = alert_data.get("source", "unknown")
     is_manual = source == "alert_details"
     has_historical_data = alert_data.get("historical_data") is not None
 
     if is_manual or not has_historical_data:
-        # Manual alert or no historical data - 2 tabs
         tab1, tab2 = st.tabs(["🤖 AI Threat Analysis", "🔍 AI Triaging"])
 
         with tab1:
@@ -413,42 +361,39 @@ def display_ai_analysis(alert_data):
             )
 
         with tab2:
-            # Initialize triaging state
+            # âœ… FIXED: Pass full alert_data to triaging
             rule_number = alert_data.get("rule_number", f"ALERT_{id(alert_data)}")
-            st.session_state.triaging_selected_alert = alert_data
-            display_triaging_workflow(rule_number)
+
+            # âœ… IMPORTANT: Store the full alert data for triaging
+            enhanced_alert_data = alert_data.copy()
+            enhanced_alert_data["rule_number"] = rule_number
+            enhanced_alert_data["alert_name"] = alert_name
+
+            # âœ… If we have cached analysis, pass it along
+            if analysis_key in st.session_state:
+                result = st.session_state[analysis_key]
+                if result.get("success"):
+                    enhanced_alert_data["analysis_text"] = result.get("analysis", "")
+
+            # Call triaging with full data
+            display_triaging_workflow(rule_number, alert_data=enhanced_alert_data)
 
             st.info(
                 """
                 **Want Historical Analysis?** If you have historical incident data for this alert, 
-                go back and search using the exact rule name from your SOC tracker to get:
-                - 📊 Historical incident patterns
-                - 📈 Performance metrics (MTTR/MTTD)
-                - 🔍 Enhanced AI triaging workflows
-                - 🎯 True/False positive predictions
+                go back and search using the exact rule name from your SOC tracker.
                 """
             )
     else:
         # Has historical data - 4 tabs
-        predictions_enabled = st.session_state.get("triaging_complete", False)
-
-        if predictions_enabled:
-            tab1, tab2, tab3, tab4 = st.tabs(
-                [
-                    "🤖 AI Threat Analysis",
-                    "📊 Historical Analysis",
-                    "🔍 AI Triaging",
-                    "📮 Predictions & MITRE",
-                ]
-            )
-        else:
-            tab1, tab2, tab3 = st.tabs(
-                [
-                    "🤖 AI Threat Analysis",
-                    "📊 Historical Analysis",
-                    "🔍 AI Triaging",
-                ]
-            )
+        tab1, tab2, tab3, tab4 = st.tabs(
+            [
+                "🤖 AI Threat Analysis",
+                "📊 Historical Analysis",
+                "🔍 AI Triaging",
+                "📮 Predictions & MITRE",
+            ]
+        )
 
         with tab1:
             display_ai_threat_analysis_tab(
@@ -456,7 +401,6 @@ def display_ai_analysis(alert_data):
             )
 
         with tab2:
-            # Display historical analysis
             historical_data = alert_data.get("historical_data")
             if historical_data is not None and not historical_data.empty:
                 display_historical_analysis_tab(historical_data)
@@ -464,23 +408,31 @@ def display_ai_analysis(alert_data):
                 st.info("✅ No historical data available for this alert")
 
         with tab3:
-            # Initialize triaging state
+            # âœ… FIXED: Pass full alert_data
             rule_number = alert_data.get("rule_number", f"ALERT_{id(alert_data)}")
-            st.session_state.triaging_selected_alert = alert_data
-            display_triaging_workflow(rule_number)
+            enhanced_alert_data = alert_data.copy()
+            enhanced_alert_data["rule_number"] = rule_number
+            enhanced_alert_data["alert_name"] = alert_name
 
-        if predictions_enabled:
-            with tab4:
-                display_predictions_tab()
+            if analysis_key in st.session_state:
+                result = st.session_state[analysis_key]
+                if result.get("success"):
+                    enhanced_alert_data["analysis_text"] = result.get("analysis", "")
+
+            display_triaging_workflow(rule_number, alert_data=enhanced_alert_data)
+
+        with tab4:
+            st.markdown("### 📮 True/False Positive Analyzer")
+            st.info(
+                "Complete the AI Triaging workflow first to unlock predictions analysis"
+            )
 
 
 def display_ai_threat_analysis_tab(alert_name, api_client, analysis_key, alert_data):
     """Display AI threat analysis for an alert"""
 
     if analysis_key in st.session_state and st.session_state[analysis_key]:
-        # Analysis cached, display it
         result = st.session_state[analysis_key]
-
         if result.get("success"):
             analysis = result.get("analysis", "")
 
@@ -488,128 +440,62 @@ def display_ai_threat_analysis_tab(alert_name, api_client, analysis_key, alert_d
             st.markdown("### 🔋 Comprehensive Threat Intelligence Report")
             st.markdown("</div>", unsafe_allow_html=True)
 
-            # Parse and display analysis with enhanced formatting
+            # Display sections...
             sections = analysis.split("## ")
-
             for section in sections:
                 if not section.strip():
                     continue
+                st.markdown(f"## {section}")
 
-                # Format different section types
-                if "MITRE ATT&CK" in section.upper():
-                    st.markdown(
-                        '<div class="analysis-section mitre-technique">',
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(f"## {section}")
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-                elif "THREAT ACTOR" in section.upper():
-                    st.markdown(
-                        '<div class="analysis-section threat-actor">',
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(f"## {section}")
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-                elif (
-                    "RESPONSE ACTIONS" in section.upper()
-                    or "IMMEDIATE" in section.upper()
-                ):
-                    st.markdown(
-                        '<div class="analysis-section action-item">',
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(f"## {section}")
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-                else:
-                    st.markdown(
-                        '<div class="analysis-section">', unsafe_allow_html=True
-                    )
-                    st.markdown(f"## {section}")
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-            # Download option
+            # Download button
             st.markdown("---")
             col1, col2, col3 = st.columns([1, 1, 1])
             with col2:
                 st.download_button(
-                    label="📥 Download Full Analysis Report",
+                    label="📥 Download Analysis Report",
                     data=analysis,
                     file_name=f"threat_analysis_{alert_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                     mime="text/markdown",
                     use_container_width=True,
                     type="primary",
                 )
-
-            # Refresh button
-            if st.button("🔄 Re-run Analysis", key=f"rerun_{analysis_key}"):
-                if analysis_key in st.session_state:
-                    del st.session_state[analysis_key]
-                st.rerun()
-
-        else:
-            error_msg = result.get("error", "Unknown error")
-            st.error(f"❌ Analysis failed: {error_msg}")
-
-            if st.button("🔄 Retry Analysis", key=f"retry_{analysis_key}"):
-                if analysis_key in st.session_state:
-                    del st.session_state[analysis_key]
-                st.rerun()
-
     else:
         # Run analysis
-        if not st.session_state.get(f"{analysis_key}_in_progress"):
-            progress_placeholder = st.empty()
-            result_placeholder = st.empty()
+        progress_placeholder = st.empty()
 
-            try:
-                with progress_placeholder.container():
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
+        with progress_placeholder.container():
+            progress_bar = st.progress(0)
+            status_text = st.empty()
 
-                    # Simulate progress
-                    status_text.text("🚀 Initializing AI analysis engine...")
-                    progress_bar.progress(15)
-                    time.sleep(0.3)
+            status_text.text("🚀 Initializing AI analysis engine...")
+            progress_bar.progress(20)
+            time.sleep(0.3)
 
-                    status_text.text("🔍 Analyzing threat patterns...")
-                    progress_bar.progress(35)
-                    time.sleep(0.3)
+            status_text.text("🔍 Analyzing threat patterns...")
+            progress_bar.progress(50)
+            time.sleep(0.3)
 
-                    status_text.text("🌐 Researching threat intelligence...")
-                    progress_bar.progress(60)
-                    time.sleep(0.3)
+            status_text.text("🌐 Researching threat intelligence...")
+            progress_bar.progress(75)
 
-                    # CALL API
-                    result = api_client.analyze_alert(alert_name)
+            # Call API
+            result = api_client.analyze_alert(alert_name)
 
-                    # Update progress
-                    progress_bar.progress(85)
-                    status_text.text("📊 Finalizing analysis...")
-                    time.sleep(0.2)
-                    progress_bar.progress(100)
-                    status_text.text("✅ Analysis complete!")
+            progress_bar.progress(95)
+            status_text.text("📊 Finalizing analysis...")
+            time.sleep(0.2)
+            progress_bar.progress(100)
 
-                    time.sleep(0.5)
-                    progress_placeholder.empty()
+            time.sleep(0.5)
+            progress_placeholder.empty()
 
-                # Cache result
-                st.session_state[analysis_key] = result
-                st.session_state[f"{analysis_key}_in_progress"] = False
+        # Cache and display
+        st.session_state[analysis_key] = result
 
-                if result.get("success"):
-                    st.rerun()
-                else:
-                    st.error(f"❌ Analysis failed: {result.get('error')}")
-
-            except Exception as e:
-                progress_placeholder.empty()
-                st.error(f"❌ Unexpected Error: {str(e)}")
-                st.session_state[f"{analysis_key}_in_progress"] = False
+        if result.get("success"):
+            st.rerun()
         else:
-            st.info("⏳ Analysis in progress...")
+            st.error(f"❌ Analysis failed: {result.get('error')}")
 
 
 # ============================================================================

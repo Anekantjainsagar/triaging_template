@@ -1,3 +1,7 @@
+# ============================================================================
+# FIXED: triaging_integrated.py - Proper state management
+# ============================================================================
+
 import streamlit as st
 import traceback
 import pandas as pd
@@ -10,27 +14,48 @@ from routes.src.template_generator import EnhancedTemplateGenerator
 from components.triaging.step2_enhance import show_page as step2_enhance
 
 
-def initialize_triaging_state(rule_number: str):
+def initialize_triaging_state(rule_number: str, alert_data: dict = None):
     """
-    ✅ MINIMAL initialization - only what's needed for template enhancement
+    âœ… FIXED: Accept alert_data directly to avoid state loss
 
     Args:
         rule_number: The rule number (e.g., "297" or "Rule#297")
+        alert_data: Full alert data dict with title, description, etc.
     """
 
-    # ✅ Store ONLY the rule number and alert object
-    if "triaging_rule_number" not in st.session_state:
-        st.session_state.triaging_rule_number = rule_number
+    # âœ… Store FULL alert data, not just rule number
+    if alert_data:
+        # Use provided alert data
+        st.session_state.triaging_selected_alert = {
+            "rule": rule_number,
+            "rule_number": rule_number,
+            "alert_name": alert_data.get("title")
+            or alert_data.get("alert_name")
+            or rule_number,
+            "description": alert_data.get("description")
+            or alert_data.get("alert_name")
+            or rule_number,
+            "incident": alert_data.get("incident_id") or f"ALERT_{id(alert_data)}",
+            "severity": alert_data.get("severity", "Unknown"),
+            "status": alert_data.get("status", "Unknown"),
+            "source": alert_data.get("source", "manual"),
+            "is_manual": alert_data.get("source") == "alert_details"
+            or alert_data.get("is_manual", False),
+            # âœ… CRITICAL: Pass analysis text if available
+            "analysis_text": alert_data.get("analysis_text", ""),
+        }
+    else:
+        # Fallback
+        st.session_state.triaging_selected_alert = {
+            "rule": rule_number,
+            "rule_number": rule_number,
+            "alert_name": rule_number,
+            "incident": f"TEMPLATE_GEN_{rule_number}",
+            "description": f"Template Generation for Rule {rule_number}",
+            "is_manual": False,
+        }
 
-    # 🔧 FIX: Always set/overwrite the alert object (don't check if exists)
-    st.session_state.triaging_selected_alert = {
-        "rule": rule_number,
-        "rule_number": rule_number,
-        "incident": f"TEMPLATE_GEN_{rule_number}",
-        "description": f"Template Generation for Rule {rule_number}",
-    }
-
-    # ✅ Initialize other minimal state
+    # âœ… Initialize other minimal state
     defaults = {
         "triaging_step": 2,  # Start at template enhancement
         "triaging_plan": None,
@@ -54,28 +79,54 @@ def initialize_triaging_state(rule_number: str):
     return True
 
 
-def display_triaging_workflow(rule_number: str):
+def display_triaging_workflow(rule_number: str, alert_data: dict = None):
+    """
+    âœ… FIXED: Accept alert_data parameter to preserve state
+
+    Args:
+        rule_number: Rule identifier
+        alert_data: Full alert data with title, description, analysis, etc.
+    """
 
     st.markdown("## 🔍 AI-Powered Template Enhancement")
     st.markdown("---")
 
-    # Check if this is manual analysis
+    # âœ… FIXED: Initialize with alert_data if provided
+    if alert_data:
+        initialize_triaging_state(rule_number, alert_data)
+
+    # Get the alert from session state
     selected_alert = st.session_state.get("triaging_selected_alert", {})
     is_manual = selected_alert.get("is_manual", False)
+    alert_name = selected_alert.get("alert_name", rule_number)
+
+    # âœ… DEBUG OUTPUT
+    print(f"\n{'='*80}")
+    print(f"🔍 TRIAGING WORKFLOW INITIALIZED")
+    print(f"{'='*80}")
+    print(f"Rule Number: {rule_number}")
+    print(f"Alert Name: {alert_name}")
+    print(f"Is Manual: {is_manual}")
+    print(f"Source: {selected_alert.get('source', 'unknown')}")
+    print(f"Alert Data Keys: {selected_alert.keys()}")
+    print(f"{'='*80}\n")
 
     if is_manual:
         st.info(
             "🤖 **Manual Alert Mode** - Generating investigation steps from AI analysis..."
         )
 
-        # ✅ IMPROVED: Better checking and debugging
+        # âœ… IMPROVED: Better checking and debugging
         analysis_text = st.session_state.get("manual_analysis_text", "").strip()
-        alert_name = st.session_state.get("manual_alert_name", rule_number)
 
-        # Debug info
-        print(f"DEBUG: is_manual = {is_manual}")
-        print(f"DEBUG: analysis_text length = {len(analysis_text)}")
-        print(f"DEBUG: alert_name = {alert_name}")
+        # âœ… FALLBACK: Check triaging_selected_alert for analysis
+        if not analysis_text:
+            analysis_text = selected_alert.get("analysis_text", "").strip()
+
+        print(f"Analysis Text Length: {len(analysis_text)}")
+        print(
+            f"Analysis Text Preview: {analysis_text[:200] if analysis_text else 'EMPTY'}"
+        )
 
         if not analysis_text or len(analysis_text) < 100:
             st.warning(
@@ -95,13 +146,13 @@ def display_triaging_workflow(rule_number: str):
             st.markdown("---")
             col1, col2, col3 = st.columns(3)
             with col1:
-                if st.button("👈 Go to AI Analysis Tab", width="stretch"):
+                if st.button("👈 Go to AI Analysis Tab", key="back_to_analysis"):
                     st.rerun()
 
             return
 
-        # ✅ Analysis is ready - proceed with generation
-        print(f"✅ Analysis ready, proceeding with step generation")
+        # âœ… Analysis is ready - proceed with generation
+        print(f"✅ Analysis ready, proceeding with step generation for: {alert_name}")
 
         try:
             # Initialize template generator
@@ -178,14 +229,13 @@ def display_triaging_workflow(rule_number: str):
 
         except Exception as e:
             st.error(f"❌ Error generating steps: {str(e)}")
-            with st.expander("🔍 View Error Details"):
-                import traceback
-
+            print(f"ERROR: {traceback.format_exc()}")
+            with st.expander("🔧 View Error Details"):
                 st.code(traceback.format_exc())
 
         return
 
-    # ✅ ORIGINAL FLOW: Template-based triaging
+    # âœ… ORIGINAL FLOW: Template-based triaging
     print(f"DEBUG: Using template-based triaging for {rule_number}")
 
     init_key = f"triaging_init_{rule_number}"
@@ -193,7 +243,7 @@ def display_triaging_workflow(rule_number: str):
     if init_key not in st.session_state:
         st.info("🎯 Initializing template enhancement...")
 
-        if not initialize_triaging_state(rule_number):
+        if not initialize_triaging_state(rule_number, alert_data):
             st.error("❌ Failed to initialize")
             return
 
@@ -227,9 +277,7 @@ def display_triaging_workflow(rule_number: str):
 
     except Exception as e:
         st.error(f"❌ Error: {str(e)}")
-        with st.expander("🔍 View Error Details"):
-            import traceback
-
+        with st.expander("🔧 View Error Details"):
             st.code(traceback.format_exc())
 
     # Action buttons
@@ -253,6 +301,7 @@ def display_triaging_workflow(rule_number: str):
             st.json(
                 {
                     "rule_number": rule_num,
+                    "alert_name": alert_name,
                     "current_step": st.session_state.triaging_step,
                     "initialized": init_key in st.session_state,
                     "template_found": st.session_state.get("original_steps")
