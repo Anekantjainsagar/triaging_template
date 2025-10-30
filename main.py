@@ -1,11 +1,23 @@
 import math
 import json
 import streamlit as st
+import pandas as pd
 from soc_utils import *
+from datetime import datetime
+import hashlib
+import tempfile
+import shutil
+import os
+import time
+
+# Import SOC analysis components
+from api_client.analyzer_api_client import get_analyzer_client
+from components.triaging_integrated import display_triaging_workflow
+from components.historical_analysis import display_historical_analysis_tab
 
 # Page configuration
 st.set_page_config(
-    page_title="Microsoft Sentinel - Incidents Dashboard",
+    page_title="Microsoft Sentinel - SOC Intelligence Dashboard",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -84,54 +96,479 @@ st.markdown(
         font-size: 16px;
         color: #666;
     }
-    .soc-hub-btn {
-        background: linear-gradient(45deg, #FF6B6B, #FF8E53);
+    .threat-intel-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.3s ease;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 15px 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
-    .soc-hub-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
-    }
-    .redirect-notice {
-        background: linear-gradient(45deg, #667eea, #764ba2);
-        color: white;
+    .analysis-section {
+        background-color: #f8f9fa;
+        border-left: 4px solid #007bff;
         padding: 15px;
-        border-radius: 8px;
         margin: 10px 0;
-        text-align: center;
+        border-radius: 5px;
+    }
+    analysis-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin: 20px 0;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .analysis-section {
+        background-color: rgba(255, 255, 255, 0.95);
+        color: #333;
+        border-left: 5px solid #667eea;
+        padding: 20px;
+        margin: 15px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+    
+    .analysis-section h2 {
+        color: #667eea;
+        font-size: 1.4em;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 10px;
+    }
+    
+    .analysis-section h3 {
+        color: #764ba2;
+        font-size: 1.2em;
+        margin-top: 15px;
+        margin-bottom: 10px;
+    }
+    
+    .mitre-technique {
+        background-color: #fff3e0;
+        border-left: 4px solid #f57c00;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 6px;
+    }
+    
+    .threat-actor {
+        background-color: #ffebee;
+        border-left: 4px solid #d32f2f;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 6px;
+    }
+    
+    .action-item {
+        background-color: #e8f5e9;
+        border-left: 4px solid #388e3c;
+        padding: 10px;
+        margin: 8px 0;
+        border-radius: 6px;
+    }
+    
+    .risk-badge-critical {
+        background-color: #d32f2f;
+        color: white;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        display: inline-block;
+        margin: 5px 0;
+    }
+    
+    .risk-badge-high {
+        background-color: #f57c00;
+        color: white;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        display: inline-block;
+        margin: 5px 0;
+    }
+    
+    .risk-badge-medium {
+        background-color: #fbc02d;
+        color: #333;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        display: inline-block;
+        margin: 5px 0;
     }
     </style>
 """,
     unsafe_allow_html=True,
 )
 
+# ============================================================================
+# Session State Initialization
+# ============================================================================
 
-def redirect_to_soc_hub(alert_data, alert_name):
-    """Redirect to SOC Hub page with alert data"""
-    # Store for SOC Hub to access
-    st.session_state.soc_hub_alert = alert_data
-    st.session_state.trigger_soc_analysis = True
 
-    # Show success message with redirect notice
-    st.success(f"✅ Alert '{alert_name}' prepared for SOC Hub analysis!")
-    st.markdown(
-        f'<div class="redirect-notice">'
-        f"🚀 <strong>Redirecting to SOC Hub...</strong><br>"
-        f"Automatically opening analysis for: {alert_name}"
-        f"</div>",
-        unsafe_allow_html=True,
+def initialize_session_state():
+    """Initialize all session state variables and auto-load incidents"""
+    defaults = {
+        "current_page": "overview",
+        "incidents": [],
+        "selected_incident": None,
+        "current_page_num": 1,
+        "soc_analysis_data": None,
+        "selected_rule_data": None,
+        # Triaging-specific states
+        "triaging_step": 2,
+        "triaging_alerts": [],
+        "triaging_selected_alert": None,
+        "triaging_template_content": None,
+        "triaging_plan": None,
+        "triaging_output": {},
+        "triaging_predictions": [],
+        "progressive_predictions": {},
+        "triaging_initialized": False,
+        "rule_history": {},
+        "current_step_index": 0,
+        "analysis_complete": False,
+        "excel_template_data": None,
+        "original_steps": None,
+        "enhanced_steps": None,
+        "validation_report": None,
+        "real_time_prediction": None,
+        "triaging_complete": False,
+        "predictions_excel_data": None,
+        "predictions_excel_filename": None,
+        "predictions_uploaded": False,
+        "auto_loaded": False,  # New flag to track auto-load
+    }
+
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+    # Auto-load incidents from file on first run
+    if not st.session_state.auto_loaded and not st.session_state.incidents:
+        try:
+            incidents = load_incidents_from_file()
+            if incidents:
+                st.session_state.incidents = incidents
+                st.session_state.auto_loaded = True
+                # Don't show success message here, will show in sidebar
+        except Exception as e:
+            # Silently fail, user can manually load
+            pass
+
+
+initialize_session_state()
+
+# ============================================================================
+# API Status Check
+# ============================================================================
+
+
+@st.cache_data(ttl=60)
+def check_api_status():
+    """Check if backend API is running"""
+    try:
+        api_client = get_analyzer_client()
+        health = api_client.health_check()
+
+        if health.get("status") == "healthy":
+            return True, health
+        else:
+            return False, health
+    except Exception as e:
+        return False, {"status": "error", "error": str(e)}
+
+
+# ============================================================================
+# AI Analysis Functions (Real API Integration)
+# ============================================================================
+
+
+def display_ai_analysis(alert_data):
+    """Display AI analysis with improved validation"""
+
+    # VALIDATE alert_data STRUCTURE
+    if not alert_data:
+        st.error("❌ No alert data provided")
+        return
+
+    # EXTRACT AND VALIDATE alert name
+    alert_name = (
+        alert_data.get("title")
+        or alert_data.get("alert_name")
+        or alert_data.get("rule_name")
+        or alert_data.get("name")
     )
 
-    # Use query parameters for navigation
-    st.markdown(
-        f"[Click here to go to SOC Hub analysis >](/SOC_Hub)", unsafe_allow_html=True
+    if not alert_name or alert_name == "undefined":
+        st.error("❌ Alert name is undefined or missing")
+        st.info(
+            """
+            **Missing Alert Information**
+            
+            The alert data structure is incomplete. Please ensure:
+            1. An alert has been properly selected
+            2. The alert has a valid title or name field
+            3. Try reloading and selecting the alert again
+            """
+        )
+        if st.button("🔄 Go Back"):
+            st.session_state.current_page = "overview"
+            st.rerun()
+        return
+
+    st.markdown("---")
+    st.title("🤖 SOC Hub - AI-Powered Analysis")
+
+    # Display alert info with validation
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.markdown(f"### {alert_name}")
+        description = alert_data.get("description", "No description available")
+        st.markdown(f"**Description:** {description}")
+    with col2:
+        severity = alert_data.get("severity", "Unknown")
+        status = alert_data.get("status", "Unknown")
+        st.markdown(f"**Severity:** `{severity}`")
+        st.markdown(f"**Status:** `{status}`")
+
+    st.markdown("---")
+
+    api_client = get_analyzer_client()
+
+    # Check API health
+    is_healthy, health_data = check_api_status()
+
+    if not is_healthy:
+        st.error("❌ SOC Analysis API Not Available")
+        st.info(
+            "**Backend Required**: The AI analysis features require the backend to be running."
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("### 🔧 Troubleshooting Steps:")
+            st.markdown(
+                """
+                1. **Start Backend:**
+                   ```bash
+                   cd backend
+                   python -m uvicorn main:app --reload
+                   ```
+
+                2. **Check Python Version:** Python 3.10+
+
+                3. **Install Dependencies:**
+                   ```bash
+                   pip install -r requirements.txt
+                   ```
+
+                4. **Check API URL:**
+                   - Frontend expects: `http://localhost:8000`
+                   - Verify in `.env`: `API_URL=http://localhost:8000`
+                """
+            )
+        with col2:
+            st.markdown("### ℹ️ Status Info:")
+            st.markdown(f"API Status: {health_data.get('status', 'Unknown')}")
+            if health_data.get("error"):
+                st.markdown(f"**Error:** {health_data['error']}")
+
+            if st.button("🔄 Retry Connection"):
+                st.cache_data.clear()
+                st.rerun()
+
+        return
+
+    # AI Analysis Section
+    st.markdown("### 🔍 AI Threat Intelligence Analysis")
+
+    # CREATE UNIQUE KEY - SANITIZE alert_name
+    sanitized_name = (
+        alert_name.replace(" ", "_").replace("/", "_").replace("\\", "_").lower()
     )
+    analysis_key = (
+        f"analysis_{sanitized_name}_{hashlib.md5(alert_name.encode()).hexdigest()}"
+    )
+
+    if analysis_key not in st.session_state:
+        progress_placeholder = st.empty()
+        result_placeholder = st.empty()
+
+        try:
+            with progress_placeholder.container():
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+
+                # Simulate progress
+                status_text.text("🚀 Initializing AI analysis engine...")
+                progress_bar.progress(15)
+                time.sleep(0.5)
+
+                status_text.text("🔍 Analyzing threat patterns...")
+                progress_bar.progress(35)
+                time.sleep(0.5)
+
+                status_text.text("🌐 Researching threat intelligence...")
+                progress_bar.progress(60)
+
+                # CALL API WITH VALIDATION
+                result = api_client.analyze_alert(alert_name)
+
+                # Update progress
+                progress_bar.progress(85)
+                status_text.text("📊 Finalizing analysis...")
+                time.sleep(0.3)
+                progress_bar.progress(100)
+                status_text.text("✅ Analysis complete!")
+
+                time.sleep(0.5)
+                progress_placeholder.empty()
+
+            # Cache result
+            st.session_state[analysis_key] = result
+
+        except Exception as e:
+            progress_placeholder.empty()
+            st.error(f"❌ Unexpected Error: {str(e)}")
+            return
+
+    result = st.session_state[analysis_key]
+
+    if result.get("success"):
+        analysis = result.get("analysis", "")
+
+        # Store for triaging workflow
+        st.session_state.manual_analysis_text = analysis
+        st.session_state.manual_alert_name = alert_name
+
+        # Parse and display analysis with enhanced formatting
+        st.markdown('<div class="analysis-container">', unsafe_allow_html=True)
+        st.markdown("### 📋 Comprehensive Threat Intelligence Report")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # Split analysis into sections and format each
+        sections = analysis.split("## ")
+
+        for section in sections:
+            if not section.strip():
+                continue
+
+            # Format different section types
+            if "MITRE ATT&CK" in section.upper():
+                st.markdown(
+                    '<div class="analysis-section mitre-technique">',
+                    unsafe_allow_html=True,
+                )
+                st.markdown(f"## {section}")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            elif "THREAT ACTOR" in section.upper():
+                st.markdown(
+                    '<div class="analysis-section threat-actor">',
+                    unsafe_allow_html=True,
+                )
+                st.markdown(f"## {section}")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            elif (
+                "RESPONSE ACTIONS" in section.upper() or "IMMEDIATE" in section.upper()
+            ):
+                st.markdown(
+                    '<div class="analysis-section action-item">', unsafe_allow_html=True
+                )
+                st.markdown(f"## {section}")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            else:
+                st.markdown('<div class="analysis-section">', unsafe_allow_html=True)
+                st.markdown(f"## {section}")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+        # Download option
+        st.markdown("---")
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.download_button(
+                label="📥 Download Full Analysis Report",
+                data=analysis,
+                file_name=f"threat_analysis_{sanitized_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                mime="text/markdown",
+                use_container_width=True,
+                type="primary",
+            )
+
+    else:
+        # Handle different error types
+        error_msg = result.get("error", "Unknown error")
+
+        if "undefined" in error_msg.lower() or "empty" in error_msg.lower():
+            st.error("❌ Invalid Alert Name")
+            st.markdown(
+                f"""
+                The alert name is invalid: **{alert_name}**
+                
+                **Solutions:**
+                1. Go back and select a valid alert
+                2. Ensure the alert has a proper title
+                3. Try reloading the page
+                
+                Error details: {error_msg}
+                """
+            )
+
+        elif "timeout" in error_msg.lower():
+            st.warning("⏱️ Analysis Timeout")
+            st.markdown(
+                """
+                The analysis took longer than expected. This can happen when:
+                - The AI service is under heavy load
+                - Network latency is high
+                - The alert analysis is complex
+
+                **Try again** - the request may complete on retry.
+                """
+            )
+
+        elif "not found" in error_msg.lower() or "404" in error_msg:
+            st.warning("⚠️ Analysis Service Issue")
+            st.markdown(
+                "The historical data for this alert could not be found, but AI analysis is still available."
+            )
+
+        elif "connection" in error_msg.lower():
+            st.error("🔌 Backend Connection Error")
+            st.markdown(
+                f"Cannot reach backend: {error_msg}\n\nPlease ensure the backend is running."
+            )
+
+        elif "rate limit" in error_msg.lower() or "429" in error_msg:
+            st.warning("⚠️ API Rate Limit Hit")
+            st.markdown(
+                f"""
+                The API is temporarily rate limited.
+                
+                **Please wait a moment and try again.**
+                
+                Error: {error_msg}
+                """
+            )
+
+        else:
+            st.error(f"❌ Analysis Failed: {error_msg}")
+
+        # Retry button
+        if st.button("🔄 Retry Analysis"):
+            if analysis_key in st.session_state:
+                del st.session_state[analysis_key]
+            st.rerun()
+
+
+# ============================================================================
+# Alert Display Functions
+# ============================================================================
 
 
 def display_alert(alert, entities_data):
@@ -143,7 +580,6 @@ def display_alert(alert, entities_data):
     status = props.get("status", "Unknown")
     description = props.get("description", "")
 
-    # Create accordion header with severity and status badges
     accordion_title = f"{alert_name} — {severity} • {status}"
 
     with st.expander(accordion_title, expanded=False):
@@ -159,14 +595,12 @@ def display_alert(alert, entities_data):
         with col2:
             st.markdown(f"*Status: {status}*")
         with col3:
-            # ✅ NEW: SOC Hub Analysis Button for each alert
             if st.button(
                 "🚀 Analyze in SOC Hub",
-                key=f"soc_hub_{alert_name}_{id(alert)}",
+                key=f"soc_analysis_{alert_name}_{id(alert)}",
                 help="Open this alert in SOC Hub for AI-powered analysis",
                 type="primary",
             ):
-                # Store alert data for SOC Hub
                 alert_data = {
                     "title": alert_name,
                     "description": description or alert_name,
@@ -176,12 +610,12 @@ def display_alert(alert, entities_data):
                     "entities": entities_data,
                     "source": "alert_details",
                 }
-
-                redirect_to_soc_hub(alert_data, alert_name)
+                st.session_state.soc_analysis_data = alert_data
+                st.session_state.current_page = "soc_analysis"
+                st.rerun()
 
         st.divider()
 
-        # Alert description
         if description:
             st.markdown(f"**Description:** _{description}_")
 
@@ -210,13 +644,12 @@ def display_alert(alert, entities_data):
             if techniques:
                 st.markdown(f"Techniques: {', '.join(techniques)}")
 
-        # Entities associated with this alert
+        # Entities
         if entities_data and "entities" in entities_data:
             alert_entities = entities_data["entities"]
             if alert_entities:
                 st.markdown("**Associated Entities:**")
 
-                # Group entities by type
                 entities_by_type = {}
                 for entity in alert_entities:
                     kind = entity.get("kind", "Unknown")
@@ -224,7 +657,6 @@ def display_alert(alert, entities_data):
                         entities_by_type[kind] = []
                     entities_by_type[kind].append(entity)
 
-                # Display entities by type in nested expanders
                 for entity_type, entities in entities_by_type.items():
                     with st.expander(
                         f"📌 {entity_type} ({len(entities)})", expanded=False
@@ -245,13 +677,10 @@ def display_incident_overview(incident, index):
     incident_number = props.get("incidentNumber", "N/A")
     created = props.get("createdTimeUtc")
 
-    # Get alert count
     additional_data = props.get("additionalData", {})
     alert_count = additional_data.get("alertsCount", 0)
 
-    # Create a container for the incident card
     with st.container():
-        # Display column headers on first incident
         if index == 0 or (index % 50 == 0):
             col1, col2, col3, col4, col5, col6 = st.columns([1, 4, 1.5, 1.5, 1.5, 1.5])
             with col1:
@@ -293,7 +722,7 @@ def display_incident_overview(incident, index):
         with col6:
             if st.button("View Details", key=f"view_{index}"):
                 st.session_state.selected_incident = incident
-                st.session_state.page = "detail"
+                st.session_state.current_page = "detail"
                 st.rerun()
 
         if created:
@@ -315,10 +744,10 @@ def display_incident_detail(incident):
 
     # Back button
     if st.button("← Back to Incidents List"):
-        st.session_state.page = "overview"
+        st.session_state.current_page = "overview"
         st.rerun()
 
-    st.title(f"🔔 Incident #{incident_number}")
+    st.title(f"🔍 Incident #{incident_number}")
     st.markdown(f"## {title}")
 
     st.divider()
@@ -350,14 +779,14 @@ def display_incident_detail(incident):
 
     st.divider()
 
-    # ✅ NEW: Quick Analysis Section for entire incident
+    # Quick Analysis Section
     st.markdown("### 🤖 Quick Analysis")
 
     col1, col2 = st.columns([3, 1])
 
     with col1:
         st.info(
-            f"Automatically analyze this incident using AI threat intelligence without waiting for historical data lookup."
+            f"Automatically analyze this incident using AI threat intelligence and historical data."
         )
 
     with col2:
@@ -367,7 +796,6 @@ def display_incident_detail(incident):
             type="primary",
             help="Opens SOC Hub with this incident pre-loaded for AI analysis",
         ):
-            # Store incident data for SOC Hub
             incident_data = {
                 "title": title,
                 "description": description or title,
@@ -378,8 +806,9 @@ def display_incident_detail(incident):
                 "full_incident": incident,
                 "source": "incident_details",
             }
-
-            redirect_to_soc_hub(incident_data, title)
+            st.session_state.soc_analysis_data = incident_data
+            st.session_state.current_page = "soc_analysis"
+            st.rerun()
 
     st.divider()
 
@@ -412,7 +841,6 @@ def display_incident_detail(incident):
     st.markdown(f"### 🚨 Alerts ({alert_count})")
 
     if alert_count > 0:
-        # Check if we have cached details
         cache_key = f"incident_details_{incident_id}"
 
         if cache_key not in st.session_state:
@@ -458,27 +886,13 @@ def display_incident_detail(incident):
             st.write(f"**Email:** {owner.get('email')}")
 
 
-# Main application
+# ============================================================================
+# Main Application
+# ============================================================================
+
+
 def main():
-    # Initialize session state
-    if "page" not in st.session_state:
-        st.session_state.page = "overview"
-
-    if "incidents" not in st.session_state:
-        st.session_state.incidents = load_incidents_from_file()
-
-    if "selected_incident" not in st.session_state:
-        st.session_state.selected_incident = None
-
-    if "current_page" not in st.session_state:
-        st.session_state.current_page = 1
-
-    # ✅ NEW: Initialize SOC Hub integration states
-    if "soc_hub_alert" not in st.session_state:
-        st.session_state.soc_hub_alert = None
-
-    if "trigger_soc_analysis" not in st.session_state:
-        st.session_state.trigger_soc_analysis = False
+    """Main Streamlit application"""
 
     # Navigation sidebar
     with st.sidebar:
@@ -488,15 +902,61 @@ def main():
         # Page selection
         st.markdown("### 📋 Pages")
         if st.button("📊 Incidents Dashboard", use_container_width=True):
-            st.session_state.page = "overview"
+            st.session_state.current_page = "overview"
             st.rerun()
 
-        if st.button("🤖 SOC Hub Analysis", use_container_width=True):
-            # Use markdown link for proper navigation
-            st.markdown("[Go to SOC Hub >](/SOC_Hub)", unsafe_allow_html=True)
+        if st.button("🤖 SOC Analysis Hub", use_container_width=True):
+            if not st.session_state.soc_analysis_data:
+                st.warning("⚠️ Please select an incident or alert first")
+            else:
+                st.session_state.current_page = "soc_analysis"
+                st.rerun()
+
+        st.markdown("---")
+
+        # API Status Check
+        st.markdown("### 🔌 Backend Status")
+        is_healthy, health_data = check_api_status()
+
+        if is_healthy:
+            st.success("✅ API Connected")
+            with st.expander("API Info", expanded=False):
+                st.write(f"**Status:** {health_data.get('status')}")
+                st.write(
+                    f"**SOC Analyzer:** {'✅' if health_data.get('soc_analyzer_loaded') else '❌'}"
+                )
+                st.write(
+                    f"**Alert Analyzer:** {'✅' if health_data.get('alert_analyzer_loaded') else '❌'}"
+                )
+        else:
+            st.error("❌ API Not Connected")
+            st.caption("AI features require backend API")
+
+        st.markdown("---")
+        st.markdown("### 🔧 Actions")
+
+        if st.button("🗑️ Clear Cache", use_container_width=True):
+            keys_to_remove = [
+                key
+                for key in st.session_state.keys()
+                if key.startswith("incident_details_")
+                or key.startswith("analysis_")
+                or key.startswith("triaging_")
+            ]
+            for key in keys_to_remove:
+                del st.session_state[key]
+            st.success("Cache cleared!")
+            st.rerun()
 
     # Route to appropriate page
-    if st.session_state.page == "detail" and st.session_state.selected_incident:
+    if (
+        st.session_state.current_page == "soc_analysis"
+        and st.session_state.soc_analysis_data
+    ):
+        display_ai_analysis(st.session_state.soc_analysis_data)
+    elif (
+        st.session_state.current_page == "detail" and st.session_state.selected_incident
+    ):
         display_incident_detail(st.session_state.selected_incident)
     else:
         display_overview_page()
@@ -504,7 +964,7 @@ def main():
 
 def display_overview_page():
     """Display the incidents overview page with pagination"""
-    st.title("🛡️ Microsoft Sentinel - Incidents Dashboard")
+    st.title("🛡️ Microsoft Sentinel - SOC Intelligence Dashboard")
     st.markdown("---")
 
     # Sidebar for filters and options
@@ -520,7 +980,6 @@ def display_overview_page():
         if data_source == "Fetch from Azure":
             st.markdown("### ⏱️ Time Range")
 
-            # Timespan selector
             timespan_option = st.selectbox(
                 "Select Timespan",
                 [
@@ -531,10 +990,9 @@ def display_overview_page():
                     "Last 365 days",
                     "Custom",
                 ],
-                index=2,  # Default to Last 90 days
+                index=2,
             )
 
-            # Map timespan to days
             timespan_map = {
                 "Last 7 days": 7,
                 "Last 30 days": 30,
@@ -551,7 +1009,6 @@ def display_overview_page():
             else:
                 timespan_days = timespan_map[timespan_option]
 
-            # Status filter for Azure fetch
             st.markdown("### 📊 Status Filter (Azure Fetch)")
             azure_status_filter = st.multiselect(
                 "Filter by Status",
@@ -566,9 +1023,8 @@ def display_overview_page():
                     status_filters=azure_status_filter if azure_status_filter else None,
                 )
                 st.session_state.incidents = incidents
-                st.session_state.current_page = 1  # Reset to first page
+                st.session_state.current_page_num = 1
 
-                # Save to file
                 if incidents:
                     with open(
                         "sentinel_all_incidents.json", "w", encoding="utf-8"
@@ -579,7 +1035,7 @@ def display_overview_page():
             if st.button("📂 Load from File", type="primary"):
                 incidents = load_incidents_from_file()
                 st.session_state.incidents = incidents
-                st.session_state.current_page = 1  # Reset to first page
+                st.session_state.current_page_num = 1
                 if incidents:
                     st.success(f"✅ Loaded {len(incidents)} incidents from file")
 
@@ -596,7 +1052,6 @@ def display_overview_page():
 
     # Filters in sidebar
     with st.sidebar:
-        # Time filter for loaded data
         st.markdown("### ⏱️ Time Range Filter")
         time_filter = st.selectbox(
             "Filter by Creation Time",
@@ -635,27 +1090,13 @@ def display_overview_page():
         )
 
         search_term = st.text_input("🔎 Search in title", "")
-
         incident_number_search = st.text_input(
             "🔢 Search by Incident Number", "", placeholder="e.g., 26"
         )
 
-        # Clear cache button
-        if st.button("🗑️ Clear Alert Cache"):
-            # Clear all cached incident details
-            keys_to_remove = [
-                key
-                for key in st.session_state.keys()
-                if key.startswith("incident_details_")
-            ]
-            for key in keys_to_remove:
-                del st.session_state[key]
-            st.success("Cache cleared!")
-
     # Apply filters
     filtered_incidents = incidents
 
-    # Apply time filter
     if time_filter_days > 0:
         filtered_incidents = apply_time_filter(filtered_incidents, time_filter_days)
 
@@ -800,13 +1241,13 @@ def display_overview_page():
     )
 
     # Ensure current page is within bounds
-    if st.session_state.current_page > total_pages:
-        st.session_state.current_page = total_pages
-    if st.session_state.current_page < 1:
-        st.session_state.current_page = 1
+    if st.session_state.current_page_num > total_pages:
+        st.session_state.current_page_num = total_pages
+    if st.session_state.current_page_num < 1:
+        st.session_state.current_page_num = 1
 
     # Calculate pagination indices
-    start_idx = (st.session_state.current_page - 1) * ITEMS_PER_PAGE
+    start_idx = (st.session_state.current_page_num - 1) * ITEMS_PER_PAGE
     end_idx = min(start_idx + ITEMS_PER_PAGE, total_incidents)
 
     # Get current page incidents
@@ -822,88 +1263,83 @@ def display_overview_page():
         col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
 
         with col1:
-            if st.button("⏮️ First", disabled=(st.session_state.current_page == 1)):
-                st.session_state.current_page = 1
+            if st.button("⏮️ First", disabled=(st.session_state.current_page_num == 1)):
+                st.session_state.current_page_num = 1
                 st.rerun()
 
         with col2:
-            if st.button("◀️ Previous", disabled=(st.session_state.current_page == 1)):
-                st.session_state.current_page -= 1
+            if st.button(
+                "◀️ Previous", disabled=(st.session_state.current_page_num == 1)
+            ):
+                st.session_state.current_page_num -= 1
                 st.rerun()
 
         with col3:
             st.markdown(
-                f'<div class="pagination-info">Page {st.session_state.current_page} of {total_pages} | '
-                f"Showing {start_idx + 1}-{end_idx} of {total_incidents} incidents</div>",
+                f'<div class="pagination-info">Page {st.session_state.current_page_num} of {total_pages} | Showing {start_idx + 1}-{end_idx} of {total_incidents} incidents</div>',
                 unsafe_allow_html=True,
             )
 
         with col4:
             if st.button(
-                "Next ▶️", disabled=(st.session_state.current_page == total_pages)
+                "Next ▶️", disabled=(st.session_state.current_page_num == total_pages)
             ):
-                st.session_state.current_page += 1
+                st.session_state.current_page_num += 1
                 st.rerun()
 
         with col5:
             if st.button(
-                "Last ⏭️", disabled=(st.session_state.current_page == total_pages)
+                "Last ⏭️", disabled=(st.session_state.current_page_num == total_pages)
             ):
-                st.session_state.current_page = total_pages
+                st.session_state.current_page_num = total_pages
                 st.rerun()
 
         st.markdown("---")
 
         # Display incidents for current page
         for idx, incident in enumerate(current_page_incidents):
-            display_incident_overview(incident, start_idx + idx)
+            display_incident_overview(incident, idx)
 
         # Pagination controls at bottom
-        st.markdown("---")
-        col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+        if total_pages > 1:
+            st.markdown("---")
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
 
-        with col1:
-            if st.button(
-                "⏮️ First ",
-                key="first_bottom",
-                disabled=(st.session_state.current_page == 1),
-            ):
-                st.session_state.current_page = 1
-                st.rerun()
+            with col1:
+                if st.button(
+                    "⏮️ First2", disabled=(st.session_state.current_page_num == 1)
+                ):
+                    st.session_state.current_page_num = 1
+                    st.rerun()
 
-        with col2:
-            if st.button(
-                "◀️ Previous ",
-                key="prev_bottom",
-                disabled=(st.session_state.current_page == 1),
-            ):
-                st.session_state.current_page -= 1
-                st.rerun()
+            with col2:
+                if st.button(
+                    "◀️ Previous2", disabled=(st.session_state.current_page_num == 1)
+                ):
+                    st.session_state.current_page_num -= 1
+                    st.rerun()
 
-        with col3:
-            st.markdown(
-                f'<div class="pagination-info">Page {st.session_state.current_page} of {total_pages} | '
-                f"Showing {start_idx + 1}-{end_idx} of {total_incidents} incidents</div>",
-                unsafe_allow_html=True,
-            )
+            with col3:
+                st.markdown(
+                    f'<div class="pagination-info">Page {st.session_state.current_page_num} of {total_pages} | Showing {start_idx + 1}-{end_idx} of {total_incidents} incidents</div>',
+                    unsafe_allow_html=True,
+                )
 
-        with col4:
-            if st.button(
-                "Next ▶️ ",
-                key="next_bottom",
-                disabled=(st.session_state.current_page == total_pages),
-            ):
-                st.session_state.current_page += 1
-                st.rerun()
+            with col4:
+                if st.button(
+                    "Next2 ▶️",
+                    disabled=(st.session_state.current_page_num == total_pages),
+                ):
+                    st.session_state.current_page_num += 1
+                    st.rerun()
 
-        with col5:
-            if st.button(
-                "Last ⏭️ ",
-                key="last_bottom",
-                disabled=(st.session_state.current_page == total_pages),
-            ):
-                st.session_state.current_page = total_pages
-                st.rerun()
+            with col5:
+                if st.button(
+                    "Last2 ⏭️",
+                    disabled=(st.session_state.current_page_num == total_pages),
+                ):
+                    st.session_state.current_page_num = total_pages
+                    st.rerun()
 
 
 if __name__ == "__main__":

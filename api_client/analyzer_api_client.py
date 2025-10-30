@@ -1,43 +1,158 @@
 import requests
+import logging
+import time
 import streamlit as st
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class AnalyzerAPIClient:
     def __init__(self, base_url: str = "http://localhost:8000"):
-        """
-        Initialize API client
-
-        Args:
-            base_url: Base URL of the FastAPI server (default: http://localhost:8000)
-        """
+        """Initialize API client with retry configuration"""
         self.base_url = base_url.rstrip("/")
         self.session = requests.Session()
         self.session.headers.update(
-            {"Content-Type": "application/json", "Accept": "application/json"}
+            {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "SOC-Client/1.0",
+            }
+        )
+        self.max_retries = 3
+        self.timeout = 30
+
+    def _retry_request(
+        self, method: str, url: str, **kwargs
+    ) -> Optional[requests.Response]:
+        """Execute request with retry logic"""
+        for attempt in range(self.max_retries):
+            try:
+                if method.upper() == "GET":
+                    response = self.session.get(url, timeout=self.timeout, **kwargs)
+                elif method.upper() == "POST":
+                    response = self.session.post(url, timeout=self.timeout, **kwargs)
+                else:
+                    raise ValueError(f"Unsupported method: {method}")
+
+                response.raise_for_status()
+                return response
+
+            except requests.exceptions.Timeout:
+                logger.warning(f"Timeout on attempt {attempt + 1}/{self.max_retries}")
+                if attempt < self.max_retries - 1:
+                    time.sleep(2**attempt)
+                continue
+
+            except requests.exceptions.ConnectionError:
+                logger.warning(
+                    f"Connection error on attempt {attempt + 1}/{self.max_retries}"
+                )
+                if attempt < self.max_retries - 1:
+                    time.sleep(2**attempt)
+                continue
+
+            except requests.exceptions.RequestException as e:
+                if attempt == self.max_retries - 1:
+                    raise
+                time.sleep(2**attempt)
+                continue
+
+        raise requests.exceptions.ConnectionError(
+            f"Failed to connect after {self.max_retries} attempts"
         )
 
     def health_check(self) -> Dict[str, Any]:
-        """
-        Check if SOC analyzer API is healthy
-
-        Returns:
-            Dict with status, timestamp, analyzer loading state, and total_records
-        """
+        """Check API health with error handling"""
         try:
-            response = self.session.get(
-                f"{self.base_url}/analyzer/status", timeout=5
-            )  # CHANGED
-            response.raise_for_status()
+            response = self._retry_request("GET", f"{self.base_url}/analyzer/status")
             return response.json()
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
+            logger.error(f"Health check failed: {str(e)}")
             return {
                 "status": "error",
                 "error": str(e),
                 "soc_analyzer_loaded": False,
                 "alert_analyzer_loaded": False,
-                "total_records": 0,
             }
+
+    def analyze_alert(self, alert_name: str) -> Dict[str, Any]:
+        """Analyze alert with timeout handling and undefined check"""
+
+        # HANDLE UNDEFINED/NULL VALUES
+        if alert_name is None or alert_name == "undefined" or not alert_name:
+            logger.error("Alert name is undefined or empty")
+            return {
+                "success": False,
+                "error": "Alert name cannot be empty or undefined. Please select a valid alert.",
+                "alert_name": alert_name,
+            }
+
+        # Ensure it's a string
+        alert_name = str(alert_name).strip()
+
+        if not alert_name:
+            return {
+                "success": False,
+                "error": "Alert name is empty after processing",
+            }
+
+        try:
+            logger.info(f"Analyzing alert: {alert_name}")
+
+            # Use longer timeout for analysis
+            response = self.session.post(
+                f"{self.base_url}/analyzer/analyze",
+                json={"alert_name": alert_name},
+                timeout=180,  # 3 minutes
+            )
+            response.raise_for_status()
+            return response.json()
+
+        except requests.exceptions.Timeout:
+            logger.error("Analysis timeout - API taking too long")
+            return {
+                "success": False,
+                "error": "Analysis timeout. The API is processing your request but took longer than expected. "
+                "This may indicate the backend is under heavy load. Please try again.",
+            }
+        except requests.exceptions.ConnectionError:
+            logger.error("Cannot connect to analyzer API")
+            return {
+                "success": False,
+                "error": "Cannot connect to SOC analyzer backend. "
+                "Please ensure the backend service is running on http://localhost:8000",
+            }
+        except Exception as e:
+            logger.error(f"Analysis error: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+    def get_historical_data(self, rule_name: str) -> Dict[str, Any]:
+        """Get historical data with fallback"""
+        try:
+            response = self.session.post(
+                f"{self.base_url}/analyzer/historical-data",
+                json={"rule_name": rule_name},
+                timeout=30,
+            )
+            response.raise_for_status()
+            return response.json()
+
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                logger.warning(f"No historical data for rule: {rule_name}")
+                return {
+                    "success": False,
+                    "error": f"No historical data found for: {rule_name}",
+                    "data": [],
+                }
+            raise
+
+        except Exception as e:
+            logger.error(f"Historical data error: {str(e)}")
+            return {"success": False, "error": str(e), "data": []}
 
     def load_data(self) -> Dict[str, Any]:
         """
@@ -77,48 +192,6 @@ class AnalyzerAPIClient:
             return response.json()
         except requests.exceptions.RequestException as e:
             return {"success": False, "error": str(e), "suggestions": []}
-
-    def analyze_alert(self, alert_name: str) -> Dict[str, Any]:
-        """
-        Analyze alert with AI-powered threat intelligence
-
-        Args:
-            alert_name: Name of the alert/rule to analyze
-
-        Returns:
-            Dict with success status and detailed analysis
-        """
-        try:
-            response = self.session.post(
-                f"{self.base_url}/analyzer/analyze",
-                json={"alert_name": alert_name},
-                timeout=1800,  # 3 minutes timeout for AI analysis
-            )
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            return {"success": False, "error": str(e)}
-
-    def get_historical_data(self, rule_name: str) -> Dict[str, Any]:
-        """
-        Get historical incident data for a rule
-
-        Args:
-            rule_name: Name of the rule to get historical data
-
-        Returns:
-            Dict with success status and historical incident data
-        """
-        try:
-            response = self.session.post(
-                f"{self.base_url}/analyzer/historical-data",
-                json={"rule_name": rule_name},
-                timeout=30,
-            )
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            return {"success": False, "error": str(e)}
 
     def get_system_stats(self) -> Dict[str, Any]:
         """

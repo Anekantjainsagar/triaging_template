@@ -69,16 +69,18 @@ if os.path.exists(temp_streamlit):
 
 
 def initialize_session_state():
-    """Initialize all session state variables"""
+    """Initialize all session state variables with SOC Hub integration"""
     defaults = {
         "chat_history": [],
         "current_suggestions": [],
         "selected_rule_data": None,
         "search_query": "",
         "system_stats": None,
-        # ✅ NEW: Manual analysis support
         "show_manual_analysis": False,
         "manual_alert_query": None,
+        # ✅ NEW: SOC Hub integration from alert details
+        "soc_hub_alert": None,
+        "trigger_soc_analysis": False,
         # Triaging-specific states
         "triaging_step": 2,
         "triaging_alerts": [],
@@ -149,8 +151,45 @@ def display_rule_suggestion(rule_data, index):
 # ============================================================================
 # Main Dashboard
 # ============================================================================
+
 def display_soc_dashboard():
-    """Display the main SOC Dashboard page"""
+    """Display the main SOC Dashboard page with alert integration"""
+
+    # ✅ NEW: Check if coming from alert details page with automatic redirect
+    if st.session_state.get("trigger_soc_analysis") and st.session_state.get(
+        "soc_hub_alert"
+    ):
+        alert_data = st.session_state.soc_hub_alert
+
+        # Clear the trigger to prevent auto-triggering on refresh
+        st.session_state.trigger_soc_analysis = False
+
+        st.success(f"✅ Alert Loaded: **{alert_data['title']}**")
+
+        # Auto-populate and trigger analysis
+        alert_title = alert_data["title"]
+        alert_description = alert_data["description"]
+
+        # Create manual alert object automatically
+        manual_alert = {
+            "rule_name": alert_title,
+            "rule_number": f"ALERT_{id(alert_data)}",  # Unique identifier
+            "alert_name": alert_title,
+            "description": alert_description,
+            "data": None,
+            "query": alert_title,
+            "is_manual": True,
+            "source": "alert_details",  # Track origin
+            "alert_data": alert_data,  # Store full alert data
+        }
+
+        st.session_state.selected_rule_data = manual_alert
+
+        st.info("🚀 Starting automatic AI analysis...")
+
+        # Display analysis immediately
+        display_incident_to_analysis_workflow(manual_alert)
+        return
 
     # Header
     st.title("🛡️ SOC Intelligence Dashboard")
@@ -181,20 +220,17 @@ def display_soc_dashboard():
                 st.session_state.search_query = user_query
                 st.success(f"Found {len(suggestions)} matching rules")
             else:
-                # ✅ NEW: No matching rules - offer manual analysis
                 st.warning("⚠️ No matching rules found in historical data")
                 st.info(
                     "💡 **Alternative Analysis Available**: Analyze this alert without historical context"
                 )
 
-                # Store the query for manual analysis
             st.session_state.manual_alert_query = user_query
             st.session_state.show_manual_analysis = True
             st.session_state.current_suggestions = suggestions
         else:
             st.error(f"❌ Search failed: {result.get('error')}")
 
-    # ✅ NEW: Add manual analysis section after suggestions display
     if st.session_state.get("show_manual_analysis", False):
         st.markdown("---")
         st.markdown("### 🆕 Manual Alert Analysis")
@@ -228,7 +264,6 @@ def display_soc_dashboard():
             if not alert_title.strip():
                 st.error("❌ Please provide an alert title")
             else:
-                # Create manual alert object
                 manual_alert = {
                     "rule_name": alert_title,
                     "rule_number": "MANUAL_GEN",
@@ -236,9 +271,10 @@ def display_soc_dashboard():
                     "description": (
                         alert_description if alert_description else alert_title
                     ),
-                    "data": None,  # No historical data
+                    "data": None,
                     "query": alert_title,
-                    "is_manual": True,  # Flag to indicate manual analysis
+                    "is_manual": True,
+                    "source": "manual_search",
                 }
 
                 st.session_state.selected_rule_data = manual_alert
@@ -255,7 +291,6 @@ def display_soc_dashboard():
             if display_rule_suggestion(suggestion, i):
                 selected_rule = suggestion["rule"]
 
-                # ✅ CLEAR OLD ANALYSIS CACHE WHEN SELECTING NEW RULE
                 old_analysis_keys = [
                     k
                     for k in st.session_state.keys()
@@ -265,7 +300,6 @@ def display_soc_dashboard():
                     del st.session_state[key]
 
                 with st.spinner(f"📊 Preparing analysis for: {selected_rule}"):
-                    # Get historical data
                     historical_result = api_client.get_historical_data(selected_rule)
 
                     if historical_result.get("success"):
@@ -274,7 +308,6 @@ def display_soc_dashboard():
                         if data_list:
                             data_df = pd.DataFrame(data_list)
 
-                            # ✅ UPDATED: Use existing utility functions
                             from routes.src.utils import (
                                 extract_rule_number,
                                 extract_alert_name,
@@ -283,7 +316,6 @@ def display_soc_dashboard():
                             rule_number = extract_rule_number(selected_rule)
                             alert_name = extract_alert_name(selected_rule)
 
-                            # Fallback: Get alert name from DataFrame if extraction failed
                             if alert_name == selected_rule and not data_df.empty:
                                 for col in [
                                     "Alert Name",
@@ -300,12 +332,13 @@ def display_soc_dashboard():
                                         break
 
                             st.session_state.selected_rule_data = {
-                                "rule_name": selected_rule,  # Full: "Rule#280 - Suspicious Auth Activity"
-                                "rule_number": rule_number,  # Just: "280" or "286/2/002"
-                                "alert_name": alert_name,  # Just: "Suspicious Auth Activity"
+                                "rule_name": selected_rule,
+                                "rule_number": rule_number,
+                                "alert_name": alert_name,
                                 "data": data_df,
                                 "query": user_query,
-                                "is_manual": False,  # ✅ Explicitly set to False
+                                "is_manual": False,
+                                "source": "historical_search",
                             }
 
                             st.session_state.current_suggestions = []
@@ -318,102 +351,99 @@ def display_soc_dashboard():
                         )
 
     # Display tabbed analysis results
-    # ✅ MODIFY: Update the tabbed analysis section
     if st.session_state.selected_rule_data:
-        st.markdown("---")
+        display_incident_to_analysis_workflow(st.session_state.selected_rule_data)
 
-        rule_name = st.session_state.selected_rule_data["rule_name"]
-        data = st.session_state.selected_rule_data.get("data")
-        rule_number = st.session_state.selected_rule_data["rule_number"]
-        is_manual = st.session_state.selected_rule_data.get("is_manual", False)
 
-        # Display appropriate header
-        if is_manual:
-            st.markdown(
-                f'<h2 style="color: #2c3e50; text-align: center;">🤖 AI Analysis: {rule_name}</h2>',
-                unsafe_allow_html=True,
+def display_incident_to_analysis_workflow(rule_data):
+    """Unified workflow for displaying analysis from any source"""
+    st.markdown("---")
+
+    rule_name = rule_data["rule_name"]
+    data = rule_data.get("data")
+    rule_number = rule_data["rule_number"]
+    is_manual = rule_data.get("is_manual", False)
+    api_client = get_analyzer_client()
+
+    # Display appropriate header
+    if is_manual:
+        st.markdown(
+            f'<h2 style="color: #2c3e50; text-align: center;">🤖 AI Analysis: {rule_name}</h2>',
+            unsafe_allow_html=True,
+        )
+        st.info("ℹ️ **Note**: This is a manual analysis without historical data.")
+    else:
+        st.markdown(
+            f'<h2 style="color: #2c3e50; text-align: center;">📊 Analysis: {rule_name}</h2>',
+            unsafe_allow_html=True,
+        )
+
+    import hashlib
+
+    rule_hash = hashlib.md5(rule_name.encode()).hexdigest()
+    init_key = f"rule_initialized_{rule_hash}"
+
+    if init_key not in st.session_state:
+        st.session_state[init_key] = True
+
+    predictions_enabled = st.session_state.get("triaging_complete", False)
+
+    if is_manual:
+        tab1, tab2 = st.tabs(["🤖 AI Threat Analysis", "🔍 AI Triaging"])[0:2]
+
+        with tab1:
+            display_alert_analysis_tab_api(rule_name, api_client, is_manual=True)
+
+            st.markdown("---")
+            st.info(
+                """
+                **Want Historical Analysis?** If you have historical incident data for this alert, search again using the exact rule name 
+                from your SOC tracker to get comprehensive analysis including:
+                - 📊 Historical incident patterns
+                - 📈 Performance metrics (MTTR/MTTD)
+                - 🔍 AI-powered triaging workflows
+                - 🎯 True/False positive predictions
+                """
             )
-            st.info("ℹ️ **Note**: This is a manual analysis without historical data.")
+
+        with tab2:
+            st.session_state.triaging_selected_alert = rule_data
+            display_triaging_workflow(rule_number)
+
+    else:
+        if predictions_enabled:
+            tab1, tab2, tab3, tab4 = st.tabs(
+                [
+                    "🤖 AI Threat Analysis",
+                    "📊 Historical Analysis",
+                    "🔍 AI Triaging",
+                    "🔮 Predictions & MITRE",
+                ]
+            )
         else:
-            st.markdown(
-                f'<h2 style="color: #2c3e50; text-align: center;">📊 Analysis: {rule_name}</h2>',
-                unsafe_allow_html=True,
+            tab1, tab2, tab3 = st.tabs(
+                [
+                    "🤖 AI Threat Analysis",
+                    "📊 Historical Analysis",
+                    "🔍 AI Triaging",
+                ]
             )
 
-        import hashlib
+        with tab1:
+            display_alert_analysis_tab_api(rule_name, api_client, is_manual=False)
 
-        rule_hash = hashlib.md5(rule_name.encode()).hexdigest()
-        init_key = f"rule_initialized_{rule_hash}"
-
-        # Initialize once
-        if init_key not in st.session_state:
-            st.session_state[init_key] = True
-
-        predictions_enabled = st.session_state.get("triaging_complete", False)
-
-        # ✅ CONDITIONAL TAB DISPLAY based on manual vs historical
-        if is_manual:
-            # MANUAL MODE: Only AI Analysis and AI Triaging tabs
-            tab1, tab2 = st.tabs(["🤖 AI Threat Analysis", "🔍 AI Triaging"])[0:2]
-
-            with tab1:
-                display_alert_analysis_tab_api(rule_name, api_client, is_manual=True)
-
-                # Add note about upgrading to full analysis
-                st.markdown("---")
-                st.info(
-                    """
-                    **Want Historical Analysis?** If you have historical incident data for this alert, search again using the exact rule name 
-                    from your SOC tracker to get comprehensive analysis including:
-                    - 📊 Historical incident patterns
-                    - 📈 Performance metrics (MTTR/MTTD)
-                    - 🔍 AI-powered triaging workflows
-                    - 🎯 True/False positive predictions
-                    """
-                )
-
-            with tab2:
-                # Pass the full alert data to the triaging workflow
-                st.session_state.triaging_selected_alert = (
-                    st.session_state.selected_rule_data
-                )
-                display_triaging_workflow(rule_number)
-
-        else:
-            # NORMAL MODE: Full analysis with all tabs
-            if predictions_enabled:
-                tab1, tab2, tab3, tab4 = st.tabs(
-                    [
-                        "🤖 AI Threat Analysis",
-                        "📊 Historical Analysis",
-                        "🔍 AI Triaging",
-                        "🔮 Predictions & MITRE",
-                    ]
-                )
+        with tab2:
+            if data is not None and not data.empty:
+                display_historical_analysis_tab(data)
             else:
-                tab1, tab2, tab3 = st.tabs(
-                    [
-                        "🤖 AI Threat Analysis",
-                        "📊 Historical Analysis",
-                        "🔍 AI Triaging",
-                    ]
-                )
+                st.warning("⚠️ No historical data available for this rule")
 
-            with tab1:
-                display_alert_analysis_tab_api(rule_name, api_client, is_manual=False)
+        with tab3:
+            display_triaging_workflow(rule_number)
 
-            with tab2:
-                if data is not None and not data.empty:
-                    display_historical_analysis_tab(data)
-                else:
-                    st.warning("⚠️ No historical data available for this rule")
-
-            with tab3:
-                display_triaging_workflow(rule_number)
-
-            if predictions_enabled:
-                with tab4:
-                    display_predictions_tab_integrated()
+        if predictions_enabled:
+            with tab4:
+                display_predictions_tab_integrated()
 
 
 # ============================================================================
@@ -669,7 +699,6 @@ def display_alert_analysis_tab_api(rule_name: str, api_client, is_manual: bool =
         st.error(f"❌ Analysis Error: {str(e)}")
         with st.expander("🔍 View Error Details"):
             st.code(str(e))
-
 
 
 # ============================================================================
