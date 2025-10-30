@@ -231,7 +231,7 @@ def display_soc_dashboard():
                 # Create manual alert object
                 manual_alert = {
                     "rule_name": alert_title,
-                    "rule_number": "MANUAL_GEN", # ✅ UPDATED rule number for generation path
+                    "rule_number": "MANUAL_GEN",
                     "alert_name": alert_title,
                     "description": (
                         alert_description if alert_description else alert_title
@@ -305,7 +305,7 @@ def display_soc_dashboard():
                                 "alert_name": alert_name,  # Just: "Suspicious Auth Activity"
                                 "data": data_df,
                                 "query": user_query,
-                                "is_manual": False, # ✅ Explicitly set to False
+                                "is_manual": False,  # ✅ Explicitly set to False
                             }
 
                             st.session_state.current_suggestions = []
@@ -333,9 +333,7 @@ def display_soc_dashboard():
                 f'<h2 style="color: #2c3e50; text-align: center;">🤖 AI Analysis: {rule_name}</h2>',
                 unsafe_allow_html=True,
             )
-            st.info(
-                "ℹ️ **Note**: This is a manual analysis without historical data."
-            )
+            st.info("ℹ️ **Note**: This is a manual analysis without historical data.")
         else:
             st.markdown(
                 f'<h2 style="color: #2c3e50; text-align: center;">📊 Analysis: {rule_name}</h2>',
@@ -373,12 +371,14 @@ def display_soc_dashboard():
                     - 🎯 True/False positive predictions
                     """
                 )
-            
+
             with tab2:
                 # Pass the full alert data to the triaging workflow
-                st.session_state.triaging_selected_alert = st.session_state.selected_rule_data
+                st.session_state.triaging_selected_alert = (
+                    st.session_state.selected_rule_data
+                )
                 display_triaging_workflow(rule_number)
-                
+
         else:
             # NORMAL MODE: Full analysis with all tabs
             if predictions_enabled:
@@ -392,7 +392,11 @@ def display_soc_dashboard():
                 )
             else:
                 tab1, tab2, tab3 = st.tabs(
-                    ["🤖 AI Threat Analysis", "📊 Historical Analysis", "🔍 AI Triaging"]
+                    [
+                        "🤖 AI Threat Analysis",
+                        "📊 Historical Analysis",
+                        "🔍 AI Triaging",
+                    ]
                 )
 
             with tab1:
@@ -410,6 +414,7 @@ def display_soc_dashboard():
             if predictions_enabled:
                 with tab4:
                     display_predictions_tab_integrated()
+
 
 # ============================================================================
 # FIXED: display_alert_analysis_tab_api - Prevents Multiple Reruns
@@ -532,12 +537,7 @@ def display_predictions_tab_integrated():
 def display_alert_analysis_tab_api(rule_name: str, api_client, is_manual: bool = False):
     """
     Display AI-powered alert analysis tab using API
-    ENHANCED: Now supports manual analysis mode without historical data
-
-    Args:
-        rule_name: Name of the alert/rule
-        api_client: API client instance
-        is_manual: If True, shows this is manual analysis without historical data
+    FIXED: Properly stores analysis for manual step generation
     """
 
     analysis_key = f"analysis_result_{rule_name}"
@@ -548,6 +548,10 @@ def display_alert_analysis_tab_api(rule_name: str, api_client, is_manual: bool =
 
         if result.get("success"):
             analysis = result.get("analysis", "")
+
+            # ✅ ALWAYS store analysis text (both cached and fresh)
+            st.session_state.manual_analysis_text = analysis
+            st.session_state.manual_alert_name = rule_name
 
             # Add manual analysis disclaimer
             if is_manual:
@@ -602,7 +606,7 @@ def display_alert_analysis_tab_api(rule_name: str, api_client, is_manual: bool =
         # Make API call for analysis
         result = api_client.analyze_alert(rule_name)
 
-        # Cache the result
+        # ✅ Cache the result
         st.session_state[analysis_key] = result
 
         status_text.text("📊 Assessing business impact and compliance implications...")
@@ -611,29 +615,29 @@ def display_alert_analysis_tab_api(rule_name: str, api_client, is_manual: bool =
         if result.get("success"):
             analysis = result.get("analysis", "")
 
+            # ✅ CRITICAL: Store analysis text IMMEDIATELY after API call
+            st.session_state.manual_analysis_text = analysis
+            st.session_state.manual_alert_name = rule_name
+
             progress_bar.progress(100)
             status_text.text("✅ Analysis complete!")
 
             # Clear progress indicators
             import time
 
-            time.sleep(1)
+            time.sleep(0.5)
             progress_bar.empty()
             status_text.empty()
 
             # Add manual mode disclaimer
             if is_manual:
                 st.success(
-                    "✅ **AI Analysis Complete** - Generated using threat intelligence databases"
+                    "✅ **AI Analysis Complete** - Analysis ready for investigation step generation"
                 )
                 st.info(
                     """
-                    **Note**: This analysis provides threat intelligence context but does not include:
-                    - Historical incident patterns from your environment
-                    - Organization-specific metrics (MTTR/MTTD)
-                    - Previous response data
-                    
-                    For complete analysis, ensure the alert exists in your SOC tracker data.
+                    **Next Step**: Switch to the **🔍 AI Triaging** tab to generate investigation steps automatically.
+                    The system will analyze this alert to create 6-7 investigation steps with KQL queries.
                     """
                 )
 
@@ -665,6 +669,7 @@ def display_alert_analysis_tab_api(rule_name: str, api_client, is_manual: bool =
         st.error(f"❌ Analysis Error: {str(e)}")
         with st.expander("🔍 View Error Details"):
             st.code(str(e))
+
 
 
 # ============================================================================

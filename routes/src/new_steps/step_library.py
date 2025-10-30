@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from typing import Dict, List
 from dotenv import load_dotenv
 from crewai_tools import SerperDevTool
@@ -41,6 +42,618 @@ class InvestigationStepLibrary:
             )
             print(f"✅ Using {ollama_model} for step generation")
 
+    def generate_steps_from_manual_analysis(
+        self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN"
+    ) -> List[Dict]:
+        """
+        Generate 6-7 investigation steps directly from alert analysis
+        ✅ FIXED: Better VIP and Geography step detection
+        """
+        print(f"\n{'='*80}")
+        print(f"🤖 GENERATING MANUAL ALERT INVESTIGATION STEPS")
+        print(f"Alert: {alert_name}")
+        print(f"{'='*80}\n")
+
+        start_time = time.time()
+
+        # STEP 1: Parse analysis to extract profile
+        print("📊 PHASE 1: Analyzing alert structure...")
+        profile = self._parse_alert_analysis(analysis_text, alert_name)
+
+        # STEP 2: Research investigation methodologies using web search
+        print("\n🌐 PHASE 2: Researching investigation best practices...")
+        investigation_guidance = self._research_investigation_approach(
+            alert_name, profile
+        )
+
+        # STEP 3: Generate 6-7 core investigation steps
+        print("\n🧠 PHASE 3: Generating investigation steps...")
+        generated_steps = self._generate_manual_investigation_steps(
+            alert_name, profile, investigation_guidance
+        )
+
+        # ✅ STEP 3.5: DEDUPLICATE STEPS IMMEDIATELY
+        print("\n🧹 PHASE 3.5: Deduplicating steps...")
+        generated_steps = self._deduplicate_manual_steps(generated_steps)
+
+        # ✅ STEP 4: Add VIP USER CHECK (MUST BE BEFORE IP REPUTATION)
+        print("\n👤 PHASE 4: Adding VIP user verification step...")
+        steps_with_vip = self._inject_vip_user_step(generated_steps, rule_number)
+
+        # ✅ STEP 5: Add IP REPUTATION CHECK
+        print("\n🛡️ PHASE 5: Adding IP reputation verification step...")
+        steps_with_ip = self._inject_ip_reputation_step(steps_with_vip, rule_number)
+
+        # ✅ STEP 6: Generate KQL for each step (IMPROVED ERROR HANDLING)
+        print("\n⚙️ PHASE 6: Generating KQL queries...")
+        final_steps = self._add_kql_to_steps_enhanced(steps_with_ip, alert_name)
+
+        # ✅ STEP 7: FILTER STEPS - Keep only those with KQL OR external tools
+        print("\n🔍 PHASE 7: Validating steps (keeping those with queries or tools)...")
+        cleaned_steps = self._filter_steps_by_kql_enhanced(final_steps)
+
+        elapsed = time.time() - start_time
+        print(f"\n{'='*80}")
+        print(f"✅ COMPLETED in {elapsed:.1f}s: {len(cleaned_steps)} investigation steps")
+        print(f"{'='*80}\n")
+
+        return cleaned_steps
+
+    def _inject_vip_user_step(
+        self, steps: List[Dict], rule_number: str
+    ) -> List[Dict]:
+        """
+        Add VIP user verification step
+        ✅ FIXED: Much stricter VIP detection - must contain "VIP" keyword
+        """
+        
+        # ✅ STRICTER CHECK: Only consider it VIP if explicitly mentions "VIP"
+        has_vip_step = False
+        for step in steps:
+            step_name = step.get("step_name", "").lower()
+            explanation = step.get("explanation", "").lower()
+            
+            # ✅ MUST contain "vip" or "high-priority" or "privileged account"
+            vip_indicators = ["vip", "high-priority", "privileged account", "executive account"]
+            
+            if any(indicator in step_name or indicator in explanation for indicator in vip_indicators):
+                has_vip_step = True
+                print(f"   ℹ️  VIP user step already exists: {step.get('step_name', '')[:80]}")
+                break
+        
+        if has_vip_step:
+            return steps
+
+        print("   ✅ Injecting VIP user verification step...")
+
+        vip_step = {
+            "step_name": "Verify User Account Status and Check if Account is VIP or High-Priority",
+            "explanation": "This step analyzes the affected user account to determine their role, privileges, and organizational importance. It checks IdentityInfo and AuditLogs to identify if this is a VIP user, admin account, or executive with elevated privileges. This is important because compromising a high-value account poses a significantly greater risk, including potential lateral movement, data exfiltration, and privilege escalation opportunities.",
+            "relevance": "VIP/privileged accounts have access to sensitive data and systems. Compromise of such accounts represents a critical security incident requiring immediate escalation and response.",
+            "data_source": "IdentityInfo",
+            "priority": "HIGH",
+            "tool": "",  # ✅ NO TOOL - Will get KQL from API
+            "input_required": "",
+            "source": "ai_generated",
+            "confidence": "HIGH",
+            "kql_query": "",  # ✅ Will be filled by KQL generator
+            "kql_explanation": "",
+        }
+
+        # Insert at position 2 (after scope verification)
+        insert_position = min(2, len(steps))
+        steps.insert(insert_position, vip_step)
+        print(f"      ✅ VIP step inserted at position {insert_position + 1}")
+
+        return steps
+
+    def _inject_ip_reputation_step(
+        self, steps: List[Dict], rule_number: str
+    ) -> List[Dict]:
+        """
+        Add IP reputation check step
+        ✅ FIXED: Better duplicate detection
+        """
+        
+        # Check if IP reputation step already exists
+        has_ip_step = False
+        for step in steps:
+            step_name = step.get("step_name", "").lower()
+            tool = step.get("tool", "").strip().lower()
+            
+            # Check for IP reputation indicators
+            ip_keywords = ["ip reputation", "ip address reputation", "source ip reputation", "virustotal", "abuseipdb"]
+            if any(keyword in step_name for keyword in ip_keywords) or tool in ["virustotal", "abuseipdb"]:
+                has_ip_step = True
+                print(f"   ℹ️  IP reputation step already exists: {step.get('step_name', '')[:80]}")
+                break
+        
+        if has_ip_step:
+            return steps
+
+        print("   ✅ Injecting IP reputation verification step...")
+
+        ip_step = {
+            "step_name": "Check Source IP Reputation Using VirusTotal and AbuseIPDB",
+            "explanation": "This step validates the reputation of the source IP address using external threat intelligence platforms (VirusTotal and AbuseIPDB) to identify if the IP is associated with known malicious activity. This is important because a malicious IP address is a strong indicator of compromise or attack. Look for high detection ratios (5+ vendors), recent abuse reports, or associations with known threat actors.",
+            "relevance": "IP reputation provides immediate validation of the threat level. A malicious source IP strongly indicates this is not a legitimate access attempt.",
+            "data_source": "Manual",
+            "priority": "CRITICAL",
+            "tool": "virustotal",  # ✅ EXTERNAL TOOL - No KQL needed
+            "input_required": "",
+            "source": "ai_generated",
+            "confidence": "HIGH",
+            "kql_query": "",  # ✅ NO KQL NEEDED
+            "kql_explanation": "Requires manual checking using external tools (VirusTotal, AbuseIPDB) or the integrated IP reputation checker in the triaging app.",
+        }
+
+        # Insert at position 3 (after scope + VIP verification)
+        insert_position = min(3, len(steps))
+        steps.insert(insert_position, ip_step)
+        print(f"      ✅ IP reputation step inserted at position {insert_position + 1}")
+
+        return steps
+
+    def _add_kql_to_steps_enhanced(self, steps: List[Dict], alert_name: str) -> List[Dict]:
+        """
+        Generate KQL queries for each step
+        ✅ FIXED: Better handling for geography/location steps
+        """
+        from routes.src.api_kql_generation import EnhancedKQLGenerator
+
+        kql_gen = EnhancedKQLGenerator()
+
+        for idx, step in enumerate(steps, 1):
+            # Skip external tools (IP reputation, etc.)
+            tool = step.get("tool", "").lower()
+            if tool in ["virustotal", "abuseipdb"]:
+                print(f"   ⏭️  Skipping KQL for step {idx} (External Tool: {tool})")
+                continue
+
+            # Skip if already has KQL
+            if step.get("kql_query") and len(step.get("kql_query", "").strip()) > 30:
+                print(f"   ✅ Step {idx} already has KQL")
+                continue
+
+            step_name = step.get("step_name", "")
+            explanation = step.get("explanation", "")
+            
+            print(f"   🔧 Generating KQL for step {idx}: {step_name[:50]}...")
+
+            # ✅ SPECIAL HANDLING: Force KQL for geography/location steps
+            combined = f"{step_name} {explanation}".lower()
+            is_geography_step = any(keyword in combined for keyword in [
+                "geographic", "geography", "location", "impossible travel", 
+                "geo", "country", "city", "region"
+            ])
+
+            # Try to generate KQL
+            kql_query, kql_explanation = kql_gen.generate_kql_query(
+                step_name=step_name,
+                explanation=explanation,
+                step_number=idx,
+                rule_context=alert_name,
+            )
+
+            # ✅ VALIDATION: Check if KQL was actually generated
+            if kql_query and len(kql_query.strip()) > 30:
+                step["kql_query"] = kql_query
+                step["kql_explanation"] = kql_explanation
+                print(f"      ✅ KQL generated ({len(kql_query)} chars)")
+            else:
+                # ✅ FOR GEOGRAPHY STEPS: Provide fallback KQL if API fails
+                if is_geography_step:
+                    print(f"      🌍 Geography step detected - using fallback KQL")
+                    step["kql_query"] = self._get_geography_fallback_kql()
+                    step["kql_explanation"] = "Queries SigninLogs to identify sign-ins from unusual geographic locations by analyzing Location and IPAddress fields."
+                    print(f"      ✅ Fallback geography KQL applied")
+                else:
+                    print(f"      ⚠️  KQL generation failed for: {step_name[:50]}")
+                    step["kql_query"] = ""
+                    step["kql_explanation"] = ""
+
+        return steps
+
+    def _get_geography_fallback_kql(self) -> str:
+        """Fallback KQL for geographic analysis steps"""
+        return """SigninLogs
+| where TimeGenerated > ago(7d)
+| where UserPrincipalName == "<USER_EMAIL>"
+| extend Country = tostring(LocationDetails.countryOrRegion)
+| extend City = tostring(LocationDetails.city)
+| summarize 
+    SignInCount = count(),
+    UniqueLocations = dcount(Country),
+    Countries = make_set(Country),
+    Cities = make_set(City)
+    by UserPrincipalName, IPAddress
+| where UniqueLocations > 1
+| project UserPrincipalName, IPAddress, Countries, Cities, SignInCount, UniqueLocations
+| order by UniqueLocations desc"""
+
+    def _filter_steps_by_kql_enhanced(self, steps: List[Dict]) -> List[Dict]:
+        """
+        Keep only steps that have:
+        - KQL queries (for data analysis steps)
+        - OR External tools (VirusTotal, AbuseIPDB)
+        
+        ✅ FIXED: Better validation and logging
+        """
+        print("   🔍 Filtering steps by KQL presence...")
+        
+        filtered_steps = []
+        removed_count = 0
+        
+        for step in steps:
+            step_name = step.get("step_name", "")
+            kql_query = step.get("kql_query", "").strip()
+            tool = step.get("tool", "").strip().lower()
+            
+            # ✅ KEEP: Steps with valid KQL queries
+            if kql_query and len(kql_query) > 30:
+                filtered_steps.append(step)
+                print(f"   ✅ Keeping: {step_name[:60]} (has KQL - {len(kql_query)} chars)")
+                continue
+            
+            # ✅ KEEP: IP reputation and other external tool steps
+            if tool in ["virustotal", "abuseipdb"]:
+                filtered_steps.append(step)
+                print(f"   ✅ Keeping: {step_name[:60]} (External Tool: {tool})")
+                continue
+            
+            # ❌ REMOVE: Steps without KQL and no tool
+            print(f"   ⏭️  Removing: {step_name[:60]} (no KQL, no tool)")
+            removed_count += 1
+        
+        print(f"   ✅ Filtered out {removed_count} steps without KQL or tools")
+        print(f"   ✅ Final count: {len(filtered_steps)} investigation steps")
+        
+        return filtered_steps
+
+    # ... (rest of the methods remain the same)
+    
+    def _deduplicate_manual_steps(self, steps: List[Dict]) -> List[Dict]:
+        """Remove duplicate steps based on step name similarity"""
+        from difflib import SequenceMatcher
+        
+        print("   🔍 Checking for duplicates...")
+        
+        unique_steps = []
+        seen_names = []
+        duplicates_removed = 0
+        
+        for step in steps:
+            step_name = step.get("step_name", "").lower().strip()
+            
+            if not step_name or len(step_name) < 5:
+                continue
+            
+            # Check against all previously seen names
+            is_duplicate = False
+            for seen_name in seen_names:
+                similarity = SequenceMatcher(None, step_name, seen_name).ratio()
+                
+                # If 70%+ similar, it's a duplicate
+                if similarity > 0.7:
+                    print(f"   ⏭️  Removing duplicate: '{step_name[:60]}'")
+                    duplicates_removed += 1
+                    is_duplicate = True
+                    break
+            
+            if not is_duplicate:
+                unique_steps.append(step)
+                seen_names.append(step_name)
+        
+        print(f"   ✅ Removed {duplicates_removed} duplicate steps")
+        return unique_steps
+
+    def _parse_alert_analysis(self, analysis_text: str, alert_name: str) -> Dict:
+        """Parse AI analysis to extract structured profile"""
+        print("   🔍 Extracting technical details...")
+
+        profile = {
+            "alert_name": alert_name,
+            "technical_overview": "",
+            "mitre_techniques": [],
+            "mitre_details": {},
+            "threat_actors": [],
+            "threat_ttps": {},
+            "business_impact": [],
+            "detection_mechanisms": [],
+            "data_sources": [],
+        }
+
+        # Extract Technical Overview
+        tech_match = re.search(
+            r"##\s*TECHNICAL\s*OVERVIEW\s*(.*?)(?=##|\Z)",
+            analysis_text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if tech_match:
+            overview = tech_match.group(1).strip()
+            overview = re.sub(r"\n{2,}", " ", overview)[:800]
+            profile["technical_overview"] = overview
+            print(f"   ✅ Technical overview extracted")
+
+        # Extract MITRE ATT&CK Techniques
+        mitre_section = re.search(
+            r"##\s*MITRE\s*ATT&CK.*?(?=##|\Z)",
+            analysis_text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if mitre_section:
+            mitre_text = mitre_section.group(0)
+            techniques = re.findall(
+                r"(T\d{4}(?:\.\d{3})?)\s*[-–:]*\s*([^\n]+)", mitre_text
+            )
+            for tech_id, tech_name in techniques[:4]:
+                profile["mitre_techniques"].append(tech_id)
+                profile["mitre_details"][tech_id] = tech_name.strip()
+            print(f"   ✅ MITRE Techniques: {len(profile['mitre_techniques'])}")
+
+        # Extract Threat Actors
+        actor_section = re.search(
+            r"##\s*THREAT\s*ACTORS.*?(?=##|\Z)",
+            analysis_text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if actor_section:
+            actor_text = actor_section.group(0)
+            actors = re.findall(r"###\s*([^\(\n]+?)(?:\s*\([^\)]+\))?", actor_text)
+            profile["threat_actors"] = [a.strip() for a in actors[:3]]
+
+            # Extract TTPs per actor
+            for actor in profile["threat_actors"]:
+                ttps_match = re.search(
+                    rf"###\s*{re.escape(actor)}.*?(?:TTPs?|Methods?):\s*([^\n]+)",
+                    actor_text,
+                    re.IGNORECASE | re.DOTALL,
+                )
+                if ttps_match:
+                    profile["threat_ttps"][actor] = ttps_match.group(1).strip()
+            print(f"   ✅ Threat Actors: {len(profile['threat_actors'])}")
+
+        # Detect data sources from technical content
+        tech_lower = profile["technical_overview"].lower()
+        if "signinlogs" in tech_lower:
+            profile["data_sources"].append("SigninLogs")
+        if "auditlogs" in tech_lower:
+            profile["data_sources"].append("AuditLogs")
+        if "deviceinfo" in tech_lower:
+            profile["data_sources"].append("DeviceInfo")
+        if "cloudappevents" in tech_lower:
+            profile["data_sources"].append("CloudAppEvents")
+
+        if not profile["data_sources"]:
+            profile["data_sources"] = ["SigninLogs", "AuditLogs"]
+
+        return profile
+
+    def _research_investigation_approach(self, alert_name: str, profile: Dict) -> str:
+        """Research investigation methodologies using web search + LLM"""
+        print("   🔎 Searching for investigation methodologies...")
+
+        if not self.has_web:
+            print("   ⚠️ Web search unavailable, using LLM analysis only")
+            return self._analyze_without_web_search(alert_name, profile)
+
+        search_queries = []
+
+        # Query 1: Alert-specific playbook
+        search_queries.append(
+            f"{alert_name} SOC investigation playbook incident response procedure"
+        )
+
+        # Query 2: MITRE technique investigation
+        if profile.get("mitre_techniques"):
+            primary_technique = profile["mitre_techniques"][0]
+            tech_name = profile["mitre_details"].get(primary_technique, "")
+            search_queries.append(
+                f"MITRE {primary_technique} {tech_name} detection investigation methodology"
+            )
+
+        all_findings = []
+
+        for query in search_queries[:2]:
+            try:
+                print(f"   🌐 Searching: {query[:60]}...")
+                agent = Agent(
+                    role="Security Research Analyst",
+                    goal=f"Research investigation methodology",
+                    backstory="Expert at finding SOC investigation best practices",
+                    tools=[self.web_search],
+                    llm=self.llm,
+                    verbose=False,
+                    max_iter=5,
+                )
+
+                task = Task(
+                    description=f"""Search for: {query}
+
+Extract:
+1. Investigation steps SOC analysts should follow
+2. Specific data sources and log types to check
+3. Key indicators and artifacts to look for
+
+Return ONLY actionable investigation procedures as bullet points.""",
+                    expected_output="Concise bullet point list of investigation steps",
+                    agent=agent,
+                )
+
+                crew = Crew(agents=[agent], tasks=[task], verbose=False)
+                result = crew.kickoff()
+
+                findings = str(result).strip()
+                if findings and len(findings) > 100:
+                    all_findings.append(findings)
+                    print(f"   ✅ Found guidance")
+
+            except Exception as e:
+                print(f"   ⚠️ Search failed: {str(e)[:80]}")
+                continue
+
+        return "\n\n".join(all_findings) if all_findings else ""
+
+    def _analyze_without_web_search(self, alert_name: str, profile: Dict) -> str:
+        """Fallback analysis using LLM when web search unavailable"""
+        try:
+            prompt = f"""Based on security threat knowledge, outline investigation procedures for:
+
+Alert: {alert_name}
+MITRE Techniques: {', '.join(profile.get('mitre_techniques', []))}
+
+Provide investigation procedures focusing on data sources and key indicators."""
+
+            agent = Agent(
+                role="SOC Analyst",
+                goal="Provide investigation procedures",
+                backstory="Expert security analyst",
+                llm=self.llm,
+                verbose=False,
+            )
+
+            task = Task(
+                description=prompt,
+                expected_output="Investigation procedures",
+                agent=agent,
+            )
+
+            crew = Crew(agents=[agent], tasks=[task], verbose=False)
+            return str(crew.kickoff())
+
+        except Exception as e:
+            print(f"   ⚠️ Analysis failed: {str(e)[:80]}")
+            return ""
+
+    def _generate_manual_investigation_steps(
+        self, alert_name: str, profile: Dict, guidance: str
+    ) -> List[Dict]:
+        """Generate 6-7 investigation steps using LLM + profile + guidance"""
+        print("   🧠 Generating investigation steps...")
+
+        prompt = f"""Generate 6-7 UNIQUE investigation steps for this security alert.
+
+ALERT: {alert_name}
+
+TECHNICAL CONTEXT:
+{profile.get('technical_overview', '')[:600]}
+
+GENERATE 6-7 INVESTIGATION STEPS covering:
+1. Scope verification - how many users/systems affected
+2. Authentication analysis - examine sign-in patterns
+3. Geographic analysis - check for unusual locations or impossible travel
+4. Threat intelligence - verify external indicators  
+5. Behavioral analysis - identify anomalies
+6. Device/Endpoint analysis - verify device health
+
+CRITICAL REQUIREMENTS:
+- Each step MUST be UNIQUE and check DIFFERENT data
+- Steps should require KQL queries (SigninLogs/AuditLogs/DeviceInfo)
+- Include geographic/location analysis step
+- Be specific about WHAT to examine and WHY
+
+FORMAT EACH STEP AS:
+STEP: [Descriptive name]
+EXPLANATION: [What to examine, why it matters, what to find]
+DATA_SOURCE: [SigninLogs/AuditLogs/DeviceInfo]
+PRIORITY: [CRITICAL/HIGH/MEDIUM]
+TOOL: [None unless IP reputation check]
+RELEVANCE: [How this helps investigate THIS alert]
+---
+
+Generate NOW:"""
+
+        agent = Agent(
+            role="SOC Investigation Playbook Expert",
+            goal="Generate 6-7 unique investigation steps",
+            backstory="Expert at creating comprehensive investigation workflows",
+            llm=self.llm,
+            verbose=False,
+        )
+
+        task = Task(
+            description=prompt,
+            expected_output="6-7 investigation steps with all required fields",
+            agent=agent,
+        )
+
+        crew = Crew(agents=[agent], tasks=[task], verbose=False)
+        result = str(crew.kickoff())
+
+        return self._parse_manual_steps(result)
+
+    def _parse_manual_steps(self, llm_output: str) -> List[Dict]:
+        """Parse LLM output into structured steps"""
+        steps = []
+        step_blocks = re.split(r"\n[-=_]{3,}\n", llm_output)
+
+        for block in step_blocks:
+            if not block.strip() or len(block) < 50:
+                continue
+
+            step_match = re.search(r"STEP:\s*(.+?)(?:\n|$)", block, re.IGNORECASE)
+            exp_match = re.search(
+                r"EXPLANATION:\s*(.+?)(?=\n(?:DATA_SOURCE|PRIORITY|TOOL|RELEVANCE)|$)",
+                block,
+                re.IGNORECASE | re.DOTALL,
+            )
+            ds_match = re.search(r"DATA_SOURCE:\s*(.+?)(?:\n|$)", block, re.IGNORECASE)
+            priority_match = re.search(
+                r"PRIORITY:\s*(CRITICAL|HIGH|MEDIUM|LOW)",
+                block,
+                re.IGNORECASE,
+            )
+            tool_match = re.search(r"TOOL:\s*(.+?)(?:\n|$)", block, re.IGNORECASE)
+            relevance_match = re.search(
+                r"RELEVANCE:\s*(.+?)(?=\n(?:STEP|---)|$)",
+                block,
+                re.IGNORECASE | re.DOTALL,
+            )
+
+            if step_match and exp_match:
+                step_name = self._clean_text(step_match.group(1))
+                explanation = self._clean_text(exp_match.group(1))
+                data_source = ds_match.group(1).strip() if ds_match else "SigninLogs"
+                priority = priority_match.group(1).upper() if priority_match else "MEDIUM"
+                tool = tool_match.group(1).strip() if tool_match else "None"
+                relevance = (
+                    self._clean_text(relevance_match.group(1))
+                    if relevance_match
+                    else ""
+                )
+
+                explanation = re.sub(r"\s+", " ", explanation)
+                relevance = re.sub(r"\s+", " ", relevance)
+
+                if len(step_name) < 5 or len(explanation) < 30:
+                    continue
+
+                steps.append(
+                    {
+                        "step_name": step_name,
+                        "explanation": explanation,
+                        "relevance": relevance,
+                        "data_source": data_source,
+                        "priority": priority,
+                        "tool": tool.lower() if tool.lower() != "none" else "",
+                        "input_required": "",
+                        "source": "ai_generated",
+                        "confidence": "HIGH",
+                    }
+                )
+
+        return steps
+
+    def _clean_text(self, text: str) -> str:
+        """Clean text from artifacts"""
+        text = text.strip("\"'`")
+        text = re.sub(r"\*\*", "", text)
+        text = re.sub(r"__", "", text)
+        text = re.sub(r"^\*\s+", "", text)
+        text = re.sub(r"\s+", " ", text)
+        text = re.sub(r"^(Step \d+:|STEP:)", "", text, flags=re.IGNORECASE)
+        return text.strip()
+    
     def _get_alert_impact_context(self, profile: Dict) -> str:
         """Generate context about why investigating this alert matters"""
         alert_type = profile.get("alert_type", "general_security")
@@ -59,23 +672,83 @@ class InvestigationStepLibrary:
             "This security alert indicates potential compromise that could lead to data breach, system damage, or unauthorized access to sensitive resources.",
         )
 
+    def _parse_llm_steps(self, llm_output: str) -> List[Dict]:
+        """Parse LLM output into structured step dictionaries"""
+        steps = []
+        step_blocks = re.split(r"\n[-=_]{3,}\n", llm_output)  # ✅ FIXED
+
+        for block in step_blocks:
+            if not block.strip() or len(block) < 50:
+                continue
+
+            # Extract fields using flexible patterns
+            step_match = re.search(r"STEP:\s*(.+?)(?:\n|$)", block, re.IGNORECASE)
+            exp_match = re.search(
+                r"EXPLANATION:\s*(.+?)(?=\n(?:NEEDS_KQL|DATA_SOURCE|TOOL|PRIORITY|RELEVANCE)|$)",
+                block,
+                re.IGNORECASE | re.DOTALL,
+            )
+            kql_match = re.search(r"NEEDS_KQL:\s*(YES|NO)", block, re.IGNORECASE)
+            ds_match = re.search(r"DATA_SOURCE:\s*(.+?)(?:\n|$)", block, re.IGNORECASE)
+            tool_match = re.search(r"TOOL:\s*(.+?)(?:\n|$)", block, re.IGNORECASE)
+            priority_match = re.search(
+                r"PRIORITY:\s*(CRITICAL|HIGH|MEDIUM|LOW)", block, re.IGNORECASE
+            )
+            relevance_match = re.search(
+                r"RELEVANCE:\s*(.+?)(?=\n(?:STEP|---)|$)",
+                block,
+                re.IGNORECASE | re.DOTALL
+            )
+
+            if step_match and exp_match:
+                step_name = step_match.group(1).strip()
+                explanation = exp_match.group(1).strip()
+                needs_kql = kql_match.group(1).upper() == "YES" if kql_match else True
+                data_source = ds_match.group(1).strip() if ds_match else "SigninLogs"
+                tool = tool_match.group(1).strip() if tool_match else "None"
+                priority = priority_match.group(1).upper() if priority_match else "MEDIUM"
+                relevance = relevance_match.group(1).strip() if relevance_match else ""
+
+                # Clean up
+                step_name = self._clean_text(step_name)
+                explanation = self._clean_text(explanation)
+                relevance = self._clean_text(relevance)
+
+                # Validation
+                if len(step_name) < 5 or len(explanation) < 20:
+                    continue
+
+                # Remove line breaks from explanation and relevance
+                explanation = re.sub(r"\s+", " ", explanation)
+                relevance = re.sub(r"\s+", " ", relevance)
+
+                steps.append({
+                    "step_name": step_name,
+                    "explanation": explanation,
+                    "relevance": relevance,
+                    "kql_needed": needs_kql,
+                    "data_source": data_source,
+                    "tool": tool.lower() if tool.lower() != "none" else "",
+                    "priority": priority,
+                    "input_required": "",
+                })
+
+        return steps
+
     def generate_investigation_steps(self, profile: Dict) -> List[Dict]:
         print(f"\nGenerating investigation steps for {profile['alert_name']}")
-
-        # ADD THIS DEBUG:
         print(f"DEBUG: Profile keys: {profile.keys()}")
         print(f"DEBUG: MITRE techniques: {profile.get('mitre_techniques', [])}")
         print(f"DEBUG: Threat actors: {profile.get('threat_actors', [])}")
 
-        # ... rest of function
         print(f"\n🔬 Generating investigation steps for {profile['alert_name']}")
 
-        # Step 1: Research best practices if web search available
+        # Research best practices if web search available
         investigation_guidance = ""
         if self.has_web:
             investigation_guidance = self._research_investigation_practices(profile)
 
-        # Step 2: Generate steps using LLM
+        # Generate steps using LLM
         generated_steps = self._generate_steps_with_llm(profile, investigation_guidance)
 
         print(f"   ✅ Generated {len(generated_steps)} investigation steps")
@@ -89,16 +762,13 @@ class InvestigationStepLibrary:
         mitre_techniques = profile.get("mitre_techniques", [])
         threat_actors = profile.get("threat_actors", [])
 
-        # Build targeted search queries
         search_queries = []
 
-        # Query 1: Alert-specific investigation
         if alert_name:
             search_queries.append(
                 f"how to investigate {alert_name} SOC playbook incident response"
             )
 
-        # Query 2: MITRE technique investigation
         if mitre_techniques:
             primary_technique = mitre_techniques[0]
             tech_name = profile.get("mitre_details", {}).get(primary_technique, "")
@@ -106,14 +776,12 @@ class InvestigationStepLibrary:
                 f"MITRE {primary_technique} {tech_name} detection investigation steps"
             )
 
-        # Query 3: Threat actor TTPs
         if threat_actors:
             primary_actor = threat_actors[0]
             search_queries.append(
                 f"{primary_actor} threat actor investigation detection methods"
             )
 
-        # Perform searches (limit to 2 to save time)
         all_findings = []
 
         for query in search_queries[:2]:
@@ -186,7 +854,6 @@ Focus on what a SOC analyst should DO, not just theory.""",
 
     REQUIRED NEW STEPS (generate 3-4 UNIQUE ones that address gaps):
     Focus on aspects NOT covered by existing steps:
-    - **CRITICAL:** Include a check for **IP reputation** of the source address and specify the tool as **VirusTotal**. This must be an explicit step.
     - Advanced behavioral analysis (time patterns, impossible travel, unusual hours)
     - Credential usage analysis (password sprays, brute force attempts, account lockouts)
     - **CRITICAL:** Include a step to check the **user's email** for related phishing or malware.
@@ -215,17 +882,7 @@ Focus on what a SOC analyst should DO, not just theory.""",
     RELEVANCE: [How this step specifically helps investigate THIS alert and what risk it mitigates]
     ---
 
-    Example of GOOD step (for VirusTotal):
-    STEP: Validate Source IP Reputation using External Threat Intelligence
-    EXPLANATION: This step uses VirusTotal and AbuseIPDB to check the reputation of the external IP address associated with the suspicious sign-in. This is important because a malicious IP address is a strong indicator of compromise. Look for high detection ratios (e.g., 5+ vendors), recent malicious reports, or associations with known threat actors.
-    NEEDS_KQL: NO
-    DATA_SOURCE: Manual
-    TOOL: VirusTotal
-    PRIORITY: CRITICAL
-    RELEVANCE: The integrity of the sign-in is immediately determined by the reputation of the originating IP, providing a critical early verdict on the alert's authenticity.
-    ---
-
-    Generate 3-4 UNIQUE, RELEVANT steps NOW, ensuring the **VirusTotal** and **Email Check** steps are included:"""
+    Generate 3-4 UNIQUE, RELEVANT steps NOW:"""
 
         agent = Agent(
             role="SOC Investigation Playbook Designer",
@@ -251,7 +908,7 @@ Focus on what a SOC analyst should DO, not just theory.""",
             if not self._is_duplicate_of_existing(step, existing_steps):
                 unique_steps.append(step)
             else:
-                print(f"   ⏭️ Filtered duplicate: {step.get('step_name', '')[:60]}")
+                print(f"   ⏭️  Filtered duplicate: {step.get('step_name', '')[:60]}")
 
         return unique_steps
 
@@ -259,105 +916,20 @@ Focus on what a SOC analyst should DO, not just theory.""",
         """Check if step duplicates existing steps"""
         step_name = step.get("step_name", "").lower()
 
-        # Semantic similarity check
         from difflib import SequenceMatcher
 
         for existing in existing_names:
             existing_lower = existing.lower()
             similarity = SequenceMatcher(None, step_name, existing_lower).ratio()
 
-            if similarity > 0.6:  # 60% similar = duplicate
+            if similarity > 0.6:
                 return True
 
-            # Keyword overlap check
             step_keywords = set(step_name.split())
             existing_keywords = set(existing_lower.split())
             common = step_keywords & existing_keywords
 
-            if len(common) >= 3:  # 3+ common words = likely duplicate
+            if len(common) >= 3:
                 return True
 
         return False
-
-    def _parse_llm_steps(self, llm_output: str) -> List[Dict]:
-        """Parse LLM output into structured step dictionaries"""
-        steps = []
-        step_blocks = re.split(r"\n[-─]{3,}\n", llm_output)
-
-        for block in step_blocks:
-            if not block.strip() or len(block) < 50:
-                continue
-
-            # Extract fields using flexible patterns
-            step_match = re.search(r"STEP:\s*(.+?)(?:\n|$)", block, re.IGNORECASE)
-            exp_match = re.search(
-                r"EXPLANATION:\s*(.+?)(?=\n(?:NEEDS_KQL|DATA_SOURCE|TOOL|PRIORITY|RELEVANCE)|$)",
-                block,
-                re.IGNORECASE | re.DOTALL,
-            )
-            kql_match = re.search(r"NEEDS_KQL:\s*(YES|NO)", block, re.IGNORECASE)
-            ds_match = re.search(r"DATA_SOURCE:\s*(.+?)(?:\n|$)", block, re.IGNORECASE)
-            tool_match = re.search(r"TOOL:\s*(.+?)(?:\n|$)", block, re.IGNORECASE)
-            priority_match = re.search(
-                r"PRIORITY:\s*(CRITICAL|HIGH|MEDIUM|LOW)", block, re.IGNORECASE
-            )
-            # ✅ NEW: Extract relevance
-            relevance_match = re.search(
-                r"RELEVANCE:\s*(.+?)(?=\n(?:STEP|---)|$)",
-                block,
-                re.IGNORECASE | re.DOTALL
-            )
-
-            if step_match and exp_match:
-                step_name = step_match.group(1).strip()
-                explanation = exp_match.group(1).strip()
-                needs_kql = kql_match.group(1).upper() == "YES" if kql_match else True
-                data_source = ds_match.group(1).strip() if ds_match else "SigninLogs"
-                tool = tool_match.group(1).strip() if tool_match else "None"
-                priority = priority_match.group(1).upper() if priority_match else "MEDIUM"
-                relevance = relevance_match.group(1).strip() if relevance_match else ""
-
-                # Clean up
-                step_name = self._clean_text(step_name)
-                explanation = self._clean_text(explanation)
-                relevance = self._clean_text(relevance)
-
-                # Validation
-                if len(step_name) < 5 or len(explanation) < 20:
-                    continue
-
-                # Remove line breaks from explanation and relevance
-                explanation = re.sub(r"\s+", " ", explanation)
-                relevance = re.sub(r"\s+", " ", relevance)
-
-                steps.append({
-                    "step_name": step_name,
-                    "explanation": explanation,
-                    "relevance": relevance,  # ✅ NEW FIELD
-                    "kql_needed": needs_kql,
-                    "data_source": data_source,
-                    "tool": tool.lower() if tool.lower() != "none" else "",
-                    "priority": priority,
-                    "input_required": "",
-                })
-
-        return steps
-
-    def _clean_text(self, text: str) -> str:
-        """Clean text from artifacts"""
-
-        # Remove quotes
-        text = text.strip("\"'`")
-
-        # Remove markdown
-        text = re.sub(r"\*\*", "", text)
-        text = re.sub(r"__", "", text)
-        text = re.sub(r"^\*\s+", "", text)
-
-        # Remove extra whitespace
-        text = re.sub(r"\s+", " ", text)
-
-        # Remove common artifacts
-        text = re.sub(r"^(Step \d+:|STEP:)", "", text, flags=re.IGNORECASE)
-
-        return text.strip()

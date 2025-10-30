@@ -54,6 +54,165 @@ class ImprovedTemplateGenerator:
             print(f"⚠️ Could not initialize Analyzer API Client: {e}")
             self.analyzer_client = None
 
+    def generate_from_manual_analysis(
+        self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN"
+    ) -> pd.DataFrame:
+        """
+        Generate template directly from manual alert analysis
+        Used when alert is manually entered without template file
+        
+        Args:
+            alert_name: Name of the alert
+            analysis_text: AI-generated analysis output
+            rule_number: Rule identifier
+            
+        Returns:
+            DataFrame with 6-7 investigation steps
+        """
+        print(f"\n{'='*80}")
+        print(f"🤖 GENERATING MANUAL ALERT TEMPLATE")
+        print(f"Alert: {alert_name}")
+        print(f"{'='*80}\n")
+
+        start_time = time.time()
+
+        # Use the updated step library to generate steps from analysis
+        from routes.src.new_steps.step_library import InvestigationStepLibrary
+        step_library = InvestigationStepLibrary()
+
+        # Generate 6-7 steps directly from analysis
+        generated_steps = step_library.generate_steps_from_manual_analysis(
+            alert_name=alert_name,
+            analysis_text=analysis_text,
+            rule_number=rule_number
+        )
+
+        # Convert to template rows
+        template_rows = []
+        
+        # Add header row
+        header_row = {col: "" for col in self.template_columns}
+        header_row["Name"] = f"Manual Analysis: {alert_name}"
+        template_rows.append(header_row)
+
+        # Add investigation steps
+        for idx, step in enumerate(generated_steps, 1):
+            step_name = step.get("step_name", "")
+            explanation = step.get("explanation", "")
+            relevance = step.get("relevance", "")
+            tool = step.get("tool", "")
+
+            # Build enhanced explanation with relevance
+            if relevance:
+                full_explanation = f"{explanation}\n\n💡 WHY THIS MATTERS: {relevance}"
+            else:
+                full_explanation = explanation
+
+            row = {
+                "Step": str(idx),
+                "Name": step_name,
+                "Explanation": self._enforce_length(full_explanation, max_sentences=5),
+                "KQL Query": step.get("kql_query", ""),
+                "KQL Explanation": step.get("kql_explanation", ""),
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": f"[MANUAL] {step.get('priority', 'MEDIUM')} | Tool: {tool if tool else 'KQL'}"
+            }
+
+            template_rows.append(row)
+
+        elapsed = time.time() - start_time
+
+        print(f"\n{'='*80}")
+        print(f"✅ COMPLETED in {elapsed:.1f}s: {len(template_rows)-1} investigation steps")
+        print(f"{'='*80}\n")
+
+        return pd.DataFrame(template_rows)
+
+    def generate_intelligent_template(
+        self, rule_number: str, original_steps: List[Dict], rule_context: str = ""
+    ) -> pd.DataFrame:
+        """
+        Generate intelligent template with support for manual alert analysis
+        
+        ✅ UPDATED: Detects manual alerts and routes to generate_from_manual_analysis()
+        """
+        print(f"\n{'='*80}")
+        print(f"🧠 INTELLIGENT TEMPLATE GENERATION")
+        print(f"{'='*80}\n")
+
+        # ✅ CHECK IF THIS IS A MANUAL ALERT GENERATION
+        if rule_number == "MANUAL_GEN" and not original_steps:
+            print(f"🔍 Manual alert detected - using direct analysis mode")
+            # rule_context contains the analysis text
+            alert_name = rule_context.split('\n')[0][:100] if rule_context else "Manual Alert"
+            return self.generate_from_manual_analysis(alert_name, rule_context, rule_number)
+
+        # ✅ ORIGINAL FLOW: Template-based generation
+        print(f"Processing template-based generation for {rule_number}")
+
+        start_time = time.time()
+
+        # Header row
+        template_rows = []
+        header_row = {col: "" for col in self.template_columns}
+        header_row["Name"] = rule_number
+        template_rows.append(header_row)
+
+        # STEP 1: BUILD INVESTIGATION PROFILE
+        print(f"\n📊 PHASE 1: Building investigation profile...")
+        from routes.src.new_steps.investigation_profile import InvestigationProfileBuilder
+
+        profile_builder = InvestigationProfileBuilder()
+        profile = profile_builder.build_profile(rule_number, rule_context)
+
+        profile["existing_step_names"] = [s.get("step_name", "") for s in original_steps]
+
+        print(f"   ✅ Profile complete:")
+        print(f"      - MITRE Techniques: {len(profile['mitre_techniques'])}")
+        print(f"      - Threat Actors: {len(profile['threat_actors'])}")
+        print(f"      - Investigation Focus: {profile['investigation_focus']}")
+
+        # STEP 2: GENERATE INVESTIGATION STEPS
+        print(f"\n🤖 PHASE 2: Generating investigation steps...")
+        from routes.src.new_steps.step_library import InvestigationStepLibrary
+
+        step_library = InvestigationStepLibrary()
+        generated_steps = step_library.generate_investigation_steps(profile)
+
+        print(f"   ✅ Generated {len(generated_steps)} investigation steps")
+
+        # STEP 3: FILTER & MERGE STEPS
+        print(f"\n🔄 PHASE 3: Merging with original template...")
+
+        investigative_original = self._filter_investigative_steps(original_steps)
+        print(f"   ✅ Original steps (investigative): {len(investigative_original)}")
+
+        from routes.src.new_steps.step_merger import InvestigationStepMerger
+
+        merger = InvestigationStepMerger()
+        merged_steps, merge_report = merger.merge_steps(
+            investigative_original, generated_steps, profile
+        )
+
+        merger.print_merge_report(merge_report)
+
+        # STEP 4: ADD KQL & CONVERT TO TEMPLATE ROWS
+        print(f"\n⚙️ PHASE 4: Generating KQL queries and finalizing...")
+
+        template_rows.extend(
+            self._process_merged_steps_with_kql(merged_steps, rule_number, profile)
+        )
+
+        template_rows = self._deduplicate_kql_queries(template_rows)
+
+        elapsed = time.time() - start_time
+        print(f"\n{'='*80}")
+        print(f"✅ COMPLETED in {elapsed:.1f}s: {len(template_rows)-1} investigation steps")
+        print(f"{'='*80}\n")
+
+        return pd.DataFrame(template_rows)
+
     def _process_merged_steps_with_kql(
         self, merged_steps: List[Dict], rule_number: str, profile: Dict
     ) -> List[Dict]:
@@ -352,91 +511,6 @@ class ImprovedTemplateGenerator:
 
         merger = InvestigationStepMerger()
         return merger._filter_investigative_steps(steps)
-
-    def generate_intelligent_template(
-        self, rule_number: str, original_steps: List[Dict], rule_context: str = ""
-    ) -> pd.DataFrame:
-        print(f"\n{'='*80}")
-        print(f"ðŸ§  INTELLIGENT TEMPLATE GENERATION FOR {rule_number}")
-        print(f"{'='*80}\n")
-
-        start_time = time.time()
-
-        # ADD THIS DEBUG:
-        print(f"DEBUG: rule_number = {rule_number}")
-        print(f"DEBUG: original_steps count = {len(original_steps)}")
-        print(
-            f"DEBUG: First original step: {original_steps[0] if original_steps else 'NONE'}"
-        )
-
-        # Header row
-        template_rows = []
-        header_row = {col: "" for col in self.template_columns}
-        header_row["Name"] = rule_number
-        template_rows.append(header_row)
-
-        # STEP 1: BUILD INVESTIGATION PROFILE (No hardcoding)
-        print(f"📊 PHASE 1: Building investigation profile...")
-        from routes.src.new_steps.investigation_profile import (
-            InvestigationProfileBuilder,
-        )
-
-        profile_builder = InvestigationProfileBuilder()
-        profile = profile_builder.build_profile(rule_number, rule_context)
-
-        profile["existing_step_names"] = [
-            s.get("step_name", "") for s in original_steps
-        ]
-
-        print(f"   ✅ Profile complete:")
-        print(f"      - MITRE Techniques: {len(profile['mitre_techniques'])}")
-        print(f"      - Threat Actors: {len(profile['threat_actors'])}")
-        print(f"      - Investigation Focus: {profile['investigation_focus']}")
-
-        # STEP 2: GENERATE INVESTIGATION STEPS (Dynamic, LLM + Web Search)
-        print(f"\n🤖 PHASE 2: Generating investigation steps...")
-        from routes.src.new_steps.step_library import InvestigationStepLibrary
-
-        step_library = InvestigationStepLibrary()
-        generated_steps = step_library.generate_investigation_steps(profile)
-
-        print(f"   ✅ Generated {len(generated_steps)} investigation steps")
-
-        # STEP 3: FILTER & MERGE STEPS
-        print(f"\n🔄 PHASE 3: Merging with original template...")
-
-        # Filter non-investigative steps from original
-        investigative_original = self._filter_investigative_steps(original_steps)
-        print(f"   ✅ Original steps (investigative): {len(investigative_original)}")
-
-        # Use merger to combine intelligently
-        from routes.src.new_steps.step_merger import InvestigationStepMerger
-
-        merger = InvestigationStepMerger()
-        merged_steps, merge_report = merger.merge_steps(
-            investigative_original, generated_steps, profile
-        )
-
-        # Print merge transparency report
-        merger.print_merge_report(merge_report)
-
-        # STEP 4: ADD KQL & CONVERT TO TEMPLATE ROWS
-        print(f"\n⚙️  PHASE 4: Generating KQL queries and finalizing...")
-
-        template_rows.extend(
-            self._process_merged_steps_with_kql(merged_steps, rule_number, profile)
-        )
-
-        template_rows = self._deduplicate_kql_queries(template_rows)
-
-        elapsed = time.time() - start_time
-        print(f"\n{'='*80}")
-        print(
-            f"✅ COMPLETED in {elapsed:.1f}s: {len(template_rows)-1} investigation steps"
-        )
-        print(f"{'='*80}\n")
-
-        return pd.DataFrame(template_rows)
 
     def _deduplicate_kql_queries(self, template_rows: List[Dict]) -> List[Dict]:
         """Remove steps with duplicate or nearly-identical KQL queries"""
