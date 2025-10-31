@@ -478,8 +478,14 @@ def format_entity_display(entity):
 
     elif kind == "MailMessage":
         sender = props.get("sender", "Unknown Sender")
+        recipient = props.get("recipient", "Unknown Recipient")
         subject = props.get("subject", "No Subject")
-        return f"📧 **From:** {sender} | **Subject:** {subject}"
+
+        mail_info = f"📧 **From:** {sender}"
+        if recipient:
+            mail_info += f" | **To:** {recipient}"
+        mail_info += f" | **Subject:** {subject}"
+        return mail_info
 
     elif kind == "CloudApplication":
         app_name = props.get("name") or props.get("displayName") or "Unknown App"
@@ -493,7 +499,7 @@ def format_entity_display(entity):
             or props.get("friendlyName")
             or f"Unknown {kind}"
         )
-        return f"📌 **{name}**"
+        return f"📋 **{name}**"
 
 
 def display_entities_summary(alert_data):
@@ -651,6 +657,30 @@ def display_ai_analysis(alert_data):
 
     st.markdown("---")
     st.title("🤖 SOC Hub - AI-Powered Analysis")
+
+    # ✅ FIXED: Get timeGenerated from properties first, then fallback
+    props = alert_data.get("full_alert", {})
+    props = props.get("properties", {})
+    time_generated = props.get("timeGenerated")
+
+    if time_generated:
+        st.markdown(
+            f"""
+            <div style="
+                background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+                border-left: 5px solid #388e3c;
+                padding: 12px 20px;
+                margin: 15px 0;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            ">
+                <h4 style="color: #2e7d32; margin: 0;">
+                    ⏰ Time Generated: <strong>{format_datetime(time_generated)}</strong>
+                </h4>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     # Display alert info
     col1, col2 = st.columns([2, 1])
@@ -1167,11 +1197,17 @@ def display_alert(alert, entities_data):
     severity = props.get("severity", "Unknown")
     status = props.get("status", "Unknown")
     description = props.get("description", "")
+    time_generated = props.get("timeGenerated", "")
 
-    accordion_title = f"{alert_name} — {severity} • {status}"
+    accordion_title = f"{alert_name} – {severity} • {status}"
 
     with st.expander(accordion_title, expanded=False):
         st.markdown(f'<div class="alert-card">', unsafe_allow_html=True)
+
+        # Time Generated at the top
+        if time_generated:
+            st.markdown(f"**⏰ Time Generated:** {format_datetime(time_generated)}")
+            st.divider()
 
         # Severity and Status badges
         col1, col2, col3 = st.columns([1, 1, 1])
@@ -1232,11 +1268,27 @@ def display_alert(alert, entities_data):
             if techniques:
                 st.markdown(f"Techniques: {', '.join(techniques)}")
 
-        # Entities
+        st.divider()
+
+        # 🔍 Associated Entities
         if entities_data and "entities" in entities_data:
             alert_entities = entities_data["entities"]
             if alert_entities:
-                st.markdown("**Associated Entities:**")
+                st.markdown(
+                    """
+                    <div style="
+                        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+                        border-left: 5px solid #1976d2;
+                        padding: 15px;
+                        margin: 15px 0;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+                    ">
+                        <h4 style="color: #1565c0; margin: 0;">🔍 Associated Entities</h4>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 entities_by_type = {}
                 for entity in alert_entities:
@@ -1247,10 +1299,10 @@ def display_alert(alert, entities_data):
 
                 for entity_type, entities in entities_by_type.items():
                     with st.expander(
-                        f"📌 {entity_type} ({len(entities)})", expanded=False
+                        f"📋 {entity_type} ({len(entities)})", expanded=False
                     ):
                         for entity in entities:
-                            st.markdown(f"- {display_entity(entity)}")
+                            st.markdown(f"- {format_entity_display(entity)}")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
