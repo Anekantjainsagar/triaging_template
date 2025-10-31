@@ -43,56 +43,123 @@ class IPReputationChecker:
             self.has_scraper = False
 
     def _classify_ip_type(self, ip_address: str) -> str:
-        """Classify IP as Public, Private, or IPv6"""
+        """
+        ✅ ENHANCED: Classify IP as Public, Private, IPv6, Loopback, or Invalid
+
+        Supports:
+        - IPv4 (public, private, loopback, reserved)
+        - IPv6 (full, compressed, IPv4-mapped)
+        """
         import ipaddress
-        
+
         try:
             ip_obj = ipaddress.ip_address(ip_address)
-            
+
+            # IPv6 addresses
             if isinstance(ip_obj, ipaddress.IPv6Address):
-                return "IPv6"
-            elif ip_obj.is_private:
-                return "Private"
-            elif ip_obj.is_loopback:
-                return "Loopback"
-            elif ip_obj.is_reserved:
-                return "Reserved"
+                # Check for special IPv6 types
+                if ip_obj.is_loopback:
+                    return "Loopback"  # ::1
+                elif ip_obj.is_private:
+                    return "Private"  # fc00::/7 or fe80::/10
+                elif ip_obj.is_reserved:
+                    return "Reserved"
+                elif ip_obj.is_link_local:
+                    return "Private"  # fe80::/10
+                else:
+                    return "IPv6"  # Public IPv6
+
+            # IPv4 addresses
             else:
-                return "Public"
+                if ip_obj.is_private:
+                    return "Private"  # 10.x.x.x, 172.16.x.x, 192.168.x.x
+                elif ip_obj.is_loopback:
+                    return "Loopback"  # 127.0.0.1
+                elif ip_obj.is_reserved:
+                    return "Reserved"  # 240.0.0.0/4
+                else:
+                    return "Public"  # Public IPv4
+
         except ValueError:
             return "Invalid"
 
     def check_multiple_ips(self, ip_list: List[str], method: str = "auto") -> Dict:
         """
-        Check reputation for multiple IPs
-        
+        ✅ ENHANCED: Check reputation for multiple IPs (IPv4, IPv6, Private, Public)
+
         Args:
             ip_list: List of IP addresses to check
             method: "api" or "auto"
-            
+
         Returns:
             Dictionary with results for all IPs
         """
+        import time
+
         results = {}
-        
-        for ip in ip_list:
+
+        print(f"\n🔍 Checking {len(ip_list)} IP address(es)...")
+
+        for idx, ip in enumerate(ip_list, 1):
             ip = ip.strip()
+
+            # Validate IP format
             ip_type = self._classify_ip_type(ip)
-            
-            # Skip private/loopback IPs for reputation check
+
+            if ip_type == "Invalid":
+                print(f"   [{idx}/{len(ip_list)}] ❌ {ip} - Invalid format")
+                results[ip] = {
+                    "success": False,
+                    "ip_type": "Invalid",
+                    "error": "Invalid IP address format",
+                    "formatted_output": "❌ Invalid IP address format",
+                    "formatted_output_excel": f"IP: {ip}\nStatus: Invalid IP address format\n",
+                }
+                continue
+
+            print(f"   [{idx}/{len(ip_list)}] 🔍 {ip} ({ip_type})")
+
+            # Skip private/loopback/reserved IPs for reputation check
             if ip_type in ["Private", "Loopback", "Reserved"]:
+                print(f"      ℹ️  {ip_type} IP - No reputation check needed")
                 results[ip] = {
                     "success": True,
                     "ip_type": ip_type,
                     "risk_level": "N/A",
-                    "message": f"{ip_type} IP - No reputation check needed"
+                    "message": f"{ip_type} IP - No reputation check needed",
+                    "skip_check": True,
+                    "formatted_output": f"ℹ️ **{ip_type} IP Address**\n\nNo external reputation check required for {ip_type.lower()} addresses.",
+                    "formatted_output_excel": f"{'='*60}\nIP: {ip}\nType: {ip_type}\nStatus: {ip_type} IP - No external reputation check needed\n{'='*60}\n",
                 }
                 continue
-            
-            # Check IPv6 and Public IPs
-            results[ip] = self.check_ip_reputation(ip, method)
-            results[ip]["ip_type"] = ip_type
-        
+
+            # Check Public/IPv6 IPs using APIs
+            try:
+                result = self.check_ip_reputation(ip, method)
+                result["ip_type"] = ip_type
+                results[ip] = result
+
+                # Add small delay between API calls to avoid rate limiting
+                if idx < len(ip_list):
+                    time.sleep(0.5)
+
+                if result.get("success"):
+                    risk = result.get("risk_level", "UNKNOWN")
+                    print(f"      ✅ Risk Level: {risk}")
+                else:
+                    print(f"      ⚠️  Check failed: {result.get('error', 'Unknown')}")
+
+            except Exception as e:
+                print(f"      ❌ Exception: {str(e)[:100]}")
+                results[ip] = {
+                    "success": False,
+                    "ip_type": ip_type,
+                    "error": str(e),
+                    "formatted_output": f"❌ Error checking {ip}: {str(e)[:200]}",
+                    "formatted_output_excel": f"IP: {ip}\nType: {ip_type}\nStatus: Check failed - {str(e)[:200]}\n",
+                }
+
+        print(f"\n✅ Completed checking {len(ip_list)} IP(s)")
         return results
 
     def check_ip_reputation(self, ip_address: str, method: str = "auto") -> Dict:
@@ -134,13 +201,22 @@ class IPReputationChecker:
         return self._aggregate_results(ip_address, results)
 
     def _is_valid_ip(self, ip: str) -> bool:
-        """Validate IP address format"""
-        pattern = r"^(\d{1,3}\.){3}\d{1,3}$"
-        if not re.match(pattern, ip):
-            return False
+        """
+        ✅ ENHANCED: Validate IP address format (IPv4 or IPv6)
 
-        octets = ip.split(".")
-        return all(0 <= int(octet) <= 255 for octet in octets)
+        Supports:
+        - IPv4: 192.168.1.1
+        - IPv6 full: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+        - IPv6 compressed: 2001:db8::1
+        - IPv4-mapped IPv6: ::ffff:192.0.2.1
+        """
+        import ipaddress
+
+        try:
+            ipaddress.ip_address(ip)
+            return True
+        except ValueError:
+            return False
 
     def _check_virustotal(self, ip_address: str) -> Dict:
         """Check IP using VirusTotal API v3"""

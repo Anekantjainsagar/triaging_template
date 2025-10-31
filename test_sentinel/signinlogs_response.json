@@ -1,0 +1,473 @@
+{
+    "tables": [
+        {
+            "name": "PrimaryResult",
+            "columns": [
+                {
+                    "name": "TenantId",
+                    "type": "string"
+                },
+                {
+                    "name": "SourceSystem",
+                    "type": "string"
+                },
+                {
+                    "name": "TimeGenerated",
+                    "type": "datetime"
+                },
+                {
+                    "name": "ResourceId",
+                    "type": "string"
+                },
+                {
+                    "name": "OperationName",
+                    "type": "string"
+                },
+                {
+                    "name": "OperationVersion",
+                    "type": "string"
+                },
+                {
+                    "name": "Category",
+                    "type": "string"
+                },
+                {
+                    "name": "ResultType",
+                    "type": "string"
+                },
+                {
+                    "name": "ResultSignature",
+                    "type": "string"
+                },
+                {
+                    "name": "ResultDescription",
+                    "type": "string"
+                },
+                {
+                    "name": "DurationMs",
+                    "type": "long"
+                },
+                {
+                    "name": "CorrelationId",
+                    "type": "string"
+                },
+                {
+                    "name": "Resource",
+                    "type": "string"
+                },
+                {
+                    "name": "ResourceGroup",
+                    "type": "string"
+                },
+                {
+                    "name": "ResourceProvider",
+                    "type": "string"
+                },
+                {
+                    "name": "Identity",
+                    "type": "string"
+                },
+                {
+                    "name": "Level",
+                    "type": "string"
+                },
+                {
+                    "name": "Location",
+                    "type": "string"
+                },
+                {
+                    "name": "AlternateSignInName",
+                    "type": "string"
+                },
+                {
+                    "name": "AppDisplayName",
+                    "type": "string"
+                },
+                {
+                    "name": "AppId",
+                    "type": "string"
+                },
+                {
+                    "name": "AuthenticationContextClassReferences",
+                    "type": "string"
+                },
+                {
+                    "name": "AuthenticationDetails",
+                    "type": "string"
+                },
+                {
+                    "name": "AppliedEventListeners",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "AuthenticationMethodsUsed",
+                    "type": "string"
+                },
+                {
+                    "name": "AuthenticationProcessingDetails",
+                    "type": "string"
+                },
+                {
+                    "name": "AuthenticationRequirement",
+                    "type": "string"
+                },
+                {
+                    "name": "AuthenticationRequirementPolicies",
+                    "type": "string"
+                },
+                {
+                    "name": "ClientAppUsed",
+                    "type": "string"
+                },
+                {
+                    "name": "ConditionalAccessPolicies",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "ConditionalAccessStatus",
+                    "type": "string"
+                },
+                {
+                    "name": "CreatedDateTime",
+                    "type": "datetime"
+                },
+                {
+                    "name": "DeviceDetail",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "IsInteractive",
+                    "type": "bool"
+                },
+                {
+                    "name": "Id",
+                    "type": "string"
+                },
+                {
+                    "name": "IPAddress",
+                    "type": "string"
+                },
+                {
+                    "name": "IsRisky",
+                    "type": "bool"
+                },
+                {
+                    "name": "LocationDetails",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "MfaDetail",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "NetworkLocationDetails",
+                    "type": "string"
+                },
+                {
+                    "name": "OriginalRequestId",
+                    "type": "string"
+                },
+                {
+                    "name": "ProcessingTimeInMilliseconds",
+                    "type": "string"
+                },
+                {
+                    "name": "RiskDetail",
+                    "type": "string"
+                },
+                {
+                    "name": "RiskEventTypes",
+                    "type": "string"
+                },
+                {
+                    "name": "RiskEventTypes_V2",
+                    "type": "string"
+                },
+                {
+                    "name": "RiskLevelAggregated",
+                    "type": "string"
+                },
+                {
+                    "name": "RiskLevelDuringSignIn",
+                    "type": "string"
+                },
+                {
+                    "name": "RiskState",
+                    "type": "string"
+                },
+                {
+                    "name": "ResourceDisplayName",
+                    "type": "string"
+                },
+                {
+                    "name": "ResourceIdentity",
+                    "type": "string"
+                },
+                {
+                    "name": "ResourceServicePrincipalId",
+                    "type": "string"
+                },
+                {
+                    "name": "ServicePrincipalId",
+                    "type": "string"
+                },
+                {
+                    "name": "ServicePrincipalName",
+                    "type": "string"
+                },
+                {
+                    "name": "Status",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "TokenIssuerName",
+                    "type": "string"
+                },
+                {
+                    "name": "TokenIssuerType",
+                    "type": "string"
+                },
+                {
+                    "name": "UserAgent",
+                    "type": "string"
+                },
+                {
+                    "name": "UserDisplayName",
+                    "type": "string"
+                },
+                {
+                    "name": "UserId",
+                    "type": "string"
+                },
+                {
+                    "name": "UserPrincipalName",
+                    "type": "string"
+                },
+                {
+                    "name": "AADTenantId",
+                    "type": "string"
+                },
+                {
+                    "name": "UserType",
+                    "type": "string"
+                },
+                {
+                    "name": "FlaggedForReview",
+                    "type": "bool"
+                },
+                {
+                    "name": "IPAddressFromResourceProvider",
+                    "type": "string"
+                },
+                {
+                    "name": "SignInIdentifier",
+                    "type": "string"
+                },
+                {
+                    "name": "SignInIdentifierType",
+                    "type": "string"
+                },
+                {
+                    "name": "ResourceTenantId",
+                    "type": "string"
+                },
+                {
+                    "name": "HomeTenantId",
+                    "type": "string"
+                },
+                {
+                    "name": "UniqueTokenIdentifier",
+                    "type": "string"
+                },
+                {
+                    "name": "SessionId",
+                    "type": "string"
+                },
+                {
+                    "name": "SessionLifetimePolicies",
+                    "type": "string"
+                },
+                {
+                    "name": "AutonomousSystemNumber",
+                    "type": "string"
+                },
+                {
+                    "name": "AuthenticationProtocol",
+                    "type": "string"
+                },
+                {
+                    "name": "CrossTenantAccessType",
+                    "type": "string"
+                },
+                {
+                    "name": "AuthenticationAppDeviceDetails",
+                    "type": "string"
+                },
+                {
+                    "name": "AuthenticationAppPolicyEvaluationDetails",
+                    "type": "string"
+                },
+                {
+                    "name": "ClientCredentialType",
+                    "type": "string"
+                },
+                {
+                    "name": "FederatedCredentialId",
+                    "type": "string"
+                },
+                {
+                    "name": "GlobalSecureAccessIpAddress",
+                    "type": "string"
+                },
+                {
+                    "name": "HomeTenantName",
+                    "type": "string"
+                },
+                {
+                    "name": "IncomingTokenType",
+                    "type": "string"
+                },
+                {
+                    "name": "IsTenantRestricted",
+                    "type": "bool"
+                },
+                {
+                    "name": "IsThroughGlobalSecureAccess",
+                    "type": "bool"
+                },
+                {
+                    "name": "OriginalTransferMethod",
+                    "type": "string"
+                },
+                {
+                    "name": "TokenProtectionStatusDetails",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "AppOwnerTenantId",
+                    "type": "string"
+                },
+                {
+                    "name": "ResourceOwnerTenantId",
+                    "type": "string"
+                },
+                {
+                    "name": "Agent",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "SourceAppClientId",
+                    "type": "string"
+                },
+                {
+                    "name": "AppliedConditionalAccessPolicies",
+                    "type": "string"
+                },
+                {
+                    "name": "RiskLevel",
+                    "type": "string"
+                },
+                {
+                    "name": "Type",
+                    "type": "string"
+                }
+            ],
+            "rows": [
+                [
+                    "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+                    "Azure AD",
+                    "2025-10-31T01:34:04.20152Z",
+                    "/tenants/638456b8-8343-4e48-9ebe-4f5cf9a1997d/providers/Microsoft.aadiam",
+                    "Sign-in activity",
+                    "1.0",
+                    "SignInLogs",
+                    "0",
+                    "SUCCESS",
+                    "",
+                    0,
+                    "79271d6b-f373-8f3e-c61a-7205363ab2f3",
+                    "Microsoft.aadiam",
+                    "Microsoft.aadiam",
+                    "",
+                    "Lokesh Galaji",
+                    "4",
+                    "IN",
+                    "",
+                    "One Outlook Web",
+                    "9199bf20-a13f-4107-85dc-02114787ef48",
+                    "[]",
+                    "[{\"authenticationStepDateTime\":\"2025-10-31T01:32:43.0836198+00:00\",\"authenticationMethod\":\"Previously satisfied\",\"succeeded\":true,\"authenticationStepResultDetail\":\"First factor requirement satisfied by claim in the token\",\"authenticationStepRequirement\":\"Primary authentication\",\"StatusSequence\":0,\"RequestSequence\":0}]",
+                    null,
+                    "",
+                    "[{\"key\":\"Login Hint Present\",\"value\":\"True\"},{\"key\":\"Legacy TLS (TLS 1.0, 1.1, 3DES)\",\"value\":\"False\"},{\"key\":\"Is CAE Token\",\"value\":\"False\"}]",
+                    "singleFactorAuthentication",
+                    "[]",
+                    "Browser",
+                    "[{\"id\":\"SecurityDefaults\",\"displayName\":\"Security Defaults\",\"enforcedGrantControls\":[],\"enforcedSessionControls\":[],\"result\":\"success\",\"conditionsSatisfied\":3,\"conditionsNotSatisfied\":0},{\"id\":\"a2532f45-35da-4969-bb25-26b46d39fc31\",\"displayName\":\"Require multifactor authentication for all users\",\"enforcedGrantControls\":[\"Mfa\"],\"enforcedSessionControls\":[],\"result\":\"reportOnlyInterrupted\",\"conditionsSatisfied\":3,\"conditionsNotSatisfied\":0},{\"id\":\"d745d837-0770-48ec-949c-94c62c26fa87\",\"displayName\":\"Block device code flow\",\"enforcedGrantControls\":[\"Block\"],\"enforcedSessionControls\":[],\"result\":\"reportOnlyNotApplied\",\"conditionsSatisfied\":3,\"conditionsNotSatisfied\":32768},{\"id\":\"e09401cc-af23-4494-8956-079d5c34914f\",\"displayName\":\"Block legacy authentication\",\"enforcedGrantControls\":[\"Block\"],\"enforcedSessionControls\":[],\"result\":\"reportOnlyNotApplied\",\"conditionsSatisfied\":3,\"conditionsNotSatisfied\":16},{\"id\":\"407a7420-a3e5-4067-89e4-46b193832ecd\",\"displayName\":\"Require multifactor authentication for risky sign-ins\",\"enforcedGrantControls\":[\"Mfa\"],\"enforcedSessionControls\":[\"SignInFrequency\"],\"result\":\"reportOnlyNotApplied\",\"conditionsSatisfied\":3,\"conditionsNotSatisfied\":32},{\"id\":\"29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb\",\"displayName\":\"Require password change for high-risk users\",\"enforcedGrantControls\":[\"MfaAndChangePassword\"],\"enforcedSessionControls\":[\"SignInFrequency\"],\"result\":\"reportOnlyNotApplied\",\"conditionsSatisfied\":3,\"conditionsNotSatisfied\":64}]",
+                    "notApplied",
+                    "2025-10-31T01:32:43.0836198Z",
+                    "{\"deviceId\":\"\",\"operatingSystem\":\"Windows10\",\"browser\":\"Chrome 141.0.0\"}",
+                    true,
+                    "e182a3c4-6b5b-48a2-9c54-3d91c4f91100",
+                    "49.43.202.157",
+                    null,
+                    "{\"city\":\"Kukatpally\",\"state\":\"Telangana\",\"countryOrRegion\":\"IN\",\"geoCoordinates\":{\"latitude\":17.48900032043457,\"longitude\":78.38300323486328}}",
+                    null,
+                    "[]",
+                    "e182a3c4-6b5b-48a2-9c54-3d91c4f91100",
+                    "117",
+                    "none",
+                    "[]",
+                    "[]",
+                    "none",
+                    "none",
+                    "none",
+                    "Office 365 Exchange Online",
+                    "00000002-0000-0ff1-ce00-000000000000",
+                    "6178ac3e-b449-4af2-a6c4-4905dfc704bb",
+                    "",
+                    "",
+                    "{\"errorCode\":0}",
+                    "",
+                    "AzureAD",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+                    "Lokesh Galaji",
+                    "e641de0f-fb40-4759-875d-90dbcd407d02",
+                    "lokesh.galaji@yashtechnologies841.onmicrosoft.com",
+                    "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                    "Member",
+                    null,
+                    "",
+                    "",
+                    "",
+                    "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                    "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                    "xKOC4VtrokicVD2RxPkRAA",
+                    "005be389-8ed6-f3e8-6a1b-ea9b971a34d2",
+                    "[]",
+                    "55836",
+                    "none",
+                    "none",
+                    "",
+                    "",
+                    "none",
+                    "",
+                    "",
+                    "",
+                    "none",
+                    false,
+                    false,
+                    "none",
+                    "{\"signInSessionStatus\":\"unbound\",\"signInSessionStatusCode\":1002}",
+                    "f8cdef31-a31e-4b4a-93e4-5f571e91255a",
+                    "f8cdef31-a31e-4b4a-93e4-5f571e91255a",
+                    "{\"agentType\":\"notAgentic\"}",
+                    "",
+                    "",
+                    "",
+                    "SigninLogs"
+                ]
+            ]
+        }
+    ]
+}

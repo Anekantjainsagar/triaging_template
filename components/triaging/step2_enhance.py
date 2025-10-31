@@ -1,4 +1,4 @@
-# step2_enhance.py - UPDATED TO USE INTELLIGENT TEMPLATE GENERATOR
+# step2_enhance.py - COMPLETE UPDATED VERSION WITH IP REPUTATION FIX
 import streamlit as st
 import os
 import re
@@ -7,7 +7,7 @@ import traceback
 import hashlib
 import pandas as pd
 from io import BytesIO
-from routes.src.virustotal_integration import VirusTotalChecker
+from routes.src.virustotal_integration import VirusTotalChecker, IPReputationChecker
 from routes.src.template_generator import ImprovedTemplateGenerator
 from routes.src.template_parser import TemplateParser
 
@@ -42,13 +42,49 @@ def _save_step_data(step_num: int, rule_number: str, data_type: str):
             st.session_state.step_outputs[output_key] = st.session_state[input_key]
 
 
-def _check_virustotal_auto(ip_address: str) -> dict:
-    """Auto-check IP reputation using VirusTotal"""
-    if "vt_checker" not in st.session_state:
-        st.session_state.vt_checker = VirusTotalChecker()
+def _extract_all_ips_from_outputs(step_num: int, rule_number: str) -> list:
+    """
+    Extract ALL IPs (IPv4 and IPv6) from previous investigation steps
 
-    checker = st.session_state.vt_checker
-    return checker.check_ip_reputation(ip_address.strip(), method="auto")
+    Args:
+        step_num: Current step number
+        rule_number: Rule identifier
+
+    Returns:
+        List of unique IP addresses
+    """
+    import re
+
+    all_ips = []
+
+    # Check all previous steps
+    for prev_step in range(1, step_num):
+        prev_output_key = f"output_step_{prev_step}_{rule_number}"
+        prev_output = st.session_state.step_outputs.get(prev_output_key, "")
+
+        if not prev_output:
+            continue
+
+        # IPv4 pattern (strict)
+        ipv4_pattern = r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+        ipv4_matches = re.findall(ipv4_pattern, prev_output)
+
+        # IPv6 pattern (comprehensive)
+        ipv6_pattern = r"\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b|\b(?:[0-9a-fA-F]{1,4}:){1,7}:\b|\b(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}\b|\b::(?:[0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4}\b"
+        ipv6_matches = re.findall(ipv6_pattern, prev_output)
+
+        all_ips.extend(ipv4_matches)
+        all_ips.extend(ipv6_matches)
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_ips = []
+    for ip in all_ips:
+        if ip not in seen:
+            seen.add(ip)
+            unique_ips.append(ip)
+
+    return unique_ips
 
 
 def _unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
@@ -112,6 +148,7 @@ def _get_enhancement_cache_key(rule_number: str, template_path: str) -> str:
     """Create unique cache key for template enhancement"""
     return f"enhanced_template_{rule_number}_{hashlib.md5(template_path.encode()).hexdigest()}"
 
+
 def _get_manual_cache_key(alert_name: str) -> str:
     """Create unique cache key for manual generation"""
     return f"manual_template_{hashlib.md5(alert_name.encode()).hexdigest()}"
@@ -128,15 +165,10 @@ def _export_template_with_remarks_and_outputs(
     step_counter = 1
 
     for idx, row in export_df.iterrows():
-        # Use the explicit Step column to track step number
         if pd.isna(row["Step"]) or str(row["Step"]).strip() == "":
             remarks_list.append("")
             outputs_list.append("")
         else:
-            # Match the Step column value for the key
-            step_col_val = str(row["Step"]).strip()
-            
-            # The manual input keys use a sequential counter
             remark_key = f"remark_step_{step_counter}_{rule_number}"
             remark = remarks_dict.get(remark_key, "")
             remarks_list.append(remark)
@@ -145,20 +177,18 @@ def _export_template_with_remarks_and_outputs(
             output = outputs_dict.get(output_key, "")
             outputs_list.append(output)
 
-            step_counter += 1 # Increment for the next actual step row
+            step_counter += 1
 
     export_df["Output"] = outputs_list
     export_df["Remarks/Comments"] = remarks_list
 
     output = BytesIO()
-    
-    # Use the ImprovedTemplateGenerator's exporter for proper formatting
+
     try:
         intelligent_gen = ImprovedTemplateGenerator()
         return intelligent_gen.export_to_excel(export_df, rule_number).getvalue()
     except Exception as e:
         print(f"⚠️ Fallback Excel export used due to error: {e}")
-        # Fallback manual export if the dedicated exporter fails
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             export_df.to_excel(writer, index=False, sheet_name="Triaging Steps")
         output.seek(0)
@@ -166,7 +196,7 @@ def _export_template_with_remarks_and_outputs(
 
 
 def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
-    """Main page function - UPDATED TO USE INTELLIGENT GENERATOR"""
+    """Main page function"""
 
     selected_alert = session_state.get("triaging_selected_alert", None)
 
@@ -191,7 +221,6 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
     alert_name = selected_alert.get("alert_name", rule_number)
     is_manual = selected_alert.get("is_manual", False)
 
-    # Extract rule number for file matching
     rule_num_match = re.search(r"#?(\d+)", rule_number)
     rule_num = (
         rule_num_match.group(1)
@@ -202,8 +231,7 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
     template_dir = "data/triaging_templates"
     template_files = []
     template_path = ""
-    
-    # Only search for files if not a manual generation
+
     if not is_manual:
         if os.path.exists(template_dir):
             all_files = os.listdir(template_dir)
@@ -214,21 +242,18 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
             ]
             if template_files:
                 template_path = os.path.join(template_dir, template_files[0])
-    
-    
-    # --- INTELLIGENT TEMPLATE GENERATION LOGIC ---
-    
-    
-    # 1. GENERATE FROM MANUAL INPUT (No Template File)
+
+    # GENERATE FROM MANUAL INPUT
     if is_manual or not template_files:
         if is_manual:
             st.info(f"🤖 Generating investigation steps for: **{alert_name}**")
             cache_key = _get_manual_cache_key(alert_name)
         else:
-            st.info(f"⚠️ No template file found for {rule_number}. Generating dynamic template.")
-            cache_key = _get_manual_cache_key(rule_number) # Fallback key
+            st.info(
+                f"⚠️ No template file found for {rule_number}. Generating dynamic template."
+            )
+            cache_key = _get_manual_cache_key(rule_number)
 
-        # CHECK CACHE FIRST
         if cache_key in st.session_state:
             cached_data = st.session_state[cache_key]
             session_state.original_steps = cached_data["original_steps"]
@@ -243,34 +268,29 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
             )
             return
 
-        # RUN DYNAMIC GENERATION
-        progress_bar = st.progress(0, text="📄 Starting intelligent generation...")
+        progress_bar = st.progress(0, text="🔄 Starting intelligent generation...")
         try:
-            # Set original_steps to empty list to force ALL steps to be AI-generated
-            original_steps = [] 
-            
+            original_steps = []
+
             progress_bar.progress(30, text="🧠 Analyzing with AI intelligence...")
 
             intelligent_gen = ImprovedTemplateGenerator()
-            
-            # The rule_context is the alert description/name for manual alerts
-            rule_context = selected_alert.get("description", alert_name) 
+
+            rule_context = selected_alert.get("description", alert_name)
 
             progress_bar.progress(40, text="📡 Gathering threat intelligence...")
 
             start_time = time.time()
 
-            # Generate intelligent template - only AI-generated steps will be created
             template_df = intelligent_gen.generate_intelligent_template(
-                rule_number=rule_number, 
-                original_steps=original_steps, 
-                rule_context=rule_context # Pass context for richer profile
+                rule_number=rule_number,
+                original_steps=original_steps,
+                rule_context=rule_context,
             )
 
             elapsed = time.time() - start_time
             progress_bar.progress(80, text="📊 Finalizing template...")
 
-            # Convert DataFrame back to dictionary format for display
             enhanced_steps_with_kql = []
 
             for idx, row in template_df.iterrows():
@@ -281,7 +301,11 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
                 kql_str = str(kql_raw) if pd.notna(kql_raw) else ""
                 kql_cleaned = kql_str.strip().lower()
 
-                final_kql = str(kql_raw).strip() if pd.notna(kql_raw) and kql_cleaned not in ["nan", "none", ""] else ""
+                final_kql = (
+                    str(kql_raw).strip()
+                    if pd.notna(kql_raw) and kql_cleaned not in ["nan", "none", ""]
+                    else ""
+                )
 
                 step_dict = {
                     "step_name": str(row["Name"]) if pd.notna(row["Name"]) else "",
@@ -303,10 +327,8 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
 
             progress_bar.progress(90, text="💾 Caching results...")
 
-            # Export to Excel
             excel_file = intelligent_gen.export_to_excel(template_df, rule_number)
 
-            # ✅ CACHE RESULTS
             st.session_state[cache_key] = {
                 "original_steps": original_steps,
                 "enhanced_steps": enhanced_steps_with_kql,
@@ -326,33 +348,27 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
 
             st.success(f"🎉 Dynamic template generated in {elapsed:.1f}s!")
 
-            # Display results
             _display_enhancement_results(
                 session_state,
                 rule_number,
                 EnhancedTemplateGenerator,
             )
-            
-            return # Exit after generation
-        
+
+            return
+
         except Exception as e:
             progress_bar.empty()
             st.error(f"❌ Error during dynamic template generation: {str(e)}")
             with st.expander("🔍 View Error Details"):
                 st.code(traceback.format_exc())
             return
-            
-            
-    # 2. ENHANCE EXISTING TEMPLATE FILE (Original Logic)
-    
-    # If a template file was found, proceed with enhancement (original logic)
+
+    # ENHANCE EXISTING TEMPLATE
     if template_files:
         st.info(f"📄 Processing existing template: {template_files[0]}")
         cache_key = _get_enhancement_cache_key(rule_number, template_path)
-        
-        # CHECK CACHE FIRST
+
         if cache_key in st.session_state:
-            # ... (Existing cache display logic - simplified for brevity)
             cached_data = st.session_state[cache_key]
             session_state.original_steps = cached_data["original_steps"]
             session_state.enhanced_steps = cached_data["enhanced_steps"]
@@ -365,12 +381,10 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
                 EnhancedTemplateGenerator,
             )
             return
-        
-        # RUN INTELLIGENT ENHANCEMENT
-        progress_bar = st.progress(0, text="📄 Starting intelligent enhancement...")
+
+        progress_bar = st.progress(0, text="🔄 Starting intelligent enhancement...")
 
         try:
-            # STEP 1: Parse Old Template
             progress_bar.progress(10, text="📋 Parsing original template...")
 
             parser = TemplateParser()
@@ -386,17 +400,14 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
 
             progress_bar.progress(20, text=f"✅ Extracted {len(original_steps)} steps")
 
-            # STEP 2: Use Intelligent Template Generator (NEW!)
             progress_bar.progress(30, text="🧠 Analyzing with AI intelligence...")
 
-            # Initialize the intelligent generator
             intelligent_gen = ImprovedTemplateGenerator()
 
             progress_bar.progress(40, text="📡 Gathering threat intelligence...")
 
             start_time = time.time()
 
-            # Generate intelligent template
             template_df = intelligent_gen.generate_intelligent_template(
                 rule_number=rule_number, original_steps=original_steps
             )
@@ -405,11 +416,9 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
 
             progress_bar.progress(80, text="📊 Finalizing template...")
 
-            # Convert DataFrame back to dictionary format for display
             enhanced_steps_with_kql = []
 
             for idx, row in template_df.iterrows():
-                # Skip header row
                 if pd.isna(row["Step"]) or str(row["Step"]).strip() == "":
                     continue
 
@@ -442,10 +451,8 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
 
             progress_bar.progress(90, text="💾 Caching results...")
 
-            # Export to Excel
             excel_file = intelligent_gen.export_to_excel(template_df, rule_number)
 
-            # ✅ CACHE RESULTS
             st.session_state[cache_key] = {
                 "original_steps": original_steps,
                 "enhanced_steps": enhanced_steps_with_kql,
@@ -466,7 +473,6 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
 
             st.success(f"🎉 Intelligent template generated in {elapsed:.1f}s!")
 
-            # Display results
             _display_enhancement_results(
                 session_state,
                 rule_number,
@@ -477,11 +483,7 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
             progress_bar.empty()
             st.error(f"❌ Error during template enhancement: {str(e)}")
             with st.expander("🔍 View Error Details"):
-                st.code(tracebox.format_exc())
-
-    else:
-        # Should be caught by the dynamic generation logic above, but as a final fail-safe
-        st.error(f"❌ No template found for {rule_number} and dynamic generation failed.")
+                st.code(traceback.format_exc())
 
 
 def _display_enhancement_results(
@@ -496,7 +498,6 @@ def _display_enhancement_results(
     st.success(f"✅ Successfully generated {len(enhanced_steps)} enhanced steps")
     st.markdown("---")
 
-    # Initialize state
     if "step_remarks" not in st.session_state:
         st.session_state.step_remarks = {}
     if "step_outputs" not in st.session_state:
@@ -506,12 +507,9 @@ def _display_enhancement_results(
     if "current_open_step" not in st.session_state:
         st.session_state.current_open_step = 1
 
-    # TWO MAIN TABS
     tab1, tab2 = st.tabs(["📋 Triaging Steps", "📊 Excel Template"])
 
-    # TAB 1: Accordion Steps
     with tab1:
-        # Show upload status if exists
         if st.session_state.get("predictions_upload_error"):
             st.error(f"❌ Upload failed: {st.session_state.predictions_upload_error}")
             if st.button("🔄 Retry Upload"):
@@ -534,7 +532,6 @@ def _display_enhancement_results(
                 )
             del st.session_state.show_predictions_unlock_message
 
-        # Display all steps as accordions
         for idx, step in enumerate(enhanced_steps):
             step_num = idx + 1
             step_name = step.get("step_name", f"Step {step_num}")
@@ -571,7 +568,6 @@ def _display_enhancement_results(
                         if kql_query.lower() in ["nan", "none", "n/a", ""]:
                             kql_query = ""
 
-                    # Check for VirusTotal step
                     step_name_lower = step_name.lower()
                     explanation_lower = explanation.lower()
 
@@ -586,7 +582,6 @@ def _display_enhancement_results(
                         )
                     )
 
-                    # KQL Query Section
                     if kql_query and len(kql_query) > 5:
                         st.markdown("##### 🔎 KQL Query")
                         if kql_explanation and str(kql_explanation).strip() not in [
@@ -598,7 +593,9 @@ def _display_enhancement_results(
                             st.write(kql_explanation)
                         st.code(kql_query, language="kql")
 
-                    # Output Section
+                    # ============================================================================
+                    # ENHANCED IP REPUTATION SECTION - COMPLETE REPLACEMENT
+                    # ============================================================================
                     if is_ip_reputation_step or (kql_query and len(kql_query) > 5):
                         st.markdown("##### 📊 Output")
                         output_key = f"output_step_{step_num}_{rule_number}"
@@ -606,235 +603,252 @@ def _display_enhancement_results(
                             output_key, ""
                         )
 
-                        # VirusTotal Integration - MULTI-IP SUPPORT
                         if is_ip_reputation_step:
-                            st.info("🎯 **IP Reputation Check using Virus Total & Abuse DB**")
+                            st.info("🎯 **Comprehensive IP Reputation Check**")
                             st.markdown("---")
 
                             # Extract ALL IPs from previous steps
-                            default_ips = []
-                            for prev_step in range(1, step_num):
-                                prev_output_key = f"output_step_{prev_step}_{rule_number}"
-                                prev_output = st.session_state.step_outputs.get(prev_output_key, "")
+                            default_ips = _extract_all_ips_from_outputs(
+                                step_num, rule_number
+                            )
 
-                                import re
-                                # IPv4 pattern
-                                ip_pattern = r"\b(?:\d{1,3}\.){3}\d{1,3}\b"
-                                ips_found = re.findall(ip_pattern, prev_output)
-                                default_ips.extend(ips_found)
+                            if default_ips:
+                                st.success(
+                                    f"✅ Auto-detected {len(default_ips)} IP address(es) from previous steps"
+                                )
 
-                            # Remove duplicates while preserving order
-                            seen = set()
-                            unique_ips = []
-                            for ip in default_ips:
-                                if ip not in seen:
-                                    seen.add(ip)
-                                    unique_ips.append(ip)
+                                ipv4_ips = [ip for ip in default_ips if ":" not in ip]
+                                ipv6_ips = [ip for ip in default_ips if ":" in ip]
 
-                            st.markdown("##### 📝 Enter IP Addresses to Check")
-                            st.caption("You can enter multiple IPs (one per line or comma-separated)")
-                            
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    if ipv4_ips:
+                                        st.info(f"📍 IPv4: {len(ipv4_ips)} address(es)")
+                                with col2:
+                                    if ipv6_ips:
+                                        st.info(f"📍 IPv6: {len(ipv6_ips)} address(es)")
+
+                            st.markdown("##### 🔍 Enter IP Addresses to Check")
+                            st.caption(
+                                "Enter multiple IPs (one per line, comma-separated, or space-separated)"
+                            )
+                            st.caption(
+                                "✅ Supports: IPv4, IPv6, Private IPs, Public IPs"
+                            )
+
+                            default_text = "\n".join(default_ips) if default_ips else ""
+
                             ip_input = st.text_area(
                                 "IP Addresses:",
-                                value="\n".join(unique_ips) if unique_ips else "",
-                                placeholder="Enter IPs here:\n192.168.1.1\n10.0.0.5\n8.8.8.8\n\nOr comma-separated: 192.168.1.1, 8.8.8.8",
+                                value=default_text,
+                                placeholder="Enter IPs here:\n192.168.1.1\n10.0.0.5\n2001:0db8:85a3:0000:0000:8a2e:0370:7334\n\nOr comma-separated: 192.168.1.1, 8.8.8.8",
                                 key=f"vt_ip_step_{step_num}",
-                                height=150,
-                                label_visibility="collapsed"
+                                height=200,
+                                label_visibility="collapsed",
                             )
 
                             col1, col2, col3 = st.columns([2, 2, 1])
-                            
+
                             with col1:
-                                if unique_ips:
-                                    st.info(f"ℹ️ Found {len(unique_ips)} IP(s) from previous steps")
-                            
+                                if default_ips:
+                                    st.caption(
+                                        f"ℹ️ {len(default_ips)} IP(s) auto-detected"
+                                    )
+
                             with col3:
                                 check_button = st.button(
                                     "🔍 Check All IPs",
                                     key=f"vt_check_step_{step_num}",
                                     type="primary",
-                                    use_container_width=True
+                                    use_container_width=True,
                                 )
 
                             if check_button and ip_input:
-                                # Parse multiple IPs (handles newlines and commas)
                                 import re
-                                ip_list = re.split(r'[,\n\s]+', ip_input)
+
+                                ip_list = re.split(r"[,\n\s]+", ip_input)
                                 ip_list = [ip.strip() for ip in ip_list if ip.strip()]
-                                
+
                                 if not ip_list:
-                                    st.error("❌ No valid IP addresses found. Please enter at least one IP.")
+                                    st.error(
+                                        "❌ No valid IP addresses found. Please enter at least one IP."
+                                    )
                                 else:
-                                    st.info(f"🔄 Processing {len(ip_list)} IP address(es)...")
-                                    
-                                    # Initialize checker
-                                    if "vt_checker" not in st.session_state:
-                                        st.session_state.vt_checker = VirusTotalChecker()
-                                    
-                                    checker = st.session_state.vt_checker
-                                    
-                                    # Progress tracking
+                                    st.info(
+                                        f"🔄 Processing {len(ip_list)} IP address(es)..."
+                                    )
+
+                                    if "ip_checker" not in st.session_state:
+                                        st.session_state.ip_checker = (
+                                            IPReputationChecker()
+                                        )
+
+                                    checker = st.session_state.ip_checker
+
                                     progress_bar = st.progress(0)
                                     status_text = st.empty()
-                                    
-                                    all_results = {}
-                                    formatted_output_excel = ""
-                                    
-                                    # Check each IP
-                                    for idx, ip in enumerate(ip_list):
-                                        progress = (idx + 1) / len(ip_list)
-                                        progress_bar.progress(progress)
-                                        status_text.text(f"Checking IP {idx + 1}/{len(ip_list)}: {ip}")
-                                        
-                                        # Classify IP type first
-                                        import ipaddress
-                                        try:
-                                            ip_obj = ipaddress.ip_address(ip)
-                                            
-                                            # Determine IP type
-                                            if isinstance(ip_obj, ipaddress.IPv6Address):
-                                                ip_type = "IPv6"
-                                            elif ip_obj.is_private:
-                                                ip_type = "Private"
-                                            elif ip_obj.is_loopback:
-                                                ip_type = "Loopback"
-                                            elif ip_obj.is_reserved:
-                                                ip_type = "Reserved"
-                                            else:
-                                                ip_type = "Public"
-                                            
-                                            # Skip reputation check for private/loopback/reserved
-                                            if ip_type in ["Private", "Loopback", "Reserved"]:
-                                                all_results[ip] = {
-                                                    "success": True,
-                                                    "ip_type": ip_type,
-                                                    "risk_level": "N/A",
-                                                    "message": f"{ip_type} IP - No reputation check needed",
-                                                    "skip_check": True
-                                                }
-                                                formatted_output_excel += f"\n{'='*60}\nIP: {ip}\nType: {ip_type}\nStatus: {ip_type} IP - No external reputation check needed\n{'='*60}\n\n"
-                                            else:
-                                                # Perform reputation check for Public/IPv6
-                                                vt_result = checker.check_ip_reputation(ip, method="auto")
-                                                vt_result["ip_type"] = ip_type
-                                                all_results[ip] = vt_result
-                                                
-                                                if vt_result.get("success"):
-                                                    formatted_output_excel += vt_result.get("formatted_output_excel", "") + "\n\n"
-                                        
-                                        except ValueError:
-                                            # Invalid IP format
-                                            all_results[ip] = {
-                                                "success": False,
-                                                "error": "Invalid IP address format",
-                                                "ip_type": "Invalid"
-                                            }
-                                            formatted_output_excel += f"\n{'='*60}\nIP: {ip}\nStatus: Invalid IP address format\n{'='*60}\n\n"
-                                    
-                                    # Clear progress indicators
-                                    progress_bar.empty()
+
+                                    results = checker.check_multiple_ips(
+                                        ip_list, method="auto"
+                                    )
+
+                                    progress_bar.progress(100)
                                     status_text.empty()
-                                    
-                                    # Save combined output to session state
-                                    st.session_state.step_outputs[output_key] = formatted_output_excel.strip()
-                                    
+                                    progress_bar.empty()
+
+                                    formatted_output_excel = ""
+
+                                    for ip, result in results.items():
+                                        if result.get("formatted_output_excel"):
+                                            formatted_output_excel += (
+                                                result["formatted_output_excel"]
+                                                + "\n\n"
+                                            )
+
+                                    st.session_state.step_outputs[output_key] = (
+                                        formatted_output_excel.strip()
+                                    )
+
                                     st.markdown("---")
-                                    st.success(f"✅ Completed checking {len(ip_list)} IP address(es)!")
+                                    st.success(
+                                        f"✅ Completed checking {len(ip_list)} IP address(es)!"
+                                    )
                                     st.markdown("---")
-                                    
-                                    # Display results for each IP
-                                    high_risk_count = 0
-                                    medium_risk_count = 0
-                                    clean_count = 0
-                                    skipped_count = 0
-                                    
-                                    for ip, result in all_results.items():
-                                        # Create expander for each IP
+
+                                    high_risk = sum(
+                                        1
+                                        for r in results.values()
+                                        if r.get("risk_level") == "HIGH"
+                                    )
+                                    medium_risk = sum(
+                                        1
+                                        for r in results.values()
+                                        if r.get("risk_level") == "MEDIUM"
+                                    )
+                                    low_risk = sum(
+                                        1
+                                        for r in results.values()
+                                        if r.get("risk_level") in ["LOW", "CLEAN"]
+                                    )
+                                    skipped = sum(
+                                        1
+                                        for r in results.values()
+                                        if r.get("skip_check", False)
+                                    )
+
+                                    col1, col2, col3, col4 = st.columns(4)
+
+                                    with col1:
+                                        if high_risk > 0:
+                                            st.metric("🔴 High Risk", high_risk)
+                                        else:
+                                            st.metric("High Risk", high_risk)
+
+                                    with col2:
+                                        if medium_risk > 0:
+                                            st.metric("🟡 Suspicious", medium_risk)
+                                        else:
+                                            st.metric("Suspicious", medium_risk)
+
+                                    with col3:
+                                        st.metric("🟢 Clean", low_risk)
+
+                                    with col4:
+                                        st.metric("ℹ️ Skipped", skipped)
+
+                                    st.markdown("### 📋 Detailed Results")
+
+                                    for ip, result in results.items():
                                         ip_type = result.get("ip_type", "Unknown")
-                                        
+
                                         if result.get("skip_check"):
-                                            # Private/Loopback/Reserved IP
-                                            with st.expander(f"ℹ️ {ip} ({ip_type}) - Skipped", expanded=False):
+                                            with st.expander(
+                                                f"ℹ️ {ip} ({ip_type}) - Skipped",
+                                                expanded=False,
+                                            ):
                                                 st.info(result.get("message", ""))
-                                            skipped_count += 1
-                                        
-                                        elif result.get("success"):
-                                            risk_level = result.get("risk_level", "UNKNOWN")
-                                            
-                                            # Count risk levels
+                                            continue
+
+                                        if result.get("success"):
+                                            risk_level = result.get(
+                                                "risk_level", "UNKNOWN"
+                                            )
+
                                             if risk_level == "HIGH":
-                                                high_risk_count += 1
                                                 icon = "🔴"
                                                 expanded = True
                                             elif risk_level == "MEDIUM":
-                                                medium_risk_count += 1
                                                 icon = "🟡"
                                                 expanded = True
                                             elif risk_level in ["LOW", "CLEAN"]:
-                                                clean_count += 1
                                                 icon = "🟢"
                                                 expanded = False
                                             else:
                                                 icon = "⚪"
                                                 expanded = False
-                                            
-                                            with st.expander(f"{icon} {ip} ({ip_type}) - {risk_level}", expanded=expanded):
-                                                formatted_output_ui = result.get("formatted_output", "")
-                                                st.markdown(formatted_output_ui)
-                                                
-                                                # Show risk-specific messages
-                                                if risk_level == "HIGH":
-                                                    st.error("🚨 **HIGH RISK IP** - Immediate action recommended")
-                                                elif risk_level == "MEDIUM":
-                                                    st.warning("⚠️ **SUSPICIOUS IP** - Further investigation needed")
-                                                elif risk_level in ["LOW", "CLEAN"]:
-                                                    st.success("✅ **CLEAN IP** - No significant threats detected")
-                                        
-                                        else:
-                                            # Error checking IP
-                                            with st.expander(f"❌ {ip} ({ip_type}) - Check Failed", expanded=True):
-                                                st.error(f"Error: {result.get('error', 'Unknown error')}")
-                                                if result.get("manual_check"):
-                                                    st.markdown(result.get("formatted_output", ""))
-                                    
-                                    # Summary section
-                                    st.markdown("---")
-                                    st.markdown("### 📊 Summary")
-                                    
-                                    col1, col2, col3, col4 = st.columns(4)
-                                    
-                                    with col1:
-                                        if high_risk_count > 0:
-                                            st.metric("🔴 High Risk", high_risk_count)
-                                        else:
-                                            st.metric("High Risk", high_risk_count)
-                                    
-                                    with col2:
-                                        if medium_risk_count > 0:
-                                            st.metric("🟡 Suspicious", medium_risk_count)
-                                        else:
-                                            st.metric("Suspicious", medium_risk_count)
-                                    
-                                    with col3:
-                                        st.metric("🟢 Clean", clean_count)
-                                    
-                                    with col4:
-                                        st.metric("ℹ️ Skipped", skipped_count)
-                                    
-                                    # Overall recommendation
-                                    if high_risk_count > 0:
-                                        st.error(f"⚠️ **CRITICAL**: {high_risk_count} high-risk IP(s) detected. Immediate investigation required!")
-                                    elif medium_risk_count > 0:
-                                        st.warning(f"⚠️ **CAUTION**: {medium_risk_count} suspicious IP(s) found. Further investigation recommended.")
-                                    else:
-                                        st.success("✅ All checked IPs appear clean or are private addresses.")
-                                    
-                                    st.info("💾 All results have been saved to the Output field for Excel export.")
 
-                            # Show existing saved output
+                                            with st.expander(
+                                                f"{icon} {ip} ({ip_type}) - {risk_level}",
+                                                expanded=expanded,
+                                            ):
+                                                formatted_output_ui = result.get(
+                                                    "formatted_output", ""
+                                                )
+                                                st.markdown(formatted_output_ui)
+
+                                                if risk_level == "HIGH":
+                                                    st.error(
+                                                        "🚨 **HIGH RISK IP** - Immediate action recommended"
+                                                    )
+                                                elif risk_level == "MEDIUM":
+                                                    st.warning(
+                                                        "⚠️ **SUSPICIOUS IP** - Further investigation needed"
+                                                    )
+                                                elif risk_level in ["LOW", "CLEAN"]:
+                                                    st.success(
+                                                        "✅ **CLEAN IP** - No significant threats detected"
+                                                    )
+
+                                        else:
+                                            with st.expander(
+                                                f"❌ {ip} ({ip_type}) - Check Failed",
+                                                expanded=True,
+                                            ):
+                                                st.error(
+                                                    f"Error: {result.get('error', 'Unknown error')}"
+                                                )
+                                                if result.get("manual_check"):
+                                                    st.markdown(
+                                                        result.get(
+                                                            "formatted_output", ""
+                                                        )
+                                                    )
+
+                                    st.markdown("---")
+                                    st.markdown("### 💡 Overall Assessment")
+
+                                    if high_risk > 0:
+                                        st.error(
+                                            f"⚠️ **CRITICAL**: {high_risk} high-risk IP(s) detected. Immediate investigation required!"
+                                        )
+                                    elif medium_risk > 0:
+                                        st.warning(
+                                            f"⚠️ **CAUTION**: {medium_risk} suspicious IP(s) found. Further investigation recommended."
+                                        )
+                                    else:
+                                        st.success(
+                                            "✅ All checked IPs appear clean or are private addresses."
+                                        )
+
+                                    st.info(
+                                        "💾 All results have been saved to the Output field for Excel export."
+                                    )
+
                             if existing_output:
-                                with st.expander("📋 View Saved Output (Excel Format)", expanded=False):
+                                with st.expander(
+                                    "📋 View Saved Output (Excel Format)",
+                                    expanded=False,
+                                ):
                                     st.text(existing_output)
 
                         else:
@@ -855,8 +869,7 @@ def _display_enhancement_results(
                                 st.success(
                                     f"✅ Output saved ({len(manual_output)} characters)"
                                 )
-                        
-                        
+
                     # Remarks Section
                     st.markdown("##### 💬 Remarks/Comments")
                     remark_key = f"remark_step_{step_num}_{rule_number}"
@@ -877,13 +890,12 @@ def _display_enhancement_results(
 
                     st.markdown("---")
 
-                    # Mark as Complete Button
                     if not is_completed:
                         if st.button(
                             "✅ Mark as Complete",
                             key=f"complete_step_{step_num}",
                             type="primary",
-                            width="stretch",
+                            use_container_width=True,
                         ):
                             st.session_state.completed_steps.add(step_num)
                             st.session_state.current_open_step = step_num + 1
@@ -920,7 +932,7 @@ def _display_enhancement_results(
                     file_name=filename,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
-                    width="stretch",
+                    use_container_width=True,
                     key="download_and_proceed",
                     on_click=lambda: _unlock_predictions(
                         excel_with_data, filename, rule_number
@@ -955,7 +967,7 @@ def _display_enhancement_results(
             st.warning("Template not generated yet")
             return
 
-        st.dataframe(template_df, width="stretch", height=500)
+        st.dataframe(template_df, use_container_width=True, height=500)
 
         st.markdown("---")
 
@@ -967,7 +979,7 @@ def _display_enhancement_results(
                 data=session_state.excel_template_data,
                 file_name=f"triaging_template_{rule_number.replace('#', '_')}_base.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                width="stretch",
+                use_container_width=True,
                 key="download_base_excel",
             )
 
@@ -987,7 +999,7 @@ def _display_enhancement_results(
                 data=st.session_state[complete_excel_key],
                 file_name=f"triaging_template_{rule_number.replace('#', '_')}_complete.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                width="stretch",
+                use_container_width=True,
                 type="primary",
                 key="download_complete_excel",
             )

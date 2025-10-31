@@ -11,6 +11,16 @@
             }
         },
         {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/0deae559-43f4-a80e-df0b-d323fd8c3952",
+            "name": "0deae559-43f4-a80e-df0b-d323fd8c3952",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Ip",
+            "properties": {
+                "address": "111.125.237.218",
+                "friendlyName": "111.125.237.218"
+            }
+        },
+        {
             "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/181b2738-5b07-781f-6cb3-0a7514d4b490",
             "name": "181b2738-5b07-781f-6cb3-0a7514d4b490",
             "type": "Microsoft.SecurityInsights/Entities",
@@ -18,38 +28,6 @@
             "properties": {
                 "address": "49.249.104.218",
                 "friendlyName": "49.249.104.218"
-            }
-        },
-        {
-            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/b5624c73-7e2f-a594-bcf0-c7584657bc08",
-            "name": "b5624c73-7e2f-a594-bcf0-c7584657bc08",
-            "type": "Microsoft.SecurityInsights/Entities",
-            "kind": "Account",
-            "properties": {
-                "accountName": "aarushi.trivedi",
-                "upnSuffix": "yashtechnologies841.onmicrosoft.com",
-                "isDomainJoined": false,
-                "friendlyName": "aarushi.trivedi"
-            }
-        },
-        {
-            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/a5710237-b0c9-be67-3357-655fcf155642",
-            "name": "a5710237-b0c9-be67-3357-655fcf155642",
-            "type": "Microsoft.SecurityInsights/Entities",
-            "kind": "Ip",
-            "properties": {
-                "address": "182.70.149.20",
-                "friendlyName": "182.70.149.20"
-            }
-        },
-        {
-            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/17451eae-e192-7b39-c8f8-60db85dc6942",
-            "name": "17451eae-e192-7b39-c8f8-60db85dc6942",
-            "type": "Microsoft.SecurityInsights/Entities",
-            "kind": "Ip",
-            "properties": {
-                "address": "27.6.153.93",
-                "friendlyName": "27.6.153.93"
             }
         },
         {
@@ -65,6 +43,28 @@
             }
         },
         {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/b5624c73-7e2f-a594-bcf0-c7584657bc08",
+            "name": "b5624c73-7e2f-a594-bcf0-c7584657bc08",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Account",
+            "properties": {
+                "accountName": "aarushi.trivedi",
+                "upnSuffix": "yashtechnologies841.onmicrosoft.com",
+                "isDomainJoined": false,
+                "friendlyName": "aarushi.trivedi"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/17451eae-e192-7b39-c8f8-60db85dc6942",
+            "name": "17451eae-e192-7b39-c8f8-60db85dc6942",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Ip",
+            "properties": {
+                "address": "27.6.153.93",
+                "friendlyName": "27.6.153.93"
+            }
+        },
+        {
             "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/a870a64a-2947-9c8a-09f5-cb69b13a6d11",
             "name": "a870a64a-2947-9c8a-09f5-cb69b13a6d11",
             "type": "Microsoft.SecurityInsights/Entities",
@@ -75,6 +75,18 @@
                 "isDomainJoined": false,
                 "friendlyName": "shrish.s"
             }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/9d863e21-b331-b2a4-e186-d0fe7bc0f6fa",
+            "name": "9d863e21-b331-b2a4-e186-d0fe7bc0f6fa",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Account",
+            "properties": {
+                "accountName": "ketan.patel",
+                "upnSuffix": "yashtechnologies841.onmicrosoft.com",
+                "isDomainJoined": false,
+                "friendlyName": "ketan.patel"
+            }
         }
     ],
     "metaData": [
@@ -84,7 +96,7 @@
         },
         {
             "entityKind": "Account",
-            "count": 3
+            "count": 4
         }
     ]
 }

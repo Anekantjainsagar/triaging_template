@@ -115,73 +115,42 @@ class SecurityAlertAnalyzerCrew:
         return delay
 
     def _clean_output(self, text: str) -> str:
-        """Clean and deduplicate the LLM output with improved formatting"""
-        
-        # FIRST: Remove common LLM artifacts
+        """Clean LLM output - simplified to preserve content"""
+
+        # Extract just the analysis content
+        # Look for patterns like "Final Answer:" followed by actual content
+        if "Final Answer:" in text:
+            # Split at Final Answer and take everything after
+            parts = text.split("Final Answer:", 1)
+            if len(parts) > 1:
+                text = parts[1]
+
+        # Remove common LLM metadata patterns
         patterns_to_remove = [
-            r"Final Answer[\s\S]*?(?=##|$)",
-            r"Action Input:[\s\S]*?(?=##|$)",
-            r"Observation:[\s\S]*?(?=##|$)",
-            r"Thought:[\s\S]*?(?=##|$)",
-            r"Action:[\s\S]*?(?=##|$)",
-            r'\{[\s\S]*?"Tool Name"[\s\S]*?\}',
-            r"Search the internet with Serper",
-            r"```[\s\S]*?```",  # Remove code blocks
-            r"\*\*\*Note:.*?due to.*?\*\*\*",  # Remove fallback notes
+            r"^Thought:.*?(?=\n[A-Z]|\n##|\n\d+\.)",  # Remove "Thought:" lines
+            r"Action:.*?(?=\n)",  # Remove action lines
+            r"Action Input:.*?(?=\n)",
+            r"Observation:.*?(?=\n)",
+            r"Tool Args:.*?(?=\n)",
+            r"Using Tool:.*?(?=\n)",
         ]
 
-        cleaned = text
         for pattern in patterns_to_remove:
-            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+            text = re.sub(pattern, "", text, flags=re.IGNORECASE | re.DOTALL)
 
-        # SECOND: Fix markdown formatting issues
-        # Fix broken emphasis: * text * → **text**
-        cleaned = re.sub(r'\*\s+([^*]+?)\s+\*(?!\*)', r'**\1**', cleaned)
-        
-        # Fix stray asterisks at line starts
-        cleaned = re.sub(r'^\*\s+', '- ', cleaned, flags=re.MULTILINE)
-        
-        # Convert single asterisks to proper markdown
-        cleaned = re.sub(r'(?<![\*\-])\*(?![\*])', '', cleaned)  # Remove stray single asterisks
+        # Clean up excessive whitespace
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = text.strip()
 
-        # THIRD: Fix section headers
-        # Ensure proper spacing around headers
-        cleaned = re.sub(r'(\d+\.)\s*([A-Z][A-Z\s]+)(?!#)', r'## \1 \2', cleaned)
-        
-        # Normalize headers
-        cleaned = re.sub(r'^([0-9]+\.\s+[A-Z].*?)$', r'## \1', cleaned, flags=re.MULTILINE)
+        # Ensure proper markdown headers for main sections
+        # Add ## before numbered sections if not present
+        text = re.sub(r"\n(\d+\.\s+[A-Z][A-Z\s]+)\n", r"\n## \1\n", text)
 
-        # FOURTH: Deduplicate sections
-        sections = re.split(r'(## .+)', cleaned)
-        seen_sections = {}
-        result_parts = []
+        # Fix list formatting
+        text = re.sub(r"\n-\s+", "\n- ", text)
+        text = re.sub(r"\n\*\s+", "\n- ", text)
 
-        for i, part in enumerate(sections):
-            if part.strip():
-                if part.startswith("##"):
-                    section_name = part.strip().lower()
-                    if section_name not in seen_sections:
-                        seen_sections[section_name] = True
-                        result_parts.append(part)
-                        if i + 1 < len(sections):
-                            result_parts.append(sections[i + 1])
-                else:
-                    if i > 0 and sections[i - 1].startswith("##"):
-                        continue
-                    elif i == 0:
-                        result_parts.append(part)
-
-        cleaned = "".join(result_parts)
-        
-        # FIFTH: Fix excess whitespace
-        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
-        cleaned = re.sub(r"  +", " ", cleaned)  # Remove multiple spaces
-        
-        # SIXTH: Ensure proper list formatting
-        cleaned = re.sub(r'\n-\s+', '\n- ', cleaned)
-        cleaned = re.sub(r'\n\*\s+', '\n- ', cleaned)
-
-        return cleaned.strip()
+        return text.strip()
 
     def _create_agents(self, llm: LLM) -> Dict[str, Agent]:
         """Create specialized agents for analysis with specified LLM"""
@@ -210,7 +179,7 @@ class SecurityAlertAnalyzerCrew:
             - Prioritize high-impact information first""",
             tools=([self.search_tool] if self.search_tool else []),
             llm=llm,
-            verbose=False,
+            verbose=True,
             allow_delegation=False,
             max_iter=3,
         )
@@ -279,7 +248,7 @@ CRITICAL GUIDELINES:
                 agents=list(agents.values()),
                 tasks=tasks,
                 process=Process.sequential,
-                verbose=False,
+                verbose=True,
                 memory=False,
             )
 
