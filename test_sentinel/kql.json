@@ -24,22 +24,7 @@
                     "type": "long"
                 }
             ],
-            "rows": [
-                [
-                    "saratkumar.indukuri@yashtechnologies841.onmicrosoft.com",
-                    4,
-                    2,
-                    0,
-                    1
-                ],
-                [
-                    "aarushi.trivedi@yashtechnologies841.onmicrosoft.com",
-                    13,
-                    4,
-                    0,
-                    1
-                ]
-            ]
+            "rows": []
         }
     ]
 }

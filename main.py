@@ -785,13 +785,15 @@ def display_ai_analysis(alert_data):
                 enhanced_alert_data["rule_number"] = rule_number
                 enhanced_alert_data["alert_name"] = alert_name
 
+                # ✅ NEW: Pass analysis text to template generator for manual analysis
                 if analysis_key in st.session_state:
                     result = st.session_state[analysis_key]
                     if result.get("success"):
-                        enhanced_alert_data["analysis_text"] = result.get(
-                            "analysis", ""
-                        )
+                        enhanced_alert_data["analysis_text"] = result.get("analysis", "")
 
+                # ✅ DEBUG: Show what we're passing
+                st.info(f"📊 Passing to triaging: {len(enhanced_alert_data.get('entities', {}).get('entities', []))} entities")
+                
                 display_triaging_workflow_cached(
                     rule_number,
                     alert_data=enhanced_alert_data,
@@ -879,6 +881,7 @@ def display_ai_analysis(alert_data):
                 enhanced_alert_data["rule_number"] = rule_number
                 enhanced_alert_data["alert_name"] = alert_name
 
+                # ✅ NEW: Pass analysis text to template generator for manual analysis
                 if analysis_key in st.session_state:
                     result = st.session_state[analysis_key]
                     if result.get("success"):
@@ -888,7 +891,7 @@ def display_ai_analysis(alert_data):
 
                 display_triaging_workflow_cached(
                     rule_number,
-                    alert_data=enhanced_alert_data,
+                    alert_data=enhanced_alert_data,  # ✅ Now contains full alert_data with entities
                     cache_key=triaging_cache_key,
                     analysis_key=analysis_key,
                 )
@@ -907,17 +910,10 @@ def display_ai_analysis(alert_data):
 def display_triaging_workflow_cached(
     rule_number: str, alert_data: dict, cache_key: str, analysis_key: str
 ):
-    """
-    Wrapper for triaging workflow that prevents re-generation and caches results
+    # ✅ DEBUG: Show what we're passing to triaging
+    st.info(f"🚀 Starting triaging for: {alert_data.get('title', 'Unknown Alert')}")
 
-    Args:
-        rule_number: Rule identifier
-        alert_data: Full alert data
-        cache_key: Unique cache key for this triaging session
-        analysis_key: Analysis cache key for Excel storage
-    """
-
-    # Call the original triaging workflow
+    # Call the original triaging workflow with enhanced alert_data
     display_triaging_workflow(rule_number, alert_data=alert_data)
 
     # ✅ MONITOR FOR COMPLETION

@@ -54,24 +54,61 @@ class ImprovedTemplateGenerator:
             print(f"⚠️ Could not initialize Analyzer API Client: {e}")
             self.analyzer_client = None
 
-    def generate_from_manual_analysis(
-        self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN"
-    ) -> pd.DataFrame:
+    def inject_alert_data_into_template(self, template_df: pd.DataFrame, alert_data: dict) -> pd.DataFrame:
         """
-        Generate template directly from manual alert analysis
-        Used when alert is manually entered without template file
+        Inject real alert data into KQL queries after template generation
         
         Args:
-            alert_name: Name of the alert
-            analysis_text: AI-generated analysis output
-            rule_number: Rule identifier
+            template_df: Generated template DataFrame
+            alert_data: Alert data containing entities, timestamps, etc.
             
         Returns:
-            DataFrame with 6-7 investigation steps
+            DataFrame with injected KQL queries
         """
+        print(f"\n{'='*80}")
+        print(f"🔄 KQL DATA INJECTION PHASE")
+        print(f"{'='*80}\n")
+        
+        from routes.src.kql_template_injector import TemplateKQLInjector
+        
+        try:
+            # Initialize injector with alert data
+            injector = TemplateKQLInjector(alert_data)
+            
+            print(f"📊 Extracted Entities:")
+            print(f"   👤 Users: {len(injector.users)}")
+            for user in injector.users:
+                print(f"      • {user}")
+            print(f"   🌐 IPs: {len(injector.ips)}")
+            for ip in injector.ips:
+                print(f"      • {ip}")
+            print(f"   💻 Hosts: {len(injector.hosts)}")
+            for host in injector.hosts:
+                print(f"      • {host}")
+            print(f"   ⏰ Reference DateTime: {injector.reference_datetime}")
+            
+            # Inject data into template
+            injected_df = injector.inject_template_dataframe(template_df)
+            
+            print(f"\n✅ KQL Injection Complete!")
+            print(f"{'='*80}\n")
+            
+            return injected_df
+            
+        except Exception as e:
+            print(f"⚠️ KQL Injection failed: {str(e)}")
+            import traceback
+            print(f"🔍 Error trace:\n{traceback.format_exc()}")
+            # Return original template if injection fails
+            return template_df
+
+    def generate_from_manual_analysis(
+        self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN", alert_data: dict = None
+    ) -> pd.DataFrame:
         print(f"\n{'='*80}")
         print(f"🤖 GENERATING MANUAL ALERT TEMPLATE")
         print(f"Alert: {alert_name}")
+        print(f"Has alert_data: {'YES' if alert_data else 'NO'}")
         print(f"{'='*80}\n")
 
         start_time = time.time()
@@ -121,13 +158,25 @@ class ImprovedTemplateGenerator:
 
             template_rows.append(row)
 
+        # Create initial DataFrame
+        template_df = pd.DataFrame(template_rows)
+        
+        # ✅ NEW: INJECT REAL DATA INTO KQL QUERIES IF ALERT_DATA AVAILABLE
+        if alert_data:
+            print(f"\n{'='*80}")
+            print(f"🔄 INJECTING REAL ALERT DATA INTO KQL QUERIES")
+            print(f"{'='*80}")
+            template_df = self.inject_alert_data_into_template(template_df, alert_data)
+        else:
+            print(f"⚠️ No alert_data provided - KQL queries will contain placeholders")
+
         elapsed = time.time() - start_time
 
         print(f"\n{'='*80}")
         print(f"✅ COMPLETED in {elapsed:.1f}s: {len(template_rows)-1} investigation steps")
         print(f"{'='*80}\n")
 
-        return pd.DataFrame(template_rows)
+        return template_df
 
     def generate_intelligent_template(
         self, rule_number: str, original_steps: List[Dict], rule_context: str = ""

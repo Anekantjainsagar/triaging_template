@@ -18,15 +18,21 @@ def main():
     # """
     # kql_query = """
     # let reference_datetime = datetime(2025-10-03 12:45:00Z);
-    # SigninLogs 
+    # SigninLogs
+    # | where TimeGenerated > reference_datetime - 7d and TimeGenerated <= reference_datetime
+    # | where UserPrincipalName in ("shrish.s@yashtechnologies841.onmicrosoft.com", "aarushi.trivedi@yashtechnologies841.onmicrosoft.com", "saratkumar.indukuri@yashtechnologies841.onmicrosoft.com", "ketan.patel@yashtechnologies841.onmicrosoft.com")
+    # | summarize SignInCount = count(), UniqueIPs = dcount(IPAddress), FailedAttempts = countif(ResultType != "0"), UniqueLocations = dcount(tostring(LocationDetails.countryOrRegion)) by UserPrincipalName
+    # """
+    # kql_query = """
+    # let reference_datetime = datetime(2025-10-03 12:45:00Z);
+    # SigninLogs
     # | where TimeGenerated > reference_datetime - 7d and TimeGenerated <= reference_datetime
     # | where UserPrincipalName in ("shrish.s@yashtechnologies841.onmicrosoft.com", "aarushi.trivedi@yashtechnologies841.onmicrosoft.com", "saratkumar.indukuri@yashtechnologies841.onmicrosoft.com", "ketan.patel@yashtechnologies841.onmicrosoft.com")
     # | summarize SignInCount = count(), UniqueIPs = dcount(IPAddress), FailedAttempts = countif(ResultType != "0"), UniqueLocations = dcount(tostring(LocationDetails.countryOrRegion)) by UserPrincipalName
     # """
     kql_query = """
-    let reference_datetime = datetime(2025-10-03 12:45:00Z);
-    SigninLogs 
-    | where TimeGenerated > reference_datetime - 7d and TimeGenerated <= reference_datetime
+    SigninLogs
+    | where TimeGenerated > datetime(2025-09-26 12:45:20Z) and TimeGenerated <= datetime(2025-10-03 12:45:20Z)
     | where UserPrincipalName in ("shrish.s@yashtechnologies841.onmicrosoft.com", "aarushi.trivedi@yashtechnologies841.onmicrosoft.com", "saratkumar.indukuri@yashtechnologies841.onmicrosoft.com", "ketan.patel@yashtechnologies841.onmicrosoft.com")
     | summarize SignInCount = count(), UniqueIPs = dcount(IPAddress), FailedAttempts = countif(ResultType != "0"), UniqueLocations = dcount(tostring(LocationDetails.countryOrRegion)) by UserPrincipalName
     """

@@ -156,10 +156,11 @@ class TemplateCacheManager:
 def display_triaging_workflow(rule_number: str, alert_data: dict = None):
     """
     FIXED: Triaging workflow with proper caching and NO unnecessary reruns
+    Now properly passes alert_data to template generator for KQL injection
 
     Args:
         rule_number: Rule identifier
-        alert_data: Full alert data dictionary
+        alert_data: Full alert data dictionary (with entities and timestamps)
     """
 
     st.markdown("## 🔍 AI-Powered Template Enhancement")
@@ -170,6 +171,34 @@ def display_triaging_workflow(rule_number: str, alert_data: dict = None):
     is_manual = alert_data.get("source") == "alert_details" or alert_data.get(
         "is_manual", False
     )
+
+    # ✅ DEBUG: Check if we have alert_data for KQL injection
+    st.info(f"🔍 Alert Data Status: {'✅ Available' if alert_data else '❌ Missing'}")
+    if alert_data:
+        entities = alert_data.get("entities", {})
+        entities_list = (
+            entities.get("entities", []) if isinstance(entities, dict) else entities
+        )
+        st.info(f"📊 Entities found: {len(entities_list)}")
+
+        # Show extracted entities for debugging
+        if entities_list:
+            with st.expander("🔍 View Extracted Entities", expanded=False):
+                for entity in entities_list[:5]:  # Show first 5
+                    kind = entity.get("kind", "Unknown")
+                    props = entity.get("properties", {})
+                    if kind == "Account":
+                        account_name = props.get("accountName", "")
+                        upn_suffix = props.get("upnSuffix", "")
+                        st.write(
+                            f"👤 {account_name}@{upn_suffix}"
+                            if upn_suffix
+                            else f"👤 {account_name}"
+                        )
+                    elif kind == "Ip":
+                        st.write(f"🌐 {props.get('address', '')}")
+                    elif kind == "Host":
+                        st.write(f"💻 {props.get('hostName', '')}")
 
     # Generate stable cache key
     cache_key = get_stable_cache_key(alert_name, rule_number, is_manual)
@@ -199,21 +228,30 @@ def display_triaging_workflow(rule_number: str, alert_data: dict = None):
 
                 gen = ImprovedTemplateGenerator()
 
-                # Generate template
+                # ✅ CRITICAL FIX: Pass alert_data for KQL injection
+                analysis_text = alert_data.get("analysis_text", "")
+
                 if is_manual:
-                    analysis_text = alert_data.get("analysis_text", "")
+                    # For manual alerts, use generate_from_manual_analysis with alert_data
                     template_df = gen.generate_from_manual_analysis(
                         alert_name=alert_name,
                         analysis_text=analysis_text,
                         rule_number=rule_number,
+                        alert_data=alert_data,  # ✅ PASS alert_data HERE
                     )
                 else:
-                    # Use existing template if available
+                    # For template-based alerts, generate and then inject
                     template_df = gen.generate_intelligent_template(
                         rule_number=rule_number,
                         original_steps=[],
                         rule_context=alert_name,
                     )
+
+                    # ✅ INJECT ALERT DATA into the generated template
+                    if alert_data:
+                        template_df = gen.inject_alert_data_into_template(
+                            template_df, alert_data
+                        )
 
                 # Convert to enhanced steps format
                 enhanced_steps = []
