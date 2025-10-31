@@ -1,12 +1,10 @@
 import math
 import json
 import streamlit as st
-import pandas as pd
 from soc_utils import *
 from datetime import datetime
 import hashlib
 import time
-import re
 
 # Import SOC analysis components
 from api_client.analyzer_api_client import get_analyzer_client
@@ -277,6 +275,11 @@ def check_api_status():
         return False, {"status": "error", "error": str(e)}
 
 
+# ============================================================================
+# ✅ FIXED: Add Predictions Tab Display Function from soc.py
+# ============================================================================
+
+
 def display_predictions_tab_integrated():
     """Display predictions analysis tab (unlocked after triaging) - INTEGRATED VERSION"""
 
@@ -393,6 +396,239 @@ def display_predictions_tab_integrated():
             st.code(traceback.format_exc())
 
 
+# ============================================================================
+# UPDATED: display_ai_analysis function with 4 tabs + PROPER CACHING
+# ============================================================================
+
+
+def format_entity_display(entity):
+    """
+    Format entity for display based on entity type
+
+    Args:
+        entity: Entity dictionary from alert data
+
+    Returns:
+        Formatted string representation of the entity
+    """
+    kind = entity.get("kind", "Unknown")
+    props = entity.get("properties", {})
+
+    if kind == "Account":
+        account_name = props.get("accountName", "")
+        upn_suffix = props.get("upnSuffix", "")
+        friendly_name = props.get("friendlyName", "")
+
+        # Format as accountName@upnSuffix
+        if account_name and upn_suffix:
+            primary = f"{account_name}@{upn_suffix}"
+        elif account_name:
+            primary = account_name
+        else:
+            primary = friendly_name or "Unknown Account"
+
+        # Add friendly name if different
+        if friendly_name and friendly_name != account_name:
+            return f"👤 **{primary}** (Friendly: {friendly_name})"
+        else:
+            return f"👤 **{primary}**"
+
+    elif kind == "Ip":
+        address = props.get("address", "Unknown IP")
+        location = props.get("location", {})
+        country = location.get("countryName", "") if location else ""
+
+        if country:
+            return f"🌐 **{address}** ({country})"
+        else:
+            return f"🌐 **{address}**"
+
+    elif kind == "Host":
+        hostname = props.get("hostName") or props.get("netBiosName") or "Unknown Host"
+        os = props.get("oSFamily", "")
+
+        if os:
+            return f"💻 **{hostname}** (OS: {os})"
+        else:
+            return f"💻 **{hostname}**"
+
+    elif kind == "Url":
+        url = props.get("url", "Unknown URL")
+        return f"🔗 **{url}**"
+
+    elif kind == "File":
+        filename = props.get("name") or props.get("fileName") or "Unknown File"
+        file_hash = props.get("fileHashValue", "")
+
+        if file_hash:
+            return f"📄 **{filename}** (Hash: {file_hash[:16]}...)"
+        else:
+            return f"📄 **{filename}**"
+
+    elif kind == "Process":
+        process_name = props.get("processName") or props.get(
+            "commandLine", "Unknown Process"
+        )
+        process_id = props.get("processId", "")
+
+        if process_id:
+            return f"⚙️ **{process_name}** (PID: {process_id})"
+        else:
+            return f"⚙️ **{process_name}**"
+
+    elif kind == "MailMessage":
+        sender = props.get("sender", "Unknown Sender")
+        subject = props.get("subject", "No Subject")
+        return f"📧 **From:** {sender} | **Subject:** {subject}"
+
+    elif kind == "CloudApplication":
+        app_name = props.get("name") or props.get("displayName") or "Unknown App"
+        return f"☁️ **{app_name}**"
+
+    else:
+        # Generic display for unknown entity types
+        name = (
+            props.get("name")
+            or props.get("displayName")
+            or props.get("friendlyName")
+            or f"Unknown {kind}"
+        )
+        return f"📌 **{name}**"
+
+
+def display_entities_summary(alert_data):
+    """
+    Display a comprehensive summary of entities associated with the alert
+
+    Args:
+        alert_data: Full alert data including entities
+    """
+    entities = alert_data.get("entities", {})
+
+    if not entities:
+        return
+
+    # Get entities list
+    if isinstance(entities, dict):
+        entities_list = entities.get("entities", [])
+    else:
+        entities_list = entities
+
+    if not entities_list:
+        return
+
+    st.markdown(
+        """
+    <div style="
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border-left: 5px solid #1976d2;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    ">
+        <h3 style="color: #1565c0; margin: 0 0 15px 0;">🔍 Associated Entities</h3>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    # Group entities by type
+    entities_by_type = {}
+    for entity in entities_list:
+        kind = entity.get("kind", "Unknown")
+        if kind not in entities_by_type:
+            entities_by_type[kind] = []
+        entities_by_type[kind].append(entity)
+
+    # Sort entity types by priority
+    priority_order = [
+        "Account",
+        "Ip",
+        "Host",
+        "MailMessage",
+        "CloudApplication",
+        "File",
+        "Process",
+        "Url",
+    ]
+
+    sorted_types = sorted(
+        entities_by_type.keys(),
+        key=lambda x: priority_order.index(x) if x in priority_order else 999,
+    )
+
+    # Display entities in columns
+    if len(sorted_types) <= 2:
+        cols = st.columns(len(sorted_types))
+    else:
+        cols = st.columns(3)
+
+    col_idx = 0
+    for entity_type in sorted_types:
+        entities = entities_by_type[entity_type]
+
+        with cols[col_idx % len(cols)]:
+            # Entity type header
+            type_emoji = {
+                "Account": "👥",
+                "Ip": "🌐",
+                "Host": "💻",
+                "File": "📄",
+                "Process": "⚙️",
+                "MailMessage": "📧",
+                "Url": "🔗",
+                "CloudApplication": "☁️",
+            }.get(entity_type, "📌")
+
+            st.markdown(f"**{type_emoji} {entity_type}** ({len(entities)})")
+
+            # Display each entity
+            for entity in entities:
+                formatted = format_entity_display(entity)
+                st.markdown(formatted)
+
+                # Add additional details in expander for complex entities
+                if entity_type in ["Account", "Host", "Ip"]:
+                    props = entity.get("properties", {})
+                    details = []
+
+                    if entity_type == "Account":
+                        if props.get("isDomainJoined"):
+                            details.append("🔐 Domain Joined")
+                        sid = props.get("sid")
+                        if sid:
+                            details.append(f"SID: {sid}")
+
+                    elif entity_type == "Ip":
+                        location = props.get("location", {})
+                        if location:
+                            city = location.get("city")
+                            state = location.get("state")
+                            if city or state:
+                                details.append(
+                                    f"📍 {city}, {state}"
+                                    if city and state
+                                    else city or state
+                                )
+
+                    elif entity_type == "Host":
+                        domain = props.get("dnsDomain")
+                        if domain:
+                            details.append(f"🌐 Domain: {domain}")
+
+                    if details:
+                        with st.expander("ℹ️ Details", expanded=False):
+                            for detail in details:
+                                st.caption(detail)
+
+            st.markdown("---")
+
+        col_idx += 1
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+
 def display_ai_analysis(alert_data):
     """Display AI analysis with proper state passing to triaging and predictions tab"""
 
@@ -427,6 +663,9 @@ def display_ai_analysis(alert_data):
         status = alert_data.get("status", "Unknown")
         st.markdown(f"**Severity:** `{severity}`")
         st.markdown(f"**Status:** `{status}`")
+
+    # ✅ NEW: Display entities summary at the top
+    display_entities_summary(alert_data)
 
     st.markdown("---")
 
@@ -630,6 +869,11 @@ def display_ai_analysis(alert_data):
                 display_predictions_tab_integrated()
 
 
+# ============================================================================
+# ✅ NEW: Cached Triaging Workflow Wrapper
+# ============================================================================
+
+
 def display_triaging_workflow_cached(
     rule_number: str, alert_data: dict, cache_key: str, analysis_key: str
 ):
@@ -665,126 +909,192 @@ def display_triaging_workflow_cached(
                 st.info("💡 Refresh the page to see the cached version")
 
 
+def display_ai_threat_analysis_tab(alert_name, api_client, analysis_key, alert_data):
+    """Display AI threat analysis for an alert"""
+
+    if analysis_key in st.session_state and st.session_state[analysis_key]:
+        result = st.session_state[analysis_key]
+        if result.get("success"):
+            analysis = result.get("analysis", "")
+
+            st.markdown('<div class="threat-intel-box">', unsafe_allow_html=True)
+            st.markdown("### 📋 Comprehensive Threat Intelligence Report")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            # Display sections...
+            sections = analysis.split("## ")
+            for section in sections:
+                if not section.strip():
+                    continue
+                st.markdown(f"## {section}")
+
+            # Download button
+            st.markdown("---")
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col2:
+                st.download_button(
+                    label="📥 Download Analysis Report",
+                    data=analysis,
+                    file_name=f"threat_analysis_{alert_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                    mime="text/markdown",
+                    use_container_width=True,
+                    type="primary",
+                )
+    else:
+        # Run analysis
+        progress_placeholder = st.empty()
+
+        with progress_placeholder.container():
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
+            status_text.text("🚀 Initializing AI analysis engine...")
+            progress_bar.progress(20)
+            time.sleep(0.3)
+
+            status_text.text("🔍 Analyzing threat patterns...")
+            progress_bar.progress(50)
+            time.sleep(0.3)
+
+            status_text.text("🌐 Researching threat intelligence...")
+            progress_bar.progress(75)
+
+            # Call API
+            result = api_client.analyze_alert(alert_name)
+
+            progress_bar.progress(95)
+            status_text.text("📊 Finalizing analysis...")
+            time.sleep(0.2)
+            progress_bar.progress(100)
+
+            time.sleep(0.5)
+            progress_placeholder.empty()
+
+        # Cache and display
+        st.session_state[analysis_key] = result
+
+        if result.get("success"):
+            st.rerun()
+        else:
+            st.error(f"❌ Analysis failed: {result.get('error')}")
+
 
 def clean_and_format_markdown(text):
     """
     Clean and properly format markdown text for display
-    
+
     Args:
         text: Raw markdown text that may have formatting issues
-        
+
     Returns:
         Properly formatted markdown text
     """
     if not text:
         return ""
-    
+
     # Remove excessive asterisks and clean up bold/italic markers
-    # Fix patterns like *word*- or **word*- 
-    text = re.sub(r'\*+([^\*]+?)\*+-', r'**\1** -', text)
-    text = re.sub(r'\*+([^\*]+?)\*+:', r'**\1**:', text)
-    
+    # Fix patterns like *word*- or **word*-
+    text = re.sub(r"\*+([^\*]+?)\*+-", r"**\1** -", text)
+    text = re.sub(r"\*+([^\*]+?)\*+:", r"**\1**:", text)
+
     # Fix improperly closed bold markers
-    text = re.sub(r'\*\*([^\*]+?)\*([^*])', r'**\1**\2', text)
-    
+    text = re.sub(r"\*\*([^\*]+?)\*([^*])", r"**\1**\2", text)
+
     # Ensure proper spacing after list markers
-    text = re.sub(r'^\*([^\s])', r'* \1', text, flags=re.MULTILINE)
-    text = re.sub(r'^-([^\s])', r'- \1', text, flags=re.MULTILINE)
-    
+    text = re.sub(r"^\*([^\s])", r"* \1", text, flags=re.MULTILINE)
+    text = re.sub(r"^-([^\s])", r"- \1", text, flags=re.MULTILINE)
+
     # Fix numbered lists
-    text = re.sub(r'^(\d+)\.([^\s])', r'\1. \2', text, flags=re.MULTILINE)
-    
+    text = re.sub(r"^(\d+)\.([^\s])", r"\1. \2", text, flags=re.MULTILINE)
+
     # Ensure proper heading formatting
-    text = re.sub(r'^##([^\s])', r'## \1', text, flags=re.MULTILINE)
-    text = re.sub(r'^###([^\s])', r'### \1', text, flags=re.MULTILINE)
-    
+    text = re.sub(r"^##([^\s])", r"## \1", text, flags=re.MULTILINE)
+    text = re.sub(r"^###([^\s])", r"### \1", text, flags=re.MULTILINE)
+
     # Add spacing around sections
-    text = re.sub(r'\n(##[^#])', r'\n\n\1', text)
-    
+    text = re.sub(r"\n(##[^#])", r"\n\n\1", text)
+
     # Clean up multiple consecutive newlines
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
     return text.strip()
 
 
 def parse_analysis_sections(analysis_text):
     """
     Parse analysis text into structured sections
-    
+
     Args:
         analysis_text: Raw analysis text
-        
+
     Returns:
         List of section dictionaries with title and content
     """
     sections = []
-    
+
     # Split by ## headers
-    parts = re.split(r'\n##\s+', analysis_text)
-    
+    parts = re.split(r"\n##\s+", analysis_text)
+
     # First part might be intro text before any section
-    if parts[0].strip() and not parts[0].startswith('#'):
-        sections.append({
-            'title': 'Overview',
-            'content': clean_and_format_markdown(parts[0].strip()),
-            'level': 2
-        })
-    
+    if parts[0].strip() and not parts[0].startswith("#"):
+        sections.append(
+            {
+                "title": "Overview",
+                "content": clean_and_format_markdown(parts[0].strip()),
+                "level": 2,
+            }
+        )
+
     # Process remaining sections
     for part in parts[1:]:
-        lines = part.split('\n', 1)
+        lines = part.split("\n", 1)
         if len(lines) >= 2:
             title = lines[0].strip()
             content = clean_and_format_markdown(lines[1].strip())
-            sections.append({
-                'title': title,
-                'content': content,
-                'level': 2
-            })
+            sections.append({"title": title, "content": content, "level": 2})
         elif len(lines) == 1:
-            sections.append({
-                'title': lines[0].strip(),
-                'content': '',
-                'level': 2
-            })
-    
+            sections.append({"title": lines[0].strip(), "content": "", "level": 2})
+
     return sections
 
 
 def display_analysis_section(section):
     """
     Display a single analysis section with proper formatting
-    
+
     Args:
         section: Dictionary with 'title' and 'content' keys
     """
-    title = section['title']
-    content = section['content']
-    
+    title = section["title"]
+    content = section["content"]
+
     # Determine section styling based on title
-    if any(keyword in title.upper() for keyword in ['MITRE', 'ATT&CK', 'TECHNIQUE']):
-        border_color = '#f57c00'
-        bg_color = '#fff3e0'
-        icon = '🎯'
-    elif any(keyword in title.upper() for keyword in ['THREAT', 'ACTOR', 'ADVERSARY']):
-        border_color = '#d32f2f'
-        bg_color = '#ffebee'
-        icon = '⚠️'
-    elif any(keyword in title.upper() for keyword in ['BUSINESS', 'IMPACT', 'RISK']):
-        border_color = '#f57c00'
-        bg_color = '#fff3e0'
-        icon = '💼'
-    elif any(keyword in title.upper() for keyword in ['ACTION', 'RECOMMENDATION', 'RESPONSE']):
-        border_color = '#388e3c'
-        bg_color = '#e8f5e9'
-        icon = '✅'
+    if any(keyword in title.upper() for keyword in ["MITRE", "ATT&CK", "TECHNIQUE"]):
+        border_color = "#f57c00"
+        bg_color = "#fff3e0"
+        icon = "🎯"
+    elif any(keyword in title.upper() for keyword in ["THREAT", "ACTOR", "ADVERSARY"]):
+        border_color = "#d32f2f"
+        bg_color = "#ffebee"
+        icon = "⚠️"
+    elif any(keyword in title.upper() for keyword in ["BUSINESS", "IMPACT", "RISK"]):
+        border_color = "#f57c00"
+        bg_color = "#fff3e0"
+        icon = "💼"
+    elif any(
+        keyword in title.upper() for keyword in ["ACTION", "RECOMMENDATION", "RESPONSE"]
+    ):
+        border_color = "#388e3c"
+        bg_color = "#e8f5e9"
+        icon = "✅"
     else:
-        border_color = '#667eea'
-        bg_color = '#f8f9fa'
-        icon = '📋'
-    
+        border_color = "#667eea"
+        bg_color = "#f8f9fa"
+        icon = "📋"
+
     # Display section with custom styling
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <div style="
         background-color: {bg_color};
         border-left: 5px solid {border_color};
@@ -801,32 +1111,35 @@ def display_analysis_section(section):
             padding-bottom: 10px;
         ">{icon} {title}</h2>
     </div>
-    """, unsafe_allow_html=True)
-    
+    """,
+        unsafe_allow_html=True,
+    )
+
     # Display content with proper markdown
     if content:
         st.markdown(content)
-    
+
     st.markdown("<br>", unsafe_allow_html=True)
 
 
 def display_risk_badge(risk_level):
     """
     Display a styled risk level badge
-    
+
     Args:
         risk_level: String like 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'
     """
     risk_colors = {
-        'CRITICAL': ('#d32f2f', 'white'),
-        'HIGH': ('#f57c00', 'white'),
-        'MEDIUM': ('#fbc02d', '#333'),
-        'LOW': ('#388e3c', 'white')
+        "CRITICAL": ("#d32f2f", "white"),
+        "HIGH": ("#f57c00", "white"),
+        "MEDIUM": ("#fbc02d", "#333"),
+        "LOW": ("#388e3c", "white"),
     }
-    
-    bg_color, text_color = risk_colors.get(risk_level.upper(), ('#757575', 'white'))
-    
-    st.markdown(f"""
+
+    bg_color, text_color = risk_colors.get(risk_level.upper(), ("#757575", "white"))
+
+    st.markdown(
+        f"""
     <span style="
         background-color: {bg_color};
         color: {text_color};
@@ -836,118 +1149,9 @@ def display_risk_badge(risk_level):
         display: inline-block;
         margin: 5px 0;
     ">{risk_level.upper()}</span>
-    """, unsafe_allow_html=True)
-
-
-def display_ai_threat_analysis_tab(alert_name, api_client, analysis_key, alert_data):
-    """
-    Display AI threat analysis for an alert with improved formatting
-    
-    Args:
-        alert_name: Name of the alert
-        api_client: API client for analysis
-        analysis_key: Cache key for this analysis
-        alert_data: Full alert data
-    """
-    
-    # Check if analysis already exists in cache
-    if analysis_key in st.session_state and st.session_state[analysis_key]:
-        result = st.session_state[analysis_key]
-        
-        if result.get("success"):
-            analysis = result.get("analysis", "")
-            
-            # Header with gradient background
-            st.markdown("""
-            <div style="
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                padding: 25px;
-                border-radius: 12px;
-                margin: 20px 0;
-                box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            ">
-                <h2 style="margin: 0; color: white;">📋 Comprehensive Threat Intelligence Report</h2>
-                <p style="margin: 10px 0 0 0; opacity: 0.9;">AI-Powered Security Analysis</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Parse and display sections
-            sections = parse_analysis_sections(analysis)
-            
-            if sections:
-                for section in sections:
-                    display_analysis_section(section)
-            else:
-                # Fallback: display raw markdown if parsing fails
-                st.markdown(clean_and_format_markdown(analysis))
-            
-            # Extract and display risk level if present
-            risk_match = re.search(r'\*\*?\s*Risk Level\s*:?\s*\*\*?\s*(\w+)', analysis, re.IGNORECASE)
-            if risk_match:
-                st.markdown("### 🚨 Risk Assessment")
-                display_risk_badge(risk_match.group(1))
-            
-            # Download button
-            st.markdown("---")
-            col1, col2, col3 = st.columns([1, 1, 1])
-            with col2:
-                st.download_button(
-                    label="📥 Download Analysis Report",
-                    data=analysis,
-                    file_name=f"threat_analysis_{alert_name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
-                    mime="text/markdown",
-                    use_container_width=True,
-                    type="primary",
-                )
-        else:
-            st.error(f"❌ Analysis failed: {result.get('error', 'Unknown error')}")
-            
-    else:
-        # Run new analysis
-        progress_placeholder = st.empty()
-        
-        with progress_placeholder.container():
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            status_text.text("🚀 Initializing AI analysis engine...")
-            progress_bar.progress(20)
-            time.sleep(0.3)
-            
-            status_text.text("🔍 Analyzing threat patterns...")
-            progress_bar.progress(50)
-            time.sleep(0.3)
-            
-            status_text.text("🌐 Researching threat intelligence...")
-            progress_bar.progress(75)
-            
-            try:
-                # Call API
-                result = api_client.analyze_alert(alert_name)
-                
-                progress_bar.progress(95)
-                status_text.text("📊 Finalizing analysis...")
-                time.sleep(0.2)
-                progress_bar.progress(100)
-                
-                time.sleep(0.5)
-                progress_placeholder.empty()
-                
-                # Cache and display
-                st.session_state[analysis_key] = result
-                
-                if result.get("success"):
-                    st.rerun()
-                else:
-                    st.error(f"❌ Analysis failed: {result.get('error', 'Unknown error')}")
-                    
-            except Exception as e:
-                progress_placeholder.empty()
-                st.error(f"❌ Error during analysis: {str(e)}")
-                import traceback
-                with st.expander("🔍 View Error Details"):
-                    st.code(traceback.format_exc())
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 # ============================================================================
