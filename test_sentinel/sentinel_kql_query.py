@@ -43,7 +43,18 @@ def main():
 
     kql_query = """
     SigninLogs
-    | take 1
+    | where TimeGenerated > ago(7d)
+    | where UserPrincipalName in ("aarushi.trivedi@yashtechnologies841.onmicrosoft.com", "shrish.s@yashtechnologies841.onmicrosoft.com", "ketan.patel@yashtechnologies841.onmicrosoft.com", "saratkumar.indukuri@yashtechnologies841.onmicrosoft.com")
+    | extend StepNumber = 3
+    | summarize 
+        TotalSignIns = count(),
+        UniqueUsers = dcount(UserPrincipalName),
+        UniqueIPs = dcount(IPAddress),
+        UniqueApps = dcount(AppDisplayName),
+        SuccessfulSignIns = countif(ResultType == "0"),
+        FailedSignIns = countif(ResultType != "0"),
+        UniqueDays = dcount(format_datetime(TimeGenerated, 'yyyy-MM-dd'))
+    | extend ImpactScore = (UniqueUsers * 10) + (FailedSignIns * 2)
     """
 
     credential = DefaultAzureCredential()
