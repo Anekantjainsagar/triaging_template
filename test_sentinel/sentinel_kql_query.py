@@ -12,16 +12,16 @@ def main():
         "LOG_ANALYTICS_WORKSPACE_ID", "674f96b1-63d6-48ca-9fe6-d613e4292c7f"
     )
 
-    kql_query = """
-    AuditLogs
-    |take 1
-    """
     # kql_query = """
-    # SigninLogs
-    # | where TimeGenerated >= ago(7d)
-    # | summarize Count = count(), SuccessCount = countif(ResultType == "Success"), FailureCount = countif(ResultType == "Failure") by UserPrincipalName, bin(TimeGenerated, 1h)
-    # | order by TimeGenerated desc
+    # AuditLogs
+    # | take 1
     # """
+    kql_query = """
+    SigninLogs 
+    | where TimeGenerated > ago(7d) 
+    | where UserPrincipalName in ("shrish.s@yashtechnologies841.onmicrosoft.com", "aarushi.trivedi@yashtechnologies841.onmicrosoft.com", "saratkumar.indukuri@yashtechnologies841.onmicrosoft.com", "ketan.patel@yashtechnologies841.onmicrosoft.com")
+    | summarize SignInCount = count(), UniqueIPs = dcount(IPAddress), FailedAttempts = countif(ResultType != "0"), UniqueLocations = dcount(tostring(LocationDetails.countryOrRegion)) by UserPrincipalName
+    """
 
     credential = DefaultAzureCredential()
     token = credential.get_token("https://api.loganalytics.io/.default").token
@@ -36,9 +36,9 @@ def main():
     if response.status_code == 200:
         results = response.json()
         # Save to JSON file
-        with open("audit_logs.json", "w") as f:
+        with open("kql.json", "w") as f:
             json.dump(results, f, indent=4)
-        print("Response saved to audit_logs.json")
+        print("Response saved to kql.json")
     else:
         print(f"KQL query failed: {response.status_code} - {response.text}")
 
