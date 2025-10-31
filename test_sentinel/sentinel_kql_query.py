@@ -5,36 +5,45 @@ from dotenv import load_dotenv
 from azure.identity import DefaultAzureCredential
 
 
+def save_as_markdown(results, filename="kql_results.md"):
+    """Convert KQL results to markdown table format"""
+
+    if not results.get("tables"):
+        with open(filename, "w") as f:
+            f.write("# KQL Query Results\n\nNo data returned.\n")
+        return
+
+    table = results["tables"][0]
+    columns = table["columns"]
+    rows = table["rows"]
+
+    with open(filename, "w") as f:
+        # Write column headers
+        headers = [col["name"] for col in columns]
+        f.write("| " + " | ".join(headers) + " |\n")
+
+        # Write separator
+        f.write("| " + " | ".join(["---"] * len(headers)) + " |\n")
+
+        # Write rows
+        if rows:
+            for row in rows:
+                row_str = "| " + " | ".join(str(cell) for cell in row) + " |\n"
+                f.write(row_str)
+        else:
+            f.write("| " + " | ".join(["No data"] * len(headers)) + " |\n")
+
+    print(f"Results saved to {filename}")
+
+
 def main():
     load_dotenv()
 
-    workspace_id = os.getenv(
-        "LOG_ANALYTICS_WORKSPACE_ID", "674f96b1-63d6-48ca-9fe6-d613e4292c7f"
-    )
+    workspace_id = os.getenv("LOG_ANALYTICS_WORKSPACE_ID")
 
-    # kql_query = """
-    # AuditLogs
-    # | take 1
-    # """
-    # kql_query = """
-    # let reference_datetime = datetime(2025-10-03 12:45:00Z);
-    # SigninLogs
-    # | where TimeGenerated > reference_datetime - 7d and TimeGenerated <= reference_datetime
-    # | where UserPrincipalName in ("shrish.s@yashtechnologies841.onmicrosoft.com", "aarushi.trivedi@yashtechnologies841.onmicrosoft.com", "saratkumar.indukuri@yashtechnologies841.onmicrosoft.com", "ketan.patel@yashtechnologies841.onmicrosoft.com")
-    # | summarize SignInCount = count(), UniqueIPs = dcount(IPAddress), FailedAttempts = countif(ResultType != "0"), UniqueLocations = dcount(tostring(LocationDetails.countryOrRegion)) by UserPrincipalName
-    # """
-    # kql_query = """
-    # let reference_datetime = datetime(2025-10-03 12:45:00Z);
-    # SigninLogs
-    # | where TimeGenerated > reference_datetime - 7d and TimeGenerated <= reference_datetime
-    # | where UserPrincipalName in ("shrish.s@yashtechnologies841.onmicrosoft.com", "aarushi.trivedi@yashtechnologies841.onmicrosoft.com", "saratkumar.indukuri@yashtechnologies841.onmicrosoft.com", "ketan.patel@yashtechnologies841.onmicrosoft.com")
-    # | summarize SignInCount = count(), UniqueIPs = dcount(IPAddress), FailedAttempts = countif(ResultType != "0"), UniqueLocations = dcount(tostring(LocationDetails.countryOrRegion)) by UserPrincipalName
-    # """
     kql_query = """
     SigninLogs
-    | where TimeGenerated > datetime(2025-09-26 12:45:20Z) and TimeGenerated <= datetime(2025-10-03 12:45:20Z)
-    | where UserPrincipalName in ("shrish.s@yashtechnologies841.onmicrosoft.com", "aarushi.trivedi@yashtechnologies841.onmicrosoft.com", "saratkumar.indukuri@yashtechnologies841.onmicrosoft.com", "ketan.patel@yashtechnologies841.onmicrosoft.com")
-    | summarize SignInCount = count(), UniqueIPs = dcount(IPAddress), FailedAttempts = countif(ResultType != "0"), UniqueLocations = dcount(tostring(LocationDetails.countryOrRegion)) by UserPrincipalName
+    | take 1
     """
 
     credential = DefaultAzureCredential()
@@ -49,10 +58,14 @@ def main():
 
     if response.status_code == 200:
         results = response.json()
-        # Save to JSON file
+
+        # Save as JSON
         with open("kql.json", "w") as f:
             json.dump(results, f, indent=4)
         print("Response saved to kql.json")
+
+        # Save as Markdown table
+        save_as_markdown(results, "kql_results.md")
     else:
         print(f"KQL query failed: {response.status_code} - {response.text}")
 
