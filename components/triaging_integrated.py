@@ -8,6 +8,13 @@ import pandas as pd
 import hashlib
 import json
 from datetime import datetime
+import os
+import re
+from io import BytesIO
+
+# Import KQL execution functionality from step2_enhance
+from components.triaging.kql_executor import KQLExecutor
+from routes.src.virustotal_integration import IPReputationChecker
 
 # ============================================================================
 # 1. IMPROVED CACHE KEY GENERATION
@@ -149,7 +156,113 @@ class TemplateCacheManager:
 
 
 # ============================================================================
-# 4. FIXED TRIAGING WORKFLOW
+# 4. KQL EXECUTION FUNCTIONS (FROM step2_enhance.py) - UPDATED
+# ============================================================================
+
+
+def contains_ip_not_vip(text):
+    """Check if text contains 'ip' but not as part of 'vip'"""
+    if "ip" not in text:
+        return False
+
+    ip_patterns = [
+        r"\bip\b",
+        r"ip\s+address",
+        r"ip\s+reputation",
+        r"source\s+ip",
+    ]
+    return any(re.search(pattern, text, re.IGNORECASE) for pattern in ip_patterns)
+
+
+def _execute_kql_query(
+    step_num: int, rule_number: str, kql_query: str, state_mgr: TriagingStateManager
+):
+    """
+    Execute KQL query and save results to output - SIMPLIFIED
+
+    Returns:
+        bool: Success status
+    """
+    try:
+        # Initialize executor
+        if "kql_executor" not in st.session_state:
+            st.session_state.kql_executor = KQLExecutor()
+
+        executor = st.session_state.kql_executor
+
+        # Show execution progress
+        with st.spinner("🔄 Executing KQL query..."):
+            success, formatted_output, raw_results = executor.execute_query(kql_query)
+
+        if success:
+            # Save to both state manager AND direct session state for the text area
+            output_key = f"output_{rule_number}_{step_num}"
+
+            # Update state manager
+            state_mgr.save_step_data(step_num, output=formatted_output)
+
+            # Update direct session state for the text area widget
+            st.session_state[output_key] = formatted_output
+
+            return True
+        else:
+            st.error(f"❌ Query execution failed: {formatted_output}")
+            return False
+
+    except Exception as e:
+        st.error(f"❌ Execution error: {str(e)}")
+        return False
+
+
+def _extract_all_ips_from_outputs(
+    step_num: int, rule_number: str, state_mgr: TriagingStateManager
+) -> list:
+    """
+    Extract ALL IPs (IPv4 and IPv6) from previous investigation steps - UPDATED
+
+    Args:
+        step_num: Current step number
+        rule_number: Rule identifier
+        state_mgr: TriagingStateManager instance
+
+    Returns:
+        List of unique IP addresses
+    """
+    all_ips = []
+
+    # Check all previous steps
+    for prev_step in range(1, step_num):
+        # Get output from state manager
+        prev_step_data = state_mgr.get_step_data(prev_step)
+        prev_output = prev_step_data["output"]
+
+        if not prev_output:
+            continue
+
+        # IPv4 pattern (strict)
+        ipv4_pattern = r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+        ipv4_matches = re.findall(ipv4_pattern, prev_output)
+
+        # IPv6 pattern (comprehensive)
+        ipv6_pattern = r"\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b|\b(?:[0-9a-fA-F]{1,4}:){1,7}:\b|\b(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}\b|\b::(?:[0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4}\b"
+        ipv6_matches = re.findall(ipv6_pattern, prev_output)
+
+        all_ips.extend(ipv4_matches)
+        all_ips.extend(ipv6_matches)
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_ips = []
+    for ip in all_ips:
+        if ip not in seen:
+            seen.add(ip)
+            unique_ips.append(ip)
+
+    return unique_ips
+
+
+# ============================================================================
+# 5. FIXED TRIAGING WORKFLOW
 # ============================================================================
 
 
@@ -316,7 +429,7 @@ def display_triaging_workflow(rule_number: str, alert_data: dict = None):
 
 
 # ============================================================================
-# 5. INTERACTIVE STEPS DISPLAY (NO RERUNS)
+# 6. INTERACTIVE STEPS DISPLAY WITH KQL EXECUTION
 # ============================================================================
 
 
@@ -327,7 +440,7 @@ def display_interactive_steps(
     rule_number: str,
     state_mgr: TriagingStateManager,
 ):
-    """Display steps with accordion navigation WITHOUT unnecessary reruns"""
+    """Display steps with accordion navigation and KQL execution"""
 
     st.markdown("---")
     st.markdown(f"### 📋 {len(enhanced_steps)} Investigation Steps")
@@ -369,7 +482,7 @@ def display_interactive_steps(
 
                 # KQL Query section
                 kql_query = step.get("kql_query", "")
-                if kql_query and len(kql_query) > 5:
+                if kql_query and len(kql_query.strip()) > 10:
                     st.markdown("##### 🔎 KQL Query")
 
                     kql_explanation = step.get("kql_explanation", "")
@@ -378,27 +491,130 @@ def display_interactive_steps(
 
                     st.code(kql_query, language="kql")
 
-                    # Output section
+                    # Debug info
+                    with st.expander("🔧 Query Details", expanded=False):
+                        st.write(f"Query length: {len(kql_query)} characters")
+                        st.write(
+                            f"Workspace ID configured: {'✅' if os.getenv('LOG_ANALYTICS_WORKSPACE_ID') else '❌'}"
+                        )
+
+                    # Execute button
+                    col1, col2, col3 = st.columns([2, 1, 2])
+                    with col2:
+                        execute_clicked = st.button(
+                            "▶️ Execute Query",
+                            key=f"execute_kql_{step_num}",
+                            type="primary",
+                            use_container_width=True,
+                        )
+
+                    # Handle execution when button is clicked
+                    if execute_clicked:
+                        # Validate workspace configuration first
+                        if not os.getenv("LOG_ANALYTICS_WORKSPACE_ID"):
+                            st.error(
+                                "❌ Log Analytics Workspace ID not configured. Please check your environment variables."
+                            )
+                        else:
+                            # Execute the query - PASS STATE MANAGER
+                            success = _execute_kql_query(
+                                step_num, rule_number, kql_query, state_mgr
+                            )
+
+                            if success:
+                                st.success(
+                                    "✅ Query executed successfully! Results loaded below."
+                                )
+                                # Force immediate refresh
+                                st.rerun()
+                            else:
+                                st.error(
+                                    "❌ Query execution failed. Check the error details above."
+                                )
+
+                    # Output section - THIS IS WHAT THE USER SEES AND EDITS
                     st.markdown("##### 📊 Output")
 
-                    # Get saved output
+                    # Get saved output - this will now contain the fresh results after execution
                     step_data = state_mgr.get_step_data(step_num)
 
                     # Create unique key for this specific step's output
                     output_key = f"output_{rule_number}_{step_num}"
 
+                    # Initialize if not exists
+                    if output_key not in st.session_state:
+                        st.session_state[output_key] = step_data["output"]
+
+                    placeholder_text = (
+                        "KQL query results will appear here after execution..."
+                    )
+                    if st.session_state[output_key]:
+                        placeholder_text = f"Results loaded ({len(st.session_state[output_key])} characters)"
+
+                    # This text area is bound to st.session_state[output_key] and will update automatically
                     output_text = st.text_area(
-                        "Enter the KQL query output:",
-                        value=step_data["output"],
+                        "Query Results:",
+                        value=st.session_state[output_key],
                         height=200,
                         key=output_key,
-                        placeholder="Paste the query results here...",
+                        placeholder=placeholder_text,
+                        label_visibility="collapsed",
                     )
 
-                    # Save on change (no rerun)
+                    # Save any manual changes back to state manager
                     if output_text != step_data["output"]:
                         state_mgr.save_step_data(step_num, output=output_text)
-                        st.info("💾 Output auto-saved")
+                        st.info("💾 Output updated")
+
+                # IP Reputation section
+                elif _is_ip_reputation_step(step):
+                    st.markdown("##### 📊 Output")
+
+                    step_data = state_mgr.get_step_data(step_num)
+
+                    st.info("🛡️ **Comprehensive IP Reputation Check**")
+                    st.markdown("---")
+
+                    # Extract ALL IPs from previous steps - PASS STATE MANAGER
+                    default_ips = _extract_all_ips_from_outputs(
+                        step_num, rule_number, state_mgr
+                    )
+
+                    if default_ips:
+                        st.success(
+                            f"✅ Auto-detected {len(default_ips)} IP address(es) from previous steps"
+                        )
+
+                    st.markdown("##### 🔍 Enter IP Addresses to Check")
+                    st.caption(
+                        "Enter multiple IPs (one per line, comma-separated, or space-separated)"
+                    )
+                    st.caption("✅ Supports: IPv4, IPv6, Private IPs, Public IPs")
+
+                    default_text = "\n".join(default_ips) if default_ips else ""
+
+                    ip_input = st.text_area(
+                        "IP Addresses:",
+                        value=default_text,
+                        placeholder="Enter IPs here:\n192.168.1.1\n10.0.0.5\n2001:0db8:85a3:0000:0000:8a2e:0370:7334\n\nOr comma-separated: 192.168.1.1, 8.8.8.8",
+                        key=f"vt_ip_step_{step_num}",
+                        height=200,
+                        label_visibility="collapsed",
+                    )
+
+                    col1, col2, col3 = st.columns([2, 2, 1])
+                    with col3:
+                        check_button = st.button(
+                            "🔍 Check All IPs",
+                            key=f"vt_check_step_{step_num}",
+                            type="primary",
+                            use_container_width=True,
+                        )
+
+                    if check_button and ip_input:
+                        _process_ip_reputation_check(
+                            ip_input, step_num, rule_number, state_mgr
+                        )
 
                 # Remarks section
                 st.markdown("##### 💬 Remarks/Comments")
@@ -417,7 +633,7 @@ def display_interactive_steps(
                     label_visibility="collapsed",
                 )
 
-                # Save on change (no rerun)
+                # Save on change
                 if remark_text != step_data["remark"]:
                     state_mgr.save_step_data(step_num, remark=remark_text)
                     st.info("💾 Remark auto-saved")
@@ -466,7 +682,7 @@ def display_interactive_steps(
     with tab2:
         # Excel preview
         st.markdown("### 📊 Excel Template Preview")
-        st.dataframe(template_df, use_container_width=True, height=500)
+        st.dataframe(template_df, width="stretch", height=500)
 
         st.markdown("---")
 
@@ -478,8 +694,83 @@ def display_interactive_steps(
         )
 
 
+def _is_ip_reputation_step(step: dict) -> bool:
+    """Check if step is an IP reputation step"""
+    step_name_lower = step.get("step_name", "").lower()
+    explanation_lower = step.get("explanation", "").lower()
+
+    return (
+        ("virustotal" in step_name_lower)
+        or ("virustotal" in explanation_lower)
+        or ("virus total" in step_name_lower)
+        or ("virus total" in explanation_lower)
+        or (contains_ip_not_vip(step_name_lower) and "reputation" in step_name_lower)
+    )
+
+
+def _process_ip_reputation_check(
+    ip_input: str, step_num: int, rule_number: str, state_mgr: TriagingStateManager
+):
+    """Process IP reputation check"""
+    import re
+
+    ip_list = re.split(r"[,\n\s]+", ip_input)
+    ip_list = [ip.strip() for ip in ip_list if ip.strip()]
+
+    if not ip_list:
+        st.error("❌ No valid IP addresses found. Please enter at least one IP.")
+        return
+
+    st.info(f"🔍 Processing {len(ip_list)} IP address(es)...")
+
+    if "ip_checker" not in st.session_state:
+        st.session_state.ip_checker = IPReputationChecker()
+
+    checker = st.session_state.ip_checker
+
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    results = checker.check_multiple_ips(ip_list, method="auto")
+
+    progress_bar.progress(100)
+    status_text.empty()
+    progress_bar.empty()
+
+    formatted_output_excel = ""
+    for ip, result in results.items():
+        if result.get("formatted_output_excel"):
+            formatted_output_excel += result["formatted_output_excel"] + "\n\n"
+
+    # Save results to state using state manager
+    state_mgr.save_step_data(step_num, output=formatted_output_excel.strip())
+
+    st.markdown("---")
+    st.success(f"✅ Completed checking {len(ip_list)} IP address(es)!")
+
+    # Display summary metrics
+    high_risk = sum(1 for r in results.values() if r.get("risk_level") == "HIGH")
+    medium_risk = sum(1 for r in results.values() if r.get("risk_level") == "MEDIUM")
+    low_risk = sum(
+        1 for r in results.values() if r.get("risk_level") in ["LOW", "CLEAN"]
+    )
+    skipped = sum(1 for r in results.values() if r.get("skip_check", False))
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("🔴 High Risk", high_risk)
+    with col2:
+        st.metric("🟡 Suspicious", medium_risk)
+    with col3:
+        st.metric("🟢 Clean", low_risk)
+    with col4:
+        st.metric("ℹ️ Skipped", skipped)
+
+    st.info("💾 All results have been saved to the Output field for Excel export.")
+
+
 # ============================================================================
-# 6. HELPER FUNCTIONS
+# 7. HELPER FUNCTIONS
 # ============================================================================
 
 
@@ -545,24 +836,3 @@ def unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
     except Exception as e:
         st.session_state.predictions_uploaded = False
         st.error(f"❌ Upload error: {str(e)}")
-
-
-# ============================================================================
-# USAGE EXAMPLE
-# ============================================================================
-"""
-# In your main.py, replace the existing call with:
-
-from components.triaging_fixed import display_triaging_workflow_fixed
-
-# Then in your display_ai_analysis function:
-with tab3:
-    if triaging_cache_key in st.session_state:
-        st.success("✅ Triaging already completed!")
-        # Show cached download
-    else:
-        display_triaging_workflow_fixed(
-            rule_number,
-            alert_data=enhanced_alert_data
-        )
-"""

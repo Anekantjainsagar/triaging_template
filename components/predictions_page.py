@@ -78,7 +78,7 @@ def display_predictions_page():
             with st.expander("👁️ Preview Investigation Data"):
                 preview_data = upload_result.get("preview_data", [])
                 if preview_data:
-                    st.dataframe(preview_data, use_container_width=True)
+                    st.dataframe(preview_data, width="stretch")
                 else:
                     st.info("No preview data available")
 
@@ -113,7 +113,7 @@ def display_predictions_page():
             if st.button(
                 "🔍 Analyze Investigation Data",
                 type="primary",
-                use_container_width=True,
+                width="stretch",
                 disabled=not final_api_key,
             ):
                 if not username:
@@ -216,7 +216,7 @@ def perform_initial_analysis(client, username: str):
             data=analysis_json,
             file_name=f"initial_analysis_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
         )
     else:
         st.error(f"❌ Analysis failed: {result.get('error', 'Unknown error')}")
@@ -247,7 +247,7 @@ def perform_mitre_analysis(client, username: str):
             data=analysis_json,
             file_name=f"mitre_analysis_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
         )
     else:
         st.error(f"❌ Analysis failed: {result.get('error', 'Unknown error')}")
@@ -301,7 +301,7 @@ def perform_complete_analysis(client, username: str):
                     data=report_json,
                     file_name=f"complete_analysis_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                     mime="application/json",
-                    use_container_width=True,
+                    width="stretch",
                 )
 
             with col2:
@@ -355,7 +355,7 @@ SUMMARY:
                     data=summary_text,
                     file_name=f"executive_summary_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                     mime="text/plain",
-                    use_container_width=True,
+                    width="stretch",
                 )
 
             with col3:
@@ -371,7 +371,7 @@ SUMMARY:
                             data=navigator_json,
                             file_name=f"mitre_layer_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                             mime="application/json",
-                            use_container_width=True,
+                            width="stretch",
                         )
 
             # Display sub-technique coverage summary

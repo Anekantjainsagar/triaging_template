@@ -396,7 +396,7 @@ def display_mitre_analysis(mitre_data: dict, username: str):
             data=navigator_json,
             file_name=f"mitre_navigator_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
         )
 
         with st.expander("Preview Navigator Layer"):

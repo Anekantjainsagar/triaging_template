@@ -347,7 +347,7 @@ def display_predictions_tab_integrated():
             with st.expander("👁️ Preview Uploaded Data", expanded=False):
                 preview_data = preview_result.get("preview_data", [])
                 if preview_data:
-                    st.dataframe(preview_data, use_container_width=True)
+                    st.dataframe(preview_data, width="stretch")
                 else:
                     st.info("No preview data available")
         else:
@@ -769,7 +769,7 @@ def display_ai_analysis(alert_data):
                         file_name=cached_filename,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         type="primary",
-                        use_container_width=True,
+                        width="stretch",
                     )
                     st.info(
                         "💡 Switch to the **🔮 Predictions & MITRE** tab to continue analysis"
@@ -789,11 +789,15 @@ def display_ai_analysis(alert_data):
                 if analysis_key in st.session_state:
                     result = st.session_state[analysis_key]
                     if result.get("success"):
-                        enhanced_alert_data["analysis_text"] = result.get("analysis", "")
+                        enhanced_alert_data["analysis_text"] = result.get(
+                            "analysis", ""
+                        )
 
                 # ✅ DEBUG: Show what we're passing
-                st.info(f"📊 Passing to triaging: {len(enhanced_alert_data.get('entities', {}).get('entities', []))} entities")
-                
+                st.info(
+                    f"📊 Passing to triaging: {len(enhanced_alert_data.get('entities', {}).get('entities', []))} entities"
+                )
+
                 display_triaging_workflow_cached(
                     rule_number,
                     alert_data=enhanced_alert_data,
@@ -865,7 +869,7 @@ def display_ai_analysis(alert_data):
                         file_name=cached_filename,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         type="primary",
-                        use_container_width=True,
+                        width="stretch",
                     )
                     st.info(
                         "💡 Switch to the **🔮 Predictions & MITRE** tab to continue analysis"
@@ -963,7 +967,7 @@ def display_ai_threat_analysis_tab(alert_name, api_client, analysis_key, alert_d
                     data=analysis,
                     file_name=f"threat_analysis_{alert_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                     mime="text/markdown",
-                    use_container_width=True,
+                    width="stretch",
                     type="primary",
                 )
     else:
@@ -1537,11 +1541,11 @@ def main():
 
         # Page selection
         st.markdown("### 📋 Pages")
-        if st.button("📊 Incidents Dashboard", use_container_width=True):
+        if st.button("📊 Incidents Dashboard", width="stretch"):
             st.session_state.current_page = "overview"
             st.rerun()
 
-        if st.button("🤖 SOC Analysis Hub", use_container_width=True):
+        if st.button("🤖 SOC Analysis Hub", width="stretch"):
             if not st.session_state.soc_analysis_data:
                 st.warning("⚠️ Please select an incident or alert first")
             else:
@@ -1571,7 +1575,7 @@ def main():
         st.markdown("---")
         st.markdown("### 🔧 Actions")
 
-        if st.button("🗑️ Clear Cache", use_container_width=True):
+        if st.button("🗑️ Clear Cache", width="stretch"):
             keys_to_remove = [
                 key
                 for key in st.session_state.keys()

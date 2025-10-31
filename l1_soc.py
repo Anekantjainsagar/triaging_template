@@ -487,11 +487,11 @@ def main():
 
         # Page selection
         st.markdown("### 📋 Pages")
-        if st.button("📊 Incidents Dashboard", use_container_width=True):
+        if st.button("📊 Incidents Dashboard", width="stretch"):
             st.session_state.page = "overview"
             st.rerun()
 
-        if st.button("🤖 SOC Hub Analysis", use_container_width=True):
+        if st.button("🤖 SOC Hub Analysis", width="stretch"):
             # Use markdown link for proper navigation
             st.markdown("[Go to SOC Hub >](/SOC_Hub)", unsafe_allow_html=True)
 

@@ -1,4 +1,4 @@
-# step2_enhance.py - COMPLETE UPDATED VERSION WITH IP REPUTATION FIX
+# step2_enhance.py - UPDATED WITH KQL EXECUTION
 import streamlit as st
 import os
 import re
@@ -10,6 +10,7 @@ from io import BytesIO
 from routes.src.virustotal_integration import VirusTotalChecker, IPReputationChecker
 from routes.src.template_generator import ImprovedTemplateGenerator
 from routes.src.template_parser import TemplateParser
+from components.triaging.kql_executor import KQLExecutor  # NEW IMPORT
 
 
 def contains_ip_not_vip(text):
@@ -85,6 +86,50 @@ def _extract_all_ips_from_outputs(step_num: int, rule_number: str) -> list:
             unique_ips.append(ip)
 
     return unique_ips
+
+
+def _execute_kql_query(step_num: int, rule_number: str, kql_query: str):
+    """
+    Execute KQL query and save results to output
+
+    Args:
+        step_num: Current step number
+        rule_number: Rule identifier
+        kql_query: KQL query to execute
+    """
+    output_key = f"output_step_{step_num}_{rule_number}"
+
+    try:
+        # Initialize executor
+        if "kql_executor" not in st.session_state:
+            st.session_state.kql_executor = KQLExecutor()
+
+        executor = st.session_state.kql_executor
+
+        # Show execution progress
+        with st.spinner("🔄 Executing KQL query..."):
+            success, formatted_output, raw_results = executor.execute_query(kql_query)
+
+        if success:
+            # Save to output
+            st.session_state.step_outputs[output_key] = formatted_output
+            st.success("✅ Query executed successfully!")
+
+            # Show preview
+            with st.expander("📊 View Results Preview", expanded=True):
+                st.text(
+                    formatted_output[:1000]
+                    + ("..." if len(formatted_output) > 1000 else "")
+                )
+
+            return True
+        else:
+            st.error(f"❌ Query execution failed: {formatted_output}")
+            return False
+
+    except Exception as e:
+        st.error(f"❌ Execution error: {str(e)}")
+        return False
 
 
 def _unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
@@ -268,7 +313,7 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
             )
             return
 
-        progress_bar = st.progress(0, text="🔄 Starting intelligent generation...")
+        progress_bar = st.progress(0, text="📄 Starting intelligent generation...")
         try:
             original_steps = []
 
@@ -382,7 +427,7 @@ def show_page(session_state, TemplateParser, EnhancedTemplateGenerator):
             )
             return
 
-        progress_bar = st.progress(0, text="🔄 Starting intelligent enhancement...")
+        progress_bar = st.progress(0, text="📄 Starting intelligent enhancement...")
 
         try:
             progress_bar.progress(10, text="📋 Parsing original template...")
@@ -582,293 +627,326 @@ def _display_enhancement_results(
                         )
                     )
 
-                    if kql_query and len(kql_query) > 5:
-                        st.markdown("##### 🔎 KQL Query")
-                        if kql_explanation and str(kql_explanation).strip() not in [
-                            "nan",
-                            "none",
-                            "n/a",
-                            "",
-                        ]:
+                    # ✅ KQL QUERY SECTION WITH EXECUTE BUTTON - ENHANCED VERSION
+                    if kql_query and len(kql_query.strip()) > 10:  # Increased minimum length
+                        st.markdown("##### 🔍 KQL Query")
+                        
+                        # Display query info
+                        if kql_explanation and str(kql_explanation).strip() not in ["nan", "none", "n/a", ""]:
                             st.write(kql_explanation)
-                        st.code(kql_query, language="kql")
+                        
+                        # Show the actual query with syntax highlighting
+                        # st.code(kql_query, language="kql")
+                        
+                        # Debug info - show query details
+                        with st.expander("🔧 Query Details", expanded=False):
+                            st.write(f"Query length: {len(kql_query)} characters")
+                            st.write(f"Workspace ID configured: {'✅' if os.getenv('LOG_ANALYTICS_WORKSPACE_ID') else '❌'}")
+                        
+                        # ✅ EXECUTE BUTTON with enhanced feedback
+                        col1, col2, col3 = st.columns([2, 1, 2])
+                        with col2:
+                            execute_clicked = st.button(
+                                "▶️ Execute Query",
+                                key=f"execute_kql_{step_num}",
+                                type="primary",
+                                use_container_width=True
+                            )
+                        
+                        # Handle execution when button is clicked
+                        if execute_clicked:
+                            # Validate workspace configuration first
+                            if not os.getenv("LOG_ANALYTICS_WORKSPACE_ID"):
+                                st.error("❌ Log Analytics Workspace ID not configured. Please check your environment variables.")
+                            else:
+                                # Execute the query
+                                success = _execute_kql_query(step_num, rule_number, kql_query)
+                                
+                                if success:
+                                    st.success("✅ Query executed successfully! Results saved below.")
+                                else:
+                                    st.error("❌ Query execution failed. Check the error details above.")
 
-                    # ============================================================================
-                    # ENHANCED IP REPUTATION SECTION - COMPLETE REPLACEMENT
-                    # ============================================================================
-                    if is_ip_reputation_step or (kql_query and len(kql_query) > 5):
+                        # ✅ OUTPUT SECTION - ALWAYS DISPLAYED WHEN KQL QUERY EXISTS
+                        st.markdown("##### 📊 Output")
+                        output_key = f"output_step_{step_num}_{rule_number}"
+                        existing_output = st.session_state.step_outputs.get(output_key, "")
+                        
+                        # Enhanced text area with better placeholder
+                        placeholder_text = "KQL query results will appear here after execution..."
+                        if existing_output:
+                            placeholder_text = f"Results loaded ({len(existing_output)} characters)"
+                        
+                        manual_output = st.text_area(
+                            "Query Results:",
+                            value=existing_output,
+                            height=200,
+                            key=f"output_input_{step_num}",
+                            placeholder=placeholder_text,
+                            on_change=lambda sn=step_num: _save_step_data(sn, rule_number, "output"),
+                            label_visibility="collapsed"
+                        )
+                        
+                        # Always save the output
+                        st.session_state.step_outputs[output_key] = manual_output
+                        
+                        if manual_output and manual_output != existing_output:
+                            st.success(f"✅ Output updated ({len(manual_output)} characters)")
+
+                    # IP REPUTATION SECTION - ONLY IF NOT KQL QUERY
+                    elif is_ip_reputation_step:
                         st.markdown("##### 📊 Output")
                         output_key = f"output_step_{step_num}_{rule_number}"
                         existing_output = st.session_state.step_outputs.get(
                             output_key, ""
                         )
 
-                        if is_ip_reputation_step:
-                            st.info("🎯 **Comprehensive IP Reputation Check**")
-                            st.markdown("---")
+                        st.info("🛡️ **Comprehensive IP Reputation Check**")
+                        st.markdown("---")
 
-                            # Extract ALL IPs from previous steps
-                            default_ips = _extract_all_ips_from_outputs(
-                                step_num, rule_number
+                        # Extract ALL IPs from previous steps
+                        default_ips = _extract_all_ips_from_outputs(
+                            step_num, rule_number
+                        )
+
+                        if default_ips:
+                            st.success(
+                                f"✅ Auto-detected {len(default_ips)} IP address(es) from previous steps"
                             )
 
-                            if default_ips:
-                                st.success(
-                                    f"✅ Auto-detected {len(default_ips)} IP address(es) from previous steps"
-                                )
+                            ipv4_ips = [ip for ip in default_ips if ":" not in ip]
+                            ipv6_ips = [ip for ip in default_ips if ":" in ip]
 
-                                ipv4_ips = [ip for ip in default_ips if ":" not in ip]
-                                ipv6_ips = [ip for ip in default_ips if ":" in ip]
-
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    if ipv4_ips:
-                                        st.info(f"📍 IPv4: {len(ipv4_ips)} address(es)")
-                                with col2:
-                                    if ipv6_ips:
-                                        st.info(f"📍 IPv6: {len(ipv6_ips)} address(es)")
-
-                            st.markdown("##### 🔍 Enter IP Addresses to Check")
-                            st.caption(
-                                "Enter multiple IPs (one per line, comma-separated, or space-separated)"
-                            )
-                            st.caption(
-                                "✅ Supports: IPv4, IPv6, Private IPs, Public IPs"
-                            )
-
-                            default_text = "\n".join(default_ips) if default_ips else ""
-
-                            ip_input = st.text_area(
-                                "IP Addresses:",
-                                value=default_text,
-                                placeholder="Enter IPs here:\n192.168.1.1\n10.0.0.5\n2001:0db8:85a3:0000:0000:8a2e:0370:7334\n\nOr comma-separated: 192.168.1.1, 8.8.8.8",
-                                key=f"vt_ip_step_{step_num}",
-                                height=200,
-                                label_visibility="collapsed",
-                            )
-
-                            col1, col2, col3 = st.columns([2, 2, 1])
-
+                            col1, col2 = st.columns(2)
                             with col1:
-                                if default_ips:
-                                    st.caption(
-                                        f"ℹ️ {len(default_ips)} IP(s) auto-detected"
-                                    )
+                                if ipv4_ips:
+                                    st.info(f"🌐 IPv4: {len(ipv4_ips)} address(es)")
+                            with col2:
+                                if ipv6_ips:
+                                    st.info(f"🌐 IPv6: {len(ipv6_ips)} address(es)")
 
-                            with col3:
-                                check_button = st.button(
-                                    "🔍 Check All IPs",
-                                    key=f"vt_check_step_{step_num}",
-                                    type="primary",
-                                    use_container_width=True,
+                        st.markdown("##### 🔍 Enter IP Addresses to Check")
+                        st.caption(
+                            "Enter multiple IPs (one per line, comma-separated, or space-separated)"
+                        )
+                        st.caption(
+                            "✅ Supports: IPv4, IPv6, Private IPs, Public IPs"
+                        )
+
+                        default_text = "\n".join(default_ips) if default_ips else ""
+
+                        ip_input = st.text_area(
+                            "IP Addresses:",
+                            value=default_text,
+                            placeholder="Enter IPs here:\n192.168.1.1\n10.0.0.5\n2001:0db8:85a3:0000:0000:8a2e:0370:7334\n\nOr comma-separated: 192.168.1.1, 8.8.8.8",
+                            key=f"vt_ip_step_{step_num}",
+                            height=200,
+                            label_visibility="collapsed",
+                        )
+
+                        col1, col2, col3 = st.columns([2, 2, 1])
+
+                        with col1:
+                            if default_ips:
+                                st.caption(
+                                    f"ℹ️ {len(default_ips)} IP(s) auto-detected"
                                 )
 
-                            if check_button and ip_input:
-                                import re
+                        with col3:
+                            check_button = st.button(
+                                "🔍 Check All IPs",
+                                key=f"vt_check_step_{step_num}",
+                                type="primary",
+                                width="stretch",
+                            )
 
-                                ip_list = re.split(r"[,\n\s]+", ip_input)
-                                ip_list = [ip.strip() for ip in ip_list if ip.strip()]
+                        if check_button and ip_input:
+                            import re
 
-                                if not ip_list:
-                                    st.error(
-                                        "❌ No valid IP addresses found. Please enter at least one IP."
+                            ip_list = re.split(r"[,\n\s]+", ip_input)
+                            ip_list = [ip.strip() for ip in ip_list if ip.strip()]
+
+                            if not ip_list:
+                                st.error(
+                                    "❌ No valid IP addresses found. Please enter at least one IP."
+                                )
+                            else:
+                                st.info(
+                                    f"🔍„ Processing {len(ip_list)} IP address(es)..."
+                                )
+
+                                if "ip_checker" not in st.session_state:
+                                    st.session_state.ip_checker = (
+                                        IPReputationChecker()
                                     )
-                                else:
-                                    st.info(
-                                        f"🔄 Processing {len(ip_list)} IP address(es)..."
-                                    )
 
-                                    if "ip_checker" not in st.session_state:
-                                        st.session_state.ip_checker = (
-                                            IPReputationChecker()
+                                checker = st.session_state.ip_checker
+
+                                progress_bar = st.progress(0)
+                                status_text = st.empty()
+
+                                results = checker.check_multiple_ips(
+                                    ip_list, method="auto"
+                                )
+
+                                progress_bar.progress(100)
+                                status_text.empty()
+                                progress_bar.empty()
+
+                                formatted_output_excel = ""
+
+                                for ip, result in results.items():
+                                    if result.get("formatted_output_excel"):
+                                        formatted_output_excel += (
+                                            result["formatted_output_excel"]
+                                            + "\n\n"
                                         )
 
-                                    checker = st.session_state.ip_checker
+                                st.session_state.step_outputs[output_key] = (
+                                    formatted_output_excel.strip()
+                                )
 
-                                    progress_bar = st.progress(0)
-                                    status_text = st.empty()
+                                st.markdown("---")
+                                st.success(
+                                    f"✅ Completed checking {len(ip_list)} IP address(es)!"
+                                )
+                                st.markdown("---")
 
-                                    results = checker.check_multiple_ips(
-                                        ip_list, method="auto"
-                                    )
+                                high_risk = sum(
+                                    1
+                                    for r in results.values()
+                                    if r.get("risk_level") == "HIGH"
+                                )
+                                medium_risk = sum(
+                                    1
+                                    for r in results.values()
+                                    if r.get("risk_level") == "MEDIUM"
+                                )
+                                low_risk = sum(
+                                    1
+                                    for r in results.values()
+                                    if r.get("risk_level") in ["LOW", "CLEAN"]
+                                )
+                                skipped = sum(
+                                    1
+                                    for r in results.values()
+                                    if r.get("skip_check", False)
+                                )
 
-                                    progress_bar.progress(100)
-                                    status_text.empty()
-                                    progress_bar.empty()
+                                col1, col2, col3, col4 = st.columns(4)
 
-                                    formatted_output_excel = ""
+                                with col1:
+                                    if high_risk > 0:
+                                        st.metric("🔍´ High Risk", high_risk)
+                                    else:
+                                        st.metric("High Risk", high_risk)
 
-                                    for ip, result in results.items():
-                                        if result.get("formatted_output_excel"):
-                                            formatted_output_excel += (
-                                                result["formatted_output_excel"]
-                                                + "\n\n"
-                                            )
+                                with col2:
+                                    if medium_risk > 0:
+                                        st.metric("🟡 Suspicious", medium_risk)
+                                    else:
+                                        st.metric("Suspicious", medium_risk)
 
-                                    st.session_state.step_outputs[output_key] = (
-                                        formatted_output_excel.strip()
-                                    )
+                                with col3:
+                                    st.metric("🟢 Clean", low_risk)
 
-                                    st.markdown("---")
-                                    st.success(
-                                        f"✅ Completed checking {len(ip_list)} IP address(es)!"
-                                    )
-                                    st.markdown("---")
+                                with col4:
+                                    st.metric("ℹ️ Skipped", skipped)
 
-                                    high_risk = sum(
-                                        1
-                                        for r in results.values()
-                                        if r.get("risk_level") == "HIGH"
-                                    )
-                                    medium_risk = sum(
-                                        1
-                                        for r in results.values()
-                                        if r.get("risk_level") == "MEDIUM"
-                                    )
-                                    low_risk = sum(
-                                        1
-                                        for r in results.values()
-                                        if r.get("risk_level") in ["LOW", "CLEAN"]
-                                    )
-                                    skipped = sum(
-                                        1
-                                        for r in results.values()
-                                        if r.get("skip_check", False)
-                                    )
+                                st.markdown("### 🔍‹ Detailed Results")
 
-                                    col1, col2, col3, col4 = st.columns(4)
+                                for ip, result in results.items():
+                                    ip_type = result.get("ip_type", "Unknown")
 
-                                    with col1:
-                                        if high_risk > 0:
-                                            st.metric("🔴 High Risk", high_risk)
+                                    if result.get("skip_check"):
+                                        with st.expander(
+                                            f"ℹ️ {ip} ({ip_type}) - Skipped",
+                                            expanded=False,
+                                        ):
+                                            st.info(result.get("message", ""))
+                                        continue
+
+                                    if result.get("success"):
+                                        risk_level = result.get(
+                                            "risk_level", "UNKNOWN"
+                                        )
+
+                                        if risk_level == "HIGH":
+                                            icon = "🔍´"
+                                            expanded = True
+                                        elif risk_level == "MEDIUM":
+                                            icon = "🟡"
+                                            expanded = True
+                                        elif risk_level in ["LOW", "CLEAN"]:
+                                            icon = "🟢"
+                                            expanded = False
                                         else:
-                                            st.metric("High Risk", high_risk)
+                                            icon = "⚪"
+                                            expanded = False
 
-                                    with col2:
-                                        if medium_risk > 0:
-                                            st.metric("🟡 Suspicious", medium_risk)
-                                        else:
-                                            st.metric("Suspicious", medium_risk)
-
-                                    with col3:
-                                        st.metric("🟢 Clean", low_risk)
-
-                                    with col4:
-                                        st.metric("ℹ️ Skipped", skipped)
-
-                                    st.markdown("### 📋 Detailed Results")
-
-                                    for ip, result in results.items():
-                                        ip_type = result.get("ip_type", "Unknown")
-
-                                        if result.get("skip_check"):
-                                            with st.expander(
-                                                f"ℹ️ {ip} ({ip_type}) - Skipped",
-                                                expanded=False,
-                                            ):
-                                                st.info(result.get("message", ""))
-                                            continue
-
-                                        if result.get("success"):
-                                            risk_level = result.get(
-                                                "risk_level", "UNKNOWN"
+                                        with st.expander(
+                                            f"{icon} {ip} ({ip_type}) - {risk_level}",
+                                            expanded=expanded,
+                                        ):
+                                            formatted_output_ui = result.get(
+                                                "formatted_output", ""
                                             )
+                                            st.markdown(formatted_output_ui)
 
                                             if risk_level == "HIGH":
-                                                icon = "🔴"
-                                                expanded = True
-                                            elif risk_level == "MEDIUM":
-                                                icon = "🟡"
-                                                expanded = True
-                                            elif risk_level in ["LOW", "CLEAN"]:
-                                                icon = "🟢"
-                                                expanded = False
-                                            else:
-                                                icon = "⚪"
-                                                expanded = False
-
-                                            with st.expander(
-                                                f"{icon} {ip} ({ip_type}) - {risk_level}",
-                                                expanded=expanded,
-                                            ):
-                                                formatted_output_ui = result.get(
-                                                    "formatted_output", ""
-                                                )
-                                                st.markdown(formatted_output_ui)
-
-                                                if risk_level == "HIGH":
-                                                    st.error(
-                                                        "🚨 **HIGH RISK IP** - Immediate action recommended"
-                                                    )
-                                                elif risk_level == "MEDIUM":
-                                                    st.warning(
-                                                        "⚠️ **SUSPICIOUS IP** - Further investigation needed"
-                                                    )
-                                                elif risk_level in ["LOW", "CLEAN"]:
-                                                    st.success(
-                                                        "✅ **CLEAN IP** - No significant threats detected"
-                                                    )
-
-                                        else:
-                                            with st.expander(
-                                                f"❌ {ip} ({ip_type}) - Check Failed",
-                                                expanded=True,
-                                            ):
                                                 st.error(
-                                                    f"Error: {result.get('error', 'Unknown error')}"
+                                                    "🚨 **HIGH RISK IP** - Immediate action recommended"
                                                 )
-                                                if result.get("manual_check"):
-                                                    st.markdown(
-                                                        result.get(
-                                                            "formatted_output", ""
-                                                        )
-                                                    )
+                                            elif risk_level == "MEDIUM":
+                                                st.warning(
+                                                    "⚠️ **SUSPICIOUS IP** - Further investigation needed"
+                                                )
+                                            elif risk_level in ["LOW", "CLEAN"]:
+                                                st.success(
+                                                    "✅ **CLEAN IP** - No significant threats detected"
+                                                )
 
-                                    st.markdown("---")
-                                    st.markdown("### 💡 Overall Assessment")
-
-                                    if high_risk > 0:
-                                        st.error(
-                                            f"⚠️ **CRITICAL**: {high_risk} high-risk IP(s) detected. Immediate investigation required!"
-                                        )
-                                    elif medium_risk > 0:
-                                        st.warning(
-                                            f"⚠️ **CAUTION**: {medium_risk} suspicious IP(s) found. Further investigation recommended."
-                                        )
                                     else:
-                                        st.success(
-                                            "✅ All checked IPs appear clean or are private addresses."
-                                        )
+                                        with st.expander(
+                                            f"❌ {ip} ({ip_type}) - Check Failed",
+                                            expanded=True,
+                                        ):
+                                            st.error(
+                                                f"Error: {result.get('error', 'Unknown error')}"
+                                            )
+                                            if result.get("manual_check"):
+                                                st.markdown(
+                                                    result.get(
+                                                        "formatted_output", ""
+                                                    )
+                                                )
 
-                                    st.info(
-                                        "💾 All results have been saved to the Output field for Excel export."
+                                st.markdown("---")
+                                st.markdown("### 📈 Overall Assessment")
+
+                                if high_risk > 0:
+                                    st.error(
+                                        f"⚠️ **CRITICAL**: {high_risk} high-risk IP(s) detected. Immediate investigation required!"
+                                    )
+                                elif medium_risk > 0:
+                                    st.warning(
+                                        f"⚠️ **CAUTION**: {medium_risk} suspicious IP(s) found. Further investigation recommended."
+                                    )
+                                else:
+                                    st.success(
+                                        "✅ All checked IPs appear clean or are private addresses."
                                     )
 
-                            if existing_output:
-                                with st.expander(
-                                    "📋 View Saved Output (Excel Format)",
-                                    expanded=False,
-                                ):
-                                    st.text(existing_output)
-
-                        else:
-                            # Regular manual output (for non-IP reputation steps)
-                            manual_output = st.text_area(
-                                "Enter the KQL query output:",
-                                value=existing_output,
-                                height=200,
-                                key=f"output_input_{step_num}",
-                                placeholder="Paste the query results here...",
-                                on_change=lambda sn=step_num: _save_step_data(
-                                    sn, rule_number, "output"
-                                ),
-                            )
-                            st.session_state.step_outputs[output_key] = manual_output
-
-                            if manual_output:
-                                st.success(
-                                    f"✅ Output saved ({len(manual_output)} characters)"
+                                st.info(
+                                    "💾 All results have been saved to the Output field for Excel export."
                                 )
+
+                        if existing_output:
+                            with st.expander(
+                                "🔍‹ View Saved Output (Excel Format)",
+                                expanded=False,
+                            ):
+                                st.text(existing_output)
 
                     # Remarks Section
                     st.markdown("##### 💬 Remarks/Comments")
@@ -895,7 +973,7 @@ def _display_enhancement_results(
                             "✅ Mark as Complete",
                             key=f"complete_step_{step_num}",
                             type="primary",
-                            use_container_width=True,
+                            width="stretch",
                         ):
                             st.session_state.completed_steps.add(step_num)
                             st.session_state.current_open_step = step_num + 1
@@ -932,7 +1010,7 @@ def _display_enhancement_results(
                     file_name=filename,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
-                    use_container_width=True,
+                    width="stretch",
                     key="download_and_proceed",
                     on_click=lambda: _unlock_predictions(
                         excel_with_data, filename, rule_number
@@ -967,7 +1045,7 @@ def _display_enhancement_results(
             st.warning("Template not generated yet")
             return
 
-        st.dataframe(template_df, use_container_width=True, height=500)
+        st.dataframe(template_df, width="stretch", height=500)
 
         st.markdown("---")
 
@@ -979,7 +1057,7 @@ def _display_enhancement_results(
                 data=session_state.excel_template_data,
                 file_name=f"triaging_template_{rule_number.replace('#', '_')}_base.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
                 key="download_base_excel",
             )
 
@@ -999,7 +1077,7 @@ def _display_enhancement_results(
                 data=st.session_state[complete_excel_key],
                 file_name=f"triaging_template_{rule_number.replace('#', '_')}_complete.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width="stretch",
                 type="primary",
                 key="download_complete_excel",
             )
