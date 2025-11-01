@@ -45,10 +45,6 @@ class InvestigationStepLibrary:
     def generate_steps_from_manual_analysis(
         self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN"
     ) -> List[Dict]:
-        """
-        Generate 6-7 investigation steps directly from alert analysis
-        ✅ FIXED: Better VIP and Geography step detection
-        """
         print(f"\n{'='*80}")
         print(f"🤖 GENERATING MANUAL ALERT INVESTIGATION STEPS")
         print(f"Alert: {alert_name}")
@@ -75,6 +71,9 @@ class InvestigationStepLibrary:
         # ✅ STEP 3.5: DEDUPLICATE STEPS IMMEDIATELY
         print("\n🧹 PHASE 3.5: Deduplicating steps...")
         generated_steps = self._deduplicate_manual_steps(generated_steps)
+
+        # ✅ NEW STEP 3.6: Remove AI-generated VIP/IP steps
+        generated_steps = self._remove_duplicate_vip_and_ip_steps(generated_steps)
 
         # ✅ STEP 4: Add VIP USER CHECK (MUST BE BEFORE IP REPUTATION)
         print("\n👤 PHASE 4: Adding VIP user verification step...")
@@ -214,7 +213,7 @@ class InvestigationStepLibrary:
     ) -> List[Dict]:
         """
         Generate KQL queries for each step
-        ✅ FIXED: Better handling for geography/location steps
+        ✅ FIXED: Use _generate_vip_kql_query for VIP steps from triaging_handler
         """
         from routes.src.api_kql_generation import EnhancedKQLGenerator
 
@@ -225,6 +224,14 @@ class InvestigationStepLibrary:
             tool = step.get("tool", "").lower()
             if tool in ["virustotal", "abuseipdb"]:
                 print(f"   ⏭️  Skipping KQL for step {idx} (External Tool: {tool})")
+                continue
+
+            # ✅ NEW: Skip KQL generation for VIP user steps (handled dynamically in triaging_handler)
+            input_required = step.get("input_required", "")
+            if input_required == "vip_user_list":
+                print(f"   ⏭️  Skipping KQL for step {idx} (VIP step - handled dynamically)")
+                step["kql_query"] = ""  # Will be generated dynamically with user input
+                step["kql_explanation"] = "Queries SigninLogs to check if affected users are VIP accounts and analyzes their activity patterns, risk levels, and geographic locations."
                 continue
 
             # Skip if already has KQL
@@ -283,6 +290,46 @@ class InvestigationStepLibrary:
         deduplicated_steps = kql_gen._deduplicate_queries_in_template(steps)
 
         return deduplicated_steps
+
+    def _remove_duplicate_vip_and_ip_steps(self, steps: List[Dict]) -> List[Dict]:
+        print("\n   🧹 Removing AI-generated VIP/IP steps before injection...")
+        
+        filtered_steps = []
+        removed_count = 0
+        
+        for step in steps:
+            step_name = step.get("step_name", "").lower()
+            explanation = step.get("explanation", "").lower()
+            tool = step.get("tool", "").lower()
+            
+            # ✅ Check if this is a VIP user step (but NOT our injected one)
+            is_vip_step = (
+                ("vip" in step_name or "high-priority" in step_name or "privileged account" in step_name)
+                and step.get("input_required", "") != "vip_user_list"  # Keep our injected one
+            )
+            
+            # ✅ Check if this is an IP reputation step (but NOT our injected one)
+            is_ip_step = (
+                ("ip reputation" in step_name or "source ip reputation" in step_name or 
+                "virustotal" in step_name or "virustotal" in explanation or
+                "abuseipdb" in step_name or "abuseipdb" in explanation)
+                and tool not in ["virustotal", "abuseipdb"]  # Keep our injected one
+            )
+            
+            if is_vip_step:
+                print(f"   ❌ Removing AI-generated VIP step: {step.get('step_name', '')[:60]}")
+                removed_count += 1
+                continue
+            
+            if is_ip_step:
+                print(f"   ❌ Removing AI-generated IP step: {step.get('step_name', '')[:60]}")
+                removed_count += 1
+                continue
+            
+            filtered_steps.append(step)
+        
+        print(f"   ✅ Removed {removed_count} duplicate VIP/IP steps")
+        return filtered_steps
 
     def _get_geography_fallback_kql(self) -> str:
         """Fallback KQL for geographic analysis steps"""

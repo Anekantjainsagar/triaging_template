@@ -2,11 +2,9 @@ import streamlit as st
 import traceback
 import pandas as pd
 import hashlib
-import json
 from datetime import datetime
 import os
 import re
-from io import BytesIO
 
 from components.triaging.kql_executor import KQLExecutor
 from routes.src.virustotal_integration import IPReputationChecker
@@ -171,6 +169,312 @@ def _execute_kql_query(
     except Exception as e:
         st.error(f"❌ Execution error: {str(e)}")
         return False, None
+
+
+def _extract_users_from_entities(alert_data: dict) -> list:
+    """
+    Extract user accounts from alert entities
+
+    Returns:
+        List of unique user email addresses
+    """
+    all_users = []
+
+    if not alert_data:
+        return all_users
+
+    # Extract from entities
+    entities = alert_data.get("entities", {})
+    entities_list = (
+        entities.get("entities", [])
+        if isinstance(entities, dict)
+        else (entities if isinstance(entities, list) else [])
+    )
+
+    for entity in entities_list:
+        kind = entity.get("kind", "").lower()
+        if kind == "account":
+            props = entity.get("properties", {})
+            account_name = props.get("accountName", "")
+            upn_suffix = props.get("upnSuffix", "")
+
+            if account_name and upn_suffix:
+                all_users.append(f"{account_name}@{upn_suffix}")
+            elif account_name:
+                all_users.append(account_name)
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_users = []
+    for user in all_users:
+        if user not in seen:
+            seen.add(user)
+            unique_users.append(user)
+
+    return unique_users
+
+
+def _is_vip_user_check_step(step: dict) -> bool:
+    """Check if step is a VIP user verification step"""
+    input_required = step.get("input_required", "")
+    step_name_lower = step.get("step_name", "").lower()
+    explanation_lower = step.get("explanation", "").lower()
+
+    # Check for input_required flag first
+    if input_required == "vip_user_list":
+        return True
+
+    # Fallback: Check step name/explanation
+    vip_indicators = [
+        "vip",
+        "high-priority",
+        "privileged account",
+        "executive account",
+        "verify user account status",
+    ]
+
+    return any(
+        indicator in step_name_lower or indicator in explanation_lower
+        for indicator in vip_indicators
+    )
+
+
+def _generate_vip_kql_query(
+    vip_users: list, entity_users: list, alert_data: dict
+) -> str:
+    from datetime import timedelta
+
+    # ✅ EXTRACT timeGenerated FROM alert_data (from full_alert.properties)
+    props = alert_data.get("full_alert", {})
+    props = props.get("properties", {})
+    time_generated_str = props.get("timeGenerated")
+
+    if time_generated_str:
+        try:
+            # Parse the timeGenerated datetime
+            from datetime import datetime
+
+            reference_datetime_obj = datetime.fromisoformat(
+                time_generated_str.replace("Z", "+00:00")
+            )
+            reference_datetime = reference_datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+
+            # Calculate 7-day lookback
+            start_dt = reference_datetime_obj - timedelta(days=7)
+            start_dt_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        except Exception as e:
+            # Fallback to current time if parsing fails
+            from datetime import datetime
+
+            reference_datetime_obj = datetime.utcnow()
+            reference_datetime = reference_datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+            start_dt = reference_datetime_obj - timedelta(days=7)
+            start_dt_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        # Fallback: use current time if timeGenerated not found
+        from datetime import datetime
+
+        reference_datetime_obj = datetime.utcnow()
+        reference_datetime = reference_datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+        start_dt = reference_datetime_obj - timedelta(days=7)
+        start_dt_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    # Format VIP users for datatable
+    vip_users_formatted = ",\n    ".join([f'"{user}"' for user in vip_users])
+
+    # Format entity users for filter
+    entity_users_formatted = ", ".join([f'"{user}"' for user in entity_users])
+
+    # ✅ BUILD STRUCTURED KQL QUERY WITH 7-DAY LOOKBACK
+    kql_query = f"""// VIP User Verification Query
+// Alert Time Generated: {reference_datetime}Z
+// Query Time Range: {start_dt_str}Z to {reference_datetime}Z (7 days)
+// Analyst-provided VIP users: {len(vip_users)} user(s)
+// Alert-affected users: {len(entity_users)} user(s)
+
+let VIPUsers = datatable(UserPrincipalName:string)
+[
+    {vip_users_formatted}
+];
+SigninLogs
+| where TimeGenerated > datetime({start_dt_str}Z) and TimeGenerated <= datetime({reference_datetime}Z)
+| where UserPrincipalName in ({entity_users_formatted})
+| extend IsVIP = iff(UserPrincipalName in (VIPUsers), "⭐ VIP ACCOUNT", "Regular User")
+| summarize
+    TotalSignIns = count(),
+    UniqueIPAddresses = dcount(IPAddress),
+    UniqueCountries = dcount(tostring(LocationDetails.countryOrRegion)),
+    UniqueApplications = dcount(AppDisplayName),
+    HighRiskSignIns = countif(RiskLevelAggregated == "high"),
+    MediumRiskSignIns = countif(RiskLevelAggregated == "medium"),
+    LowRiskSignIns = countif(RiskLevelAggregated == "low"),
+    FailedAttempts = countif(ResultType != "0"),
+    SuccessfulSignIns = countif(ResultType == "0"),
+    RiskyBehavior = countif(IsRisky == true),
+    UniqueDaysActive = dcount(format_datetime(TimeGenerated, 'yyyy-MM-dd')),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated),
+    RiskEventTypes = make_set(RiskEventTypes_V2, 10)
+    by UserPrincipalName, UserDisplayName, UserId, IsVIP
+| extend
+    VIPRiskScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedAttempts * 2) + (UniqueCountries * 3),
+    AccountClassification = case(
+        VIPRiskScore > 30, "🔴 Critical - Executive at High Risk",
+        VIPRiskScore > 15, "🟠 High - VIP Requires Attention",
+        VIPRiskScore > 5, "🟡 Medium - Monitor Closely",
+        "🟢 Low - Normal Activity"
+    ),
+    ActivityPattern = case(
+        UniqueDaysActive >= 7, "Very Active (Daily)",
+        UniqueDaysActive >= 5, "Active",
+        UniqueDaysActive >= 3, "Moderate",
+        "Sporadic"
+    )
+| project-reorder UserPrincipalName, UserDisplayName, IsVIP, AccountClassification, VIPRiskScore, ActivityPattern
+| order by VIPRiskScore desc"""
+
+    return kql_query
+
+
+def _process_vip_user_check(
+    vip_input: str,
+    entity_users: list,
+    step_num: int,
+    rule_number: str,
+    state_mgr: TriagingStateManager,
+    alert_data: dict,
+):
+    import re
+
+    # Parse VIP user list (comma, newline, or space separated)
+    vip_list = re.split(r"[,\n\s]+", vip_input)
+    vip_list = [user.strip() for user in vip_list if user.strip() and "@" in user]
+
+    if not vip_list:
+        st.error(
+            "❌ No valid email addresses found in VIP list. Please enter at least one email."
+        )
+        return
+
+    st.success(f"✅ Parsed {len(vip_list)} VIP user(s) from input")
+
+    # Display parsed VIP users
+    with st.expander("🔐 VIP Users Entered", expanded=True):
+        for vip_user in vip_list:
+            st.code(vip_user)
+
+    # Check if any entity users are VIP
+    vip_matches = [user for user in entity_users if user in vip_list]
+
+    if vip_matches:
+        st.error(
+            f"🚨 **CRITICAL ALERT:** {len(vip_matches)} VIP account(s) detected in this incident!"
+        )
+        for vip_user in vip_matches:
+            st.error(f"⭐ VIP Account Affected: **{vip_user}**")
+    else:
+        st.success("✅ No VIP accounts detected among affected users.")
+
+    st.markdown("---")
+
+    # Generate structured KQL query
+    st.info("🔨 Generating structured KQL query...")
+    kql_query = _generate_vip_kql_query(vip_list, entity_users, alert_data)
+
+    # Display generated query
+    st.markdown("##### 📊 Generated KQL Query")
+    st.code(kql_query, language="kql")
+
+    st.markdown("---")
+
+    # Execute button
+    col1, col2, col3 = st.columns([2, 1, 2])
+    with col2:
+        execute_clicked = st.button(
+            "▶️ Execute Query",
+            key=f"exec_vip_kql_{step_num}",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if execute_clicked:
+        # Validate workspace configuration
+        if not os.getenv("LOG_ANALYTICS_WORKSPACE_ID"):
+            st.error(
+                "❌ Log Analytics Workspace ID not configured. Please check your environment variables."
+            )
+        else:
+            # Execute the query
+            success, output = _execute_kql_query(
+                step_num, rule_number, kql_query, state_mgr
+            )
+
+            if success:
+                st.success("✅ VIP user verification query executed successfully!")
+
+                # Display results in highlighted container
+                st.markdown("##### 📊 Query Results")
+                st.markdown(
+                    """
+                    <div style="
+                        background-color: #f0f7ff;
+                        border-left: 4px solid #1976d2;
+                        padding: 15px;
+                        border-radius: 5px;
+                        font-family: 'Courier New', monospace;
+                        font-size: 13px;
+                        max-height: 400px;
+                        overflow-y: auto;
+                        white-space: pre-wrap;
+                        word-wrap: break-word;
+                    ">""",
+                    unsafe_allow_html=True,
+                )
+                st.text(output)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+                # Provide editable text area
+                st.markdown("##### ✏️ Edit Output (if needed)")
+                output_key = f"output_{rule_number}_{step_num}"
+                edited_output = st.text_area(
+                    "Modify results:",
+                    value=output,
+                    height=150,
+                    key=f"edit_{output_key}",
+                    label_visibility="collapsed",
+                )
+
+                if edited_output != output:
+                    state_mgr.save_step_data(step_num, output=edited_output)
+                    st.info("💾 Changes saved")
+            else:
+                st.error("❌ Query execution failed. Check the error details above.")
+    else:
+        # Show existing output if any
+        step_data = state_mgr.get_step_data(step_num)
+        existing_output = step_data["output"]
+
+        if existing_output:
+            st.markdown("##### 📊 Saved Results")
+            st.markdown(
+                """
+                <div style="
+                    background-color: #f0f7ff;
+                    border-left: 4px solid #1976d2;
+                    padding: 15px;
+                    border-radius: 5px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 13px;
+                    max-height: 400px;
+                    overflow-y: auto;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                ">""",
+                unsafe_allow_html=True,
+            )
+            st.text(existing_output)
+            st.markdown("</div>", unsafe_allow_html=True)
 
 
 def _extract_ips_from_entities(alert_data: dict) -> list:
@@ -372,8 +676,75 @@ def display_interactive_steps(
 
                 kql_query = step.get("kql_query", "")
 
+                # ✅ NEW: Check if this is a VIP user check step
+                if _is_vip_user_check_step(step):
+                    st.markdown("##### 👤 VIP User Verification")
+
+                    # Extract users from alert
+                    entity_users = (
+                        _extract_users_from_entities(alert_data) if alert_data else []
+                    )
+
+                    if entity_users:
+                        st.success(
+                            f"✅ Found {len(entity_users)} user account(s) from alert entities"
+                        )
+                        with st.expander("👥 View Affected Users", expanded=True):
+                            for user in entity_users:
+                                st.code(user)
+                    else:
+                        st.warning(
+                            "⚠️ No user accounts found in alert entities. Please verify manually."
+                        )
+
+                    st.markdown("---")
+                    st.markdown("##### 🔐 Enter VIP/Executive User List")
+                    st.caption(
+                        "Enter VIP user email addresses (one per line, comma-separated, or space-separated)"
+                    )
+                    st.caption(
+                        "✅ Example: ceo@company.com, cfo@company.com, admin@company.com"
+                    )
+
+                    # VIP user input text area
+                    vip_input = st.text_area(
+                        "VIP Users:",
+                        placeholder="Enter VIP user emails:\nceo@company.com\nadmin@company.com\nexecutive@company.com",
+                        key=f"vip_users_step_{step_num}",
+                        height=150,
+                        label_visibility="collapsed",
+                    )
+
+                    col1, col2, col3 = st.columns([2, 2, 1])
+                    with col3:
+                        check_button = st.button(
+                            "🔍 Generate & Execute",
+                            key=f"vip_check_step_{step_num}",
+                            type="primary",
+                            use_container_width=True,
+                        )
+
+                    if check_button:
+                        if not vip_input:
+                            st.error(
+                                "❌ Please enter at least one VIP user email address."
+                            )
+                        elif not entity_users:
+                            st.error(
+                                "❌ No affected users found. Cannot generate query."
+                            )
+                        else:
+                            _process_vip_user_check(
+                                vip_input,
+                                entity_users,
+                                step_num,
+                                rule_number,
+                                state_mgr,
+                                alert_data,
+                            )
+
                 # KQL Query section
-                if kql_query and len(kql_query.strip()) > 10:
+                elif kql_query and len(kql_query.strip()) > 10:
                     st.markdown("##### 🔎 KQL Query")
 
                     kql_explanation = step.get("kql_explanation", "")
@@ -716,4 +1087,3 @@ def unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
     except Exception as e:
         st.session_state.predictions_uploaded = False
         st.error(f"❌ Upload error: {str(e)}")
-
