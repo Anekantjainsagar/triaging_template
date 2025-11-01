@@ -4,6 +4,7 @@ import streamlit as st
 from soc_utils import *
 from datetime import datetime
 import hashlib
+import concurrent.futures
 import time
 
 # Import SOC analysis components
@@ -282,7 +283,7 @@ def check_api_status():
 
 
 def display_predictions_tab_integrated():
-    """Display predictions analysis tab with entity-level predictions"""
+    """Display predictions analysis tab with parallel automated entity-level predictions"""
 
     if not st.session_state.get("triaging_complete", False):
         st.warning(
@@ -292,35 +293,22 @@ def display_predictions_tab_integrated():
 
     st.markdown("### 🔮 True/False Positive Analyzer with MITRE ATT&CK")
 
-    # Create sub-tabs for different analysis types
-    pred_tab1, pred_tab2 = st.tabs([
-        "🎯 Entity-Level Predictions",
-        "📊 Investigation-Wide Analysis"
-    ])
+    # Get alert data
+    alert_data = st.session_state.get("soc_analysis_data")
+    if not alert_data:
+        st.error("❌ No alert data found. Please run AI analysis first.")
+        return
 
-    with pred_tab1:
-        # NEW: Display automated entity predictions
-        alert_data = st.session_state.get("soc_analysis_data")
-        if alert_data:
-            display_entity_predictions_panel(alert_data)
-        else:
-            st.error("❌ No alert data found. Please run AI analysis first.")
+    # Verify triaging data is uploaded
+    excel_data = st.session_state.get("predictions_excel_data")
+    excel_filename = st.session_state.get("predictions_excel_filename")
 
-    with pred_tab2:
-        # EXISTING: Your investigation-wide analysis
-        excel_data = st.session_state.get("predictions_excel_data")
-        excel_filename = st.session_state.get("predictions_excel_filename")
-
-        if not excel_data:
-            st.error("❌ No triaging data found. Please complete triaging first.")
-            return
-
-        st.info(f"📄 Using triaging template: {excel_filename}")
-
+    if not excel_data:
+        st.error("❌ No triaging data found. Please complete triaging first.")
+        return
 
     # Initialize API client
     import os
-    from io import BytesIO
 
     final_api_key = os.getenv("GOOGLE_API_KEY")
     predictions_api_url = os.getenv("PREDICTIONS_API_URL", "http://localhost:8000")
@@ -330,12 +318,11 @@ def display_predictions_tab_integrated():
     try:
         client = get_predictions_client(predictions_api_url, final_api_key)
 
-        # ✅ FIX: Always re-upload to ensure data is fresh
+        # Upload data if not already uploaded
         if not st.session_state.get("predictions_uploaded"):
             st.info("📤 Uploading triaging template to analysis engine...")
 
             with st.spinner("Uploading investigation data..."):
-                # Import the upload function from step2_enhance
                 from components.triaging.step2_enhance import _upload_to_predictions_api
 
                 upload_success = _upload_to_predictions_api(excel_data, excel_filename)
@@ -351,59 +338,34 @@ def display_predictions_tab_integrated():
         else:
             st.success("✅ Template already uploaded to predictions API")
 
-        # ✅ FIX: Verify upload with preview
-        st.info("🔍 Verifying uploaded data...")
+        # Verify upload
         preview_result = client.get_upload_preview()
-
         if preview_result.get("success"):
             st.success(
                 f"✅ Data verified: {preview_result.get('total_rows', 0)} investigation steps loaded"
             )
 
-            # Show preview
-            with st.expander("👁️ Preview Uploaded Data", expanded=False):
-                preview_data = preview_result.get("preview_data", [])
-                if preview_data:
-                    st.dataframe(preview_data, width="stretch")
-                else:
-                    st.info("No preview data available")
-        else:
-            st.warning("⚠️ Data verification failed, but continuing...")
-
-        # Username input
         st.markdown("---")
-        username = st.text_input(
-            "Enter username/email to analyze",
-            placeholder="e.g., sarah.mitchell@abc.com",
-            key="predictions_username",
+
+        # Extract Account entities only
+        entities = alert_data.get("entities", {})
+        entities_list = (
+            entities.get("entities", [])
+            if isinstance(entities, dict)
+            else (entities if isinstance(entities, list) else [])
         )
 
-        # Analysis type selection
-        analysis_type = st.radio(
-            "Select analysis type:",
-            ["Complete Analysis", "Initial Classification Only", "MITRE Mapping Only"],
-            key="predictions_analysis_type",
-        )
+        account_entities = [e for e in entities_list if e.get("kind") == "Account"]
 
-        if st.button(
-            "🔍 Analyze Investigation Data", type="primary", key="analyze_btn"
-        ):
-            if not username:
-                st.warning("⚠️ Please enter a username to analyze")
-            else:
-                # Import the analysis functions from predictions_page
-                from components.predictions_page import (
-                    perform_complete_analysis,
-                    perform_initial_analysis,
-                    perform_mitre_analysis,
-                )
+        if not account_entities:
+            st.warning("⚠️ No account entities found in this alert")
+            return
 
-                if analysis_type == "Complete Analysis":
-                    perform_complete_analysis(client, username)
-                elif analysis_type == "Initial Classification Only":
-                    perform_initial_analysis(client, username)
-                else:
-                    perform_mitre_analysis(client, username)
+        st.markdown(f"### 🎯 Analyzing {len(account_entities)} Account(s)")
+        st.info("🤖 Running parallel analysis for all accounts...")
+
+        # Perform parallel analysis
+        analyze_entities_parallel(account_entities, client)
 
     except Exception as e:
         st.error(f"❌ Error: {str(e)}")
@@ -411,6 +373,384 @@ def display_predictions_tab_integrated():
             import traceback
 
             st.code(traceback.format_exc())
+
+
+def analyze_entities_parallel(account_entities: list, client):
+    """Analyze multiple entities in parallel using threading"""
+    import concurrent.futures
+    import hashlib
+
+    # Build username list
+    usernames = []
+    for entity in account_entities:
+        props = entity.get("properties", {})
+        account_name = props.get("accountName", "")
+        upn_suffix = props.get("upnSuffix", "")
+
+        if account_name and upn_suffix:
+            username = f"{account_name}@{upn_suffix}"
+        else:
+            username = props.get("friendlyName", "Unknown")
+
+        usernames.append(username)
+
+    # Progress tracking
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    # Results container
+    results = {}
+
+    def analyze_single_entity(username: str):
+        """Analyze single entity"""
+        cache_key = (
+            f"entity_prediction_{username}_{hashlib.md5(username.encode()).hexdigest()}"
+        )
+
+        # Check cache first
+        if cache_key in st.session_state:
+            return username, st.session_state[cache_key]
+
+        try:
+            complete_analysis = client.analyze_complete(username)
+
+            if complete_analysis.get("success"):
+                st.session_state[cache_key] = complete_analysis
+                return username, complete_analysis
+            else:
+                error_msg = complete_analysis.get("error", "Unknown error")
+                if "No investigation data found" in error_msg or "404" in str(
+                    error_msg
+                ):
+                    return username, {"error": "no_data", "username": username}
+                else:
+                    return username, {"error": error_msg, "username": username}
+        except Exception as e:
+            error_str = str(e)
+            if "404" in error_str or "No investigation data" in error_str:
+                return username, {"error": "no_data", "username": username}
+            else:
+                return username, {"error": str(e), "username": username}
+
+    # Execute parallel analysis
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(analyze_single_entity, username): username
+            for username in usernames
+        }
+
+        completed = 0
+        total = len(futures)
+
+        for future in concurrent.futures.as_completed(futures):
+            username = futures[future]
+            try:
+                username, result = future.result()
+                results[username] = result
+                completed += 1
+
+                progress_bar.progress(completed / total)
+                status_text.text(f"Analyzed {completed}/{total} accounts...")
+
+            except Exception as e:
+                results[username] = {"error": str(e), "username": username}
+                completed += 1
+                progress_bar.progress(completed / total)
+
+    progress_bar.empty()
+    status_text.empty()
+
+    st.success("✅ Parallel analysis complete!")
+    st.markdown("---")
+
+    # Display results for each account
+    for username in usernames:
+        result = results.get(username, {})
+
+        if "error" in result:
+            if result["error"] == "no_data":
+                with st.expander(f"👤 {username} - ℹ️ No Data", expanded=False):
+                    st.info(
+                        f"No specific investigation data found for {username}. "
+                        "This account may not have been directly involved in the investigation steps."
+                    )
+            else:
+                with st.expander(f"👤 {username} - ❌ Error", expanded=False):
+                    st.error(f"Analysis failed: {result['error']}")
+        else:
+            display_entity_analysis_full(username, result)
+
+
+def display_entity_analysis_full(username: str, complete_analysis: dict):
+    """Display complete analysis with full MITRE visualization like predictions_page.py"""
+
+    initial = complete_analysis.get("initial_analysis", {})
+    classification = initial.get("classification", "UNKNOWN")
+
+    # Determine if expanded by default (first TRUE POSITIVE)
+    is_expanded = "TRUE POSITIVE" in classification
+
+    # Accordion header
+    if "TRUE POSITIVE" in classification:
+        header = f"👤 {username} - 🚨 TRUE POSITIVE"
+    elif "FALSE POSITIVE" in classification:
+        header = f"👤 {username} - ✅ FALSE POSITIVE"
+    else:
+        header = f"👤 {username} - ℹ️ {classification}"
+
+    with st.expander(header, expanded=is_expanded):
+        # Import display utilities from predictions_page
+        from frontend.utils.predictions.display_utils import (
+            display_mitre_analysis,
+            display_analysis_results,
+        )
+
+        # Display initial analysis results (same as predictions_page)
+        display_analysis_results(complete_analysis, username)
+
+        # Display MITRE analysis with full visualization
+        if complete_analysis.get("mitre_attack_analysis"):
+            st.markdown("---")
+            display_mitre_analysis(
+                complete_analysis["mitre_attack_analysis"],
+                username,
+            )
+
+        # Download section
+        st.markdown("---")
+        st.markdown("### 📥 Download Options")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            # Full JSON report
+            import json
+            from datetime import datetime
+
+            report_json = json.dumps(complete_analysis, indent=2)
+            st.download_button(
+                label="📄 Full Analysis (JSON)",
+                data=report_json,
+                file_name=f"complete_analysis_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                key=f"download_full_{username}",
+                use_container_width=True,
+            )
+
+        with col2:
+            # Executive summary
+            exec_summary = complete_analysis.get("executive_summary", {})
+
+            if exec_summary and isinstance(exec_summary, dict):
+                subtechniques_text = ""
+                if exec_summary.get("key_sub_techniques_observed"):
+                    subtechniques_text = f"\n\nKEY SUB-TECHNIQUES OBSERVED:\n{chr(10).join([f'- {st}' for st in exec_summary.get('key_sub_techniques_observed', [])])}"
+
+                summary_text = f"""SECURITY INVESTIGATION REPORT
+                                        
+User: {username}
+Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+CLASSIFICATION: {complete_analysis.get('initial_analysis', {}).get('classification', 'N/A')}
+RISK LEVEL: {complete_analysis.get('initial_analysis', {}).get('risk_level', 'N/A')}
+
+EXECUTIVE SUMMARY:
+{exec_summary.get('one_line_summary', 'N/A')}
+
+ATTACK SOPHISTICATION:
+{exec_summary.get('attack_sophistication', 'N/A')}
+
+BUSINESS IMPACT:
+{exec_summary.get('business_impact', 'N/A')}
+
+IMMEDIATE ACTIONS:
+{chr(10).join([f"- {action}" for action in exec_summary.get('immediate_actions', [])])}
+
+PRIORITY: {exec_summary.get('investigation_priority', 'N/A')}
+{subtechniques_text}
+"""
+            else:
+                summary_text = f"""SECURITY INVESTIGATION REPORT
+                                        
+User: {username}
+Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+CLASSIFICATION: {complete_analysis.get('initial_analysis', {}).get('classification', 'N/A')}
+RISK LEVEL: {complete_analysis.get('initial_analysis', {}).get('risk_level', 'N/A')}
+CONFIDENCE: {complete_analysis.get('initial_analysis', {}).get('confidence_score', 'N/A')}%
+
+SUMMARY:
+{complete_analysis.get('initial_analysis', {}).get('summary', 'Analysis completed - see detailed report for findings')}
+"""
+
+            st.download_button(
+                label="📋 Executive Summary (TXT)",
+                data=summary_text,
+                file_name=f"executive_summary_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                mime="text/plain",
+                key=f"download_summary_{username}",
+                use_container_width=True,
+            )
+
+        with col3:
+            # MITRE Navigator layer
+            if complete_analysis.get("mitre_attack_analysis"):
+                navigator_data = complete_analysis["mitre_attack_analysis"].get(
+                    "mitre_navigator_layer", {}
+                )
+                if navigator_data:
+                    navigator_json = json.dumps(navigator_data, indent=2)
+                    st.download_button(
+                        label="🗺️ MITRE Navigator Layer",
+                        data=navigator_json,
+                        file_name=f"mitre_layer_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                        mime="application/json",
+                        key=f"download_mitre_{username}",
+                        use_container_width=True,
+                    )
+
+        # Display sub-technique coverage summary
+        if complete_analysis.get("mitre_attack_analysis"):
+            coverage = complete_analysis["mitre_attack_analysis"].get(
+                "sub_technique_coverage"
+            )
+
+            if coverage and isinstance(coverage, dict):
+                st.markdown("---")
+                st.markdown("### 📊 Analysis Coverage")
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.metric(
+                        "Total Techniques Mapped",
+                        coverage.get("total_techniques_mapped", 0),
+                    )
+
+                with col2:
+                    st.metric(
+                        "With Sub-Techniques",
+                        coverage.get("techniques_with_sub_techniques", 0),
+                    )
+
+                with col3:
+                    st.metric(
+                        "Sub-Technique Coverage",
+                        coverage.get("sub_technique_percentage", "0%"),
+                    )
+
+
+def display_entity_analysis_results(username: str, complete_analysis: dict):
+    """Display analysis results for a single entity"""
+
+    initial = complete_analysis.get("initial_analysis", {})
+
+    # Classification header
+    classification = initial.get("classification", "UNKNOWN")
+    if "TRUE POSITIVE" in classification:
+        st.error(f"🚨 **Classification:** {classification}")
+    elif "FALSE POSITIVE" in classification:
+        st.success(f"✅ **Classification:** {classification}")
+    else:
+        st.info(f"ℹ️ **Classification:** {classification}")
+
+    # Metrics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Risk Level", initial.get("risk_level", "UNKNOWN"))
+    with col2:
+        st.metric("Confidence", f"{initial.get('confidence_score', 0)}%")
+    with col3:
+        timestamp = complete_analysis.get("analysis_timestamp", "N/A")
+        st.caption(
+            f"🕐 Analyzed: {timestamp[:19] if len(timestamp) > 19 else timestamp}"
+        )
+
+    st.markdown("---")
+
+    # Key Findings
+    key_findings = initial.get("key_findings", [])
+    if key_findings:
+        st.markdown("### 🔍 Key Findings")
+        for finding in key_findings:
+            severity = finding.get("severity", "Medium")
+            severity_color = {
+                "Critical": "🔴",
+                "High": "🟠",
+                "Medium": "🟡",
+                "Low": "🟢",
+            }.get(severity, "⚪")
+
+            st.markdown(
+                f"""
+            **{severity_color} {finding.get('category', 'Finding')}** ({severity})
+            - **Details:** {finding.get('details', 'N/A')}
+            - **Evidence:** {finding.get('evidence', 'N/A')}
+            - **Impact:** {finding.get('impact', 'N/A')}
+            """
+            )
+
+    # MITRE Analysis
+    mitre = complete_analysis.get("mitre_attack_analysis", {})
+    if mitre:
+        st.markdown("---")
+        st.markdown("### 🎯 MITRE ATT&CK Analysis")
+
+        overall = mitre.get("overall_assessment", {})
+        if overall:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.info(f"**Attack Stage:** {overall.get('attack_stage', 'Unknown')}")
+            with col2:
+                st.info(
+                    f"**Sophistication:** {overall.get('threat_sophistication', 'Unknown')}"
+                )
+
+        # Techniques observed
+        techniques = mitre.get("mitre_techniques_observed", [])
+        if techniques:
+            st.markdown("#### 📋 Techniques Observed")
+            for tech in techniques[:5]:  # Show top 5
+                st.markdown(
+                    f"""
+                - **{tech.get('technique', 'Unknown')}** ({tech.get('technique_id', 'N/A')})
+                  - Sub-technique: {tech.get('sub_technique', 'N/A')}
+                  - Severity: {tech.get('severity', 'N/A')}
+                """
+                )
+
+    # Executive Summary
+    exec_summary = complete_analysis.get("executive_summary", {})
+    if exec_summary:
+        st.markdown("---")
+        st.markdown("### 📋 Executive Summary")
+        st.write(exec_summary.get("one_line_summary", "No summary available"))
+
+        actions = exec_summary.get("immediate_actions", [])
+        if actions:
+            st.markdown("**Immediate Actions:**")
+            for action in actions:
+                st.markdown(f"- {action}")
+
+    # Download button
+    st.markdown("---")
+    import json
+    from datetime import datetime
+
+    report_json = json.dumps(complete_analysis, indent=2)
+    st.download_button(
+        label="📥 Download Complete Analysis (JSON)",
+        data=report_json,
+        file_name=f"analysis_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+        mime="application/json",
+        key=f"download_{username}",
+    )
+
+
+def display_cached_entity_analysis(username: str, complete_analysis: dict):
+    """Display cached analysis results"""
+    with st.expander(f"👤 {username} - ✅ Analysis Complete", expanded=False):
+        display_entity_analysis_results(username, complete_analysis)
 
 
 # ============================================================================
