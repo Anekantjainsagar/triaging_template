@@ -58,23 +58,7 @@ def main():
     # | order by UniqueLocations desc
     # """
     kql_query = """
-    SigninLogs
-    | where TimeGenerated > datetime(2025-10-15 00:45:24Z) and TimeGenerated <= datetime(2025-10-22 00:45:24Z)
-    | where IPAddress in ("2401:4900:1cb5:29f1:9f:a136:3173:e31b", "2409:40c2:5019:3af4:ece3:93e9:9ef3:8820", "103.50.78.48")
-    | summarize
-        SignInAttempts = count(),
-        UniqueUsers = dcount(UserPrincipalName),
-        UniqueApps = dcount(AppDisplayName),
-        SuccessfulLogins = countif(ResultType == "0"),
-        FailedLogins = countif(ResultType != "0"),
-        RiskySignIns = countif(IsRisky == true),
-        HighRiskSignIns = countif(RiskLevelAggregated == "high"),
-        FirstSeen = min(TimeGenerated),
-        LastSeen = max(TimeGenerated),
-        Locations = make_set(tostring(LocationDetails.countryOrRegion), 5),
-        Users = make_set(UserPrincipalName, 10),
-        Apps = make_set(AppDisplayName, 5)
-        by IPAddress
+    SigninLogs | where TimeGenerated > datetime(2025-09-26 12:45:20Z) and TimeGenerated <= datetime(2025-10-03 12:45:20Z) | where IPAddress in ("49.249.104.218", "14.143.131.254", "111.125.237.218", "27.6.153.93") | extend Country = tostring(LocationDetails.countryOrRegion), City = tostring(LocationDetails.city), ISP = tostring(AutonomousSystemNumber) | summarize TotalAttempts = count(), UniqueUsers = dcount(UserPrincipalName), UniqueApplications = dcount(AppDisplayName), SuccessfulLogins = countif(ResultType == "0"), FailedLogins = countif(ResultType != "0"), RiskySignIns = countif(IsRisky == true), HighRiskSignIns = countif(RiskLevelAggregated == "high"), MediumRiskSignIns = countif(RiskLevelAggregated == "medium"), InteractiveLogins = countif(IsInteractive == true), NonInteractiveLogins = countif(IsInteractive == false), FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated), UniqueCountries = dcount(Country), UniqueCities = dcount(City), UsersList = make_set(UserPrincipalName, 20), ApplicationsList = make_set(AppDisplayName, 10), CountriesList = make_set(Country, 5), RiskEvents = make_set(RiskEventTypes_V2, 10) by IPAddress, ISP | extend DaysSeen = datetime_diff('day', LastSeen, FirstSeen) + 1, SuccessRate = round(100.0 * SuccessfulLogins / TotalAttempts, 2), IPThreatScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedLogins * 2) + (UniqueUsers * 3), ThreatClassification = case( HighRiskSignIns > 5, "🔴 Critical Threat - Malicious Actor", HighRiskSignIns > 0, "🟠 High Risk - Known Threat", FailedLogins > 20, "🟡 Suspicious - Brute Force Pattern", SuccessRate < 40, "⚠️ Concerning - Low Success Rate", UniqueUsers > 10, "📊 Shared IP - Multiple Users", "🟢 Normal Activity" ), UsagePattern = case( DaysSeen == 1 and TotalAttempts > 20, "Burst Activity", DaysSeen > 7, "Persistent Access", TotalAttempts > 50, "High Volume", "Standard Usage" ) | project-reorder IPAddress, ThreatClassification, IPThreatScore, TotalAttempts, UniqueUsers, SuccessRate | order by IPThreatScore desc
     """
 
     credential = DefaultAzureCredential()

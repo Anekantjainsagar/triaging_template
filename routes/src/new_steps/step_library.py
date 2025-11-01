@@ -251,7 +251,10 @@ class InvestigationStepLibrary:
                     step["kql_query"] = ""
                     step["kql_explanation"] = ""
 
-        return steps
+        print("\n   🧹 Deduplicating KQL queries...")
+        deduplicated_steps = kql_gen._deduplicate_queries_in_template(steps)
+        
+        return deduplicated_steps
 
     def _get_geography_fallback_kql(self) -> str:
         """Fallback KQL for geographic analysis steps"""

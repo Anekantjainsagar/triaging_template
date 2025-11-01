@@ -8,7 +8,11 @@
                     "type": "string"
                 },
                 {
-                    "name": "SignInAttempts",
+                    "name": "ISP",
+                    "type": "string"
+                },
+                {
+                    "name": "TotalAttempts",
                     "type": "long"
                 },
                 {
@@ -16,7 +20,7 @@
                     "type": "long"
                 },
                 {
-                    "name": "UniqueApps",
+                    "name": "UniqueApplications",
                     "type": "long"
                 },
                 {
@@ -36,6 +40,18 @@
                     "type": "long"
                 },
                 {
+                    "name": "MediumRiskSignIns",
+                    "type": "long"
+                },
+                {
+                    "name": "InteractiveLogins",
+                    "type": "long"
+                },
+                {
+                    "name": "NonInteractiveLogins",
+                    "type": "long"
+                },
+                {
                     "name": "FirstSeen",
                     "type": "datetime"
                 },
@@ -44,15 +60,27 @@
                     "type": "datetime"
                 },
                 {
-                    "name": "Locations",
+                    "name": "UniqueCountries",
+                    "type": "long"
+                },
+                {
+                    "name": "UniqueCities",
+                    "type": "long"
+                },
+                {
+                    "name": "UsersList",
                     "type": "dynamic"
                 },
                 {
-                    "name": "Users",
+                    "name": "ApplicationsList",
                     "type": "dynamic"
                 },
                 {
-                    "name": "Apps",
+                    "name": "CountriesList",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "RiskEvents",
                     "type": "dynamic"
                 }
             ],

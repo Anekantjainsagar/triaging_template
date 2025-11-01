@@ -1,3 +1,3 @@
-| IPAddress | SignInAttempts | UniqueUsers | UniqueApps | SuccessfulLogins | FailedLogins | RiskySignIns | HighRiskSignIns | FirstSeen | LastSeen | Locations | Users | Apps |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data |
+| IPAddress | ISP | TotalAttempts | UniqueUsers | UniqueApplications | SuccessfulLogins | FailedLogins | RiskySignIns | HighRiskSignIns | MediumRiskSignIns | InteractiveLogins | NonInteractiveLogins | FirstSeen | LastSeen | UniqueCountries | UniqueCities | UsersList | ApplicationsList | CountriesList | RiskEvents |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data |

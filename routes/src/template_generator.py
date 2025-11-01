@@ -68,13 +68,13 @@ class ImprovedTemplateGenerator:
         print(f"\n{'='*80}")
         print(f"🔄 KQL DATA INJECTION PHASE")
         print(f"{'='*80}\n")
-        
+
         from routes.src.kql_template_injector import TemplateKQLInjector
-        
+
         try:
             # Initialize injector with alert data
             injector = TemplateKQLInjector(alert_data)
-            
+
             print(f"📊 Extracted Entities:")
             print(f"   👤 Users: {len(injector.users)}")
             for user in injector.users:
@@ -86,15 +86,15 @@ class ImprovedTemplateGenerator:
             for host in injector.hosts:
                 print(f"      • {host}")
             print(f"   ⏰ Reference DateTime: {injector.reference_datetime}")
-            
+
             # Inject data into template
             injected_df = injector.inject_template_dataframe(template_df)
-            
+
             print(f"\n✅ KQL Injection Complete!")
             print(f"{'='*80}\n")
-            
+
             return injected_df
-            
+
         except Exception as e:
             print(f"⚠️ KQL Injection failed: {str(e)}")
             import traceback
@@ -126,7 +126,7 @@ class ImprovedTemplateGenerator:
 
         # Convert to template rows
         template_rows = []
-        
+
         # Add header row
         header_row = {col: "" for col in self.template_columns}
         header_row["Name"] = f"Manual Analysis: {alert_name}"
@@ -160,7 +160,7 @@ class ImprovedTemplateGenerator:
 
         # Create initial DataFrame
         template_df = pd.DataFrame(template_rows)
-        
+
         # ✅ NEW: INJECT REAL DATA INTO KQL QUERIES IF ALERT_DATA AVAILABLE
         if alert_data:
             print(f"\n{'='*80}")
@@ -305,7 +305,7 @@ class ImprovedTemplateGenerator:
 
             # ✅ ENHANCED LOGIC: Check tool first, then general _needs_kql
             if tool_used in ["virustotal", "abuseipdb"]:
-                 print(f"         ℹ️ Skipping KQL for External Tool: {tool_used}")
+                print(f"         ℹ️ Skipping KQL for External Tool: {tool_used}")
             elif self._needs_kql(step_name, explanation):
                 print(f"         🔍 Generating KQL...")
                 kql_query, kql_explanation = self.kql_generator.generate_kql_query(
@@ -347,7 +347,7 @@ class ImprovedTemplateGenerator:
         print(f"\n   ✅ Processing AI-GENERATED steps (filtering if no KQL)...")
         ai_processed = 0
         ai_skipped = 0
-        
+
         # Adjusting the step numbering based on processed original steps
         starting_idx = original_processed + 1
 
@@ -357,7 +357,7 @@ class ImprovedTemplateGenerator:
             source = step.get("source", "unknown")
             priority = step.get("priority", "MEDIUM")
             confidence = step.get("confidence", "MEDIUM")
-            
+
             tool_used = step.get("tool", "").lower()
 
             # ✅ FOR AI-GENERATED: Check tool first (e.g., VirusTotal)
@@ -365,12 +365,12 @@ class ImprovedTemplateGenerator:
                 kql_query = ""
                 kql_explanation = "Requires manual checking using external tools (VirusTotal, AbuseIPDB) or the integrated IP reputation checker in the triaging app."
                 print(f"      ✅ Keeping AI step (External Tool): {step_name}")
-                
+
             elif not self._needs_kql(step_name, explanation):
                 print(f"      ⏭️  Skipping AI step (no KQL needed/manual): {step_name}")
                 ai_skipped += 1
                 continue
-            
+
             # If KQL needed and not an external tool, try to generate it
             else:
                 print(f"\n      Step {idx}: {step_name}")
@@ -391,7 +391,6 @@ class ImprovedTemplateGenerator:
 
                 print(f"         ✅ KQL generated ({len(kql_query)} chars)")
                 print(f"         📝 Explanation: {kql_explanation[:80]}...")
-
 
             # Build template row for AI-generated step
             row = {
@@ -418,7 +417,62 @@ class ImprovedTemplateGenerator:
         print(f"      - {original_processed} from ORIGINAL")
         print(f"      - {ai_processed} from AI-GENERATED")
 
+        # ✅ NEW: Deduplicate KQL queries before returning
+        print(f"\n   🧹 Final KQL deduplication...")
+        template_rows = self._deduplicate_kql_in_rows(template_rows)
+
         return template_rows
+
+        return template_rows
+
+    def _deduplicate_kql_in_rows(self, template_rows: List[Dict]) -> List[Dict]:
+        """
+        Remove template rows with duplicate KQL queries
+        """
+        from difflib import SequenceMatcher
+
+        seen_queries = {}
+        deduplicated = []
+        removed_count = 0
+
+        for row in template_rows:
+            kql = row.get("KQL Query", "").strip()
+            step_name = row.get("Name", "")
+
+            # Keep non-KQL rows (headers, external tools)
+            if not kql or len(kql) < 30:
+                deduplicated.append(row)
+                continue
+
+            # Normalize for comparison
+            normalized = re.sub(r"\s+", " ", kql.lower())
+
+            # Check similarity
+            is_duplicate = False
+            for seen_name, seen_query in seen_queries.items():
+                similarity = SequenceMatcher(None, normalized, seen_query).ratio()
+                if similarity > 0.85:
+                    print(f"      ⏭️  Removing duplicate: {step_name[:60]}")
+                    print(f"         (same as: {seen_name[:60]})")
+                    is_duplicate = True
+                    removed_count += 1
+                    break
+
+            if not is_duplicate:
+                seen_queries[step_name] = normalized
+                deduplicated.append(row)
+
+        # ✅ RENUMBER STEPS after deduplication
+        step_counter = 1
+        for row in deduplicated:
+            if row.get("Step") and str(row["Step"]).strip().isdigit():
+                row["Step"] = str(step_counter)
+                step_counter += 1
+
+        print(f"   ✅ Removed {removed_count} duplicate queries")
+        print(f"   ✅ Final template: {len(deduplicated)-1} unique steps")
+
+        return deduplicated
 
     def _enhance_step_explanation(self, explanation: str) -> str:
         """

@@ -1,511 +1,441 @@
-"""
-Enhanced KQL Query Generator - FIXED
-No hardcoded step numbers - uses intent & focus from context
-Placeholders: <USER_EMAIL>, <IP_ADDRESS> injected at runtime
-Corrected: ResultType == "0" for SUCCESS
-"""
-
 import re
-from typing import Optional, Dict
-from datetime import datetime, timedelta
+from typing import Optional, Dict, Tuple
+from routes.src.hardcode_kql_queries import KQLQueryManager
 
 
-class UniqueKQLGenerator:
-    """Generates unique KQL queries based on step intent, not step number"""
-
+class EnhancedKQLGenerator:
     def __init__(self):
-        self.generated_queries = set()
+        # Initialize query manager with API fallback enabled
+        self.query_manager = KQLQueryManager(enable_api_fallback=True)
+        print("✅ KQL Generator initialized with hardcoded queries + API fallback")
 
-    def generate_unique_query(self, step_context: Dict) -> Optional[str]:
+    def _deduplicate_queries_in_template(self, template_rows: list) -> list:
         """
-        Generate unique KQL query based on step intent/focus, not step number
+        Remove rows with duplicate KQL queries (post-generation deduplication)
 
         Args:
-            step_context: {
-                "step_name": "Geographic Origin & Impossible Travel Detection",
-                "explanation": "...",
-                "intent": "geographic_analysis",  # From step_name/explanation
-                "focus": "location",
-            }
+            template_rows: List of template row dictionaries
+
+        Returns:
+            Deduplicated list of template rows
         """
-        intent = step_context.get("intent", "").lower()
-        focus = step_context.get("focus", "").lower()
-        step_name = step_context.get("step_name", "").lower()
-        explanation = step_context.get("explanation", "").lower()
+        from difflib import SequenceMatcher
 
-        # Combine all context to determine query type
-        combined = f"{intent} {focus} {step_name} {explanation}"
+        print("\n   🧹 Post-generation KQL deduplication...")
 
-        kql = None
+        seen_queries = {}
+        deduplicated = []
+        removed_count = 0
 
-        # Route to appropriate query generator based on INTENT, not step_number
+        for row in template_rows:
+            kql = row.get("kql_query", "").strip()
+            step_name = row.get("step_name", "")
+
+            # Always keep steps without KQL (header, external tools)
+            if not kql or len(kql) < 30:
+                deduplicated.append(row)
+                continue
+
+            # Normalize KQL for comparison
+            normalized = re.sub(r"\s+", " ", kql.lower())
+            normalized = re.sub(r"//.*", "", normalized)  # Remove comments
+
+            # Check against all previously seen queries
+            is_duplicate = False
+            duplicate_of = None
+
+            for seen_step, seen_query in seen_queries.items():
+                similarity = SequenceMatcher(None, normalized, seen_query).ratio()
+
+                # If 85%+ similar, consider duplicate
+                if similarity > 0.85:
+                    is_duplicate = True
+                    duplicate_of = seen_step
+                    break
+
+            if not is_duplicate:
+                seen_queries[step_name] = normalized
+                deduplicated.append(row)
+            else:
+                print(f"      ⏭️  Removed duplicate: '{step_name[:60]}'")
+                print(f"         (duplicates: '{duplicate_of[:60]}')")
+                removed_count += 1
+
+        print(f"   ✅ Removed {removed_count} duplicate KQL queries")
+        return deduplicated
+
+    def generate_kql_query(
+        self, step_name: str, explanation: str, rule_context: str = ""
+    ) -> Tuple[str, str]:
+        """
+        Generate KQL query for investigation step
+
+        Args:
+            step_name: Name of the investigation step
+            explanation: Detailed explanation of what to check
+            rule_context: Additional context about the alert/rule
+
+        Returns:
+            Tuple of (kql_query, kql_explanation)
+        """
+
+        # Check if this step needs KQL
+        if not self._needs_kql(step_name, explanation):
+            return "", ""
+
+        # Extract intent and focus from step context
+        intent = self._extract_intent(step_name, explanation)
+        focus = self._extract_focus(step_name, explanation)
+
+        print(f"   🔍 Query intent: {intent} | Focus: {focus}")
+
+        # Get appropriate query from manager
+        kql_query, source = self.query_manager.get_query(
+            query_type=intent, use_fallback=True  # Use API if no hardcoded query found
+        )
+
+        if kql_query and len(kql_query.strip()) > 30:
+            # Generate explanation based on query content
+            explanation_text = self._generate_explanation(kql_query, step_name, source)
+
+            print(f"   ✅ Query retrieved from: {source.upper()}")
+            return kql_query, explanation_text
+
+        # If all fails, return empty
+        print(f"   ⚠️ No KQL query found for: {step_name[:60]}")
+        return "", ""
+
+    def _extract_intent(self, step_name: str, explanation: str) -> str:
+        """
+        Extract investigation intent from step context with STRICTER matching
+
+        Returns intent keyword that maps to hardcoded query types
+        """
+        combined = f"{step_name} {explanation}".lower()
+
+        # ✅ PRIORITY ORDER: More specific intents first to avoid false matches
+
+        # 1. VIP/Executive (HIGHEST PRIORITY - very specific)
         if any(
-            keyword in combined for keyword in ["scope", "affected", "impact", "count"]
-        ):
-            kql = self._generate_initial_scope_query()
-
-        elif any(
-            keyword in combined
-            for keyword in [
-                "authentication",
-                "method",
-                "client",
-                "application",
-                "legacy",
-                "browser",
-            ]
-        ):
-            kql = self._generate_auth_analysis_query()
-
-        elif any(
-            keyword in combined
-            for keyword in [
+            kw in combined
+            for kw in [
                 "vip",
                 "executive",
                 "high-priority",
                 "high priority",
-                "admin",
-                "privilege",
+                "privileged account",
+                "account status",
+                "account is vip",
             ]
         ):
-            kql = self._generate_vip_verification_query()
+            return "vip_verification"
 
-        elif any(
-            keyword in combined
-            for keyword in [
+        # 2. Geographic/Travel (HIGH PRIORITY - specific keywords)
+        if any(
+            kw in combined
+            for kw in [
                 "geographic",
+                "geography",
                 "impossible travel",
-                "travel",
-                "location",
+                "travel analysis",
+                "location analysis",
                 "geo",
-                "country",
+                "unusual location",
             ]
         ):
-            kql = self._generate_geographic_analysis_query()
+            return "geographic"
 
-        elif any(
-            keyword in combined
-            for keyword in [
+        # 3. IP Intelligence (HIGH PRIORITY - specific)
+        if any(
+            kw in combined
+            for kw in [
                 "ip threat",
                 "ip reputation",
-                "source ip",
+                "source ip reputation",
                 "threat intelligence",
+                "ip analysis",
+                "lookup of source ip",
             ]
         ):
-            kql = self._generate_ip_threat_intelligence_query()
+            return "ip_threat"
 
-        elif any(
-            keyword in combined
-            for keyword in [
+        # 4. Authentication (MEDIUM PRIORITY - check for auth-specific terms)
+        if any(
+            kw in combined
+            for kw in [
+                "authentication pattern",
+                "auth method",
+                "authentication requirement",
+                "client app",
+                "browser",
+                "legacy auth",
+                "mfa detail",
+            ]
+        ):
+            return "auth_method"
+
+        # 5. Behavioral/Post-Compromise (MEDIUM PRIORITY - specific activity analysis)
+        if any(
+            kw in combined
+            for kw in [
                 "behavioral",
+                "behavior analysis",
+                "post-compromise",
+                "post-login activity",
                 "anomaly",
-                "post-login",
-                "post login",
-                "activity",
+                "unusual activity",
+                "activity pattern",
+                "auditlogs",
+                "post sign-in",
             ]
         ):
-            kql = self._generate_behavioral_anomaly_query()
+            return "behavioral"
 
-        elif any(
-            keyword in combined
-            for keyword in [
-                "device",
-                "health",
+        # 6. Device/Endpoint (MEDIUM PRIORITY)
+        if any(
+            kw in combined
+            for kw in [
+                "device health",
+                "endpoint health",
                 "compliance",
-                "endpoint",
-                "managed",
-                "compliant",
+                "device detail",
+                "managed device",
+                "compliant device",
             ]
         ):
-            kql = self._generate_device_health_query()
+            return "device_health"
 
-        elif any(
-            keyword in combined
-            for keyword in [
-                "mfa",
-                "configuration",
-                "account config",
+        # 7. MFA Configuration (MEDIUM PRIORITY)
+        if any(
+            kw in combined
+            for kw in [
+                "mfa config",
+                "multi-factor configuration",
+                "multifactor",
+                "mfa status",
                 "security config",
-                "password",
             ]
         ):
-            kql = self._generate_mfa_config_query()
+            return "mfa_config"
 
-        elif any(
-            keyword in combined
-            for keyword in [
-                "role",
+        # 8. Permissions/Roles (MEDIUM PRIORITY)
+        if any(
+            kw in combined
+            for kw in [
+                "role assignment",
                 "permission",
-                "assignment",
-                "privilege",
+                "privilege escalation",
                 "oauth",
                 "consent",
+                "grant",
             ]
         ):
-            kql = self._generate_role_permission_query()
+            return "role_permission"
 
-        else:
-            # Default - general signin analysis
-            kql = self._generate_default_signin_query()
+        # 9. Conditional Access (LOW PRIORITY)
+        if any(
+            kw in combined
+            for kw in [
+                "conditional access",
+                "ca policy",
+                "policy evaluation",
+                "blocked",
+            ]
+        ):
+            return "conditional_access"
 
-        if kql:
-            # Ensure uniqueness
-            kql_normalized = self._normalize_query(kql)
-            if kql_normalized in self.generated_queries:
-                # Make unique by adding context marker
-                kql = self._add_unique_marker(kql, focus)
-            self.generated_queries.add(kql_normalized)
-            return kql
+        # 10. Failed Sign-ins (LOW PRIORITY)
+        if any(
+            kw in combined
+            for kw in [
+                "failed signin",
+                "failed login",
+                "failure",
+                "error code",
+                "failed attempt",
+            ]
+        ):
+            return "failed_signin"
 
-        return None
+        # 11. Application Access (LOW PRIORITY)
+        if any(
+            kw in combined
+            for kw in [
+                "application access",
+                "app access",
+                "risky app",
+                "application usage",
+            ]
+        ):
+            return "application_access"
 
-    def _generate_initial_scope_query(self) -> str:
-        """Initial Scope & Affected User Identification - Count impact"""
-        return """SigninLogs
-| where TimeGenerated > ago(7d)
-| where UserPrincipalName in ("<USER_EMAIL>")
-| summarize
-    SignInCount = count(),
-    UniqueIPs = dcount(IPAddress),
-    UniqueLocations = dcount(tostring(LocationDetails.countryOrRegion)),
-    UniqueApps = dcount(AppDisplayName),
-    FailedAttempts = countif(ResultType != "0"),
-    SuccessfulSignIns = countif(ResultType == "0"),
-    RiskySignIns = countif(IsRisky == true),
-    IPs = make_set(IPAddress, 5),
-    Locations = make_set(tostring(LocationDetails.countryOrRegion), 5),
-    Apps = make_set(AppDisplayName, 5)
-    by UserPrincipalName
-| extend
-    SuccessRate = round(100.0 * SuccessfulSignIns / SignInCount, 2),
-    RiskScore = (FailedAttempts * 2) + (RiskySignIns * 5)"""
+        # 12. Risky Sign-ins (LOW PRIORITY)
+        if any(
+            kw in combined for kw in ["risky signin", "high risk signin", "risk level"]
+        ):
+            return "risky_signin"
 
-    def _generate_auth_analysis_query(self) -> str:
-        """Authentication Method & Client Application Analysis"""
-        return """SigninLogs
-| where TimeGenerated > ago(7d)
-| where UserPrincipalName in ("<USER_EMAIL>")
-| summarize
-    TotalSignIns = count(),
-    UniqueAuthMethods = dcount(AuthenticationMethodsUsed),
-    UniqueClientApps = dcount(ClientAppUsed),
-    UniqueBrowsers = dcount(tostring(DeviceDetail.browser)),
-    UniqueDevices = dcount(tostring(DeviceDetail.operatingSystem)),
-    MFASignIns = countif(AuthenticationRequirement == "multiFactorAuthentication"),
-    SingleFactorSignIns = countif(AuthenticationRequirement == "singleFactorAuthentication"),
-    SuccessRate = round(100.0 * countif(ResultType == "0") / count(), 2),
-    AuthMethods = make_set(AuthenticationMethodsUsed, 10),
-    ClientApps = make_set(ClientAppUsed, 10),
-    Browsers = make_set(tostring(DeviceDetail.browser), 5)
-    by UserPrincipalName
-| extend
-    MFAAdoptionRate = round(100.0 * MFASignIns / TotalSignIns, 2)"""
+        # 13. Scope Analysis (LAST RESORT - only if explicitly mentioned)
+        if any(
+            kw in combined
+            for kw in [
+                "scope verification",
+                "affected users",
+                "impact assessment",
+                "count users",
+                "total number",
+            ]
+        ):
+            return "initial_scope"
 
-    def _generate_vip_verification_query(self) -> str:
-        """Verify User Account Status - Check if VIP/High-Priority"""
-        return """SigninLogs
-| where TimeGenerated > ago(7d)
-| where UserPrincipalName in ("<USER_EMAIL>")
-| summarize
-    TotalSignIns = count(),
-    UniqueIPs = dcount(IPAddress),
-    UniqueApps = dcount(AppDisplayName),
-    SuccessfulSignIns = countif(ResultType == "0"),
-    FailedSignIns = countif(ResultType != "0"),
-    RiskySignIns = countif(IsRisky == true),
-    HighRiskSignIns = countif(RiskLevelAggregated == "high"),
-    MediumRiskSignIns = countif(RiskLevelAggregated == "medium"),
-    UniqueDays = dcount(format_datetime(TimeGenerated, 'yyyy-MM-dd')),
-    FirstSignIn = min(TimeGenerated),
-    LastSignIn = max(TimeGenerated)
-    by UserPrincipalName, UserDisplayName
-| extend
-    ImpactScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedSignIns * 2),
-    AccountRiskLevel = case(
-        ImpactScore > 20, "Critical - VIP at Risk",
-        ImpactScore > 10, "High - Premium Target",
-        ImpactScore > 5, "Medium - Monitor Closely",
-        "Low - Standard Account"
-    )
-| order by ImpactScore desc"""
-
-    def _generate_geographic_analysis_query(self) -> str:
-        """Geographic Origin & Impossible Travel Detection"""
-        return """SigninLogs
-| where TimeGenerated > ago(30d)
-| where UserPrincipalName in ("<USER_EMAIL>")
-| extend
-    Country = tostring(LocationDetails.countryOrRegion),
-    City = tostring(LocationDetails.city),
-    State = tostring(LocationDetails.state)
-| summarize
-    SignInCount = count(),
-    UniqueIPs = dcount(IPAddress),
-    SuccessfulSignIns = countif(ResultType == "0"),
-    FailedSignIns = countif(ResultType != "0"),
-    FirstSignIn = min(TimeGenerated),
-    LastSignIn = max(TimeGenerated),
-    IPs = make_set(IPAddress, 5)
-    by UserPrincipalName, Country, City, State
-| extend
-    TimeDiffHours = datetime_diff('hour', LastSignIn, FirstSignIn),
-    TravelIndicator = case(
-        TimeDiffHours < 2 and Country != "IN", "Impossible Travel",
-        TimeDiffHours < 6 and Country != "IN", "Suspicious Travel",
-        Country != "IN", "International Access",
-        "Normal - India"
-    )
-| order by SignInCount desc"""
-
-    def _generate_ip_threat_intelligence_query(self) -> str:
-        """Source IP Threat Intelligence Lookup"""
-        return """SigninLogs
-| where TimeGenerated > ago(7d)
-| where IPAddress in ("<IP_ADDRESS>")
-| summarize
-    SignInAttempts = count(),
-    UniqueUsers = dcount(UserPrincipalName),
-    UniqueApps = dcount(AppDisplayName),
-    SuccessfulLogins = countif(ResultType == "0"),
-    FailedLogins = countif(ResultType != "0"),
-    RiskySignIns = countif(IsRisky == true),
-    HighRiskSignIns = countif(RiskLevelAggregated == "high"),
-    FirstSeen = min(TimeGenerated),
-    LastSeen = max(TimeGenerated),
-    Locations = make_set(tostring(LocationDetails.countryOrRegion), 5),
-    Users = make_set(UserPrincipalName, 10),
-    Apps = make_set(AppDisplayName, 5)
-    by IPAddress
-| extend
-    DaysSeen = datetime_diff('day', LastSeen, FirstSeen),
-    SuccessRate = round(100.0 * SuccessfulLogins / SignInAttempts, 2),
-    RiskIndicator = case(
-        HighRiskSignIns > 0, "High Risk - Malicious Pattern",
-        RiskySignIns > 0, "Medium Risk - Flagged",
-        FailedLogins > 10, "Suspicious - Multiple Failed Attempts",
-        SuccessRate < 50.0, "Concerning - Low Success Rate",
-        "Normal"
-    )
-| order by HighRiskSignIns desc, RiskySignIns desc"""
-
-    def _generate_behavioral_anomaly_query(self) -> str:
-        """User Behavioral Anomaly Detection - Post-Login Activity"""
-        return """SigninLogs
-| where TimeGenerated > ago(7d)
-| where UserPrincipalName in ("<USER_EMAIL>")
-| extend
-    Hour = datetime_part("Hour", TimeGenerated),
-    DayOfWeek = dayofweek(TimeGenerated),
-    IsBusinessHours = iff(Hour >= 8 and Hour <= 18 and DayOfWeek >= 1 and DayOfWeek <= 5, "Yes", "No")
-| summarize
-    SignInCount = count(),
-    UniqueIPs = dcount(IPAddress),
-    UniqueApps = dcount(AppDisplayName),
-    SuccessfulSignIns = countif(ResultType == "0"),
-    FailedSignIns = countif(ResultType != "0"),
-    RiskySignIns = countif(IsRisky == true),
-    BusinessHoursSignIns = countif(IsBusinessHours == "Yes"),
-    AfterHoursSignIns = countif(IsBusinessHours == "No")
-    by UserPrincipalName, Hour, DayOfWeek, IsBusinessHours
-| extend
-    AnomalyScore = case(
-        IsBusinessHours == "No" and SignInCount > 10, 15,
-        IsBusinessHours == "No" and SignInCount > 5, 10,
-        IsBusinessHours == "No", 5,
-        RiskySignIns > 0, 8,
-        0
-    )
-| order by AnomalyScore desc, SignInCount desc"""
-
-    def _generate_device_health_query(self) -> str:
-        """Device Health and Compliance Verification"""
-        return """SigninLogs
-| where TimeGenerated > ago(7d)
-| where UserPrincipalName in ("<USER_EMAIL>")
-| extend
-    DeviceId = tostring(DeviceDetail.deviceId),
-    DeviceOS = tostring(DeviceDetail.operatingSystem),
-    Browser = tostring(DeviceDetail.browser),
-    IsCompliant = tostring(DeviceDetail.isCompliant),
-    IsManaged = tostring(DeviceDetail.isManaged)
-| summarize
-    SignInCount = count(),
-    SuccessfulSignIns = countif(ResultType == "0"),
-    FailedSignIns = countif(ResultType != "0"),
-    RiskySignIns = countif(IsRisky == true),
-    FirstUsed = min(TimeGenerated),
-    LastUsed = max(TimeGenerated),
-    Locations = make_set(tostring(LocationDetails.countryOrRegion), 3),
-    Apps = make_set(AppDisplayName, 5)
-    by UserPrincipalName, DeviceId, DeviceOS, Browser, IsCompliant, IsManaged
-| extend
-    ComplianceStatus = case(
-        IsCompliant == "false", "Non-Compliant",
-        IsCompliant == "true", "Compliant",
-        "Unknown"
-    ),
-    ManagementStatus = case(
-        IsManaged == "false", "Unmanaged",
-        IsManaged == "true", "Managed",
-        "Unknown"
-    ),
-    RiskLevel = case(
-        IsCompliant == "false" or IsManaged == "false", "High Risk",
-        FailedSignIns > 5, "Suspicious",
-        RiskySignIns > 0, "Medium Risk",
-        "Normal"
-    )
-| order by SignInCount desc"""
-
-    def _generate_mfa_config_query(self) -> str:
-        """Account Configuration & MFA Status Review"""
-        return """SigninLogs
-| where TimeGenerated > ago(7d)
-| where UserPrincipalName in ("<USER_EMAIL>")
-| summarize
-    TotalSignIns = count(),
-    MFARequiredSignIns = countif(AuthenticationRequirement == "multiFactorAuthentication"),
-    SingleFactorSignIns = countif(AuthenticationRequirement == "singleFactorAuthentication"),
-    MFASuccessful = countif(AuthenticationRequirement == "multiFactorAuthentication" and ResultType == "0"),
-    MFAFailed = countif(AuthenticationRequirement == "multiFactorAuthentication" and ResultType != "0"),
-    UniqueMFAMethods = dcount(tostring(MfaDetail.authMethod)),
-    MFAMethods = make_set(tostring(MfaDetail.authMethod), 10),
-    SuccessRate = round(100.0 * countif(ResultType == "0") / count(), 2),
-    FirstSignIn = min(TimeGenerated),
-    LastSignIn = max(TimeGenerated)
-    by UserPrincipalName
-| extend
-    MFAAdoptionRate = round(100.0 * MFARequiredSignIns / TotalSignIns, 2),
-    MFASuccessRate = iff(MFARequiredSignIns > 0, round(100.0 * MFASuccessful / MFARequiredSignIns, 2), 0),
-    MFAStatus = case(
-        MFAAdoptionRate >= 80, "Strong - MFA Enforced",
-        MFAAdoptionRate >= 50, "Moderate - Partial MFA",
-        "Weak - Limited MFA"
-    )
-| order by MFAAdoptionRate desc"""
-
-    def _generate_role_permission_query(self) -> str:
-        """Role & Permission Analysis - OAuth Consent"""
-        return """AuditLogs
-| where TimeGenerated > ago(7d)
-| where OperationName has_any ("Add member to role", "Add app role assignment", "Consent to application")
-| extend
-    InitiatedByUser = tostring(InitiatedBy.user.userPrincipalName),
-    TargetUser = tostring(TargetResources[0].userPrincipalName)
-| where InitiatedByUser in ("<USER_EMAIL>") or TargetUser in ("<USER_EMAIL>")
-| summarize
-    ChangeCount = count(),
-    Operations = make_set(OperationName, 10),
-    AffectedUsers = make_set(TargetUser, 10),
-    FirstChange = min(TimeGenerated),
-    LastChange = max(TimeGenerated),
-    InitiatedBy = make_set(InitiatedByUser, 5)
-    by OperationName
-| extend
-    IsHighRisk = iff(ChangeCount > 5, "Yes", "No")
-| order by ChangeCount desc"""
-
-    def _generate_default_signin_query(self) -> str:
-        """Default comprehensive sign-in analysis"""
-        return """SigninLogs
-| where TimeGenerated > ago(7d)
-| where UserPrincipalName in ("<USER_EMAIL>")
-| summarize
-    SignInCount = count(),
-    UniqueIPs = dcount(IPAddress),
-    UniqueLocations = dcount(tostring(LocationDetails.countryOrRegion)),
-    UniqueApps = dcount(AppDisplayName),
-    SuccessfulSignIns = countif(ResultType == "0"),
-    FailedAttempts = countif(ResultType != "0"),
-    RiskySignIns = countif(IsRisky == true),
-    IPs = make_set(IPAddress, 5),
-    Locations = make_set(tostring(LocationDetails.countryOrRegion), 5),
-    Apps = make_set(AppDisplayName, 5)
-    by UserPrincipalName
-| extend
-    SuccessRate = round(100.0 * SuccessfulSignIns / SignInCount, 2),
-    RiskScore = (FailedAttempts * 2) + (RiskySignIns * 5)"""
-
-    def _normalize_query(self, kql: str) -> str:
-        """Normalize query for duplicate detection"""
-        normalized = re.sub(r"\s+", " ", kql.lower())
-        normalized = re.sub(r"//.*", "", normalized)
-        return normalized.strip()
-
-    def _add_unique_marker(self, kql: str, focus: str) -> str:
-        """Add unique marker without hardcoding step numbers"""
-        marker = f"// {focus} specific analysis\n"
-        return marker + kql
-
-
-class EnhancedKQLGenerator:
-    """Main KQL Generator"""
-
-    def __init__(self):
-        self.unique_generator = UniqueKQLGenerator()
-
-    def generate_kql_query(
-        self, step_name: str, explanation: str, rule_context: str = ""
-    ) -> tuple:
-        """Generate unique, specific KQL query with placeholders"""
-
-        # Extract intent from step name and explanation
-        intent = self._extract_intent(step_name, explanation)
-        focus = self._extract_focus(step_name, explanation)
-
-        if not self._needs_kql(step_name, explanation):
-            return "", ""
-
-        step_context = {
-            "step_name": step_name,
-            "explanation": explanation,
-            "intent": intent,
-            "focus": focus,
-        }
-
-        kql = self.unique_generator.generate_unique_query(step_context)
-
-        if kql and len(kql.strip()) > 30:
-            explanation_text = self._generate_explanation(kql, step_name)
-            return kql, explanation_text
-
-        return "", ""
-
-    def _extract_intent(self, step_name: str, explanation: str) -> str:
-        """Extract intent from content"""
-        combined = f"{step_name} {explanation}".lower()
-        if "count" in combined or "impact" in combined:
-            return "scope_analysis"
-        elif "vip" in combined or "executive" in combined:
-            return "vip_verification"
-        elif "geographic" in combined or "travel" in combined:
-            return "geographic_analysis"
-        return "investigation"
+        # ✅ FALLBACK: If no specific match, try to infer from general context
+        # Use API fallback for truly unique queries
+        print(f"   ⚠️  No specific intent match for: {step_name[:60]}")
+        return step_name  # Return step name itself to trigger API fallback
 
     def _extract_focus(self, step_name: str, explanation: str) -> str:
-        """Extract focus area"""
+        """
+        Extract focus area from step context
+        Used for logging and secondary intent detection
+        """
         combined = f"{step_name} {explanation}".lower()
-        if "device" in combined:
+
+        if any(kw in combined for kw in ["device", "endpoint", "compliance"]):
             return "device"
-        elif "mfa" in combined or "config" in combined:
+        elif any(kw in combined for kw in ["mfa", "config", "configuration"]):
             return "account_config"
-        elif "geographic" in combined or "location" in combined:
+        elif any(
+            kw in combined for kw in ["geographic", "location", "travel", "country"]
+        ):
             return "location"
-        elif "behavior" in combined:
+        elif any(kw in combined for kw in ["behavior", "anomaly", "pattern"]):
             return "behavior"
-        elif "ip" in combined:
+        elif any(kw in combined for kw in ["ip", "address", "source"]):
             return "ip"
+        elif any(kw in combined for kw in ["application", "app", "access"]):
+            return "application"
+        elif any(kw in combined for kw in ["role", "permission", "privilege"]):
+            return "permission"
+
         return "user"
 
     def _needs_kql(self, step_name: str, explanation: str) -> bool:
-        """Check if step needs KQL"""
-        combined = f"{step_name} {explanation}".lower()
-        skip_keywords = ["virustotal", "abuseipdb", "manual"]
-        if any(kw in combined for kw in skip_keywords):
-            return False
-        return any(kw in combined for kw in ["query", "check", "verify", "analyze"])
+        """
+        Determine if step needs KQL query
 
-    def _generate_explanation(self, kql: str, step_name: str) -> str:
-        """Generate concise explanation"""
-        table = "SigninLogs" if "signinlogs" in kql.lower() else "AuditLogs"
-        return f"Aggregates {table} data to analyze {step_name.lower()} patterns and metrics."
+        Returns False for:
+        - External tool steps (VirusTotal, AbuseIPDB)
+        - Manual investigation steps
+        - Reporting/closure steps
+        """
+        combined = f"{step_name} {explanation}".lower()
+
+        # ❌ Skip external tools and manual steps
+        skip_keywords = [
+            "virustotal",
+            "virus total",
+            "abuseipdb",
+            "abuse ipdb",
+            "abuse",
+            "document",
+            "close incident",
+            "escalate",
+            "inform",
+            "notify",
+            "report",
+            "classify",
+            "manual investigation",
+            "manually check",
+        ]
+
+        if any(keyword in combined for keyword in skip_keywords):
+            return False
+
+        # ✅ Include data investigation types
+        needs_keywords = [
+            "sign-in",
+            "signin",
+            "login",
+            "audit",
+            "logs",
+            "query",
+            "check user",
+            "verify user",
+            "review",
+            "analyze",
+            "investigate",
+            "count",
+            "gather",
+            "extract",
+            "device",
+            "endpoint",
+            "role",
+            "permission",
+            "assignment",
+            "group",
+            "membership",
+            "mfa",
+            "authentication",
+            "location",
+            "oauth",
+            "grant",
+            "ip address",
+            "behavior",
+            "anomaly",
+            "activity",
+            "access",
+            "application",
+            "failed",
+            "risky",
+        ]
+
+        return any(keyword in combined for keyword in needs_keywords)
+
+    def _generate_explanation(self, kql: str, step_name: str, source: str) -> str:
+        """
+        Generate concise explanation for the KQL query
+
+        Args:
+            kql: The KQL query string
+            step_name: Name of the investigation step
+            source: Source of query ("hardcoded" or "api")
+        """
+        # Determine table being queried
+        table = (
+            "SigninLogs"
+            if "signinlogs" in kql.lower()
+            else "AuditLogs" if "auditlogs" in kql.lower() else "Unknown"
+        )
+
+        # Identify key operations
+        operations = []
+        if "summarize" in kql.lower():
+            operations.append("aggregates data")
+        if "extend" in kql.lower():
+            operations.append("enriches fields")
+        if "project" in kql.lower():
+            operations.append("formats output")
+        if "order by" in kql.lower():
+            operations.append("ranks results")
+
+        ops_text = ", ".join(operations) if operations else "queries data"
+
+        # Build explanation
+        explanation = (
+            f"This query {ops_text} from {table} to analyze {step_name.lower()}."
+        )
+
+        # Add source context for API-generated queries
+        if source == "api":
+            explanation += " (AI-generated query with placeholder injection)"
+
+        return explanation
+
+    def get_available_query_types(self):
+        """
+        Get list of all available hardcoded query types
+
+        Returns:
+            Dictionary of query types and descriptions
+        """
+        return self.query_manager.list_available_queries()
