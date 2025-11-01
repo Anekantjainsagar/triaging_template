@@ -9,6 +9,7 @@ import time
 # Import SOC analysis components
 from api_client.analyzer_api_client import get_analyzer_client
 from components.triaging_integrated import display_triaging_workflow
+from routes.src.entity_prediction import display_entity_predictions_panel
 from components.historical_analysis import display_historical_analysis_tab
 
 # Page configuration
@@ -281,7 +282,7 @@ def check_api_status():
 
 
 def display_predictions_tab_integrated():
-    """Display predictions analysis tab (unlocked after triaging) - INTEGRATED VERSION"""
+    """Display predictions analysis tab with entity-level predictions"""
 
     if not st.session_state.get("triaging_complete", False):
         st.warning(
@@ -291,15 +292,31 @@ def display_predictions_tab_integrated():
 
     st.markdown("### 🔮 True/False Positive Analyzer with MITRE ATT&CK")
 
-    # Get the Excel file from session state
-    excel_data = st.session_state.get("predictions_excel_data")
-    excel_filename = st.session_state.get("predictions_excel_filename")
+    # Create sub-tabs for different analysis types
+    pred_tab1, pred_tab2 = st.tabs([
+        "🎯 Entity-Level Predictions",
+        "📊 Investigation-Wide Analysis"
+    ])
 
-    if not excel_data:
-        st.error("❌ No triaging data found. Please complete triaging first.")
-        return
+    with pred_tab1:
+        # NEW: Display automated entity predictions
+        alert_data = st.session_state.get("soc_analysis_data")
+        if alert_data:
+            display_entity_predictions_panel(alert_data)
+        else:
+            st.error("❌ No alert data found. Please run AI analysis first.")
 
-    st.info(f"📄 Using triaging template: {excel_filename}")
+    with pred_tab2:
+        # EXISTING: Your investigation-wide analysis
+        excel_data = st.session_state.get("predictions_excel_data")
+        excel_filename = st.session_state.get("predictions_excel_filename")
+
+        if not excel_data:
+            st.error("❌ No triaging data found. Please complete triaging first.")
+            return
+
+        st.info(f"📄 Using triaging template: {excel_filename}")
+
 
     # Initialize API client
     import os
