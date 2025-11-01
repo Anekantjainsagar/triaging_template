@@ -4,7 +4,11 @@
             "name": "PrimaryResult",
             "columns": [
                 {
-                    "name": "TotalSignIns",
+                    "name": "IPAddress",
+                    "type": "string"
+                },
+                {
+                    "name": "SignInAttempts",
                     "type": "long"
                 },
                 {
@@ -12,42 +16,47 @@
                     "type": "long"
                 },
                 {
-                    "name": "UniqueIPs",
-                    "type": "long"
-                },
-                {
                     "name": "UniqueApps",
                     "type": "long"
                 },
                 {
-                    "name": "SuccessfulSignIns",
+                    "name": "SuccessfulLogins",
                     "type": "long"
                 },
                 {
-                    "name": "FailedSignIns",
+                    "name": "FailedLogins",
                     "type": "long"
                 },
                 {
-                    "name": "UniqueDays",
+                    "name": "RiskySignIns",
                     "type": "long"
                 },
                 {
-                    "name": "ImpactScore",
+                    "name": "HighRiskSignIns",
                     "type": "long"
+                },
+                {
+                    "name": "FirstSeen",
+                    "type": "datetime"
+                },
+                {
+                    "name": "LastSeen",
+                    "type": "datetime"
+                },
+                {
+                    "name": "Locations",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "Users",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "Apps",
+                    "type": "dynamic"
                 }
             ],
-            "rows": [
-                [
-                    18,
-                    2,
-                    4,
-                    7,
-                    18,
-                    0,
-                    2,
-                    20
-                ]
-            ]
+            "rows": []
         }
     ]
 }

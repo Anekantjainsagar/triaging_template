@@ -231,7 +231,6 @@ class InvestigationStepLibrary:
             kql_query, kql_explanation = kql_gen.generate_kql_query(
                 step_name=step_name,
                 explanation=explanation,
-                step_number=idx,
                 rule_context=alert_name,
             )
 
@@ -267,7 +266,7 @@ class InvestigationStepLibrary:
     Countries = make_set(Country),
     Cities = make_set(City)
     by UserPrincipalName, IPAddress
-| where UniqueLocations > 1
+| where UniqueLocations >= 1
 | project UserPrincipalName, IPAddress, Countries, Cities, SignInCount, UniqueLocations
 | order by UniqueLocations desc"""
 

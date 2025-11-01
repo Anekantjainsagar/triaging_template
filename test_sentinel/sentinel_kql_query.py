@@ -41,20 +41,40 @@ def main():
 
     workspace_id = os.getenv("LOG_ANALYTICS_WORKSPACE_ID")
 
+    # kql_query = """
+    # SigninLogs
+    # | where TimeGenerated > ago(7d)
+    # | where UserPrincipalName in ("sudheer.karimisetti@yashtechnologies841.onmicrosoft.com", "omkar.vyavahare@yashtechnologies841.onmicrosoft.com", "vishwajeet.dange@yashtechnologies841.onmicrosoft.com")
+    # | extend Country = tostring(LocationDetails.countryOrRegion)
+    # | extend City = tostring(LocationDetails.city)
+    # | summarize
+    #     SignInCount = count(),
+    #     UniqueLocations = dcount(Country),
+    #     Countries = make_set(Country),
+    #     Cities = make_set(City)
+    #     by UserPrincipalName, IPAddress
+    # | where UniqueLocations > 1
+    # | project UserPrincipalName, IPAddress, Countries, Cities, SignInCount, UniqueLocations
+    # | order by UniqueLocations desc
+    # """
     kql_query = """
     SigninLogs
-    | where TimeGenerated > ago(7d)
-    | where UserPrincipalName in ("aarushi.trivedi@yashtechnologies841.onmicrosoft.com", "shrish.s@yashtechnologies841.onmicrosoft.com", "ketan.patel@yashtechnologies841.onmicrosoft.com", "saratkumar.indukuri@yashtechnologies841.onmicrosoft.com")
-    | extend StepNumber = 3
-    | summarize 
-        TotalSignIns = count(),
+    | where TimeGenerated > datetime(2025-10-15 00:45:24Z) and TimeGenerated <= datetime(2025-10-22 00:45:24Z)
+    | where IPAddress in ("2401:4900:1cb5:29f1:9f:a136:3173:e31b", "2409:40c2:5019:3af4:ece3:93e9:9ef3:8820", "103.50.78.48")
+    | summarize
+        SignInAttempts = count(),
         UniqueUsers = dcount(UserPrincipalName),
-        UniqueIPs = dcount(IPAddress),
         UniqueApps = dcount(AppDisplayName),
-        SuccessfulSignIns = countif(ResultType == "0"),
-        FailedSignIns = countif(ResultType != "0"),
-        UniqueDays = dcount(format_datetime(TimeGenerated, 'yyyy-MM-dd'))
-    | extend ImpactScore = (UniqueUsers * 10) + (FailedSignIns * 2)
+        SuccessfulLogins = countif(ResultType == "0"),
+        FailedLogins = countif(ResultType != "0"),
+        RiskySignIns = countif(IsRisky == true),
+        HighRiskSignIns = countif(RiskLevelAggregated == "high"),
+        FirstSeen = min(TimeGenerated),
+        LastSeen = max(TimeGenerated),
+        Locations = make_set(tostring(LocationDetails.countryOrRegion), 5),
+        Users = make_set(UserPrincipalName, 10),
+        Apps = make_set(AppDisplayName, 5)
+        by IPAddress
     """
 
     credential = DefaultAzureCredential()

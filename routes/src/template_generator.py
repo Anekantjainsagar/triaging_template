@@ -311,7 +311,6 @@ class ImprovedTemplateGenerator:
                 kql_query, kql_explanation = self.kql_generator.generate_kql_query(
                     step_name=step_name,
                     explanation=explanation,
-                    step_number=idx,
                     rule_context=profile.get("technical_overview", ""),
                 )
 
@@ -381,7 +380,6 @@ class ImprovedTemplateGenerator:
                 kql_query, kql_explanation = self.kql_generator.generate_kql_query(
                     step_name=step_name,
                     explanation=explanation,
-                    step_number=idx,
                     rule_context=profile.get("technical_overview", ""),
                 )
 
