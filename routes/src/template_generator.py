@@ -54,130 +54,6 @@ class ImprovedTemplateGenerator:
             print(f"⚠️ Could not initialize Analyzer API Client: {e}")
             self.analyzer_client = None
 
-    def inject_alert_data_into_template(self, template_df: pd.DataFrame, alert_data: dict) -> pd.DataFrame:
-        """
-        Inject real alert data into KQL queries after template generation
-        
-        Args:
-            template_df: Generated template DataFrame
-            alert_data: Alert data containing entities, timestamps, etc.
-            
-        Returns:
-            DataFrame with injected KQL queries
-        """
-        print(f"\n{'='*80}")
-        print(f"🔄 KQL DATA INJECTION PHASE")
-        print(f"{'='*80}\n")
-
-        from routes.src.kql_template_injector import TemplateKQLInjector
-
-        try:
-            # Initialize injector with alert data
-            injector = TemplateKQLInjector(alert_data)
-
-            print(f"📊 Extracted Entities:")
-            print(f"   👤 Users: {len(injector.users)}")
-            for user in injector.users:
-                print(f"      • {user}")
-            print(f"   🌐 IPs: {len(injector.ips)}")
-            for ip in injector.ips:
-                print(f"      • {ip}")
-            print(f"   💻 Hosts: {len(injector.hosts)}")
-            for host in injector.hosts:
-                print(f"      • {host}")
-            print(f"   ⏰ Reference DateTime: {injector.reference_datetime}")
-
-            # Inject data into template
-            injected_df = injector.inject_template_dataframe(template_df)
-
-            print(f"\n✅ KQL Injection Complete!")
-            print(f"{'='*80}\n")
-
-            return injected_df
-
-        except Exception as e:
-            print(f"⚠️ KQL Injection failed: {str(e)}")
-            import traceback
-            print(f"🔍 Error trace:\n{traceback.format_exc()}")
-            # Return original template if injection fails
-            return template_df
-
-    def generate_from_manual_analysis(
-        self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN", alert_data: dict = None
-    ) -> pd.DataFrame:
-        print(f"\n{'='*80}")
-        print(f"🤖 GENERATING MANUAL ALERT TEMPLATE")
-        print(f"Alert: {alert_name}")
-        print(f"Has alert_data: {'YES' if alert_data else 'NO'}")
-        print(f"{'='*80}\n")
-
-        start_time = time.time()
-
-        # Use the updated step library to generate steps from analysis
-        from routes.src.new_steps.step_library import InvestigationStepLibrary
-        step_library = InvestigationStepLibrary()
-
-        # Generate 6-7 steps directly from analysis
-        generated_steps = step_library.generate_steps_from_manual_analysis(
-            alert_name=alert_name,
-            analysis_text=analysis_text,
-            rule_number=rule_number
-        )
-
-        # Convert to template rows
-        template_rows = []
-
-        # Add header row
-        header_row = {col: "" for col in self.template_columns}
-        header_row["Name"] = f"Manual Analysis: {alert_name}"
-        template_rows.append(header_row)
-
-        # Add investigation steps
-        for idx, step in enumerate(generated_steps, 1):
-            step_name = step.get("step_name", "")
-            explanation = step.get("explanation", "")
-            relevance = step.get("relevance", "")
-            tool = step.get("tool", "")
-
-            # Build enhanced explanation with relevance
-            if relevance:
-                full_explanation = f"{explanation}\n\n💡 WHY THIS MATTERS: {relevance}"
-            else:
-                full_explanation = explanation
-
-            row = {
-                "Step": str(idx),
-                "Name": step_name,
-                "Explanation": self._enforce_length(full_explanation, max_sentences=5),
-                "KQL Query": step.get("kql_query", ""),
-                "KQL Explanation": step.get("kql_explanation", ""),
-                "Execute": "",
-                "Output": "",
-                "Remarks/Comments": f"[MANUAL] {step.get('priority', 'MEDIUM')} | Tool: {tool if tool else 'KQL'}"
-            }
-
-            template_rows.append(row)
-
-        # Create initial DataFrame
-        template_df = pd.DataFrame(template_rows)
-
-        # ✅ NEW: INJECT REAL DATA INTO KQL QUERIES IF ALERT_DATA AVAILABLE
-        if alert_data:
-            print(f"\n{'='*80}")
-            print(f"🔄 INJECTING REAL ALERT DATA INTO KQL QUERIES")
-            print(f"{'='*80}")
-            template_df = self.inject_alert_data_into_template(template_df, alert_data)
-        else:
-            print(f"⚠️ No alert_data provided - KQL queries will contain placeholders")
-
-        elapsed = time.time() - start_time
-
-        print(f"\n{'='*80}")
-        print(f"✅ COMPLETED in {elapsed:.1f}s: {len(template_rows)-1} investigation steps")
-        print(f"{'='*80}\n")
-
-        return template_df
-
     def generate_intelligent_template(
         self, rule_number: str, original_steps: List[Dict], rule_context: str = ""
     ) -> pd.DataFrame:
@@ -267,9 +143,16 @@ class ImprovedTemplateGenerator:
     ) -> List[Dict]:
         """
         Process merged steps and generate KQL for each
+        
+        UPDATED: Extract datetime from profile and pass to KQL generator
         """
         template_rows = []
 
+        # NEW: Extract reference datetime from profile or alert_data
+        reference_datetime_obj = None
+        if profile.get("reference_datetime_obj"):
+            reference_datetime_obj = profile["reference_datetime_obj"]
+        
         # Separate original and AI-generated steps
         original_steps = []
         ai_generated_steps = []
@@ -280,11 +163,11 @@ class ImprovedTemplateGenerator:
             else:
                 ai_generated_steps.append(step)
 
-        print(f"   📊 Original steps: {len(original_steps)}")
-        print(f"   🤖 AI-generated steps: {len(ai_generated_steps)}")
+        print(f"   Original steps: {len(original_steps)}")
+        print(f"   AI-generated steps: {len(ai_generated_steps)}")
 
         # FIRST: Process ORIGINAL steps - keep ALL regardless of KQL
-        print(f"\n   ✅ Processing ORIGINAL steps (keeping all)...")
+        print(f"\n   OK: Processing ORIGINAL steps (keeping all)...")
         original_processed = 0
         for idx, step in enumerate(original_steps, 1):
             step_name = step.get("step_name", "")
@@ -308,41 +191,46 @@ class ImprovedTemplateGenerator:
                             for kw in ["vip", "executive", "high-priority", 
                                     "privileged account", "account status"])
 
-            # ✅ ENHANCED LOGIC: Check tool first, then general _needs_kql
+            # UPDATED: Check tool first, then general _needs_kql
             if tool_used in ["virustotal", "abuseipdb"]:
-                print(f"         ℹ️ Skipping KQL for External Tool: {tool_used}")
+                print(f"         INFO: Skipping KQL for External Tool: {tool_used}")
             elif is_vip_step:
-                print(f"         ⭐ VIP Step Detected - Generating template query...")
+                print(f"         NOTE: VIP Step Detected - Generating template query...")
+                
+                # PASS reference_datetime_obj to KQL generator
                 kql_query, kql_explanation = self.kql_generator.generate_kql_query(
-                    step_name="VIP User Verification",  # Force the intent
+                    step_name="VIP User Verification",
                     explanation="Verify if affected user is VIP or executive account",
                     rule_context=profile.get("technical_overview", ""),
+                    reference_datetime_obj=reference_datetime_obj
                 )
                 
                 if kql_query and len(kql_query.strip()) > 30:
-                    print(f"         ✅ VIP KQL template generated ({len(kql_query)} chars)")
+                    print(f"         OK: VIP KQL template generated ({len(kql_query)} chars)")
                 else:
-                    print(f"         ⚠️ VIP KQL generation failed - using fallback")
-                    # Fallback to hardcoded VIP query
+                    print(f"         WARNING: VIP KQL generation failed - using fallback")
                     from routes.src.hardcode_kql_queries import HardcodedKQLQueries
                     kql_query = HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION
                     kql_explanation = "VIP/Executive account verification query"
                     
             elif self._needs_kql(step_name, explanation):
-                print(f"         🔍 Generating KQL...")
+                print(f"         INFO: Generating KQL...")
+                
+                # PASS reference_datetime_obj to KQL generator
                 kql_query, kql_explanation = self.kql_generator.generate_kql_query(
                     step_name=step_name,
                     explanation=explanation,
                     rule_context=profile.get("technical_overview", ""),
+                    reference_datetime_obj=reference_datetime_obj
                 )
 
                 if kql_query and len(kql_query.strip()) > 30:
-                    print(f"         ✅ KQL generated ({len(kql_query)} chars)")
+                    print(f"         OK: KQL generated ({len(kql_query)} chars)")
                 else:
-                    print(f"         ℹ️  No KQL generated (External Tool/Manual/Fallback)")
+                    print(f"         INFO: No KQL generated (External Tool/Manual/Fallback)")
                     kql_query = ""
             else:
-                print(f"         ℹ️  Step doesn't require KQL (manual/closure)")
+                print(f"         INFO: Step doesn't require KQL (manual/closure)")
 
             # Build template row - KEEP ORIGINAL EVEN IF NO KQL
             row = {
@@ -363,10 +251,10 @@ class ImprovedTemplateGenerator:
             template_rows.append(row)
             original_processed += 1
 
-        print(f"\n   ✅ Kept all {original_processed} ORIGINAL steps")
+        print(f"\n   OK: Kept all {original_processed} ORIGINAL steps")
 
         # SECOND: Process AI-GENERATED steps - FILTER if no KQL
-        print(f"\n   ✅ Processing AI-GENERATED steps (filtering if no KQL)...")
+        print(f"\n   OK: Processing AI-GENERATED steps (filtering if no KQL)...")
         ai_processed = 0
         ai_skipped = 0
 
@@ -382,14 +270,14 @@ class ImprovedTemplateGenerator:
 
             tool_used = step.get("tool", "").lower()
 
-            # ✅ FOR AI-GENERATED: Check tool first (e.g., VirusTotal)
+            # FOR AI-GENERATED: Check tool first (e.g., VirusTotal)
             if tool_used in ["virustotal", "abuseipdb"]:
                 kql_query = ""
                 kql_explanation = "Requires manual checking using external tools (VirusTotal, AbuseIPDB) or the integrated IP reputation checker in the triaging app."
-                print(f"      ✅ Keeping AI step (External Tool): {step_name}")
+                print(f"      OK: Keeping AI step (External Tool): {step_name}")
 
             elif not self._needs_kql(step_name, explanation):
-                print(f"      ⏭️  Skipping AI step (no KQL needed/manual): {step_name}")
+                print(f"      NOTE: Skipping AI step (no KQL needed/manual): {step_name}")
                 ai_skipped += 1
                 continue
 
@@ -397,22 +285,24 @@ class ImprovedTemplateGenerator:
             else:
                 print(f"\n      Step {idx}: {step_name}")
                 print(f"         Source: {source} | Priority: {priority}")
-                print(f"         🔍 Generating KQL...")
+                print(f"         INFO: Generating KQL...")
 
+                # PASS reference_datetime_obj to KQL generator
                 kql_query, kql_explanation = self.kql_generator.generate_kql_query(
                     step_name=step_name,
                     explanation=explanation,
                     rule_context=profile.get("technical_overview", ""),
+                    reference_datetime_obj=reference_datetime_obj
                 )
 
-                # ✅ FOR AI-GENERATED: Skip if KQL generation failed
+                # FOR AI-GENERATED: Skip if KQL generation failed
                 if not (kql_query and len(kql_query.strip()) > 30):
-                    print(f"         ⏭️  Skipping (KQL generation failed)")
+                    print(f"         NOTE: Skipping (KQL generation failed)")
                     ai_skipped += 1
                     continue
 
-                print(f"         ✅ KQL generated ({len(kql_query)} chars)")
-                print(f"         📝 Explanation: {kql_explanation[:80]}...")
+                print(f"         OK: KQL generated ({len(kql_query)} chars)")
+                print(f"         INFO: Explanation: {kql_explanation[:80]}...")
 
             # Build template row for AI-generated step
             row = {
@@ -433,19 +323,209 @@ class ImprovedTemplateGenerator:
             template_rows.append(row)
             ai_processed += 1
 
-        print(f"\n   ✅ Processed {ai_processed} AI-GENERATED steps")
-        print(f"   ⏭️  Skipped {ai_skipped} AI-GENERATED steps (no KQL)")
-        print(f"\n   📊 Final template: {len(template_rows)} total steps")
+        print(f"\n   OK: Processed {ai_processed} AI-GENERATED steps")
+        print(f"   NOTE: Skipped {ai_skipped} AI-GENERATED steps (no KQL)")
+        print(f"\n   RESULT: Final template: {len(template_rows)} total steps")
         print(f"      - {original_processed} from ORIGINAL")
         print(f"      - {ai_processed} from AI-GENERATED")
 
-        # ✅ NEW: Deduplicate KQL queries before returning
-        print(f"\n   🧹 Final KQL deduplication...")
+        # NEW: Deduplicate KQL queries before returning
+        print(f"\n   INFO: Final KQL deduplication...")
         template_rows = self._deduplicate_kql_in_rows(template_rows)
 
         return template_rows
 
-        return template_rows
+    def generate_from_manual_analysis(
+        self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN", alert_data: dict = None
+    ) -> pd.DataFrame:
+        """
+        Generate manual alert investigation template
+        
+        UPDATED: Extract reference_datetime_obj and PASS IT through entire pipeline
+        """
+        print(f"\n{'='*80}")
+        print(f"INFO: GENERATING MANUAL ALERT TEMPLATE")
+        print(f"Alert: {alert_name}")
+        print(f"Has alert_data: {'YES' if alert_data else 'NO'}")
+        print(f"{'='*80}\n")
+
+        start_time = time.time()
+
+        # NEW: Extract reference datetime from alert_data
+        reference_datetime_obj = None
+        if alert_data:
+            try:
+                full_alert = alert_data.get("full_alert", {})
+                if isinstance(full_alert, dict):
+                    props = full_alert.get("properties", {})
+                    time_str = props.get("timeGenerated")
+                    if time_str:
+                        from datetime import datetime
+                        reference_datetime_obj = datetime.fromisoformat(
+                            time_str.replace("Z", "+00:00")
+                        )
+                        print(f"OK: Reference DateTime extracted: {reference_datetime_obj}")
+            except Exception as e:
+                print(f"WARNING: Could not extract reference datetime: {e}")
+
+        # Use the updated step library to generate steps from analysis
+        from routes.src.new_steps.step_library import InvestigationStepLibrary
+        step_library = InvestigationStepLibrary()
+
+        # Generate 6-7 steps directly from analysis
+        generated_steps = step_library.generate_steps_from_manual_analysis(
+            alert_name=alert_name,
+            analysis_text=analysis_text,
+            rule_number=rule_number
+        )
+
+        # Convert to template rows
+        template_rows = []
+
+        # Add header row
+        header_row = {col: "" for col in self.template_columns}
+        header_row["Name"] = f"Manual Analysis: {alert_name}"
+        template_rows.append(header_row)
+
+        # Add investigation steps WITH KQL GENERATION USING reference_datetime_obj
+        print(f"\nINFO: Processing {len(generated_steps)} generated steps...")
+        for idx, step in enumerate(generated_steps, 1):
+            step_name = step.get("step_name", "")
+            explanation = step.get("explanation", "")
+            relevance = step.get("relevance", "")
+            tool = step.get("tool", "")
+            existing_kql = step.get("kql_query", "")
+
+            # Build enhanced explanation with relevance
+            if relevance:
+                full_explanation = f"{explanation}\n\nWHY THIS MATTERS: {relevance}"
+            else:
+                full_explanation = explanation
+
+            # UPDATED: Generate or enhance KQL if not already present
+            # Pass reference_datetime_obj to ensure proper time windows
+            kql_query = ""
+            kql_explanation = ""
+            
+            if existing_kql and len(existing_kql.strip()) > 30:
+                # Already has KQL - use it but optionally standardize if needed
+                print(f"   Step {idx}: {step_name[:60]} - has existing KQL")
+                kql_query = existing_kql
+                kql_explanation = step.get("kql_explanation", "")
+            else:
+                # No KQL yet - try to generate using KQL generator with reference_datetime_obj
+                print(f"   Step {idx}: {step_name[:60]} - generating KQL...")
+                
+                if self._needs_kql(step_name, explanation):
+                    try:
+                        kql_query, kql_explanation = self.kql_generator.generate_kql_query(
+                            step_name=step_name,
+                            explanation=explanation,
+                            rule_context=alert_name,
+                            reference_datetime_obj=reference_datetime_obj  # PASS IT HERE
+                        )
+                        
+                        if kql_query and len(kql_query.strip()) > 30:
+                            print(f"      OK: KQL generated ({len(kql_query)} chars)")
+                        else:
+                            print(f"      INFO: No KQL generated for this step")
+                            kql_query = ""
+                            
+                    except Exception as e:
+                        print(f"      WARNING: KQL generation failed: {str(e)[:100]}")
+                        kql_query = ""
+                else:
+                    print(f"      INFO: Step doesn't need KQL (manual/external tool)")
+
+            row = {
+                "Step": str(idx),
+                "Name": step_name,
+                "Explanation": self._enforce_length(full_explanation, max_sentences=5),
+                "KQL Query": kql_query,
+                "KQL Explanation": kql_explanation,
+                "Execute": "",
+                "Output": "",
+                "Remarks/Comments": f"[MANUAL] {step.get('priority', 'MEDIUM')} | Tool: {tool if tool else 'KQL'}"
+            }
+
+            template_rows.append(row)
+
+        # Create initial DataFrame
+        template_df = pd.DataFrame(template_rows)
+
+        # UPDATED: INJECT REAL DATA INTO KQL QUERIES IF ALERT_DATA AVAILABLE
+        # This also uses reference_datetime_obj from alert_data
+        if alert_data:
+            print(f"\n{'='*80}")
+            print(f"INFO: INJECTING REAL ALERT DATA INTO KQL QUERIES")
+            print(f"{'='*80}")
+            
+            # Create a modified alert_data with reference_datetime_obj for injection
+            enriched_alert_data = alert_data.copy()
+            if reference_datetime_obj:
+                enriched_alert_data["reference_datetime_obj"] = reference_datetime_obj
+            
+            template_df = self.inject_alert_data_into_template(template_df, enriched_alert_data)
+        else:
+            print(f"WARNING: No alert_data provided - KQL queries will contain placeholders")
+
+        elapsed = time.time() - start_time
+
+        print(f"\n{'='*80}")
+        print(f"OK: COMPLETED in {elapsed:.1f}s: {len(template_rows)-1} investigation steps")
+        print(f"{'='*80}\n")
+
+        return template_df
+
+    def inject_alert_data_into_template(self, template_df: pd.DataFrame, alert_data: dict) -> pd.DataFrame:
+        """
+        Inject real alert data into KQL queries after template generation
+        
+        UPDATED: Use reference_datetime_obj from alert_data if available
+        
+        Args:
+            template_df: Generated template DataFrame
+            alert_data: Alert data containing entities, timestamps, etc.
+            
+        Returns:
+            DataFrame with injected KQL queries
+        """
+        print(f"\n{'='*80}")
+        print(f"INFO: KQL DATA INJECTION PHASE")
+        print(f"{'='*80}\n")
+
+        from routes.src.kql_template_injector import TemplateKQLInjector
+
+        try:
+            # UPDATED: Pass reference_datetime_obj if available
+            injector = TemplateKQLInjector(alert_data)
+
+            print(f"INFO: Extracted Entities:")
+            print(f"   Users: {len(injector.users)}")
+            for user in injector.users:
+                print(f"      - {user}")
+            print(f"   IPs: {len(injector.ips)}")
+            for ip in injector.ips:
+                print(f"      - {ip}")
+            print(f"   Hosts: {len(injector.hosts)}")
+            for host in injector.hosts:
+                print(f"      - {host}")
+            print(f"   Reference DateTime: {injector.reference_datetime}")
+
+            # Inject data into template
+            injected_df = injector.inject_template_dataframe(template_df)
+
+            print(f"\nOK: KQL Injection Complete!")
+            print(f"{'='*80}\n")
+
+            return injected_df
+
+        except Exception as e:
+            print(f"WARNING: KQL Injection failed: {str(e)}")
+            import traceback
+            print(f"Error trace:\n{traceback.format_exc()}")
+            # Return original template if injection fails
+            return template_df
 
     def _deduplicate_kql_in_rows(self, template_rows: List[Dict]) -> List[Dict]:
         """
