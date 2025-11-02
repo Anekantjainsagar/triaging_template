@@ -345,10 +345,26 @@ def _process_vip_user_check(
     state_mgr: TriagingStateManager,
     alert_data: dict,
 ):
+    """
+    Process VIP user verification step with full emoji support
+
+    Flow:
+    1. Parse VIP user input (comma/newline separated emails)
+    2. Check if any alert entities are VIP users
+    3. Show template query first
+    4. Generate customized KQL query with VIP list + entity users
+    5. Display query and execute button
+    6. Save results to state
+    """
     import re
 
-    # Parse VIP user list (comma, newline, or space separated)
+    # ===================================================================
+    # STEP 1: Parse VIP user list from user input
+    # ===================================================================
+    # Split by comma, newline, or space
     vip_list = re.split(r"[,\n\s]+", vip_input)
+
+    # Clean up: remove empty strings and keep only valid emails
     vip_list = [user.strip() for user in vip_list if user.strip() and "@" in user]
 
     if not vip_list:
@@ -359,12 +375,17 @@ def _process_vip_user_check(
 
     st.success(f"✅ Parsed {len(vip_list)} VIP user(s) from input")
 
-    # Display parsed VIP users
-    with st.expander("🔐 VIP Users Entered", expanded=True):
+    # ===================================================================
+    # STEP 2: Display parsed VIP users
+    # ===================================================================
+    with st.expander("📋 VIP Users Entered", expanded=True):
         for vip_user in vip_list:
             st.code(vip_user)
 
-    # Check if any entity users are VIP
+    # ===================================================================
+    # STEP 3: Check if any entity users are VIP
+    # ===================================================================
+    # Compare entity users (from alert) with VIP list
     vip_matches = [user for user in entity_users if user in vip_list]
 
     if vip_matches:
@@ -378,17 +399,56 @@ def _process_vip_user_check(
 
     st.markdown("---")
 
-    # Generate structured KQL query
-    st.info("🔨 Generating structured KQL query...")
+    # ===================================================================
+    # STEP 4: Show Template Query FIRST (before customization)
+    # ===================================================================
+    st.info("📋 **Template KQL Query Structure**")
+    st.caption(
+        "This is the base query that will be customized with your VIP list and alert entities"
+    )
+
+    # Import the hardcoded VIP query template
+    from routes.src.hardcode_kql_queries import HardcodedKQLQueries
+
+    template_query = HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION
+
+    # Show the template in an expander
+    with st.expander("🔍 View Template Query (with placeholders)", expanded=False):
+        st.code(template_query, language="kql")
+        st.caption(
+            """
+        **Placeholders in template:**
+        - `<USER_EMAIL>` → Will be replaced with alert entities
+        - `ago(30d)` → Will be converted to absolute date range based on alert time
+        - VIP users will be added as a datatable at the top
+        """
+        )
+
+    st.markdown("---")
+
+    # ===================================================================
+    # STEP 5: Generate Customized Query
+    # ===================================================================
+    st.info("🔨 Generating customized KQL query with your VIP list...")
+
+    # Generate the customized query
     kql_query = _generate_vip_kql_query(vip_list, entity_users, alert_data)
 
-    # Display generated query
-    st.markdown("##### 📊 Generated KQL Query")
+    # ===================================================================
+    # STEP 6: Display Customized Query
+    # ===================================================================
+    st.markdown("##### 📊 Customized KQL Query (Ready to Execute)")
+    st.caption(
+        "✅ VIP list injected | ✅ Alert entities injected | ✅ Date ranges converted"
+    )
+
     st.code(kql_query, language="kql")
 
     st.markdown("---")
 
-    # Execute button
+    # ===================================================================
+    # STEP 7: Execute Button
+    # ===================================================================
     col1, col2, col3 = st.columns([2, 1, 2])
     with col2:
         execute_clicked = st.button(
@@ -398,6 +458,9 @@ def _process_vip_user_check(
             use_container_width=True,
         )
 
+    # ===================================================================
+    # STEP 8: Execute Query if Button Clicked
+    # ===================================================================
     if execute_clicked:
         # Validate workspace configuration
         if not os.getenv("LOG_ANALYTICS_WORKSPACE_ID"):
@@ -405,7 +468,7 @@ def _process_vip_user_check(
                 "❌ Log Analytics Workspace ID not configured. Please check your environment variables."
             )
         else:
-            # Execute the query
+            # Execute the KQL query
             success, output = _execute_kql_query(
                 step_num, rule_number, kql_query, state_mgr
             )
@@ -413,7 +476,9 @@ def _process_vip_user_check(
             if success:
                 st.success("✅ VIP user verification query executed successfully!")
 
-                # Display results in highlighted container
+                # ===================================================================
+                # STEP 9: Display Results in Highlighted Container
+                # ===================================================================
                 st.markdown("##### 📊 Query Results")
                 st.markdown(
                     """
@@ -434,7 +499,9 @@ def _process_vip_user_check(
                 st.text(output)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-                # Provide editable text area
+                # ===================================================================
+                # STEP 10: Provide Editable Text Area
+                # ===================================================================
                 st.markdown("##### ✏️ Edit Output (if needed)")
                 output_key = f"output_{rule_number}_{step_num}"
                 edited_output = st.text_area(
@@ -445,18 +512,23 @@ def _process_vip_user_check(
                     label_visibility="collapsed",
                 )
 
+                # Save changes if user edits
                 if edited_output != output:
                     state_mgr.save_step_data(step_num, output=edited_output)
                     st.info("💾 Changes saved")
             else:
                 st.error("❌ Query execution failed. Check the error details above.")
+
+    # ===================================================================
+    # STEP 11: Show Existing Output if Already Executed
+    # ===================================================================
     else:
-        # Show existing output if any
+        # Check if this step was already executed before
         step_data = state_mgr.get_step_data(step_num)
         existing_output = step_data["output"]
 
         if existing_output:
-            st.markdown("##### 📊 Saved Results")
+            st.markdown("##### 📊 Saved Results (from previous execution)")
             st.markdown(
                 """
                 <div style="
@@ -475,6 +547,8 @@ def _process_vip_user_check(
             )
             st.text(existing_output)
             st.markdown("</div>", unsafe_allow_html=True)
+
+            st.info("💡 Click 'Execute Query' above to run again with updated data")
 
 
 def _extract_ips_from_entities(alert_data: dict) -> list:
@@ -698,42 +772,77 @@ def display_interactive_steps(
                         )
 
                     st.markdown("---")
-                    st.markdown("##### 🔐 Enter VIP/Executive User List")
-                    st.caption(
-                        "Enter VIP user email addresses (one per line, comma-separated, or space-separated)"
-                    )
-                    st.caption(
-                        "✅ Example: ceo@company.com, cfo@company.com, admin@company.com"
-                    )
 
-                    # VIP user input text area
-                    vip_input = st.text_area(
-                        "VIP Users:",
-                        placeholder="Enter VIP user emails:\nceo@company.com\nadmin@company.com\nexecutive@company.com",
-                        key=f"vip_users_step_{step_num}",
-                        height=150,
-                        label_visibility="collapsed",
-                    )
+                    # ===================================================================
+                    # ✅ FIX: Use session state to persist VIP input across reruns
+                    # ===================================================================
+                    vip_input_key = f"vip_input_{rule_number}_{step_num}"
+                    vip_processed_key = f"vip_processed_{rule_number}_{step_num}"
 
-                    col1, col2, col3 = st.columns([2, 2, 1])
-                    with col3:
-                        check_button = st.button(
-                            "🔍 Generate & Execute",
-                            key=f"vip_check_step_{step_num}",
-                            type="primary",
-                            use_container_width=True,
+                    # Initialize session state for this step
+                    if vip_input_key not in st.session_state:
+                        st.session_state[vip_input_key] = ""
+
+                    if vip_processed_key not in st.session_state:
+                        st.session_state[vip_processed_key] = False
+
+                    # ===================================================================
+                    # STEP 1: VIP Input Form (only show if not processed yet)
+                    # ===================================================================
+                    if not st.session_state[vip_processed_key]:
+                        st.markdown("##### 🔐 Enter VIP/Executive User List")
+                        st.caption(
+                            "Enter VIP user email addresses (one per line, comma-separated, or space-separated)"
+                        )
+                        st.caption(
+                            "✅ Example: ceo@company.com, cfo@company.com, admin@company.com"
                         )
 
-                    if check_button:
-                        if not vip_input:
-                            st.error(
-                                "❌ Please enter at least one VIP user email address."
+                        # VIP user input text area
+                        vip_input = st.text_area(
+                            "VIP Users:",
+                            placeholder="Enter VIP user emails:\nceo@company.com\nadmin@company.com\nexecutive@company.com",
+                            key=f"vip_users_textarea_{step_num}",
+                            height=150,
+                            label_visibility="collapsed",
+                            value=st.session_state[vip_input_key],  # ✅ Persist value
+                        )
+
+                        # Update session state when input changes
+                        st.session_state[vip_input_key] = vip_input
+
+                        col1, col2, col3 = st.columns([2, 2, 1])
+                        with col3:
+                            check_button = st.button(
+                                "🔍 Generate & Process",
+                                key=f"vip_check_step_{step_num}",
+                                type="primary",
+                                use_container_width=True,
                             )
-                        elif not entity_users:
-                            st.error(
-                                "❌ No affected users found. Cannot generate query."
-                            )
-                        else:
+
+                        if check_button:
+                            if not vip_input:
+                                st.error(
+                                    "❌ Please enter at least one VIP user email address."
+                                )
+                            elif not entity_users:
+                                st.error(
+                                    "❌ No affected users found. Cannot generate query."
+                                )
+                            else:
+                                # Mark as processed
+                                st.session_state[vip_processed_key] = True
+                                st.rerun()  # Rerun to show results
+
+                    # ===================================================================
+                    # STEP 2: Show Results and Execute Query (after processing)
+                    # ===================================================================
+                    else:
+                        # Retrieve the saved VIP input
+                        vip_input = st.session_state[vip_input_key]
+
+                        if vip_input and entity_users:
+                            # Call the processing function
                             _process_vip_user_check(
                                 vip_input,
                                 entity_users,
@@ -742,6 +851,19 @@ def display_interactive_steps(
                                 state_mgr,
                                 alert_data,
                             )
+
+                            # Add a "Reset" button to go back and change VIP list
+                            st.markdown("---")
+                            col1, col2, col3 = st.columns([2, 2, 1])
+                            with col3:
+                                if st.button(
+                                    "🔄 Change VIP List",
+                                    key=f"reset_vip_{step_num}",
+                                    use_container_width=True,
+                                ):
+                                    st.session_state[vip_processed_key] = False
+                                    st.session_state[vip_input_key] = ""
+                                    st.rerun()
 
                 # KQL Query section
                 elif kql_query and len(kql_query.strip()) > 10:

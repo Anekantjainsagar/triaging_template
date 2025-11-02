@@ -831,6 +831,13 @@ class KQLQueryManager:
         "risky": HardcodedKQLQueries.RISKY_SIGNIN_DETAILS,
         "legacy_auth": HardcodedKQLQueries.LEGACY_AUTH_USAGE,
         "legacy": HardcodedKQLQueries.LEGACY_AUTH_USAGE,
+        "vip_verification": HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION,
+        "vip_account": HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION,
+        "vip_user": HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION,  # âœ… NEW
+        "executive": HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION,
+        "executive_account": HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION,  # âœ… NEW
+        "privileged_account": HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION,  # âœ… NEW
+        "account_status": HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION,  # âœ… NEW
     }
 
     def __init__(self, enable_api_fallback: bool = True):

@@ -302,10 +302,32 @@ class ImprovedTemplateGenerator:
 
             # Explicit check for external tool usage
             tool_used = step.get("tool", "").lower()
+            
+            # Check if this is a VIP verification step
+            is_vip_step = any(kw in step_name.lower() or kw in explanation.lower() 
+                            for kw in ["vip", "executive", "high-priority", 
+                                    "privileged account", "account status"])
 
             # ✅ ENHANCED LOGIC: Check tool first, then general _needs_kql
             if tool_used in ["virustotal", "abuseipdb"]:
                 print(f"         ℹ️ Skipping KQL for External Tool: {tool_used}")
+            elif is_vip_step:
+                print(f"         ⭐ VIP Step Detected - Generating template query...")
+                kql_query, kql_explanation = self.kql_generator.generate_kql_query(
+                    step_name="VIP User Verification",  # Force the intent
+                    explanation="Verify if affected user is VIP or executive account",
+                    rule_context=profile.get("technical_overview", ""),
+                )
+                
+                if kql_query and len(kql_query.strip()) > 30:
+                    print(f"         ✅ VIP KQL template generated ({len(kql_query)} chars)")
+                else:
+                    print(f"         ⚠️ VIP KQL generation failed - using fallback")
+                    # Fallback to hardcoded VIP query
+                    from routes.src.hardcode_kql_queries import HardcodedKQLQueries
+                    kql_query = HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION
+                    kql_explanation = "VIP/Executive account verification query"
+                    
             elif self._needs_kql(step_name, explanation):
                 print(f"         🔍 Generating KQL...")
                 kql_query, kql_explanation = self.kql_generator.generate_kql_query(

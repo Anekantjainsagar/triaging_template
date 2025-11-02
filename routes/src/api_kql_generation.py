@@ -106,29 +106,21 @@ class EnhancedKQLGenerator:
         return "", ""
 
     def _extract_intent(self, step_name: str, explanation: str) -> str:
-        """
-        Extract investigation intent from step context with STRICTER matching
-
-        Returns intent keyword that maps to hardcoded query types
-        """
         combined = f"{step_name} {explanation}".lower()
 
         # ✅ PRIORITY ORDER: More specific intents first to avoid false matches
-
+        
         # 1. VIP/Executive (HIGHEST PRIORITY - very specific)
-        if any(
-            kw in combined
-            for kw in [
-                "vip",
-                "executive",
-                "high-priority",
-                "high priority",
-                "privileged account",
-                "account status",
-                "account is vip",
-            ]
-        ):
+        vip_keywords = [
+            "vip", "executive", "high-priority", "high priority",
+            "privileged account", "account status", "verify user account status",
+            "check if account is vip", "vip or high-priority"
+        ]
+        
+        if any(kw in combined for kw in vip_keywords):
+            print(f"   🎯 VIP intent detected in: {step_name[:60]}")
             return "vip_verification"
+
 
         # 2. Geographic/Travel (HIGH PRIORITY - specific keywords)
         if any(
