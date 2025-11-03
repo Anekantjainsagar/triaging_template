@@ -302,36 +302,24 @@ SigninLogs
 | where UserPrincipalName in ({entity_users_formatted})
 | extend IsVIP = iff(UserPrincipalName in (VIPUsers), "⭐ VIP ACCOUNT", "Regular User")
 | summarize
-    TotalSignIns = count(),
+TotalSignIns = count(),
     UniqueIPAddresses = dcount(IPAddress),
     UniqueCountries = dcount(tostring(LocationDetails.countryOrRegion)),
-    UniqueApplications = dcount(AppDisplayName),
     HighRiskSignIns = countif(RiskLevelAggregated == "high"),
     MediumRiskSignIns = countif(RiskLevelAggregated == "medium"),
-    LowRiskSignIns = countif(RiskLevelAggregated == "low"),
     FailedAttempts = countif(ResultType != "0"),
-    SuccessfulSignIns = countif(ResultType == "0"),
-    RiskyBehavior = countif(IsRisky == true),
-    UniqueDaysActive = dcount(format_datetime(TimeGenerated, 'yyyy-MM-dd')),
-    FirstSeen = min(TimeGenerated),
-    LastSeen = max(TimeGenerated),
-    RiskEventTypes = make_set(RiskEventTypes_V2, 10)
-    by UserPrincipalName, UserDisplayName, UserId, IsVIP
+    SuccessfulSignIns = countif(ResultType == "0")
+    by UserPrincipalName, UserDisplayName, IsVIP
 | extend
-    VIPRiskScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedAttempts * 2) + (UniqueCountries * 3),
+    VIPRiskScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedAttempts * 2) + (UniqueCountries * 3)
+| extend
     AccountClassification = case(
         VIPRiskScore > 30, "🔴 Critical - Executive at High Risk",
         VIPRiskScore > 15, "🟠 High - VIP Requires Attention",
-        VIPRiskScore > 5, "🟡 Medium - Monitor Closely",
+        VIPRiskScore > 5, "🟡 Medium - Monitor Closely", 
         "🟢 Low - Normal Activity"
-    ),
-    ActivityPattern = case(
-        UniqueDaysActive >= 7, "Very Active (Daily)",
-        UniqueDaysActive >= 5, "Active",
-        UniqueDaysActive >= 3, "Moderate",
-        "Sporadic"
     )
-| project-reorder UserPrincipalName, UserDisplayName, IsVIP, AccountClassification, VIPRiskScore, ActivityPattern
+| project-reorder UserPrincipalName, UserDisplayName, IsVIP, AccountClassification, VIPRiskScore
 | order by VIPRiskScore desc"""
 
     return kql_query

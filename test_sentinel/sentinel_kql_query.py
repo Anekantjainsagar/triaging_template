@@ -41,32 +41,42 @@ def main():
 
     workspace_id = os.getenv("LOG_ANALYTICS_WORKSPACE_ID")
 
-    kql_query = """SigninLogs | where TimeGenerated > datetime(2025-10-18 06:45:23Z) and TimeGenerated <= datetime(2025-10-25 06:45:23Z) | where UserPrincipalName in ("sweta.tiwari@yashtechnologies841.onmicrosoft.com", "ganesh.tanneru@yashtechnologies841.onmicrosoft.com", "chirag.gupta@yashtechnologies841.onmicrosoft.com", "urvashi.upadhyay@yashtechnologies841.onmicrosoft.com", "umapreethi.v@yash.com")
-|summarize 
+    kql_query = """// VIP User Verification Query
+// Alert Time Generated: 2025-10-25 06:45:23Z
+// Query Time Range: 2025-10-18 06:45:23Z to 2025-10-25 06:45:23Z (7 days)
+// Analyst-provided VIP users: 3 user(s)
+// Alert-affected users: 5 user(s)
+
+let VIPUsers = datatable(UserPrincipalName:string)
+[
+    "ceo@company.com",
+    "cfo@company.com",
+    "admin@company.com"
+];
+SigninLogs
+| where TimeGenerated > datetime(2025-10-18 06:45:23Z) and TimeGenerated <= datetime(2025-10-25 06:45:23Z)
+| where UserPrincipalName in ("urvashi.upadhyay@yashtechnologies841.onmicrosoft.com", "sweta.tiwari@yashtechnologies841.onmicrosoft.com", "umapreethi.v@yash.com", "chirag.gupta@yashtechnologies841.onmicrosoft.com", "ganesh.tanneru@yashtechnologies841.onmicrosoft.com")
+| extend IsVIP = iff(UserPrincipalName in (VIPUsers), "⭐ VIP ACCOUNT", "Regular User")
+| summarize
 TotalSignIns = count(),
-UniqueIPAddresses = dcount(IPAddress),
-UniqueLocations = dcount(tostring(LocationDetails.countryOrRegion)),
-UniqueApplications = dcount(AppDisplayName),
-SuccessfulSignIns = countif(ResultType == "0"),
-FailedSignIns = countif(ResultType != "0"),
-RiskySignIns = countif(IsRisky == true),
-InteractiveSignIns = countif(IsInteractive == true),
-NonInteractiveSignIns = countif(IsInteractive == false),
-FirstActivity = min(TimeGenerated),
-LastActivity = max(TimeGenerated),
-IPAddressesList = make_set(IPAddress, 10),
-LocationsList = make_set(tostring(LocationDetails.countryOrRegion), 5),
-ApplicationsList = make_set(AppDisplayName, 10)
-by UserPrincipalName, UserDisplayName | extend
-SuccessRate = round(100.0 * SuccessfulSignIns / TotalSignIns, 2),
-RiskScore = (FailedSignIns * 2) + (RiskySignIns * 5),
-ActivitySpanDays = datetime_diff('day', LastActivity, FirstActivity) | extend
-ThreatLevel = case(
-RiskySignIns > 5, "Critical",
-RiskySignIns > 2, "High",
-FailedSignIns > 10, "Medium",
-"Low"
-) | project-reorder UserPrincipalName, UserDisplayName, ThreatLevel, RiskScore, TotalSignIns, SuccessRate"""
+    UniqueIPAddresses = dcount(IPAddress),
+    UniqueCountries = dcount(tostring(LocationDetails.countryOrRegion)),
+    HighRiskSignIns = countif(RiskLevelAggregated == "high"),
+    MediumRiskSignIns = countif(RiskLevelAggregated == "medium"),
+    FailedAttempts = countif(ResultType != "0"),
+    SuccessfulSignIns = countif(ResultType == "0")
+    by UserPrincipalName, UserDisplayName, IsVIP
+| extend
+    VIPRiskScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedAttempts * 2) + (UniqueCountries * 3)
+| extend
+    AccountClassification = case(
+        VIPRiskScore > 30, "🔴 Critical - Executive at High Risk",
+        VIPRiskScore > 15, "🟠 High - VIP Requires Attention",
+        VIPRiskScore > 5, "🟡 Medium - Monitor Closely", 
+        "🟢 Low - Normal Activity"
+    )
+| project-reorder UserPrincipalName, UserDisplayName, IsVIP, AccountClassification, VIPRiskScore
+| order by VIPRiskScore desc"""
 
     credential = DefaultAzureCredential()
     token = credential.get_token("https://api.loganalytics.io/.default").token

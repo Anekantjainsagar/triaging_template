@@ -956,8 +956,6 @@ def display_entities_summary(alert_data):
                     details = []
 
                     if entity_type == "Account":
-                        if props.get("isDomainJoined"):
-                            details.append("🔐 Domain Joined")
                         sid = props.get("sid")
                         if sid:
                             details.append(f"SID: {sid}")
@@ -1772,39 +1770,6 @@ def display_incident_detail(incident):
     with col4:
         st.markdown(f"**Provider:**")
         st.write(props.get("providerName", "N/A"))
-
-    st.divider()
-
-    # Quick Analysis Section
-    st.markdown("### 🤖 Quick Analysis")
-
-    col1, col2 = st.columns([3, 1])
-
-    with col1:
-        st.info(
-            f"Automatically analyze this incident using AI threat intelligence and historical data."
-        )
-
-    with col2:
-        if st.button(
-            "🚀 Analyze Incident in SOC Hub",
-            key=f"analyze_incident_{incident_id}",
-            type="primary",
-            help="Opens SOC Hub with this incident pre-loaded for AI analysis",
-        ):
-            incident_data = {
-                "title": title,
-                "description": description or title,
-                "incident_number": incident_number,
-                "severity": severity,
-                "status": status,
-                "incident_id": incident_id,
-                "full_incident": incident,
-                "source": "incident_details",
-            }
-            st.session_state.soc_analysis_data = incident_data
-            st.session_state.current_page = "soc_analysis"
-            st.rerun()
 
     st.divider()
 

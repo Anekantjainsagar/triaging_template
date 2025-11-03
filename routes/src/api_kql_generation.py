@@ -1,15 +1,15 @@
 """
 UPDATED: api_kql_generation.py
-With enhanced KQL standardization and automatic syntax correction
+- Skip standardization for hardcoded queries (they're perfect as-is)
+- Only apply standardization to AI-generated queries
+- Data injection happens in a separate step via TemplateKQLInjector
 """
 
 import re
 from typing import Optional, Dict, Tuple
 from datetime import datetime
 from routes.src.hardcode_kql_queries import KQLQueryManager
-from routes.src.kql_query_standardizer import (
-    KQLQueryStandardizer,
-)
+from routes.src.kql_query_standardizer import KQLQueryStandardizer
 
 
 class EnhancedKQLGenerator:
@@ -18,22 +18,13 @@ class EnhancedKQLGenerator:
         self.query_manager = KQLQueryManager(enable_api_fallback=True)
         print("✅ KQL Generator initialized with hardcoded queries + API fallback")
 
-        # Initialize standardizer with syntax validation
+        # Initialize standardizer (only for AI-generated queries)
         self.enable_standardization = enable_standardization
         if enable_standardization:
             self.standardizer = KQLQueryStandardizer()
-            print("✅ KQL Standardization with syntax validation enabled")
+            print("✅ KQL Standardization enabled (for AI-generated queries only)")
 
     def _deduplicate_queries_in_template(self, template_rows: list) -> list:
-        """
-        Remove rows with duplicate KQL queries (post-generation deduplication)
-
-        Args:
-            template_rows: List of template row dictionaries
-
-        Returns:
-            Deduplicated list of template rows
-        """
         from difflib import SequenceMatcher
 
         print("\n   Deduplicating KQL queries...")
@@ -76,7 +67,7 @@ class EnhancedKQLGenerator:
                 print(f"         (duplicates: '{duplicate_of[:60]}')")
                 removed_count += 1
 
-        print(f"   ✅ Removed {removed_count} duplicate KQL queries")
+        print(f"   âœ… Removed {removed_count} duplicate KQL queries")
         return deduplicated
 
     def generate_kql_query(
@@ -87,16 +78,12 @@ class EnhancedKQLGenerator:
         reference_datetime_obj: Optional[datetime] = None,
     ) -> Tuple[str, str]:
         """
-        Generate KQL query for investigation step with automatic standardization and syntax fixing
+        Generate KQL query for investigation step
 
-        Args:
-            step_name: Name of the investigation step
-            explanation: Detailed explanation of what to check
-            rule_context: Additional context about the alert/rule
-            reference_datetime_obj: Alert timeGenerated for time calculations
-
-        Returns:
-            Tuple of (kql_query, kql_explanation)
+        CRITICAL CHANGE:
+        - Hardcoded queries: Return AS-IS (no standardization)
+        - AI-generated queries: Apply standardization if enabled
+        - Data injection: Happens later via TemplateKQLInjector
         """
 
         # Check if this step needs KQL
@@ -109,15 +96,35 @@ class EnhancedKQLGenerator:
 
         print(f"   Query intent: {intent} | Focus: {focus}")
 
-        # Get appropriate query from manager
+        # Try to get query from hardcoded manager first
         kql_query, source = self.query_manager.get_query(
-            query_type=intent, use_fallback=True
+            query_type=intent, use_fallback=False  # ⭐ Don't fallback yet
+        )
+
+        # =====================================================
+        # CASE 1: Hardcoded query found
+        # =====================================================
+        if kql_query and len(kql_query.strip()) > 30 and source == "hardcoded":
+            print(f"   ✅ Using hardcoded query (NO standardization needed)")
+
+            # Return hardcoded query AS-IS with explanation
+            explanation_text = self._generate_explanation(kql_query, step_name, source)
+            return kql_query, explanation_text
+
+        # =====================================================
+        # CASE 2: No hardcoded query, try API fallback
+        # =====================================================
+        print(f"   ℹ️  No hardcoded query, attempting API fallback...")
+
+        kql_query, source = self.query_manager.get_query(
+            query_type=intent, use_fallback=True  # ⭐ Now try API
         )
 
         if kql_query and len(kql_query.strip()) > 30:
-            # Standardize the query with syntax validation and auto-correction
+            # API-generated query - apply standardization
             if self.enable_standardization:
-                print(f"   🔧 Standardizing query with syntax validation...")
+                print(f"   🔧 Standardizing API-generated query...")
+
                 kql_query, standardized_explanation = (
                     self.standardizer.standardize_query(
                         raw_kql=kql_query,
@@ -131,24 +138,24 @@ class EnhancedKQLGenerator:
                     kql_query
                 )
                 if is_valid:
-                    print(f"   ✅ Query standardized and validated successfully")
-                    explanation_text = standardized_explanation
+                    print(f"   ✅ Query standardized and validated")
+                    return kql_query, standardized_explanation
                 else:
-                    print(
-                        f"   ⚠️  Standardization validation failed: {reason} - using original"
-                    )
+                    print(f"   ⚠️  Standardization validation failed: {reason}")
                     explanation_text = self._generate_explanation(
                         kql_query, step_name, source
                     )
+                    return kql_query, explanation_text
             else:
-                # Generate explanation for hardcoded queries (no standardization)
+                # Return API query without standardization
                 explanation_text = self._generate_explanation(
                     kql_query, step_name, source
                 )
+                return kql_query, explanation_text
 
-            return kql_query, explanation_text
-
-        # If all fails, return empty
+        # =====================================================
+        # CASE 3: No query found at all
+        # =====================================================
         print(f"   ⚠️  No KQL query found for: {step_name[:60]}")
         return "", ""
 
@@ -361,7 +368,6 @@ class EnhancedKQLGenerator:
     def _needs_kql(self, step_name: str, explanation: str) -> bool:
         """
         Determine if step needs KQL query
-
         Returns False for:
         - External tool steps (VirusTotal, AbuseIPDB)
         - Manual investigation steps
@@ -464,11 +470,11 @@ class EnhancedKQLGenerator:
             f"This query {ops_text} from {table} to analyze {step_name.lower()}."
         )
 
-        # Add source context for API-generated queries
-        if source == "api":
-            explanation += (
-                " (AI-generated query with standardization and syntax validation)"
-            )
+        # Add source context
+        if source == "hardcoded":
+            explanation += " (Production-ready hardcoded query)"
+        elif source == "api":
+            explanation += " (AI-generated query with standardization)"
 
         return explanation
 
@@ -489,18 +495,6 @@ def generate_kql_with_standardization(
     rule_context: str = "",
     reference_datetime_obj: Optional[datetime] = None,
 ) -> Tuple[str, str]:
-    """
-    Convenience function: Generate KQL with automatic standardization
-
-    Usage in your code:
-        from routes.src.api_kql_generation import generate_kql_with_standardization
-
-        kql, explanation = generate_kql_with_standardization(
-            step_name="Post-login activity",
-            explanation="Check for unusual actions",
-            reference_datetime_obj=alert_datetime
-        )
-    """
     gen = EnhancedKQLGenerator(enable_standardization=True)
     return gen.generate_kql_query(
         step_name=step_name,

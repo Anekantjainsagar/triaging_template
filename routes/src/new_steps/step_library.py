@@ -176,13 +176,15 @@ class InvestigationStepLibrary:
         FailedAttempts = countif(ResultType != "0"),
         SuccessfulSignIns = countif(ResultType == "0")
         by UserPrincipalName, UserDisplayName, IsVIP
-    | extend VIPRiskScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedAttempts * 2)
-    | extend AccountClassification = case(
-        VIPRiskScore > 30, "🔴 Critical - Executive at High Risk",
-        VIPRiskScore > 15, "🟠 High - VIP Requires Attention", 
-        VIPRiskScore > 5, "🟡 Medium - Monitor Closely",
-        "🟢 Low - Normal Activity"
-    )
+    | extend
+        VIPRiskScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedAttempts * 2) + (UniqueCountries * 3)
+    | extend
+        AccountClassification = case(
+            VIPRiskScore > 30, "🔴 Critical - Executive at High Risk",
+            VIPRiskScore > 15, "🟠 High - VIP Requires Attention",
+            VIPRiskScore > 5, "🟡 Medium - Monitor Closely", 
+            "🟢 Low - Normal Activity"
+        )
     | project-reorder UserPrincipalName, UserDisplayName, IsVIP, AccountClassification, VIPRiskScore
     | order by VIPRiskScore desc"""
 

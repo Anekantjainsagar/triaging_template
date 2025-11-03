@@ -379,6 +379,270 @@ class KQLQueryStandardizer:
         self.error_learner = KQLSyntaxErrorLearner()
         self.syntax_validator = KQLSyntaxValidator()
 
+    def _identify_primary_table(self, kql: str) -> Optional[str]:
+        """Identify which table the query primarily uses"""
+        kql_lower = kql.lower()
+
+        for table in self.primary_tables:
+            if f"{table.lower()}" in kql_lower:
+                if re.search(rf"\b{table.lower()}\b", kql_lower):
+                    return table
+
+        # Also check for IdentityInfo
+        if re.search(r"\bidentityinfo\b", kql_lower):
+            return "IdentityInfo"
+
+        return None
+
+    def _build_standardized_structure(
+        self,
+        primary_table: str,
+        main_logic: str,
+        has_user_filter: bool,
+        has_ip_filter: bool,
+        query_intent: str,
+        reference_datetime_obj: Optional[datetime],
+    ) -> str:
+        """Build standardized query structure with IdentityInfo support"""
+
+        standardized = f"{primary_table}\n"
+        
+        # Add time filter (only for time-based tables)
+        time_based_tables = ["SigninLogs", "AuditLogs", "DeviceInfo", "CloudAppEvents", "SecurityEvent"]
+        if primary_table in time_based_tables:
+            standardized += self._build_time_filter(reference_datetime_obj)
+
+        # Handle user filter based on table type
+        if "user" in query_intent.lower() and not has_user_filter:
+            if primary_table == "IdentityInfo":
+                # ✅ Use AccountName for IdentityInfo
+                standardized += '| where AccountName == "<USER_EMAIL>"\n'
+            else:
+                # Use UserPrincipalName for other tables
+                standardized += '| where UserPrincipalName == "<USER_EMAIL>"\n'
+        elif has_user_filter:
+            standardized += self._normalize_user_filter(main_logic, primary_table)
+
+        # Handle IP filter
+        if "ip" in query_intent.lower() and not has_ip_filter:
+            standardized += '| where IPAddress == "<IP_ADDRESS>"\n'
+        elif has_ip_filter:
+            standardized += self._normalize_ip_filter(main_logic)
+
+        # Add cleaned logic
+        cleaned_logic = self._remove_redundant_filters(
+            main_logic, has_user_filter, has_ip_filter, primary_table
+        )
+
+        if cleaned_logic.strip():
+            standardized += cleaned_logic
+
+        return self._format_query(standardized)
+
+    def _normalize_user_filter(self, logic: str, primary_table: str = None) -> str:
+        """
+        Normalize existing user filter to use <USER_EMAIL> placeholder
+        ✅ UPDATED: Handle IdentityInfo table with AccountName
+        """
+        
+        # Determine correct user field based on table
+        if primary_table == "IdentityInfo":
+            user_field = "AccountName"
+        else:
+            user_field = "UserPrincipalName"
+
+        # Pattern 1: where UserPrincipalName/AccountName == "value"
+        pattern1 = r'where\s+(UserPrincipalName|AccountName)\s*==\s*"[^"]*"'
+        if re.search(pattern1, logic, re.IGNORECASE):
+            replacement = f'where {user_field} == "<USER_EMAIL>"'
+            return re.sub(pattern1, replacement, logic, flags=re.IGNORECASE) + "\n"
+
+        # Pattern 2: where UserPrincipalName/AccountName in (...)
+        pattern2 = r"where\s+(UserPrincipalName|AccountName)\s*in\s*\([^)]*\)"
+        if re.search(pattern2, logic, re.IGNORECASE):
+            return f'| where {user_field} in ("<USER_EMAIL>")\n'
+
+        # Pattern 3: InitiatedBy.user.userPrincipalName (AuditLogs specific)
+        pattern3 = r'InitiatedBy\.user\.userPrincipalName\s*==\s*"[^"]*"'
+        if re.search(pattern3, logic, re.IGNORECASE):
+            replacement = 'InitiatedBy.user.userPrincipalName == "<USER_EMAIL>"'
+            return re.sub(pattern3, replacement, logic, flags=re.IGNORECASE) + "\n"
+
+        # Pattern 4: TargetResources userPrincipalName (AuditLogs specific)
+        pattern4 = r'TargetResources.*userPrincipalName\s*==\s*"[^"]*"'
+        if re.search(pattern4, logic, re.IGNORECASE):
+            replacement = 'TargetResources[0].userPrincipalName == "<USER_EMAIL>"'
+            return re.sub(pattern4, replacement, logic, flags=re.IGNORECASE) + "\n"
+
+        return ""
+
+    def _remove_redundant_filters(
+        self, logic: str, has_user_filter: bool, has_ip_filter: bool, primary_table: str = None
+    ) -> str:
+        """
+        Remove redundant filters from logic
+        ✅ UPDATED: Handle both UserPrincipalName and AccountName
+        """
+        cleaned = logic
+
+        # Remove TimeGenerated filters (already added at top)
+        cleaned = re.sub(
+            r"\|\s*where\s+TimeGenerated[^\n|]+",
+            "",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+
+        # Remove user filters if already added (handle both field names)
+        if has_user_filter:
+            # Remove UserPrincipalName filters
+            cleaned = re.sub(
+                r"\|\s*where\s+UserPrincipalName[^\n|]+",
+                "",
+                cleaned,
+                flags=re.IGNORECASE,
+            )
+            # Remove AccountName filters (for IdentityInfo)
+            cleaned = re.sub(
+                r"\|\s*where\s+AccountName[^\n|]+",
+                "",
+                cleaned,
+                flags=re.IGNORECASE,
+            )
+
+        # Remove IP filters if already added
+        if has_ip_filter:
+            cleaned = re.sub(
+                r"\|\s*where\s+IPAddress[^\n|]+",
+                "",
+                cleaned,
+                flags=re.IGNORECASE,
+            )
+
+        # Clean up double pipes and leading pipes
+        cleaned = re.sub(r"\|\s*\|", "|", cleaned)
+        cleaned = re.sub(r"^\|\s*", "", cleaned)
+
+        return cleaned.strip()
+
+    def _convert_userprincipalname_to_accountname(self, kql: str) -> str:
+        
+        # Check if this is an IdentityInfo query
+        if "IdentityInfo" not in kql:
+            return kql
+        
+        # Replace UserPrincipalName with AccountName throughout the query
+        # Pattern 1: In where clauses
+        kql = re.sub(
+            r'\bUserPrincipalName\b',
+            'AccountName',
+            kql,
+            flags=re.IGNORECASE
+        )
+        
+        # Pattern 2: In summarize by clauses
+        kql = re.sub(
+            r'\bby\s+UserPrincipalName\b',
+            'by AccountName',
+            kql,
+            flags=re.IGNORECASE
+        )
+        
+        # Pattern 3: In project clauses
+        kql = re.sub(
+            r'\bproject.*UserPrincipalName\b',
+            lambda m: m.group(0).replace('UserPrincipalName', 'AccountName'),
+            kql,
+            flags=re.IGNORECASE
+        )
+        
+        return kql
+
+    def standardize_query(
+        self,
+        raw_kql: str,
+        query_intent: str = "",
+        reference_datetime_obj: Optional[datetime] = None,
+    ) -> Tuple[str, str]:
+        """
+        Standardize a raw KQL query into our format
+        ✅ UPDATED: Added IdentityInfo support with AccountName conversion
+        """
+
+        if not raw_kql or len(raw_kql.strip()) < 20:
+            return "", "Query too short to standardize"
+
+        # STEP 1: Validate incoming query
+        print(f"\n🔍 KQL Validation & Standardization")
+        print(f"{'='*60}")
+
+        is_valid, error_msg, issues = self.syntax_validator.validate_query(raw_kql)
+
+        if not is_valid:
+            print(f"⚠️  Issues detected: {len(issues)}")
+            for issue in issues[:3]:
+                print(f"   - {issue}")
+
+            print(f"\n🔧 Attempting automatic correction...")
+            raw_kql, fixes = self.syntax_validator.fix_query(raw_kql)
+
+            for fix in fixes:
+                print(f"   ✅ {fix}")
+
+            is_valid, error_msg, issues = self.syntax_validator.validate_query(raw_kql)
+
+            if not is_valid:
+                print(f"⚠️  Still has issues after auto-fix: {issues[0]}")
+        else:
+            print(f"✅ Query passed validation")
+
+        # STEP 2: Identify primary table
+        primary_table = self._identify_primary_table(raw_kql)
+        if not primary_table:
+            return "", "Could not identify primary table"
+
+        print(f"📊 Primary table: {primary_table}")
+
+        # STEP 2.5: ✅ Convert UserPrincipalName to AccountName for IdentityInfo
+        if primary_table == "IdentityInfo":
+            print(f"🔄 Converting UserPrincipalName to AccountName for IdentityInfo...")
+            raw_kql = self._convert_userprincipalname_to_accountname(raw_kql)
+
+        # STEP 3: Extract main logic
+        main_logic = self._extract_main_logic(raw_kql, primary_table)
+
+        # STEP 4: Check filters
+        has_user_filter = self._has_user_filter(main_logic)
+        has_ip_filter = self._has_ip_filter(main_logic)
+
+        # STEP 5: Build standardized structure (now with table-aware user field)
+        standardized = self._build_standardized_structure(
+            primary_table,
+            main_logic,
+            has_user_filter,
+            has_ip_filter,
+            query_intent,
+            reference_datetime_obj,
+        )
+
+        # STEP 6: Final validation
+        final_is_valid, final_error, final_issues = (
+            self.syntax_validator.validate_query(standardized)
+        )
+
+        if not final_is_valid:
+            print(f"⚠️  Final query still has issues: {final_issues[0]}")
+            standardized, _ = self.syntax_validator.fix_query(standardized)
+
+        print(f"✅ Query standardization complete\n")
+
+        # STEP 7: Generate explanation
+        explanation = self._generate_explanation(
+            primary_table, query_intent, has_user_filter, has_ip_filter
+        )
+
+        return standardized, explanation
+
     def standardize_query(
         self,
         raw_kql: str,
@@ -492,17 +756,6 @@ class KQLQueryStandardizer:
         """Get suggested fix for an error based on learned patterns"""
         return self.error_learner.suggest_fix_for_error(error_message, original_query)
 
-    def _identify_primary_table(self, kql: str) -> Optional[str]:
-        """Identify which table the query primarily uses"""
-        kql_lower = kql.lower()
-
-        for table in self.primary_tables:
-            if f"{table.lower()}" in kql_lower:
-                if re.search(rf"\b{table.lower()}\b", kql_lower):
-                    return table
-
-        return None
-
     def _extract_main_logic(self, raw_kql: str, primary_table: str) -> str:
         """Extract the main query logic, removing comment lines and messy formatting"""
         lines = raw_kql.split("\n")
@@ -552,39 +805,6 @@ class KQLQueryStandardizer:
 
         return any(re.search(pattern, logic, re.IGNORECASE) for pattern in ip_patterns)
 
-    def _build_standardized_structure(
-        self,
-        primary_table: str,
-        main_logic: str,
-        has_user_filter: bool,
-        has_ip_filter: bool,
-        query_intent: str,
-        reference_datetime_obj: Optional[datetime],
-    ) -> str:
-        """Build standardized query structure"""
-
-        standardized = f"{primary_table}\n"
-        standardized += self._build_time_filter(reference_datetime_obj)
-
-        if "user" in query_intent.lower() and not has_user_filter:
-            standardized += '| where UserPrincipalName == "<USER_EMAIL>"\n'
-        elif has_user_filter:
-            standardized += self._normalize_user_filter(main_logic)
-
-        if "ip" in query_intent.lower() and not has_ip_filter:
-            standardized += '| where IPAddress == "<IP_ADDRESS>"\n'
-        elif has_ip_filter:
-            standardized += self._normalize_ip_filter(main_logic)
-
-        cleaned_logic = self._remove_redundant_filters(
-            main_logic, has_user_filter, has_ip_filter
-        )
-
-        if cleaned_logic.strip():
-            standardized += cleaned_logic
-
-        return self._format_query(standardized)
-
     def _build_time_filter(self, reference_datetime_obj: Optional[datetime]) -> str:
         """Build standardized TimeGenerated filter"""
 
@@ -600,25 +820,6 @@ class KQLQueryStandardizer:
         else:
             return "| where TimeGenerated > ago(7d)\n"
 
-    def _normalize_user_filter(self, logic: str) -> str:
-        """Normalize existing user filter to use <USER_EMAIL> placeholder"""
-
-        pattern1 = r'where\s+UserPrincipalName\s*==\s*"[^"]*"'
-        if re.search(pattern1, logic, re.IGNORECASE):
-            replacement = 'where UserPrincipalName == "<USER_EMAIL>"'
-            return re.sub(pattern1, replacement, logic, flags=re.IGNORECASE) + "\n"
-
-        pattern2 = r"where\s+UserPrincipalName\s*in\s*\([^)]*\)"
-        if re.search(pattern2, logic, re.IGNORECASE):
-            return '| where UserPrincipalName in ("<USER_EMAIL>")\n'
-
-        pattern3 = r'InitiatedBy\.user\.userPrincipalName\s*==\s*"[^"]*"'
-        if re.search(pattern3, logic, re.IGNORECASE):
-            replacement = 'InitiatedBy.user.userPrincipalName == "<USER_EMAIL>"'
-            return re.sub(pattern3, replacement, logic, flags=re.IGNORECASE) + "\n"
-
-        return ""
-
     def _normalize_ip_filter(self, logic: str) -> str:
         """Normalize existing IP filter to use <IP_ADDRESS> placeholder"""
 
@@ -627,44 +828,6 @@ class KQLQueryStandardizer:
             return '| where IPAddress == "<IP_ADDRESS>"\n'
 
         return ""
-
-    def _remove_redundant_filters(
-        self, logic: str, has_user_filter: bool, has_ip_filter: bool
-    ) -> str:
-        cleaned = logic
-
-        # ✅ FIXED: More precise regex that stops at newline or next pipe
-        # Remove TimeGenerated filters (already added at top)
-        cleaned = re.sub(
-            r"\|\s*where\s+TimeGenerated[^\n|]+",  # ✅ Stops at newline or pipe
-            "",
-            cleaned,
-            flags=re.IGNORECASE,
-        )
-
-        # Remove user filters if already added
-        if has_user_filter:
-            cleaned = re.sub(
-                r"\|\s*where\s+UserPrincipalName[^\n|]+",
-                "",
-                cleaned,
-                flags=re.IGNORECASE,
-            )
-
-        # Remove IP filters if already added
-        if has_ip_filter:
-            cleaned = re.sub(
-                r"\|\s*where\s+IPAddress[^\n|]+",
-                "",
-                cleaned,
-                flags=re.IGNORECASE,
-            )
-
-        # Clean up double pipes and leading pipes
-        cleaned = re.sub(r"\|\s*\|", "|", cleaned)
-        cleaned = re.sub(r"^\|\s*", "", cleaned)
-
-        return cleaned.strip()
 
     def _format_query(self, query: str) -> str:
         """Format query for consistency"""

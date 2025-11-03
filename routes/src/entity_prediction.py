@@ -1,7 +1,7 @@
-import streamlit as st
 import time
-from typing import Dict, List, Any
+import streamlit as st
 from datetime import datetime
+from typing import Dict, List, Any
 
 
 def extract_entities_from_alert(alert_data: dict) -> List[Dict[str, Any]]:
