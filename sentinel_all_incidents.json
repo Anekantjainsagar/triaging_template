@@ -1,6 +1,276 @@
 {
     "value": [
         {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/341a66f5-2b1d-4882-a474-68b23350bbc6",
+            "name": "341a66f5-2b1d-4882-a474-68b23350bbc6",
+            "etag": "\"9b00a233-0000-0100-0000-690609200000\"",
+            "type": "Microsoft.SecurityInsights/Incidents",
+            "properties": {
+                "title": "Test-Suspicious signins involving multiple users",
+                "severity": "Low",
+                "status": "Closed",
+                "classification": "Undetermined",
+                "owner": {
+                    "objectId": null,
+                    "email": null,
+                    "assignedTo": null,
+                    "userPrincipalName": null,
+                    "ownerType": null
+                },
+                "labels": [
+                    {
+                        "labelName": "Redirected",
+                        "labelType": "AutoAssigned"
+                    }
+                ],
+                "firstActivityTimeUtc": "2025-11-01T12:45:20.9733333Z",
+                "lastActivityTimeUtc": "2025-11-01T12:45:20.9733333Z",
+                "lastModifiedTimeUtc": "2025-11-01T13:20:32.4329764Z",
+                "createdTimeUtc": "2025-11-01T12:45:20.9733333Z",
+                "incidentNumber": 432,
+                "additionalData": {
+                    "alertsCount": 0,
+                    "bookmarksCount": 0,
+                    "commentsCount": 0,
+                    "alertProductNames": [],
+                    "tactics": [],
+                    "techniques": [],
+                    "providerIncidentUrl": "https://security.microsoft.com/incident2/844/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+                },
+                "relatedAnalyticRuleIds": [
+                    "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/alertRules/32495d2d-27d7-4bb7-8417-c757a5794626"
+                ],
+                "incidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/341a66f5-2b1d-4882-a474-68b23350bbc6",
+                "providerName": "Microsoft XDR",
+                "providerIncidentId": "844"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/c5848e26-4d5d-4318-b7bc-0be4e3a183d4",
+            "name": "c5848e26-4d5d-4318-b7bc-0be4e3a183d4",
+            "etag": "\"960096ae-0000-0100-0000-6905b6290000\"",
+            "type": "Microsoft.SecurityInsights/Incidents",
+            "properties": {
+                "title": "Test-Suspicious signins involving multiple users",
+                "severity": "Low",
+                "status": "Closed",
+                "classification": "Undetermined",
+                "owner": {
+                    "objectId": null,
+                    "email": null,
+                    "assignedTo": null,
+                    "userPrincipalName": null,
+                    "ownerType": null
+                },
+                "labels": [
+                    {
+                        "labelName": "Redirected",
+                        "labelType": "AutoAssigned"
+                    }
+                ],
+                "firstActivityTimeUtc": "2025-10-31T18:45:27.7866667Z",
+                "lastActivityTimeUtc": "2025-10-31T18:45:27.7866667Z",
+                "lastModifiedTimeUtc": "2025-11-01T07:26:33.9944093Z",
+                "createdTimeUtc": "2025-10-31T18:45:27.7866667Z",
+                "incidentNumber": 431,
+                "additionalData": {
+                    "alertsCount": 0,
+                    "bookmarksCount": 0,
+                    "commentsCount": 0,
+                    "alertProductNames": [],
+                    "tactics": [],
+                    "techniques": [],
+                    "providerIncidentUrl": "https://security.microsoft.com/incident2/841/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+                },
+                "relatedAnalyticRuleIds": [
+                    "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/alertRules/32495d2d-27d7-4bb7-8417-c757a5794626"
+                ],
+                "incidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/c5848e26-4d5d-4318-b7bc-0be4e3a183d4",
+                "providerName": "Microsoft XDR",
+                "providerIncidentId": "841"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/3c68153b-2668-48af-b6e4-7e05748abac8",
+            "name": "3c68153b-2668-48af-b6e4-7e05748abac8",
+            "etag": "\"7800924b-0000-0100-0000-690462890000\"",
+            "type": "Microsoft.SecurityInsights/Incidents",
+            "properties": {
+                "title": "Test-Suspicious signins involving multiple users",
+                "severity": "Low",
+                "status": "Closed",
+                "classification": "Undetermined",
+                "owner": {
+                    "objectId": null,
+                    "email": null,
+                    "assignedTo": null,
+                    "userPrincipalName": null,
+                    "ownerType": null
+                },
+                "labels": [
+                    {
+                        "labelName": "Redirected",
+                        "labelType": "AutoAssigned"
+                    }
+                ],
+                "firstActivityTimeUtc": "2025-10-31T06:45:41.37Z",
+                "lastActivityTimeUtc": "2025-10-31T06:45:41.37Z",
+                "lastModifiedTimeUtc": "2025-10-31T07:17:29.5418483Z",
+                "createdTimeUtc": "2025-10-31T06:45:41.37Z",
+                "incidentNumber": 430,
+                "additionalData": {
+                    "alertsCount": 0,
+                    "bookmarksCount": 0,
+                    "commentsCount": 0,
+                    "alertProductNames": [],
+                    "tactics": [],
+                    "techniques": [],
+                    "providerIncidentUrl": "https://security.microsoft.com/incident2/839/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+                },
+                "relatedAnalyticRuleIds": [
+                    "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/alertRules/32495d2d-27d7-4bb7-8417-c757a5794626"
+                ],
+                "incidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/3c68153b-2668-48af-b6e4-7e05748abac8",
+                "providerName": "Microsoft XDR",
+                "providerIncidentId": "839"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/16df2341-12a5-4d64-b3c8-aaa7ff592825",
+            "name": "16df2341-12a5-4d64-b3c8-aaa7ff592825",
+            "etag": "\"6a00c772-0000-0100-0000-6903bd520000\"",
+            "type": "Microsoft.SecurityInsights/Incidents",
+            "properties": {
+                "title": "Test-Suspicious signins involving multiple users",
+                "severity": "Low",
+                "status": "Closed",
+                "classification": "Undetermined",
+                "owner": {
+                    "objectId": null,
+                    "email": null,
+                    "assignedTo": null,
+                    "userPrincipalName": null,
+                    "ownerType": null
+                },
+                "labels": [
+                    {
+                        "labelName": "Redirected",
+                        "labelType": "AutoAssigned"
+                    }
+                ],
+                "firstActivityTimeUtc": "2025-10-30T12:45:23.71Z",
+                "lastActivityTimeUtc": "2025-10-30T12:45:23.71Z",
+                "lastModifiedTimeUtc": "2025-10-30T19:32:34.8874691Z",
+                "createdTimeUtc": "2025-10-30T12:45:23.71Z",
+                "incidentNumber": 429,
+                "additionalData": {
+                    "alertsCount": 0,
+                    "bookmarksCount": 0,
+                    "commentsCount": 0,
+                    "alertProductNames": [],
+                    "tactics": [],
+                    "techniques": [],
+                    "providerIncidentUrl": "https://security.microsoft.com/incident2/836/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+                },
+                "relatedAnalyticRuleIds": [
+                    "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/alertRules/32495d2d-27d7-4bb7-8417-c757a5794626"
+                ],
+                "incidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/16df2341-12a5-4d64-b3c8-aaa7ff592825",
+                "providerName": "Microsoft XDR",
+                "providerIncidentId": "836"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/9cd9fe84-e038-45e7-814e-80c7747154af",
+            "name": "9cd9fe84-e038-45e7-814e-80c7747154af",
+            "etag": "\"55007c97-0000-0100-0000-690313dd0000\"",
+            "type": "Microsoft.SecurityInsights/Incidents",
+            "properties": {
+                "title": "Test-Suspicious signins involving multiple users",
+                "severity": "Low",
+                "status": "Closed",
+                "classification": "Undetermined",
+                "owner": {
+                    "objectId": null,
+                    "email": null,
+                    "assignedTo": null,
+                    "userPrincipalName": null,
+                    "ownerType": null
+                },
+                "labels": [
+                    {
+                        "labelName": "Redirected",
+                        "labelType": "AutoAssigned"
+                    }
+                ],
+                "firstActivityTimeUtc": "2025-10-30T06:45:16.81Z",
+                "lastActivityTimeUtc": "2025-10-30T06:45:16.81Z",
+                "lastModifiedTimeUtc": "2025-10-30T07:29:33.7618746Z",
+                "createdTimeUtc": "2025-10-30T06:45:16.81Z",
+                "incidentNumber": 428,
+                "additionalData": {
+                    "alertsCount": 0,
+                    "bookmarksCount": 0,
+                    "commentsCount": 0,
+                    "alertProductNames": [],
+                    "tactics": [],
+                    "techniques": [],
+                    "providerIncidentUrl": "https://security.microsoft.com/incident2/835/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+                },
+                "relatedAnalyticRuleIds": [
+                    "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/alertRules/32495d2d-27d7-4bb7-8417-c757a5794626"
+                ],
+                "incidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/9cd9fe84-e038-45e7-814e-80c7747154af",
+                "providerName": "Microsoft XDR",
+                "providerIncidentId": "835"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/38433290-9ff6-4fa8-87d0-8f34f280ec0b",
+            "name": "38433290-9ff6-4fa8-87d0-8f34f280ec0b",
+            "etag": "\"4400cb57-0000-0100-0000-69026b1b0000\"",
+            "type": "Microsoft.SecurityInsights/Incidents",
+            "properties": {
+                "title": "Test-Suspicious signins involving multiple users",
+                "severity": "Low",
+                "status": "Closed",
+                "classification": "Undetermined",
+                "owner": {
+                    "objectId": null,
+                    "email": null,
+                    "assignedTo": null,
+                    "userPrincipalName": null,
+                    "ownerType": null
+                },
+                "labels": [
+                    {
+                        "labelName": "Redirected",
+                        "labelType": "AutoAssigned"
+                    }
+                ],
+                "firstActivityTimeUtc": "2025-10-29T18:45:39.1Z",
+                "lastActivityTimeUtc": "2025-10-29T18:45:39.1Z",
+                "lastModifiedTimeUtc": "2025-10-29T19:29:31.3261146Z",
+                "createdTimeUtc": "2025-10-29T18:45:39.1Z",
+                "incidentNumber": 427,
+                "additionalData": {
+                    "alertsCount": 0,
+                    "bookmarksCount": 0,
+                    "commentsCount": 0,
+                    "alertProductNames": [],
+                    "tactics": [],
+                    "techniques": [],
+                    "providerIncidentUrl": "https://security.microsoft.com/incident2/833/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+                },
+                "relatedAnalyticRuleIds": [
+                    "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/alertRules/32495d2d-27d7-4bb7-8417-c757a5794626"
+                ],
+                "incidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/38433290-9ff6-4fa8-87d0-8f34f280ec0b",
+                "providerName": "Microsoft XDR",
+                "providerIncidentId": "833"
+            }
+        },
+        {
             "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/e3beb7f5-012a-4755-932d-7ab31f74cf15",
             "name": "e3beb7f5-012a-4755-932d-7ab31f74cf15",
             "etag": "\"35007f23-0000-0100-0000-690216bd0000\"",
@@ -4383,7 +4653,7 @@
         {
             "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/07b47fad-4eeb-4a7b-97fc-689053d15b6e",
             "name": "07b47fad-4eeb-4a7b-97fc-689053d15b6e",
-            "etag": "\"3b006d0a-0000-0100-0000-690233ee0000\"",
+            "etag": "\"3b00c739-0000-0100-0000-690234f90000\"",
             "type": "Microsoft.SecurityInsights/Incidents",
             "properties": {
                 "title": "Multi-stage incident involving Initial access & Exfiltration involving one user",
@@ -4400,9 +4670,9 @@
                     "ownerType": "User"
                 },
                 "labels": [],
-                "firstActivityTimeUtc": "2025-10-29T06:33:30.759Z",
-                "lastActivityTimeUtc": "2025-10-29T06:34:34.759Z",
-                "lastModifiedTimeUtc": "2025-10-29T15:34:06.9696934Z",
+                "firstActivityTimeUtc": "2025-10-29T06:33:30.759445Z",
+                "lastActivityTimeUtc": "2025-10-29T06:34:34.759445Z",
+                "lastModifiedTimeUtc": "2025-10-29T15:38:33.5945867Z",
                 "createdTimeUtc": "2025-10-29T06:36:17.98Z",
                 "incidentNumber": 381,
                 "additionalData": {
@@ -4738,7 +5008,7 @@
         {
             "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/0b4e0364-1b37-4245-8397-e08f71ebbb99",
             "name": "0b4e0364-1b37-4245-8397-e08f71ebbb99",
-            "etag": "\"35008023-0000-0100-0000-690216bd0000\"",
+            "etag": "\"a9003d43-0000-0100-0000-6906fe870000\"",
             "type": "Microsoft.SecurityInsights/Incidents",
             "properties": {
                 "title": "Test-Suspicious signins involving multiple users",
@@ -4753,12 +5023,12 @@
                 },
                 "labels": [],
                 "firstActivityTimeUtc": "2025-10-27T05:29:42.6806055Z",
-                "lastActivityTimeUtc": "2025-10-29T10:37:25.0528683Z",
-                "lastModifiedTimeUtc": "2025-10-29T13:29:33.1462031Z",
+                "lastActivityTimeUtc": "2025-11-01T09:19:57.463064Z",
+                "lastModifiedTimeUtc": "2025-11-02T06:47:35.0312542Z",
                 "createdTimeUtc": "2025-10-27T06:45:10.7066667Z",
                 "incidentNumber": 316,
                 "additionalData": {
-                    "alertsCount": 10,
+                    "alertsCount": 25,
                     "bookmarksCount": 0,
                     "commentsCount": 0,
                     "alertProductNames": [

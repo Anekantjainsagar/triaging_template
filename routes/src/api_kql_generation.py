@@ -1,6 +1,6 @@
 """
 UPDATED: api_kql_generation.py
-With automatic KQL standardization
+With enhanced KQL standardization and automatic syntax correction
 """
 
 import re
@@ -9,7 +9,6 @@ from datetime import datetime
 from routes.src.hardcode_kql_queries import KQLQueryManager
 from routes.src.kql_query_standardizer import (
     KQLQueryStandardizer,
-    EnhancedKQLGeneratorWithStandardization,
 )
 
 
@@ -17,13 +16,13 @@ class EnhancedKQLGenerator:
     def __init__(self, enable_standardization: bool = True):
         # Initialize query manager with API fallback enabled
         self.query_manager = KQLQueryManager(enable_api_fallback=True)
-        print("OK: KQL Generator initialized with hardcoded queries + API fallback")
+        print("✅ KQL Generator initialized with hardcoded queries + API fallback")
 
-        # NEW: Initialize standardizer
+        # Initialize standardizer with syntax validation
         self.enable_standardization = enable_standardization
         if enable_standardization:
             self.standardizer = KQLQueryStandardizer()
-            print("OK: KQL Standardization enabled")
+            print("✅ KQL Standardization with syntax validation enabled")
 
     def _deduplicate_queries_in_template(self, template_rows: list) -> list:
         """
@@ -77,7 +76,7 @@ class EnhancedKQLGenerator:
                 print(f"         (duplicates: '{duplicate_of[:60]}')")
                 removed_count += 1
 
-        print(f"   OK: Removed {removed_count} duplicate KQL queries")
+        print(f"   ✅ Removed {removed_count} duplicate KQL queries")
         return deduplicated
 
     def generate_kql_query(
@@ -88,9 +87,7 @@ class EnhancedKQLGenerator:
         reference_datetime_obj: Optional[datetime] = None,
     ) -> Tuple[str, str]:
         """
-        Generate KQL query for investigation step
-
-        NEW: Automatically standardizes all queries
+        Generate KQL query for investigation step with automatic standardization and syntax fixing
 
         Args:
             step_name: Name of the investigation step
@@ -118,9 +115,9 @@ class EnhancedKQLGenerator:
         )
 
         if kql_query and len(kql_query.strip()) > 30:
-            # NEW: Standardize the query if enabled
-            if self.enable_standardization and source == "api":
-                print(f"   Standardizing API-generated query...")
+            # Standardize the query with syntax validation and auto-correction
+            if self.enable_standardization:
+                print(f"   🔧 Standardizing query with syntax validation...")
                 kql_query, standardized_explanation = (
                     self.standardizer.standardize_query(
                         raw_kql=kql_query,
@@ -134,17 +131,17 @@ class EnhancedKQLGenerator:
                     kql_query
                 )
                 if is_valid:
-                    print(f"   OK: Query standardized successfully")
+                    print(f"   ✅ Query standardized and validated successfully")
                     explanation_text = standardized_explanation
                 else:
                     print(
-                        f"   Warning: Standardization failed: {reason} - using original"
+                        f"   ⚠️  Standardization validation failed: {reason} - using original"
                     )
                     explanation_text = self._generate_explanation(
                         kql_query, step_name, source
                     )
             else:
-                # Generate explanation for hardcoded queries
+                # Generate explanation for hardcoded queries (no standardization)
                 explanation_text = self._generate_explanation(
                     kql_query, step_name, source
                 )
@@ -152,7 +149,7 @@ class EnhancedKQLGenerator:
             return kql_query, explanation_text
 
         # If all fails, return empty
-        print(f"   Warning: No KQL query found for: {step_name[:60]}")
+        print(f"   ⚠️  No KQL query found for: {step_name[:60]}")
         return "", ""
 
     def _extract_intent(self, step_name: str, explanation: str) -> str:
@@ -173,7 +170,7 @@ class EnhancedKQLGenerator:
         ]
 
         if any(kw in combined for kw in vip_keywords):
-            print(f"   VIP intent detected in: {step_name[:60]}")
+            print(f"   ✅ VIP intent detected")
             return "vip_verification"
 
         # 2. Geographic/Travel (HIGH PRIORITY)
@@ -335,7 +332,7 @@ class EnhancedKQLGenerator:
             return "initial_scope"
 
         # FALLBACK: Use step name for API fallback
-        print(f"   Warning: No specific intent match for: {step_name[:60]}")
+        print(f"   ⚠️  No specific intent match - using step name as fallback")
         return step_name
 
     def _extract_focus(self, step_name: str, explanation: str) -> str:
@@ -469,7 +466,9 @@ class EnhancedKQLGenerator:
 
         # Add source context for API-generated queries
         if source == "api":
-            explanation += " (AI-generated query with placeholder injection)"
+            explanation += (
+                " (AI-generated query with standardization and syntax validation)"
+            )
 
         return explanation
 
