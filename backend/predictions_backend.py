@@ -414,18 +414,6 @@ class MITREAttackAnalyzer:
                     "sub_technique_details": "Explain exactly which sub-technique was used and why it fits this classification",
                     "impact": "Explain the business and security impact of this event. What access did the attacker gain? What risks does this create?",
                     "indicators_observed": ["Impossible travel detected", "Unknown device used", "Geographic anomaly from high-risk region", "Temporal anomaly - access outside business hours"]
-                }},
-                {{
-                    "stage": 2,
-                    "timestamp": "2025-10-08 15:34:34",
-                    "tactic": "Privilege Escalation",
-                    "technique": "Account Manipulation: Additional Cloud Roles (T1098.003)",
-                    "description": "Detailed description of privilege escalation activity",
-                    "evidence": "Role assignment logs showing Global Administrator role granted",
-                    "severity": "RED",
-                    "sub_technique_details": "Specific cloud role manipulation technique used",
-                    "impact": "Attacker gained full administrative control over cloud environment",
-                    "indicators_observed": ["Privilege escalation", "Administrative role assignment", "Unauthorized permission changes"]
                 }}
             ],
             
@@ -449,7 +437,7 @@ class MITREAttackAnalyzer:
             
             "threat_actor_profile": {{
                 "sophistication_level": "Low | Medium | High | APT",
-                "sophistication_details": "Detailed analysis of attacker capabilities based on observed techniques, operational security, and tool usage",
+                "sophistication_details": "Detailed analysis of attacker capabilities based on observed techniques, tools used, and operational security practices. Include specific examples from the investigation",
                 "likely_motivation": "Financial | Espionage | Sabotage | Hacktivism",
                 "motivation_details": "Why we believe this is the attacker's motivation based on targets, methods, and objectives",
                 "probable_attribution": "Individual | Cybercriminal Group | Nation State | Insider",
@@ -507,20 +495,6 @@ class MITREAttackAnalyzer:
                                 "status": "CONFIRMED",
                                 "color": "RED",
                                 "sub_technique_details": "Cloud account compromise through credential theft"
-                            }},
-                            {{
-                                "stage": "Defense Evasion", 
-                                "techniques": ["T1550.004 - Use Alternate Authentication Material: Web Session Cookie"],
-                                "status": "LIKELY",
-                                "color": "AMBER",
-                                "sub_technique_details": "Session hijacking using stolen cookies"
-                            }},
-                            {{
-                                "stage": "Exfiltration",
-                                "techniques": ["T1567.002 - Exfiltration Over Web Service: Exfiltration to Cloud Storage"],
-                                "status": "PREDICTED",
-                                "color": "GREEN",
-                                "sub_technique_details": "Data exfiltration to attacker-controlled cloud storage"
                             }}
                         ]
                     }}
@@ -564,7 +538,7 @@ class MITREAttackAnalyzer:
             "business_impact": "Critical - CFO account compromised, potential financial data exposure",
             "immediate_actions": ["Disable account", "Reset credentials", "Review access logs", "Enable MFA"],
             "investigation_priority": "P1 - Critical",
-            "key_sub_techniques_observed": ["Cloud Accounts (T1078.004)", "Additional sub-techniques as observed"]
+            "key_sub_techniques_observed": ["Cloud Accounts (T1078.004)"]
         }}
     }}
 
@@ -743,6 +717,13 @@ CRITICAL:
 - If IP is Google (8.8.8.8) or known safe service → FALSE POSITIVE
 - Multiple legitimate indicators → FALSE POSITIVE
 
+CRITICAL INSTRUCTIONS (MUST FOLLOW):
+- **REMARKS FIRST**: Analyst Remarks/Comments are paramount. If a remark indicates strong suspicion or confirms an event, prioritize TRUE POSITIVE.
+- **FILTERED OUTPUT**: The provided output is filtered to include only data relevant to the user being analyzed. Use this filtered output as the *only* technical evidence.
+- **UNBIASED ASSESSMENT**: Base the classification purely on the evidence and remarks. Do not assume or fabricate.
+- If VirusTotal flagged an IP as malicious (even 1/95 or higher), that alone is sufficient for TRUE POSITIVE.
+- Impossible travel across multiple countries/states in short time = TRUE POSITIVE.
+
 Respond ONLY with valid JSON:
 {{
     "classification": "TRUE POSITIVE" or "FALSE POSITIVE",
@@ -753,8 +734,8 @@ Respond ONLY with valid JSON:
             "step_reference": "Step name",
             "category": "Category",
             "severity": "High/Medium/Low",
-            "details": "Finding description",
-            "evidence": "Supporting evidence",
+            "details": "A detailed, unique finding specific to the filtered output (e.g., '10 successful sign-ins from 6 unique IPs in Gorakhpur and Pune'). DO NOT just copy the finding template.",
+            "evidence": "Specific values from the filtered data (e.g., MinTimeBetweenLocations: 8 hours, FailedSignIns: 5, etc.)",
             "impact": "Security impact"
         }}
     ],
@@ -878,7 +859,7 @@ Respond ONLY with valid JSON:
                                 "category": "Malicious IP Detected",
                                 "severity": "High",
                                 "details": f"IP address flagged as malicious by {virustotal_malicious_count} VirusTotal vendor(s)",
-                                "evidence": f"VirusTotal detection ratio: {virustotal_malious_count}/95",
+                                "evidence": f"VirusTotal detection ratio: {virustotal_malicious_count}/95",
                                 "impact": "Potential compromise, data exfiltration risk, or botnet activity",
                             }
 
@@ -1152,7 +1133,6 @@ Respond ONLY with valid JSON:
             "key_sub_techniques_observed": key_sub_techniques,
         }
 
-
     def _calculate_risk_score(self, investigation_steps: List[Dict]) -> int:
         """Calculate risk score based on investigation data to bias toward true positive"""
         risk_score = 0
@@ -1264,6 +1244,30 @@ Respond ONLY with valid JSON:
     - **UNBIASED ASSESSMENT**: Base the classification purely on the evidence and remarks. Do not assume or fabricate.
     - If VirusTotal flagged an IP as malicious (even 1/95 or higher), that alone is sufficient for TRUE POSITIVE.
     - Impossible travel across multiple countries/states in short time = TRUE POSITIVE.
+
+    Respond ONLY with valid JSON:
+    {{
+        "classification": "TRUE POSITIVE" or "FALSE POSITIVE",
+        "risk_level": "Critical" or "High" or "Medium" or "Low",
+        "confidence_score": 85,
+        "key_findings": [
+            {{
+                "step_reference": "Step name",
+                "category": "Malicious IP | Geographic Anomaly | Privilege Escalation | Suspicious Activity",
+                "severity": "Critical | High | Medium | Low",
+                "details": "A detailed, unique finding specific to the filtered output (e.g., '10 successful sign-ins from 6 unique IPs in Gorakhpur and Pune'). DO NOT just copy the finding template.",
+                "evidence": "Specific values from the filtered data (e.g., MinTimeBetweenLocations: 8 hours, FailedSignIns: 5, etc.)",
+                "impact": "Security and business impact"
+            }}
+        ],
+        "risk_indicators": [
+            {{
+                "indicator": "Risk indicator name",
+                "severity": "High | Medium | Low",
+                "evidence": "Supporting evidence"
+            }}
+        ]
+    }}
 
     Now analyze the investigation data and provide your assessment in JSON format:"""
 
