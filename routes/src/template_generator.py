@@ -376,7 +376,8 @@ class ImprovedTemplateGenerator:
         generated_steps = step_library.generate_steps_from_manual_analysis(
             alert_name=alert_name,
             analysis_text=analysis_text,
-            rule_number=rule_number
+            rule_number=rule_number,
+            alert_data=alert_data
         )
 
         # Convert to template rows

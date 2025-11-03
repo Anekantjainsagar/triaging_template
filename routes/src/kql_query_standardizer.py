@@ -1,6 +1,7 @@
 """
 ENHANCED: kql_query_standardizer.py
 With automatic syntax error learning and recovery
+Focuses on PIPE validation only - accepts all data as-is
 """
 
 import re
@@ -9,24 +10,7 @@ from datetime import datetime, timedelta
 
 
 class KQLSyntaxValidator:
-    """Validates and fixes common KQL syntax errors"""
-
-    # Common syntax errors and their fixes
-    SYNTAX_PATTERNS = {
-        # Missing pipe before statement
-        r"(\])\s*(where|summarize|extend|project|order by)": r"\1 | \2",
-        # Double pipes
-        r"\|\s*\|": r"|",
-        # Missing pipe after filter
-        r"(\"[^\"]*\")\s*(where|summarize|extend)": r"\1 | \2",
-        # Malformed 'in' operator
-        r"(\w+)\s+in\s*\(\s*\)": r"\1 in ()",  # Keep empty for now, will validate
-        # Missing comma in list
-        r"(\w+@[\w\.]+)\s+(\w+@[\w\.]+)": r"\1, \2",
-    }
-
-    # Learned error patterns from execution failures
-    LEARNED_ERRORS = {}
+    """Validates and fixes common KQL syntax errors - PIPE FOCUSED"""
 
     @staticmethod
     def validate_query(query: str) -> Tuple[bool, str, List[str]]:
@@ -81,12 +65,15 @@ class KQLSyntaxValidator:
         if re.search(r"\bin\s*\(\s*\)", query):
             issues.append("Empty 'in' operator - must have at least one value")
 
-        # Check 5: Invalid IP addresses in filter
-        bad_ips = re.findall(r'"([\d:a-f]+)"', query)
-        for ip in bad_ips:
-            if ":" in ip and ip.count(":") == 1:  # Malformed like "1336:a49c"
-                if not re.match(r"[a-f0-9]{1,4}:[a-f0-9]{1,4}(?::[a-f0-9]{1,4})*", ip):
-                    issues.append(f"Invalid IP address format: {ip}")
+        # Check 5: Check for proper pipes before aggregate statements
+        for stmt in ["summarize", "extend", "project", "order by"]:
+            # Look for statement not preceded by pipe
+            pattern = rf"(?<!\|)\s+{re.escape(stmt)}\s+"
+            if re.search(pattern, query, re.IGNORECASE):
+                # Make sure it's not at the very start
+                if query.strip().lower().startswith(stmt.lower()):
+                    continue
+                issues.append(f"Missing pipe before '{stmt}'")
 
         # Check 6: Missing operators
         if re.search(r'"\s*,\s*"', query):  # Comma inside quotes
@@ -149,10 +136,13 @@ class KQLSyntaxValidator:
 
         fixed = re.sub(r'"([\d\.\s:a-f]+)"', fix_ip_spacing, fixed)
 
-        # Fix 4: Ensure commas between list items
+        # Fix 4: Ensure commas between list items (FIXED REGEX)
         # Look for patterns like "email1" "email2" and add comma
-        fixed = re.sub(r'("\w+@[\w\.]+")(\s+)("', r"\1, \3", fixed)
-        fixes_applied.append("Fixed email list formatting")
+        # OLD (BROKEN): r'("\w+@[\w\.]+")(\s+)("'
+        # NEW (FIXED):  r'("\w+@[\w\.]+")(\s+)("\w+@[\w\.]+")' 
+        fixed = re.sub(r'("\w+@[\w\.]+")(\s+)("\w+@[\w\.]+")', r"\1, \3", fixed)
+        if re.search(r'"\w+@[\w\.]+".*"\w+@[\w\.]+"', fixed):
+            fixes_applied.append("Fixed email list formatting")
 
         # Fix 5: Remove invalid colons in IPv4-like numbers
         # Pattern: number:number that looks like IPv4 corruption
@@ -355,10 +345,6 @@ class KQLSyntaxErrorLearner:
                 # Add closing parens
                 query += ")" * (open_p - close_p)
 
-        elif change_type == "removed_invalid_data":
-            # Remove malformed entries (like bad IPs)
-            query = re.sub(r'"(\d{1,4}:[a-f0-9]+)"', "", query)
-
         return query
 
     def get_learning_stats(self) -> Dict:
@@ -401,7 +387,7 @@ class KQLQueryStandardizer:
     ) -> Tuple[str, str]:
         """
         Standardize a raw KQL query into our format
-        NOW WITH SYNTAX VALIDATION AND AUTO-CORRECTION
+        WITH SYNTAX VALIDATION AND AUTO-CORRECTION
 
         Args:
             raw_kql: Raw KQL from API or LLM
@@ -505,8 +491,6 @@ class KQLQueryStandardizer:
     ) -> Optional[str]:
         """Get suggested fix for an error based on learned patterns"""
         return self.error_learner.suggest_fix_for_error(error_message, original_query)
-
-    # ... (keep all other methods from original implementation) ...
 
     def _identify_primary_table(self, kql: str) -> Optional[str]:
         """Identify which table the query primarily uses"""

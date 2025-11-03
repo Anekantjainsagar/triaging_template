@@ -43,7 +43,7 @@ class InvestigationStepLibrary:
             print(f"✅ Using {ollama_model} for step generation")
 
     def generate_steps_from_manual_analysis(
-        self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN"
+        self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN", alert_data:dict=None
     ) -> List[Dict]:
         print(f"\n{'='*80}")
         print(f"🤖 GENERATING MANUAL ALERT INVESTIGATION STEPS")
@@ -77,11 +77,13 @@ class InvestigationStepLibrary:
 
         # STEP 4: Add VIP USER CHECK (MUST BE BEFORE IP REPUTATION)
         print("\n👤 PHASE 4: Adding VIP user verification step...")
-        steps_with_vip = self._inject_vip_user_step(generated_steps, rule_number)
+        steps_with_vip = self._inject_vip_user_step(generated_steps, rule_number, alert_data)
 
         # STEP 5: Add IP REPUTATION CHECK
         print("\n🛡️ PHASE 5: Adding IP reputation verification step...")
-        steps_with_ip = self._inject_ip_reputation_step(steps_with_vip, rule_number)
+        steps_with_ip = self._inject_ip_reputation_step(
+            steps_with_vip, rule_number, alert_data
+        )
 
         # STEP 6: Generate KQL for each step
         print("\n⚙️ PHASE 6: Generating KQL queries...")
@@ -100,11 +102,33 @@ class InvestigationStepLibrary:
 
         return cleaned_steps
 
-    def _inject_vip_user_step(self, steps: List[Dict], rule_number: str) -> List[Dict]:
-        """
-        Add VIP user verification step with placeholder KQL
-        ✅ FIXED: Includes placeholder VIP query that prevents hardcoded query replacement
-        """
+    def _inject_vip_user_step(self, steps: List[Dict], rule_number: str, alert_data: dict = None) -> List[Dict]:
+        # ✅ CHECK: Do we have Account entities in the alert?
+        has_account_entities = False
+
+        if alert_data:
+            # print(alert_data)
+            entities = alert_data.get("entities", {})
+            entities_list = (
+                entities.get("entities", [])
+                if isinstance(entities, dict)
+                else (entities if isinstance(entities, list) else [])
+            )
+            print(entities_list)
+
+            # Check if any Account entities exist
+            for entity in entities_list:
+                if entity.get("kind", "").lower() == "account":
+                    has_account_entities = True
+                    break
+
+        # ❌ SKIP: No Account entities found
+        if not has_account_entities:
+            print("   ℹ️  No Account entities found - skipping VIP verification step")
+            return steps
+
+        print(f"   ✅ Found Account entities - checking if VIP step needed...")
+
         # Check if VIP step already exists
         has_vip_step = False
         for step in steps:
@@ -130,38 +154,38 @@ class InvestigationStepLibrary:
 
         # ✅ PLACEHOLDER QUERY: Will be replaced with real VIP data during triaging
         placeholder_vip_kql = """// VIP User Verification Query - PLACEHOLDER
-// This query will be dynamically generated during triaging with:
-//   - VIP user list (provided by analyst)
-//   - Affected users (from alert entities)  
-//   - Alert timestamp (for accurate time range)
+    // This query will be dynamically generated during triaging with:
+    //   - VIP user list (provided by analyst)
+    //   - Affected users (from alert entities)  
+    //   - Alert timestamp (for accurate time range)
 
-let VIPUsers = datatable(UserPrincipalName:string)
-[
-    "<VIP_USER_LIST_PLACEHOLDER>"
-];
-SigninLogs
-| where TimeGenerated > ago(7d)
-| where UserPrincipalName == "<USER_EMAIL>"
-| extend IsVIP = iff(UserPrincipalName in (VIPUsers), "⭐ VIP ACCOUNT", "Regular User")
-| summarize
-    TotalSignIns = count(),
-    UniqueIPAddresses = dcount(IPAddress),
-    UniqueCountries = dcount(tostring(LocationDetails.countryOrRegion)),
-    HighRiskSignIns = countif(RiskLevelAggregated == "high"),
-    MediumRiskSignIns = countif(RiskLevelAggregated == "medium"),
-    FailedAttempts = countif(ResultType != "0"),
-    SuccessfulSignIns = countif(ResultType == "0")
-    by UserPrincipalName, UserDisplayName, IsVIP
-| extend
-    VIPRiskScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedAttempts * 2),
-    AccountClassification = case(
-        VIPRiskScore > 30, "🔴 Critical - Executive at High Risk",
-        VIPRiskScore > 15, "🟠 High - VIP Requires Attention",
-        VIPRiskScore > 5, "🟡 Medium - Monitor Closely",
-        "🟢 Low - Normal Activity"
-    )
-| project-reorder UserPrincipalName, UserDisplayName, IsVIP, AccountClassification, VIPRiskScore
-| order by VIPRiskScore desc"""
+    let VIPUsers = datatable(UserPrincipalName:string)
+    [
+        "<VIP_USER_LIST_PLACEHOLDER>"
+    ];
+    SigninLogs
+    | where TimeGenerated > ago(7d)
+    | where UserPrincipalName == "<USER_EMAIL>"
+    | extend IsVIP = iff(UserPrincipalName in (VIPUsers), "⭐ VIP ACCOUNT", "Regular User")
+    | summarize
+        TotalSignIns = count(),
+        UniqueIPAddresses = dcount(IPAddress),
+        UniqueCountries = dcount(tostring(LocationDetails.countryOrRegion)),
+        HighRiskSignIns = countif(RiskLevelAggregated == "high"),
+        MediumRiskSignIns = countif(RiskLevelAggregated == "medium"),
+        FailedAttempts = countif(ResultType != "0"),
+        SuccessfulSignIns = countif(ResultType == "0")
+        by UserPrincipalName, UserDisplayName, IsVIP
+    | extend
+        VIPRiskScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedAttempts * 2),
+        AccountClassification = case(
+            VIPRiskScore > 30, "🔴 Critical - Executive at High Risk",
+            VIPRiskScore > 15, "🟠 High - VIP Requires Attention",
+            VIPRiskScore > 5, "🟡 Medium - Monitor Closely",
+            "🟢 Low - Normal Activity"
+        )
+    | project-reorder UserPrincipalName, UserDisplayName, IsVIP, AccountClassification, VIPRiskScore
+    | order by VIPRiskScore desc"""
 
         vip_step = {
             "step_name": "Verify User Account Status and Check if Account is VIP or High-Priority",
@@ -170,10 +194,10 @@ SigninLogs
             "data_source": "SigninLogs",
             "priority": "HIGH",
             "tool": "",
-            "input_required": "vip_user_list",  # ✅ FLAG for dynamic handling
+            "input_required": "vip_user_list",
             "source": "ai_generated",
             "confidence": "HIGH",
-            "kql_query": placeholder_vip_kql,  # ✅ PLACEHOLDER QUERY
+            "kql_query": placeholder_vip_kql,
             "kql_explanation": "Queries SigninLogs to check if affected users are VIP accounts and analyzes their activity patterns, risk levels, and geographic locations. The VIP user list and exact time ranges will be dynamically injected during triaging.",
         }
 
@@ -185,9 +209,31 @@ SigninLogs
         return steps
 
     def _inject_ip_reputation_step(
-        self, steps: List[Dict], rule_number: str
+        self, steps: List[Dict], rule_number: str, alert_data: dict = None
     ) -> List[Dict]:
-        """Add IP reputation check step"""
+        # ✅ CHECK: Do we have IP entities in the alert?
+        has_ip_entities = False
+
+        if alert_data:
+            entities = alert_data.get("entities", {})
+            entities_list = (
+                entities.get("entities", [])
+                if isinstance(entities, dict)
+                else (entities if isinstance(entities, list) else [])
+            )
+
+            # Check if any IP entities exist
+            for entity in entities_list:
+                if entity.get("kind", "").lower() == "ip":
+                    has_ip_entities = True
+                    break
+
+        # ❌ SKIP: No IP entities found
+        if not has_ip_entities:
+            print("   ℹ️  No IP entities found - skipping IP reputation step")
+            return steps
+
+        print(f"   ✅ Found IP entities - checking if IP reputation step needed...")
 
         # Check if IP reputation step already exists
         has_ip_step = False
@@ -230,7 +276,7 @@ SigninLogs
             "kql_explanation": "Requires manual checking using external tools (VirusTotal, AbuseIPDB) or the integrated IP reputation checker in the triaging app.",
         }
 
-        # Insert at position 3 (after scope + VIP verification)
+        # Insert at position 3 (after scope + VIP verification if it exists)
         insert_position = min(3, len(steps))
         steps.insert(insert_position, ip_step)
         print(f"      ✅ IP reputation step inserted at position {insert_position + 1}")
