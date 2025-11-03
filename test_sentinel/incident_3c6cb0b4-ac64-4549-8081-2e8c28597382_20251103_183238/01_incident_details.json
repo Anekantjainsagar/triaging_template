@@ -1,0 +1,41 @@
+{
+    "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/3c6cb0b4-ac64-4549-8081-2e8c28597382",
+    "name": "3c6cb0b4-ac64-4549-8081-2e8c28597382",
+    "etag": "\"49019f6a-0000-0100-0000-68fcc79c0000\"",
+    "type": "Microsoft.SecurityInsights/Incidents",
+    "properties": {
+        "title": "Test-Suspicious signins involving multiple users",
+        "severity": "Low",
+        "status": "New",
+        "owner": {
+            "objectId": null,
+            "email": null,
+            "assignedTo": null,
+            "userPrincipalName": null,
+            "ownerType": null
+        },
+        "labels": [],
+        "firstActivityTimeUtc": "2025-10-24T09:45:07.1539147Z",
+        "lastActivityTimeUtc": "2025-10-24T15:00:36.4211785Z",
+        "lastModifiedTimeUtc": "2025-10-25T12:50:36.5036379Z",
+        "createdTimeUtc": "2025-10-24T12:45:22.05Z",
+        "incidentNumber": 313,
+        "additionalData": {
+            "alertsCount": 5,
+            "bookmarksCount": 0,
+            "commentsCount": 0,
+            "alertProductNames": [
+                "Azure Sentinel"
+            ],
+            "tactics": [],
+            "techniques": [],
+            "providerIncidentUrl": "https://security.microsoft.com/incident2/714/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+        },
+        "relatedAnalyticRuleIds": [
+            "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/alertRules/32495d2d-27d7-4bb7-8417-c757a5794626"
+        ],
+        "incidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Incidents/3c6cb0b4-ac64-4549-8081-2e8c28597382",
+        "providerName": "Microsoft XDR",
+        "providerIncidentId": "714"
+    }
+}

@@ -58,7 +58,8 @@ class KQLExecutor:
                 "Content-Type": "application/json",
             }
 
-            body = {"query": kql_query, "timespan": timespan}
+            # body = {"query": kql_query, "timespan": timespan}
+            body = {"query": kql_query}
 
             # Execute query
             response = requests.post(url, headers=headers, json=body, timeout=60)

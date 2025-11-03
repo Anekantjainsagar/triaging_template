@@ -631,33 +631,36 @@ class KQLQueryStandardizer:
     def _remove_redundant_filters(
         self, logic: str, has_user_filter: bool, has_ip_filter: bool
     ) -> str:
-        """Remove redundant WHERE clauses that we've already added"""
-
         cleaned = logic
 
+        # ✅ FIXED: More precise regex that stops at newline or next pipe
+        # Remove TimeGenerated filters (already added at top)
         cleaned = re.sub(
-            r"\|\s*where\s+TimeGenerated.*?(?=\||$)",
+            r"\|\s*where\s+TimeGenerated[^\n|]+",  # ✅ Stops at newline or pipe
             "",
             cleaned,
-            flags=re.IGNORECASE | re.DOTALL,
+            flags=re.IGNORECASE,
         )
 
+        # Remove user filters if already added
         if has_user_filter:
             cleaned = re.sub(
-                r"\|\s*where\s+UserPrincipalName.*?(?=\||$)",
+                r"\|\s*where\s+UserPrincipalName[^\n|]+",
                 "",
                 cleaned,
-                flags=re.IGNORECASE | re.DOTALL,
+                flags=re.IGNORECASE,
             )
 
+        # Remove IP filters if already added
         if has_ip_filter:
             cleaned = re.sub(
-                r"\|\s*where\s+IPAddress.*?(?=\||$)",
+                r"\|\s*where\s+IPAddress[^\n|]+",
                 "",
                 cleaned,
-                flags=re.IGNORECASE | re.DOTALL,
+                flags=re.IGNORECASE,
             )
 
+        # Clean up double pipes and leading pipes
         cleaned = re.sub(r"\|\s*\|", "|", cleaned)
         cleaned = re.sub(r"^\|\s*", "", cleaned)
 

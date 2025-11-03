@@ -1,0 +1,192 @@
+{
+    "entities": [
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/dc67c0dc-6e01-d17c-88b3-089e867b447e",
+            "name": "dc67c0dc-6e01-d17c-88b3-089e867b447e",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Account",
+            "properties": {
+                "accountName": "urvashi.upadhyay",
+                "upnSuffix": "yashtechnologies841.onmicrosoft.com",
+                "aadTenantId": "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                "aadUserId": "fd6746b4-6b06-437d-9ff8-81927a643e53",
+                "isDomainJoined": false,
+                "displayName": "Urvashi Upadhyay",
+                "additionalData": {
+                    "Sources": "[\"AzureActiveDirectory\"]",
+                    "IsDeleted": "False",
+                    "IsEnabled": "True",
+                    "TransitiveDirectoryRoles": "[\"Power BI Administrator\"]",
+                    "UserType": "Member",
+                    "UpnName": "urvashi.upadhyay@yashtechnologies841.onmicrosoft.com",
+                    "SyncFromAad": "True"
+                },
+                "friendlyName": "Urvashi Upadhyay"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/92f688a7-7e47-f317-0cc2-e885ecd0d350",
+            "name": "92f688a7-7e47-f317-0cc2-e885ecd0d350",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Ip",
+            "properties": {
+                "address": "2406:7400:ff03:9c65:a044:1357:7e86:f4ab",
+                "friendlyName": "2406:7400:ff03:9c65:a044:1357:7e86:f4ab"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/924a7709-dd98-87c1-31ab-303d34de7bfd",
+            "name": "924a7709-dd98-87c1-31ab-303d34de7bfd",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Ip",
+            "properties": {
+                "address": "116.75.193.147",
+                "friendlyName": "116.75.193.147"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/303a6ff1-05be-5018-5623-af3d8402edbb",
+            "name": "303a6ff1-05be-5018-5623-af3d8402edbb",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Ip",
+            "properties": {
+                "address": "106.219.171.82",
+                "friendlyName": "106.219.171.82"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/ccaa87f2-3f45-8f44-4c2e-43050d0d3ab6",
+            "name": "ccaa87f2-3f45-8f44-4c2e-43050d0d3ab6",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Ip",
+            "properties": {
+                "address": "2405:201:5c28:5049:de1:12e8:2dfa:b6f9",
+                "friendlyName": "2405:201:5c28:5049:de1:12e8:2dfa:b6f9"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/aa86bb3a-da5f-10de-9bfa-395553ae7943",
+            "name": "aa86bb3a-da5f-10de-9bfa-395553ae7943",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Ip",
+            "properties": {
+                "address": "122.177.245.189",
+                "friendlyName": "122.177.245.189"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/6ee02d9f-f81b-2d03-7ffb-145a1e8146f3",
+            "name": "6ee02d9f-f81b-2d03-7ffb-145a1e8146f3",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Account",
+            "properties": {
+                "accountName": "ganesh.tanneru",
+                "upnSuffix": "yashtechnologies841.onmicrosoft.com",
+                "aadTenantId": "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                "aadUserId": "a5f00e5f-e8da-45c2-a055-164fdb380416",
+                "isDomainJoined": true,
+                "displayName": "Ganesh Tanneru",
+                "additionalData": {
+                    "Sources": "[\"AzureActiveDirectory\"]",
+                    "Country": "US",
+                    "GivenName": "Ganesh",
+                    "IsDeleted": "False",
+                    "IsEnabled": "True",
+                    "Surname": "Tanneru",
+                    "UserType": "Member",
+                    "UpnName": "ganesh.tanneru@yashtechnologies841.onmicrosoft.com",
+                    "SyncFromAad": "True"
+                },
+                "friendlyName": "Ganesh Tanneru"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/74bb5eb5-2af2-09c1-967d-9368c29b877a",
+            "name": "74bb5eb5-2af2-09c1-967d-9368c29b877a",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Account",
+            "properties": {
+                "accountName": "chirag.gupta",
+                "upnSuffix": "yashtechnologies841.onmicrosoft.com",
+                "aadTenantId": "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                "aadUserId": "2c003f64-678a-476a-9a60-dcd7073da09f",
+                "isDomainJoined": true,
+                "displayName": "Chirag  Gupta",
+                "additionalData": {
+                    "Sources": "[\"AzureActiveDirectory\"]",
+                    "Country": "US",
+                    "GivenName": "Chirag",
+                    "IsDeleted": "False",
+                    "IsEnabled": "True",
+                    "Surname": "Gupta",
+                    "UserType": "Member",
+                    "UpnName": "chirag.gupta@yashtechnologies841.onmicrosoft.com",
+                    "SyncFromAad": "True"
+                },
+                "friendlyName": "Chirag  Gupta"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/8cd58aec-8b38-012e-6490-47b877a7d512",
+            "name": "8cd58aec-8b38-012e-6490-47b877a7d512",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Account",
+            "properties": {
+                "accountName": "sweta.tiwari",
+                "upnSuffix": "yashtechnologies841.onmicrosoft.com",
+                "aadTenantId": "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                "aadUserId": "1960d92b-e22a-4e21-ae3e-be231725d2c5",
+                "isDomainJoined": true,
+                "displayName": "sweta tiwari",
+                "additionalData": {
+                    "Sources": "[\"AzureActiveDirectory\"]",
+                    "Country": "US",
+                    "GivenName": "sweta",
+                    "IsDeleted": "False",
+                    "IsEnabled": "True",
+                    "MailAddress": "sweta.tiwari@yashtechnologies841.onmicrosoft.com",
+                    "Surname": "tiwari",
+                    "TransitiveDirectoryRoles": "[\"Global Administrator\"]",
+                    "UserType": "Member",
+                    "UpnName": "sweta.tiwari@yashtechnologies841.onmicrosoft.com",
+                    "SyncFromAad": "True"
+                },
+                "friendlyName": "sweta tiwari"
+            }
+        },
+        {
+            "id": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/Testenvr1/providers/Microsoft.SecurityInsights/Entities/819a5c99-ed38-e509-c89b-39208420a1c9",
+            "name": "819a5c99-ed38-e509-c89b-39208420a1c9",
+            "type": "Microsoft.SecurityInsights/Entities",
+            "kind": "Account",
+            "properties": {
+                "accountName": "umapreethi.v",
+                "upnSuffix": "yash.com",
+                "aadTenantId": "638456b8-8343-4e48-9ebe-4f5cf9a1997d",
+                "aadUserId": "f3e7f44f-87ae-489e-974c-c572dbb70d0f",
+                "isDomainJoined": true,
+                "displayName": "Umapreethi  Vijayakumar",
+                "additionalData": {
+                    "Sources": "[\"AzureActiveDirectory\"]",
+                    "IsDeleted": "False",
+                    "IsEnabled": "True",
+                    "MailAddress": "umapreethi.v@yash.com",
+                    "UserType": "Guest",
+                    "UpnName": "umapreethi.v@yash.com",
+                    "SyncFromAad": "True"
+                },
+                "friendlyName": "Umapreethi  Vijayakumar"
+            }
+        }
+    ],
+    "metaData": [
+        {
+            "entityKind": "Account",
+            "count": 5
+        },
+        {
+            "entityKind": "Ip",
+            "count": 5
+        }
+    ]
+}

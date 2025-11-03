@@ -1,0 +1,12 @@
+{
+    "timeRange": {
+        "start": "2025-10-24T09:45:07.1539147Z",
+        "end": "2025-10-24T15:00:36.4211785Z"
+    },
+    "alertId": "aff96a4e-3366-0952-ebf4-4abccd16fac4",
+    "providerAlertId": "3532c18d-3be0-4cce-9f3b-2502b55ea44f",
+    "severity": "Low",
+    "alertType": "674f96b1-63d6-48ca-9fe6-d613e4292c7f_32495d2d-27d7-4bb7-8417-c757a5794626",
+    "tactics": [],
+    "techniques": []
+}
