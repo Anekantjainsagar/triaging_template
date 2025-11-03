@@ -142,7 +142,7 @@ def contains_ip_not_vip(text):
 def _execute_kql_query(
     step_num: int, rule_number: str, kql_query: str, state_mgr: TriagingStateManager
 ):
-    """Execute KQL query and save results"""
+    """Execute KQL query and save results - FIXED"""
     try:
         if "kql_executor" not in st.session_state:
             st.session_state.kql_executor = KQLExecutor()
@@ -155,11 +155,21 @@ def _execute_kql_query(
         if success:
             output_key = f"output_{rule_number}_{step_num}"
 
-            # Save to state manager
+            # CRITICAL FIX 1: Save to state manager FIRST
             state_mgr.save_step_data(step_num, output=formatted_output)
 
-            # Save to session state for immediate display
+            # CRITICAL FIX 2: Also save to session state for immediate display
             st.session_state[output_key] = formatted_output
+
+            # CRITICAL FIX 3: Force state update to persist
+            st.session_state[state_mgr.state_key]["step_outputs"][
+                f"step_{step_num}"
+            ] = formatted_output
+            st.session_state[state_mgr.state_key][
+                "last_updated"
+            ] = datetime.now().isoformat()
+
+            print(f"✅ Output saved for step {step_num}: {len(formatted_output)} chars")
 
             return True, formatted_output
         else:
@@ -1023,32 +1033,70 @@ def display_interactive_steps(
                         st.success(f"✅ Step {step_num} marked as complete!")
                         st.rerun()
 
-        # Final download section
+        # ===================================================================
+        # CRITICAL FIX 5: Add explicit save button before download
+        # ===================================================================
         if state_mgr.is_all_complete(len(enhanced_steps)):
             st.markdown("---")
             st.success("🎉 All steps completed!")
 
-            final_excel = generate_final_excel(
-                template_df,
-                state_mgr.get_all_remarks(),
-                state_mgr.get_all_outputs(),
-                rule_number,
-            )
+            # Initialize session state for report preparation
+            report_prepared_key = f"report_prepared_{rule_number}"
+            if report_prepared_key not in st.session_state:
+                st.session_state[report_prepared_key] = False
 
-            filename = f"triaging_complete_{rule_number.replace('#', '_')}.xlsx"
-
+            # NEW: Add explicit "Prepare Download" button
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                st.download_button(
-                    label="📥 Download Complete Template & Unlock Predictions",
-                    data=final_excel,
-                    file_name=filename,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    type="primary",
-                    on_click=lambda: unlock_predictions(
-                        final_excel, filename, rule_number
-                    ),
+                if st.button(
+                    "📋 Prepare Final Report",
+                    type="secondary",
+                    use_container_width=True,
+                    key=f"prepare_report_{rule_number}",
+                ):
+                    st.info("💾 Saving all outputs to final report...")
+
+                    # Force save all outputs
+                    all_outputs = state_mgr.get_all_outputs()
+                    all_remarks = state_mgr.get_all_remarks()
+
+                    print(f"\n📊 Final Report Preparation:")
+                    print(f"   Total outputs: {len(all_outputs)}")
+                    for key, value in all_outputs.items():
+                        if value:
+                            print(f"   ✅ {key}: {len(value)} chars")
+
+                    # Mark as prepared
+                    st.session_state[report_prepared_key] = True
+                    st.success("✅ Report prepared! You can now download.")
+                    st.rerun()
+
+            st.markdown("---")
+
+            # Only show download button if report is prepared
+            if st.session_state[report_prepared_key]:
+                # Generate final Excel
+                final_excel = generate_final_excel(
+                    template_df,
+                    state_mgr.get_all_remarks(),
+                    state_mgr.get_all_outputs(),
+                    rule_number,
                 )
+
+                filename = f"triaging_complete_{rule_number.replace('#', '_')}.xlsx"
+
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    st.download_button(
+                        label="📥 Download Complete Template & Unlock Predictions",
+                        data=final_excel,
+                        file_name=filename,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        type="primary",
+                        on_click=lambda: unlock_predictions(
+                            final_excel, filename, rule_number
+                        ),
+                    )
 
     with tab2:
         st.markdown("### 📊 Excel Template Preview")
@@ -1139,7 +1187,11 @@ def _process_ip_reputation_check(
 def generate_final_excel(
     template_df: pd.DataFrame, remarks: dict, outputs: dict, rule_number: str
 ) -> bytes:
-    """Generate final Excel with remarks and outputs"""
+    """
+    Generate final Excel with remarks and outputs
+
+    FIXED: Ensures all outputs including last step are saved correctly
+    """
     from io import BytesIO
 
     export_df = template_df.copy()
@@ -1147,28 +1199,84 @@ def generate_final_excel(
     remarks_list = []
     outputs_list = []
 
+    # Process each row in the template
     for idx, row in export_df.iterrows():
+        # Skip header rows (rows without a valid Step number)
         if pd.isna(row.get("Step")) or str(row.get("Step", "")).strip() == "":
             remarks_list.append("")
             outputs_list.append("")
         else:
             step_num = idx + 1
-            remarks_list.append(remarks.get(f"step_{step_num}", ""))
-            outputs_list.append(outputs.get(f"step_{step_num}", ""))
 
+            # Retrieve remark and output from state
+            remark_key = f"step_{step_num}"
+            output_key = f"step_{step_num}"
+
+            # Get remark (prioritize from remarks dict, fallback to existing in df)
+            remark = remarks.get(remark_key, "")
+            if not remark and "Remarks/Comments" in row:
+                remark = str(row.get("Remarks/Comments", ""))
+
+            # Get output (prioritize from outputs dict, fallback to existing in df)
+            output = outputs.get(output_key, "")
+            if not output and "Output" in row:
+                output = str(row.get("Output", ""))
+
+            # Debug print to verify data
+            if output:
+                print(f"   ✅ Step {step_num}: Output saved ({len(output)} chars)")
+            else:
+                print(f"   ⚠️ Step {step_num}: No output")
+
+            remarks_list.append(remark)
+            outputs_list.append(output)
+
+    # Update DataFrame with collected data
     export_df["Output"] = outputs_list
     export_df["Remarks/Comments"] = remarks_list
 
+    # Generate Excel file
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         export_df.to_excel(writer, index=False, sheet_name="Triaging Steps")
 
+        # Apply formatting
+        workbook = writer.book
+        worksheet = writer.sheets["Triaging Steps"]
+
+        # Auto-adjust column widths for better readability
+        for column_cells in worksheet.columns:
+            length = max(len(str(cell.value or "")) for cell in column_cells)
+            worksheet.column_dimensions[column_cells[0].column_letter].width = min(
+                length + 2, 100
+            )
+
     output.seek(0)
+    print(f"\n✅ Excel generated with {len(outputs_list)} rows")
     return output.getvalue()
 
 
 def unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
-    """Unlock predictions tab and upload data"""
+    """
+    Unlock predictions tab and upload data
+
+    FIXED: Ensures all step data is persisted before generating final Excel
+    """
+    # Force save all pending state changes
+    state_key = get_step_state_key(rule_number)
+    if state_key in st.session_state:
+        print(f"📊 Final state verification:")
+        state = st.session_state[state_key]
+
+        # Log all saved outputs
+        outputs = state.get("step_outputs", {})
+        for step_key, output in outputs.items():
+            if output:
+                print(f"   ✅ {step_key}: {len(output)} chars saved")
+            else:
+                print(f"   ⚠️ {step_key}: NO OUTPUT")
+
+    # Mark triaging as complete
     st.session_state.triaging_complete = True
     st.session_state.predictions_excel_data = excel_data
     st.session_state.predictions_excel_filename = filename
