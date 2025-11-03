@@ -221,6 +221,8 @@ class InvestigationStepLibrary:
                 if isinstance(entities, dict)
                 else (entities if isinstance(entities, list) else [])
             )
+            print(entities_list)
+
 
             # Check if any IP entities exist
             for entity in entities_list:

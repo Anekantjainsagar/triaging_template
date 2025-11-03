@@ -1,17 +1,3 @@
-# entity_predictions.py - NEW COMPONENT FOR AUTOMATED ENTITY PREDICTIONS
-"""
-This component automatically generates True/False Positive predictions for each entity
-involved in an alert. It creates an accordion-style interface where:
-- Left side: Entity ID and type
-- Right side: True Positive / False Positive classification
-
-Usage:
-    from components.entity_predictions import display_entity_predictions_panel
-
-    # In your predictions tab:
-    display_entity_predictions_panel(alert_data)
-"""
-
 import streamlit as st
 import time
 from typing import Dict, List, Any

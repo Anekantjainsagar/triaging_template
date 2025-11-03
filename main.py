@@ -4,7 +4,6 @@ import streamlit as st
 from soc_utils import *
 from datetime import datetime
 import hashlib
-import concurrent.futures
 import time
 
 # Import SOC analysis components
