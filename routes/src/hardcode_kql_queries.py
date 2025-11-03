@@ -30,10 +30,11 @@ class HardcodedKQLQueries:
 | extend
     SuccessRate = round(100.0 * SuccessfulSignIns / TotalSignIns, 2),
     RiskScore = (FailedSignIns * 2) + (RiskySignIns * 5),
-    ActivitySpanDays = datetime_diff('day', LastActivity, FirstActivity),
+    ActivitySpanDays = datetime_diff('day', LastActivity, FirstActivity)
+| extend
     ThreatLevel = case(
         RiskySignIns > 5, "Critical",
-        RiskySignIns > 2, "High",
+        RiskySignIns > 2, "High", 
         FailedSignIns > 10, "Medium",
         "Low"
     )
@@ -220,57 +221,51 @@ class HardcodedKQLQueries:
     BEHAVIORAL_ANOMALY_DETECTION = """SigninLogs
 | where TimeGenerated > ago(14d)
 | where UserPrincipalName == "<USER_EMAIL>"
-| extend
-    Hour = datetime_part("Hour", TimeGenerated),
-    DayOfWeek = dayofweek(TimeGenerated),
-    DayName = case(
-        DayOfWeek == 0, "Sunday",
-        DayOfWeek == 1, "Monday",
-        DayOfWeek == 2, "Tuesday",
-        DayOfWeek == 3, "Wednesday",
-        DayOfWeek == 4, "Thursday",
-        DayOfWeek == 5, "Friday",
-        DayOfWeek == 6, "Saturday",
-        "Unknown"
-    ),
-    IsBusinessHours = iff(Hour >= 8 and Hour <= 18 and DayOfWeek >= 1 and DayOfWeek <= 5, "Yes", "No"),
-    TimeWindow = case(
-        Hour >= 0 and Hour < 6, "Late Night (12AM-6AM)",
-        Hour >= 6 and Hour < 9, "Early Morning (6AM-9AM)",
-        Hour >= 9 and Hour < 12, "Morning (9AM-12PM)",
-        Hour >= 12 and Hour < 14, "Lunch (12PM-2PM)",
-        Hour >= 14 and Hour < 18, "Afternoon (2PM-6PM)",
-        Hour >= 18 and Hour < 22, "Evening (6PM-10PM)",
-        "Night (10PM-12AM)"
-    )
+| extend Hour = toint(datetime_part("Hour", TimeGenerated)), DayOfWeek = toint(dayofweek(TimeGenerated))
+| extend DayName = case(
+    DayOfWeek == 0, "Sunday",
+    DayOfWeek == 1, "Monday",
+    DayOfWeek == 2, "Tuesday",
+    DayOfWeek == 3, "Wednesday",
+    DayOfWeek == 4, "Thursday",
+    DayOfWeek == 5, "Friday",
+    DayOfWeek == 6, "Saturday",
+    "Unknown"
+), 
+IsBusinessHours = iff(Hour >= 8 and Hour <= 18 and DayOfWeek >= 1 and DayOfWeek <= 5, "Yes", "No"),
+TimeWindow = case(
+    Hour >= 0 and Hour < 6, "Late Night (12AM-6AM)",
+    Hour >= 6 and Hour < 9, "Early Morning (6AM-9AM)",
+    Hour >= 9 and Hour < 12, "Morning (9AM-12PM)",
+    Hour >= 12 and Hour < 14, "Lunch (12PM-2PM)",
+    Hour >= 14 and Hour < 18, "Afternoon (2PM-6PM)",
+    Hour >= 18 and Hour < 22, "Evening (6PM-10PM)",
+    "Night (10PM-12AM)"
+)
 | summarize
     SignInCount = count(),
     UniqueIPAddresses = dcount(IPAddress),
     UniqueApplications = dcount(AppDisplayName),
     UniqueDevices = dcount(tostring(DeviceDetail.deviceId)),
-    SuccessfulSignIns = countif(ResultType == "0"),
-    FailedSignIns = countif(ResultType != "0"),
+    SuccessfulSignIns = countif(ResultType == 0),
+    FailedSignIns = countif(ResultType != 0),
     RiskySignIns = countif(IsRisky == true),
     IPsList = make_set(IPAddress, 5),
     ApplicationsList = make_set(AppDisplayName, 5)
     by UserPrincipalName, DayName, TimeWindow, IsBusinessHours, Hour
-| extend
-    AnomalyScore = case(
-        IsBusinessHours == "No" and SignInCount > 20, 25,
-        IsBusinessHours == "No" and SignInCount > 10, 20,
-        IsBusinessHours == "No" and UniqueIPAddresses > 3, 15,
-        IsBusinessHours == "No" and RiskySignIns > 0, 18,
-        RiskySignIns > 0, 10,
-        FailedSignIns > 5, 8,
-        0
-    ),
-    BehaviorFlag = case(
-        AnomalyScore >= 20, "🔴 Critical Anomaly",
-        AnomalyScore >= 15, "🟠 High Anomaly",
-        AnomalyScore >= 10, "🟡 Medium Anomaly",
-        AnomalyScore > 0, "⚠️ Low Anomaly",
-        "✅ Normal"
-    )
+| extend BehaviorFlag = case(
+      RiskySignIns > 0, "🟥 RISKY - Suspicious activity detected",
+      FailedSignIns > 5, "🟨 WARNING - High failure rate", 
+      UniqueIPAddresses > 3, "🟡 UNUSUAL - Multiple IP addresses",
+      SignInCount > 20, "🔵 HIGH_VOLUME - Unusual sign-in frequency",
+      "🟢 NORMAL - Typical behavior"
+), AnomalyScore = case(
+      RiskySignIns > 0, 100,
+      FailedSignIns > 5, 80,
+      UniqueIPAddresses > 3, 60,
+      SignInCount > 20, 40,
+      10
+)
 | project-reorder UserPrincipalName, BehaviorFlag, AnomalyScore, DayName, TimeWindow, IsBusinessHours, SignInCount
 | order by AnomalyScore desc, SignInCount desc"""
 
@@ -320,7 +315,8 @@ class HardcodedKQLQueries:
         FailedSignIns > 10, 10,
         IsCompliant == "" or IsManaged == "", 8,
         0
-    ),
+    )
+| extend
     DeviceRiskLevel = case(
         DeviceRiskScore >= 20, "🔴 Critical Risk - Non-Compliant & Unmanaged",
         DeviceRiskScore >= 15, "🟠 High Risk - Partial Compliance",
@@ -359,7 +355,8 @@ class HardcodedKQLQueries:
     MFAAdoptionRate = round(100.0 * MFARequiredSignIns / TotalSignIns, 2),
     MFASuccessRate = iff(MFARequiredSignIns > 0, round(100.0 * MFASuccessful / MFARequiredSignIns, 2), 0.0),
     SingleFactorSuccessRate = iff(SingleFactorSignIns > 0, round(100.0 * SingleFactorSuccessful / SingleFactorSignIns, 2), 0.0),
-    OverallSuccessRate = round(100.0 * (MFASuccessful + SingleFactorSuccessful) / TotalSignIns, 2),
+    OverallSuccessRate = round(100.0 * (MFASuccessful + SingleFactorSuccessful) / TotalSignIns, 2)
+| extend
     MFASecurityScore = case(
         MFAAdoptionRate >= 95, 100,
         MFAAdoptionRate >= 80, 85,
@@ -381,7 +378,8 @@ class HardcodedKQLQueries:
         "Maintain current MFA policies"
     )
 | project-reorder UserPrincipalName, UserDisplayName, MFAStatus, MFASecurityScore, MFAAdoptionRate, MFASuccessRate
-| order by MFASecurityScore asc"""
+| order by MFASecurityScore asc
+"""
 
     # ==================== ROLE & PERMISSION ANALYSIS ====================
 
@@ -421,7 +419,8 @@ class HardcodedKQLQueries:
         TotalChanges > 5, "Low",
         "Very Low"
     ),
-    RiskScore = (RoleAdditions * 5) + (AppRoleAssignments * 4) + (ConsentGrants * 6) + (OwnerChanges * 7),
+    RiskScore = (RoleAdditions * 5) + (AppRoleAssignments * 4) + (ConsentGrants * 6) + (OwnerChanges * 7)
+| extend
     RiskLevel = case(
         RiskScore > 50, "🔴 Critical - Excessive Privilege Changes",
         RiskScore > 30, "🟠 High - Significant Role Activity",
@@ -531,7 +530,8 @@ class HardcodedKQLQueries:
 | extend
     SuccessRate = round(100.0 * SuccessfulAccesses / TotalAccesses, 2),
     MFARate = round(100.0 * MFAAccesses / TotalAccesses, 2),
-    RiskScore = (RiskyAccesses * 5) + (FailedAccesses * 2) + (UniqueIPAddresses * 1),
+    RiskScore = (RiskyAccesses * 5) + (FailedAccesses * 2) + (UniqueIPAddresses * 1)
+| extend
     RiskLevel = case(
         RiskyAccesses > 10, "🔴 Critical Risk",
         RiskyAccesses > 5, "🟠 High Risk",
@@ -575,7 +575,8 @@ class HardcodedKQLQueries:
     ApplicationsList = make_set(AppDisplayName, 10)
     by UserPrincipalName, RiskLevelAggregated, RiskState
 | extend
-    CriticalityScore = (HighRiskCount * 10) + (MediumRiskCount * 5) + (LowRiskCount * 2),
+    CriticalityScore = (HighRiskCount * 10) + (MediumRiskCount * 5) + (LowRiskCount * 2)
+| extend
     ThreatLevel = case(
         HighRiskCount > 5, "🔴 Critical - Immediate Action Required",
         HighRiskCount > 0, "🟠 High - Urgent Investigation",

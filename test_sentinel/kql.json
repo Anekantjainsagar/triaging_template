@@ -4,35 +4,35 @@
             "name": "PrimaryResult",
             "columns": [
                 {
-                    "name": "IPAddress",
+                    "name": "UserPrincipalName",
                     "type": "string"
                 },
                 {
-                    "name": "ISP",
+                    "name": "UserDisplayName",
                     "type": "string"
                 },
                 {
-                    "name": "TotalAttempts",
+                    "name": "IsVIP",
+                    "type": "string"
+                },
+                {
+                    "name": "AccountClassification",
+                    "type": "string"
+                },
+                {
+                    "name": "VIPRiskScore",
                     "type": "long"
                 },
                 {
-                    "name": "UniqueUsers",
+                    "name": "TotalSignIns",
                     "type": "long"
                 },
                 {
-                    "name": "UniqueApplications",
+                    "name": "UniqueIPAddresses",
                     "type": "long"
                 },
                 {
-                    "name": "SuccessfulLogins",
-                    "type": "long"
-                },
-                {
-                    "name": "FailedLogins",
-                    "type": "long"
-                },
-                {
-                    "name": "RiskySignIns",
+                    "name": "UniqueCountries",
                     "type": "long"
                 },
                 {
@@ -44,47 +44,30 @@
                     "type": "long"
                 },
                 {
-                    "name": "InteractiveLogins",
+                    "name": "FailedAttempts",
                     "type": "long"
                 },
                 {
-                    "name": "NonInteractiveLogins",
+                    "name": "SuccessfulSignIns",
                     "type": "long"
-                },
-                {
-                    "name": "FirstSeen",
-                    "type": "datetime"
-                },
-                {
-                    "name": "LastSeen",
-                    "type": "datetime"
-                },
-                {
-                    "name": "UniqueCountries",
-                    "type": "long"
-                },
-                {
-                    "name": "UniqueCities",
-                    "type": "long"
-                },
-                {
-                    "name": "UsersList",
-                    "type": "dynamic"
-                },
-                {
-                    "name": "ApplicationsList",
-                    "type": "dynamic"
-                },
-                {
-                    "name": "CountriesList",
-                    "type": "dynamic"
-                },
-                {
-                    "name": "RiskEvents",
-                    "type": "dynamic"
                 }
             ],
-            "rows": []
+            "rows": [
+                [
+                    "sweta.tiwari@yashtechnologies841.onmicrosoft.com",
+                    "sweta tiwari",
+                    "\u2b50 VIP ACCOUNT",
+                    "\ud83d\udfe2 Low - Normal Activity",
+                    0,
+                    2,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    2
+                ]
+            ]
         }
     ]
 }

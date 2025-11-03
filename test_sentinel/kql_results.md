@@ -1,3 +1,3 @@
-| IPAddress | ISP | TotalAttempts | UniqueUsers | UniqueApplications | SuccessfulLogins | FailedLogins | RiskySignIns | HighRiskSignIns | MediumRiskSignIns | InteractiveLogins | NonInteractiveLogins | FirstSeen | LastSeen | UniqueCountries | UniqueCities | UsersList | ApplicationsList | CountriesList | RiskEvents |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data | No data |
+| UserPrincipalName | UserDisplayName | IsVIP | AccountClassification | VIPRiskScore | TotalSignIns | UniqueIPAddresses | UniqueCountries | HighRiskSignIns | MediumRiskSignIns | FailedAttempts | SuccessfulSignIns |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| sweta.tiwari@yashtechnologies841.onmicrosoft.com | sweta tiwari | ⭐ VIP ACCOUNT | 🟢 Low - Normal Activity | 0 | 2 | 1 | 1 | 0 | 0 | 0 | 2 |

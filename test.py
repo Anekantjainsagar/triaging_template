@@ -89,7 +89,7 @@ class KQLPipelineTester:
                             "friendlyName": "Test User",
                         },
                     },
-                    {"kind": "Ip", "properties": {"address": "8.8.8.8"}},
+                    {"kind": "Ip", "properties": {"address": "14.194.129.210"}},
                 ]
             },
         }
