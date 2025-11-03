@@ -1,0 +1,28 @@
+{
+  "query_name": "Behavioral Anomaly Detection",
+  "query_type": "hardcoded",
+  "timestamp": "2025-11-03T15:11:59.864161",
+  "stages": {
+    "template_validation": {
+      "passed": true,
+      "query_length": 2220
+    },
+    "data_injection": {
+      "passed": true,
+      "injected_query_length": 2305,
+      "users_injected": 1,
+      "ips_injected": 1,
+      "reference_datetime": "2025-11-03 10:30:00"
+    },
+    "execution": {
+      "success": false,
+      "execution_time": 1.64,
+      "formatted_output": "Query failed: 400 - {\"error\":{\"message\":\"The request had some invalid properties\",\"code\":\"BadArgumentError\",\"correlationId\":\"922151f1-827a-4c12-9b59-d276a39f5e08\",\"innererror\":{\"code\":\"SemanticError\",\"message\":\"A semantic error occurred.\",\"innererror\":{\"code\":\"SEM0100\",\"message\":\"'extend' operator: Failed to resolve column or scalar expression named 'DayOfWeek'\"}}}}",
+      "raw_results": null,
+      "result_rows": 0,
+      "error": "Query failed: 400 - {\"error\":{\"message\":\"The request had some invalid properties\",\"code\":\"BadArgumentError\",\"correlationId\":\"922151f1-827a-4c12-9b59-d276a39f5e08\",\"innererror\":{\"code\":\"SemanticError\",\"message\":\"A semantic error occurred.\",\"innererror\":{\"code\":\"SEM0100\",\"message\":\"'extend' operator: Failed to resolve column or scalar expression named 'DayOfWeek'\"}}}}"
+    }
+  },
+  "injected_query": "SigninLogs\n| where TimeGenerated > datetime(2025-10-20 10:30:00Z) and TimeGenerated <= datetime(2025-11-03 10:30:00Z)\n| where UserPrincipalName in (\"anekant.jain@yash.com\")\n| extend\n    Hour = datetime_part(\"Hour\", TimeGenerated),\n    DayOfWeek = dayofweek(TimeGenerated),\n    DayName = case(\n        DayOfWeek == 0, \"Sunday\",\n        DayOfWeek == 1, \"Monday\",\n        DayOfWeek == 2, \"Tuesday\",\n        DayOfWeek == 3, \"Wednesday\",\n        DayOfWeek == 4, \"Thursday\",\n        DayOfWeek == 5, \"Friday\",\n        DayOfWeek == 6, \"Saturday\",\n        \"Unknown\"\n    ),\n    IsBusinessHours = iff(Hour >= 8 and Hour <= 18 and DayOfWeek >= 1 and DayOfWeek <= 5, \"Yes\", \"No\"),\n    TimeWindow = case(\n        Hour >= 0 and Hour < 6, \"Late Night (12AM-6AM)\",\n        Hour >= 6 and Hour < 9, \"Early Morning (6AM-9AM)\",\n        Hour >= 9 and Hour < 12, \"Morning (9AM-12PM)\",\n        Hour >= 12 and Hour < 14, \"Lunch (12PM-2PM)\",\n        Hour >= 14 and Hour < 18, \"Afternoon (2PM-6PM)\",\n        Hour >= 18 and Hour < 22, \"Evening (6PM-10PM)\",\n        \"Night (10PM-12AM)\"\n    )\n| summarize\n    SignInCount = count(),\n    UniqueIPAddresses = dcount(IPAddress),\n    UniqueApplications = dcount(AppDisplayName),\n    UniqueDevices = dcount(tostring(DeviceDetail.deviceId)),\n    SuccessfulSignIns = countif(ResultType == \"0\"),\n    FailedSignIns = countif(ResultType != \"0\"),\n    RiskySignIns = countif(IsRisky == true),\n    IPsList = make_set(IPAddress, 5),\n    ApplicationsList = make_set(AppDisplayName, 5)\n    by UserPrincipalName, DayName, TimeWindow, IsBusinessHours, Hour\n| extend\n    AnomalyScore = case(\n        IsBusinessHours == \"No\" and SignInCount > 20, 25,\n        IsBusinessHours == \"No\" and SignInCount > 10, 20,\n        IsBusinessHours == \"No\" and UniqueIPAddresses > 3, 15,\n        IsBusinessHours == \"No\" and RiskySignIns > 0, 18,\n        RiskySignIns > 0, 10,\n        FailedSignIns > 5, 8,\n        0\n    ),\n    BehaviorFlag = case(\n        AnomalyScore >= 20, \"🔴 Critical Anomaly\",\n        AnomalyScore >= 15, \"🟠 High Anomaly\",\n        AnomalyScore >= 10, \"🟡 Medium Anomaly\",\n        AnomalyScore > 0, \"⚠️ Low Anomaly\",\n        \"✅ Normal\"\n    )\n| project-reorder UserPrincipalName, BehaviorFlag, AnomalyScore, DayName, TimeWindow, IsBusinessHours, SignInCount\n| order by AnomalyScore desc, SignInCount desc",
+  "status": "FAILED"
+}

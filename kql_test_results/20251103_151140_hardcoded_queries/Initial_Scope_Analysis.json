@@ -1,0 +1,139 @@
+{
+  "query_name": "Initial Scope Analysis",
+  "query_type": "hardcoded",
+  "timestamp": "2025-11-03T15:11:40.287151",
+  "stages": {
+    "template_validation": {
+      "passed": true,
+      "query_length": 1319
+    },
+    "data_injection": {
+      "passed": true,
+      "injected_query_length": 1405,
+      "users_injected": 1,
+      "ips_injected": 1,
+      "reference_datetime": "2025-11-03 10:30:00"
+    },
+    "execution": {
+      "success": true,
+      "execution_time": 7.49,
+      "formatted_output": "Results: 1 row(s) returned\n\n================================================================================\nUserPrincipalName     | UserDisplayName | ThreatLevel     | RiskScore       | TotalSignIns    | SuccessRate     | UniqueIPAddresses | UniqueLocations | UniqueApplications | SuccessfulSignIns | FailedSignIns   | RiskySignIns    | InteractiveSignIns | NonInteractiveSignIns | FirstActivity                | LastActivity                 | IPAddressesList                                    | LocationsList   | ApplicationsList                                   | ActivitySpanDays\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\nanekant.jain@yash.com | Anekant  Jain   | Low             | 4               | 7               | 71.43           | 3                 | 1               | 4                  | 5                 | 2               | 0               | 7                  | 0                     | 2025-10-30T10:56:11.9982207Z | 2025-10-31T07:19:59.7909736Z | [\"106.219.84.254\",\"14.194.129.210\",\"125.23.93.22\"] | [\"IN\"]          | [\"Microsoft Azure CLI\",\"Microsoft Invitation Accep | 1               \n================================================================================\n\nTotal Records: 1",
+      "raw_results": {
+        "tables": [
+          {
+            "name": "PrimaryResult",
+            "columns": [
+              {
+                "name": "UserPrincipalName",
+                "type": "string"
+              },
+              {
+                "name": "UserDisplayName",
+                "type": "string"
+              },
+              {
+                "name": "ThreatLevel",
+                "type": "string"
+              },
+              {
+                "name": "RiskScore",
+                "type": "long"
+              },
+              {
+                "name": "TotalSignIns",
+                "type": "long"
+              },
+              {
+                "name": "SuccessRate",
+                "type": "real"
+              },
+              {
+                "name": "UniqueIPAddresses",
+                "type": "long"
+              },
+              {
+                "name": "UniqueLocations",
+                "type": "long"
+              },
+              {
+                "name": "UniqueApplications",
+                "type": "long"
+              },
+              {
+                "name": "SuccessfulSignIns",
+                "type": "long"
+              },
+              {
+                "name": "FailedSignIns",
+                "type": "long"
+              },
+              {
+                "name": "RiskySignIns",
+                "type": "long"
+              },
+              {
+                "name": "InteractiveSignIns",
+                "type": "long"
+              },
+              {
+                "name": "NonInteractiveSignIns",
+                "type": "long"
+              },
+              {
+                "name": "FirstActivity",
+                "type": "datetime"
+              },
+              {
+                "name": "LastActivity",
+                "type": "datetime"
+              },
+              {
+                "name": "IPAddressesList",
+                "type": "dynamic"
+              },
+              {
+                "name": "LocationsList",
+                "type": "dynamic"
+              },
+              {
+                "name": "ApplicationsList",
+                "type": "dynamic"
+              },
+              {
+                "name": "ActivitySpanDays",
+                "type": "long"
+              }
+            ],
+            "rows": [
+              [
+                "anekant.jain@yash.com",
+                "Anekant  Jain",
+                "Low",
+                4,
+                7,
+                71.43,
+                3,
+                1,
+                4,
+                5,
+                2,
+                0,
+                7,
+                0,
+                "2025-10-30T10:56:11.9982207Z",
+                "2025-10-31T07:19:59.7909736Z",
+                "[\"106.219.84.254\",\"14.194.129.210\",\"125.23.93.22\"]",
+                "[\"IN\"]",
+                "[\"Microsoft Azure CLI\",\"Microsoft Invitation Acceptance Portal\",\"My Profile\",\"My Apps\"]",
+                1
+              ]
+            ]
+          }
+        ]
+      },
+      "result_rows": 1
+    }
+  },
+  "injected_query": "SigninLogs\n| where TimeGenerated > datetime(2025-10-27 10:30:00Z) and TimeGenerated <= datetime(2025-11-03 10:30:00Z)\n| where UserPrincipalName in (\"anekant.jain@yash.com\")\n| summarize\n    TotalSignIns = count(),\n    UniqueIPAddresses = dcount(IPAddress),\n    UniqueLocations = dcount(tostring(LocationDetails.countryOrRegion)),\n    UniqueApplications = dcount(AppDisplayName),\n    SuccessfulSignIns = countif(ResultType == \"0\"),\n    FailedSignIns = countif(ResultType != \"0\"),\n    RiskySignIns = countif(IsRisky == true),\n    InteractiveSignIns = countif(IsInteractive == true),\n    NonInteractiveSignIns = countif(IsInteractive == false),\n    FirstActivity = min(TimeGenerated),\n    LastActivity = max(TimeGenerated),\n    IPAddressesList = make_set(IPAddress, 10),\n    LocationsList = make_set(tostring(LocationDetails.countryOrRegion), 5),\n    ApplicationsList = make_set(AppDisplayName, 10)\n    by UserPrincipalName, UserDisplayName\n| extend\n    SuccessRate = round(100.0 * SuccessfulSignIns / TotalSignIns, 2),\n    RiskScore = (FailedSignIns * 2) + (RiskySignIns * 5),\n    ActivitySpanDays = datetime_diff('day', LastActivity, FirstActivity),\n    ThreatLevel = case(\n        RiskySignIns > 5, \"Critical\",\n        RiskySignIns > 2, \"High\",\n        FailedSignIns > 10, \"Medium\",\n        \"Low\"\n    )\n| project-reorder UserPrincipalName, UserDisplayName, ThreatLevel, RiskScore, TotalSignIns, SuccessRate",
+  "status": "PASSED"
+}

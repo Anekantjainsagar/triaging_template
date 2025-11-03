@@ -1,10 +1,3 @@
-"""
-Hardcoded KQL Query Library for Security Investigation
-All queries use placeholders: <USER_EMAIL> and <IP_ADDRESS>
-Based on SigninLogs schema with proper field names and types
-Includes fallback to KQL Search API
-"""
-
 import requests
 import re
 from typing import Optional, Dict, Tuple
@@ -51,9 +44,11 @@ class HardcodedKQLQueries:
     AUTH_METHOD_ANALYSIS = """SigninLogs
 | where TimeGenerated > ago(7d)
 | where UserPrincipalName == "<USER_EMAIL>"
+| extend AuthenticationDetails = todynamic(AuthenticationDetails)
+| mv-expand AuthDetail = AuthenticationDetails
 | extend 
-    AuthMethod = tostring(AuthenticationDetails[0].authenticationMethod),
-    AuthSuccess = tostring(AuthenticationDetails[0].succeeded)
+    AuthMethod = tostring(AuthDetail.authenticationMethod),
+    AuthSuccess = tostring(AuthDetail.succeeded)
 | summarize
     TotalSignIns = count(),
     UniqueAuthMethods = dcount(AuthMethod),
@@ -69,10 +64,11 @@ class HardcodedKQLQueries:
     by UserPrincipalName
 | extend
     MFAAdoptionRate = round(100.0 * MFARequired / TotalSignIns, 2),
-    AuthSuccessRate = round(100.0 * SuccessfulAuths / TotalSignIns, 2),
+    AuthSuccessRate = round(100.0 * SuccessfulAuths / TotalSignIns, 2)
+| extend
     MFAStatus = case(
         MFAAdoptionRate >= 90, "Excellent - Strong MFA",
-        MFAAdoptionRate >= 70, "Good - Moderate MFA",
+        MFAAdoptionRate >= 70, "Good - Moderate MFA", 
         MFAAdoptionRate >= 50, "Fair - Partial MFA",
         "Poor - Weak MFA"
     )
@@ -100,10 +96,11 @@ class HardcodedKQLQueries:
     RiskEventTypes = make_set(RiskEventTypes_V2, 10)
     by UserPrincipalName, UserDisplayName, UserId
 | extend
-    VIPRiskScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedAttempts * 2) + (UniqueCountries * 3),
+    VIPRiskScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedAttempts * 2) + (UniqueCountries * 3)
+| extend
     AccountClassification = case(
         VIPRiskScore > 30, "🔴 Critical - Executive at High Risk",
-        VIPRiskScore > 15, "🟠 High - VIP Requires Attention",
+        VIPRiskScore > 15, "🟠 High - VIP Requires Attention", 
         VIPRiskScore > 5, "🟡 Medium - Monitor Closely",
         "🟢 Low - Normal Activity"
     ),
@@ -199,7 +196,8 @@ class HardcodedKQLQueries:
 | extend
     DaysSeen = datetime_diff('day', LastSeen, FirstSeen) + 1,
     SuccessRate = round(100.0 * SuccessfulLogins / TotalAttempts, 2),
-    IPThreatScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedLogins * 2) + (UniqueUsers * 3),
+    IPThreatScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedLogins * 2) + (UniqueUsers * 3)
+| extend
     ThreatClassification = case(
         HighRiskSignIns > 5, "🔴 Critical Threat - Malicious Actor",
         HighRiskSignIns > 0, "🟠 High Risk - Known Threat",
@@ -210,7 +208,7 @@ class HardcodedKQLQueries:
     ),
     UsagePattern = case(
         DaysSeen == 1 and TotalAttempts > 20, "Burst Activity",
-        DaysSeen > 7, "Persistent Access",
+        DaysSeen > 7, "Persistent Access", 
         TotalAttempts > 50, "High Volume",
         "Standard Usage"
     )
@@ -633,8 +631,6 @@ class HardcodedKQLQueries:
 
 
 class KQLQueryFallback:
-    """Fallback mechanism using KQL Search API"""
-
     API_URL = "https://www.kqlsearch.com/api/querygenerator"
 
     def __init__(self):
@@ -789,10 +785,6 @@ class KQLQueryFallback:
 
 
 class KQLQueryManager:
-    """
-    Main manager class that provides hardcoded queries with API fallback
-    """
-
     # Query mapping
     QUERY_MAP = {
         "initial_scope": HardcodedKQLQueries.INITIAL_SCOPE_ANALYSIS,
@@ -841,28 +833,12 @@ class KQLQueryManager:
     }
 
     def __init__(self, enable_api_fallback: bool = True):
-        """
-        Initialize query manager
-
-        Args:
-            enable_api_fallback: Whether to use API fallback when no hardcoded query found
-        """
         self.enable_api_fallback = enable_api_fallback
         self.fallback = KQLQueryFallback() if enable_api_fallback else None
 
     def get_query(
         self, query_type: str, use_fallback: bool = True
     ) -> Tuple[Optional[str], str]:
-        """
-        Get KQL query by type with optional API fallback
-
-        Args:
-            query_type: Type of query to retrieve
-            use_fallback: Whether to use API fallback if hardcoded query not found
-
-        Returns:
-            Tuple of (query_string, source) where source is "hardcoded" or "api"
-        """
         query_key = query_type.lower().strip()
 
         # Try to get hardcoded query first
@@ -888,17 +864,6 @@ class KQLQueryManager:
         user_email: Optional[str] = None,
         ip_address: Optional[str] = None,
     ) -> str:
-        """
-        Inject actual values into query placeholders
-
-        Args:
-            query: KQL query with placeholders
-            user_email: User email to inject
-            ip_address: IP address to inject
-
-        Returns:
-            Query with injected values
-        """
         result = query
 
         if user_email:
@@ -910,12 +875,6 @@ class KQLQueryManager:
         return result
 
     def list_available_queries(self) -> Dict[str, str]:
-        """
-        List all available hardcoded query types
-
-        Returns:
-            Dictionary mapping query keys to their descriptions
-        """
         descriptions = {
             "initial_scope": "Initial scope and impact analysis",
             "auth_method": "Authentication method and client app analysis",
@@ -933,43 +892,3 @@ class KQLQueryManager:
             "legacy_auth": "Legacy authentication usage",
         }
         return descriptions
-
-
-# ==================== USAGE EXAMPLES ====================
-
-
-def example_usage():
-    """Examples of how to use the KQL Query Manager"""
-
-    # Initialize manager
-    manager = KQLQueryManager(enable_api_fallback=True)
-
-    # Example 1: Get hardcoded query
-    query, source = manager.get_query("mfa_config")
-    if query:
-        print(f"Query source: {source}")
-        print(f"Query: {query[:200]}...")
-
-    # Example 2: Inject parameters
-    user_email = "user@example.com"
-    ip_address = "192.168.1.1"
-
-    final_query = manager.inject_parameters(query, user_email, ip_address)
-    print(f"\nInjected query: {final_query[:200]}...")
-
-    # Example 3: Use API fallback for custom query
-    custom_query, source = manager.get_query(
-        "analyze user login patterns from suspicious IPs"
-    )
-    if custom_query:
-        print(f"\nCustom query source: {source}")
-        print(f"Custom query: {custom_query[:200]}...")
-
-    # Example 4: List all available queries
-    print("\nAvailable queries:")
-    for key, description in manager.list_available_queries().items():
-        print(f"  - {key}: {description}")
-
-
-if __name__ == "__main__":
-    example_usage()
