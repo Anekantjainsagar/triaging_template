@@ -2,7 +2,11 @@ import json
 import requests
 from io import BytesIO
 import streamlit as st
-from typing import Dict, Any, BinaryIO
+from typing import Dict, Any, BinaryIO, List
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PredictionsAPIClient:
@@ -266,6 +270,60 @@ class PredictionsAPIClient:
             return response.json()
         except requests.exceptions.RequestException as e:
             return {"success": False, "error": str(e)}
+
+    def analyze_ip_reputation(self, ip_address: str) -> Dict[str, Any]:
+        """
+        Perform IP reputation analysis
+
+        Args:
+            ip_address: IP address to analyze
+
+        Returns:
+            Dict with IP reputation analysis results
+        """
+        try:
+            # ✅ FIXED: Send ip_address in JSON body, not as query parameter
+            response = self.session.post(
+                f"{self.base_url}/analyze/ip_reputation",
+                json={"ip_address": ip_address},  # ✅ Send in body
+                params={"api_key": self.api_key},
+                timeout=120,
+            )
+
+            logger.info(f"IP reputation request status: {response.status_code}")
+
+            if response.status_code == 400:
+                logger.error(f"400 Bad Request: {response.text}")
+                return {"success": False, "error": response.text}
+
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"IP reputation request failed: {str(e)}")
+            return {"success": False, "error": str(e), "ip_address": ip_address}
+
+    def analyze_ip_batch(self, ip_addresses: List[str]) -> Dict[str, Any]:
+        """
+        Perform batch IP reputation analysis
+
+        Args:
+            ip_addresses: List of IP addresses to analyze
+
+        Returns:
+            Dict with batch analysis results
+        """
+        try:
+            response = self.session.post(
+                f"{self.base_url}/analyze/ip_batch",
+                json={"ip_addresses": ip_addresses},  # ✅ Send in body
+                params={"api_key": self.api_key},
+                timeout=300,
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Batch IP analysis request failed: {str(e)}")
+            return {"success": False, "error": str(e), "total": len(ip_addresses)}
 
     # ========================================================================
     # Cache Management Endpoints

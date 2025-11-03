@@ -11,6 +11,7 @@ from api_client.analyzer_api_client import get_analyzer_client
 from components.triaging_integrated import display_triaging_workflow
 from routes.src.entity_prediction import display_entity_predictions_panel
 from components.historical_analysis import display_historical_analysis_tab
+from components.ip_analysis import analyze_ip_entities_parallel
 
 # Page configuration
 st.set_page_config(
@@ -280,7 +281,6 @@ def check_api_status():
 # ✅ FIXED: Add Predictions Tab Display Function from soc.py
 # ============================================================================
 
-
 def display_predictions_tab_integrated():
     """Display predictions analysis tab with parallel automated entity-level predictions"""
 
@@ -308,7 +308,6 @@ def display_predictions_tab_integrated():
 
     # Initialize API client
     import os
-
     final_api_key = os.getenv("GOOGLE_API_KEY")
     predictions_api_url = os.getenv("PREDICTIONS_API_URL", "http://localhost:8000")
 
@@ -323,7 +322,6 @@ def display_predictions_tab_integrated():
 
             with st.spinner("Uploading investigation data..."):
                 from components.triaging.step2_enhance import _upload_to_predictions_api
-
                 upload_success = _upload_to_predictions_api(excel_data, excel_filename)
 
             if upload_success:
@@ -346,7 +344,10 @@ def display_predictions_tab_integrated():
 
         st.markdown("---")
 
-        # Extract Account entities only
+        # ✅ CHECK TESTING MODE
+        testing_mode = os.getenv("TESTING", "false").lower() == "true"
+
+        # Extract entities
         entities = alert_data.get("entities", {})
         entities_list = (
             entities.get("entities", [])
@@ -354,25 +355,68 @@ def display_predictions_tab_integrated():
             else (entities if isinstance(entities, list) else [])
         )
 
+        # Separate Account and IP entities
         account_entities = [e for e in entities_list if e.get("kind") == "Account"]
+        ip_entities = [e for e in entities_list if e.get("kind") == "Ip"]
 
-        if not account_entities:
-            st.warning("⚠️ No account entities found in this alert")
-            return
+        # ✅ CONDITIONAL: If TESTING=true, skip tabs and show account analysis directly
+        if testing_mode:
+            # Only show account analysis (no tabs)
+            st.markdown("---")
+            
+            if account_entities:
+                st.markdown(f"### 👤 Analyzing {len(account_entities)} Account(s)")
+                st.info("🤖 Running parallel analysis for all accounts...")
+                analyze_entities_parallel(account_entities, client)
+            else:
+                st.warning("⚠️ No account entities found in this alert")
 
-        st.markdown(f"### 🎯 Analyzing {len(account_entities)} Account(s)")
-        st.info("🤖 Running parallel analysis for all accounts...")
+        else:
+            # ✅ PRODUCTION: Show all tabs
+            # Create tabs for different entity types
+            tab_list = ["📊 Summary"]
+            if account_entities:
+                tab_list.append("👤 Account Analysis")
+            if ip_entities:
+                tab_list.append("🌐 IP Analysis")
 
-        # Perform parallel analysis
-        analyze_entities_parallel(account_entities, client)
+            tabs = st.tabs(tab_list)
+
+            # Summary tab
+            with tabs[0]:
+                st.markdown("### 📊 Analysis Overview")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if account_entities:
+                        st.metric("👤 Account Entities", len(account_entities))
+                with col2:
+                    if ip_entities:
+                        st.metric("🌐 IP Entities", len(ip_entities))
+
+                st.info("🤖 Running parallel analysis for all entities...")
+
+            # Account analysis tab
+            if account_entities and len(tabs) > 1:
+                with tabs[1]:
+                    st.markdown(f"### 👤 Analyzing {len(account_entities)} Account(s)")
+                    st.info("🤖 Running parallel analysis for all accounts...")
+                    analyze_entities_parallel(account_entities, client)
+
+            # IP analysis tab (NEW)
+            if ip_entities:
+                ip_tab_index = 2 if account_entities else 1
+                if len(tabs) > ip_tab_index:
+                    with tabs[ip_tab_index]:
+                        st.markdown(f"### 🌐 Analyzing {len(ip_entities)} IP Address(es)")
+                        st.info("🤖 Running parallel analysis for all IPs...")
+                        analyze_ip_entities_parallel(ip_entities, client)
 
     except Exception as e:
         st.error(f"❌ Error: {str(e)}")
-        with st.expander("🔍 View Full Error"):
+        with st.expander("View Full Error"):
             import traceback
-
             st.code(traceback.format_exc())
-
 
 def analyze_entities_parallel(account_entities: list, client):
     """Analyze multiple entities in parallel using threading"""

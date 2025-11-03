@@ -385,50 +385,49 @@ TimeWindow = case(
 
     ROLE_PERMISSION_ANALYSIS = """AuditLogs
 | where TimeGenerated > ago(30d)
-| where OperationName has_any ("Add member to role", "Add app role assignment", "Consent to application", "Add owner to application", "Add owner to service principal")
+| where OperationName has_any ("Add member to role", "Add app role assignment", "Consent to application", "Add owner")
+| where InitiatedBy.user.userPrincipalName == "<USER_EMAIL>" or TargetResources[0].userPrincipalName == "<USER_EMAIL>"
 | extend
-    InitiatedByUser = tostring(InitiatedBy.user.userPrincipalName),
-    InitiatedByApp = tostring(InitiatedBy.app.displayName),
-    TargetUser = tostring(TargetResources[0].userPrincipalName),
-    TargetDisplayName = tostring(TargetResources[0].displayName),
-    TargetType = tostring(TargetResources[0].type),
-    ModifiedProperties = TargetResources[0].modifiedProperties
-| where InitiatedByUser == "<USER_EMAIL>" or TargetUser == "<USER_EMAIL>"
-| summarize
-    TotalChanges = count(),
-    UniqueOperations = dcount(OperationName),
-    RoleAdditions = countif(OperationName has "Add member to role"),
-    AppRoleAssignments = countif(OperationName has "Add app role assignment"),
-    ConsentGrants = countif(OperationName has "Consent to application"),
-    OwnerChanges = countif(OperationName has "Add owner"),
-    SuccessfulChanges = countif(Result == "success"),
-    FailedChanges = countif(Result == "failure"),
-    FirstChange = min(TimeGenerated),
-    LastChange = max(TimeGenerated),
-    OperationsList = make_set(OperationName, 20),
-    TargetUsersList = make_set(TargetUser, 20),
-    InitiatorsList = make_set(InitiatedByUser, 10)
-    by UserType = iff(InitiatedByUser == "<USER_EMAIL>", "Initiator", "Target")
-| extend
-    DaysSinceFirstChange = datetime_diff('day', now(), FirstChange),
-    DaysSinceLastChange = datetime_diff('day', now(), LastChange),
-    ChangeFrequency = case(
-        TotalChanges > 50, "Very High",
-        TotalChanges > 20, "High",
-        TotalChanges > 10, "Moderate",
-        TotalChanges > 5, "Low",
-        "Very Low"
+    ActionType = case(
+        OperationName has "Add member to role", "Role Assignment",
+        OperationName has "Add app role assignment", "App Role Assignment", 
+        OperationName has "Consent to application", "App Consent",
+        OperationName has "Add owner", "Owner Assignment",
+        "Other"
     ),
-    RiskScore = (RoleAdditions * 5) + (AppRoleAssignments * 4) + (ConsentGrants * 6) + (OwnerChanges * 7)
+    IsInitiator = iff(InitiatedBy.user.userPrincipalName == "<USER_EMAIL>", true, false),
+    TargetUser = tostring(TargetResources[0].userPrincipalName)
+| summarize
+    TotalOperations = count(),
+    SuccessfulOperations = countif(Result == "success"),
+    FailedOperations = countif(Result == "failure"),
+    RoleAssignments = countif(ActionType == "Role Assignment"),
+    AppRoleAssignments = countif(ActionType == "App Role Assignment"),
+    AppConsents = countif(ActionType == "App Consent"),
+    OwnerAssignments = countif(ActionType == "Owner Assignment"),
+    UniqueTargets = dcount(TargetUser),
+    FirstOperation = min(TimeGenerated),
+    LastOperation = max(TimeGenerated)
+    by UserPrincipalName = "<USER_EMAIL>", InvolvementType = iff(IsInitiator, "Initiator", "Target")
+| extend
+    SuccessRate = round(100.0 * SuccessfulOperations / TotalOperations, 2),
+    RiskScore = (RoleAssignments * 5) + (AppRoleAssignments * 4) + (AppConsents * 6) + (OwnerAssignments * 7)
 | extend
     RiskLevel = case(
         RiskScore > 50, "🔴 Critical - Excessive Privilege Changes",
-        RiskScore > 30, "🟠 High - Significant Role Activity",
+        RiskScore > 30, "🟠 High - Significant Role Activity", 
         RiskScore > 15, "🟡 Medium - Moderate Privilege Changes",
         RiskScore > 5, "⚠️ Low - Some Activity",
         "🟢 Normal"
+    ),
+    ActivityFrequency = case(
+        TotalOperations > 50, "Very High",
+        TotalOperations > 20, "High",
+        TotalOperations > 10, "Moderate", 
+        TotalOperations > 5, "Low",
+        "Very Low"
     )
-| project-reorder UserType, RiskLevel, RiskScore, TotalChanges, ChangeFrequency, RoleAdditions, AppRoleAssignments
+| project-reorder UserPrincipalName, InvolvementType, RiskLevel, RiskScore, TotalOperations, SuccessRate, ActivityFrequency
 | order by RiskScore desc"""
 
     # ==================== CONDITIONAL ACCESS POLICY ANALYSIS ====================

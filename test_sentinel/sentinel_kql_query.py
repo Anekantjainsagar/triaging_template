@@ -41,42 +41,52 @@ def main():
 
     workspace_id = os.getenv("LOG_ANALYTICS_WORKSPACE_ID")
 
-    kql_query = """// VIP User Verification Query
-// Alert Time Generated: 2025-10-25 06:45:23Z
-// Query Time Range: 2025-10-18 06:45:23Z to 2025-10-25 06:45:23Z (7 days)
-// Analyst-provided VIP users: 3 user(s)
-// Alert-affected users: 5 user(s)
-
-let VIPUsers = datatable(UserPrincipalName:string)
-[
-    "ceo@company.com",
-    "cfo@company.com",
-    "admin@company.com"
-];
-SigninLogs
-| where TimeGenerated > datetime(2025-10-18 06:45:23Z) and TimeGenerated <= datetime(2025-10-25 06:45:23Z)
-| where UserPrincipalName in ("urvashi.upadhyay@yashtechnologies841.onmicrosoft.com", "sweta.tiwari@yashtechnologies841.onmicrosoft.com", "umapreethi.v@yash.com", "chirag.gupta@yashtechnologies841.onmicrosoft.com", "ganesh.tanneru@yashtechnologies841.onmicrosoft.com")
-| extend IsVIP = iff(UserPrincipalName in (VIPUsers), "⭐ VIP ACCOUNT", "Regular User")
+    kql_query = """AuditLogs
+| where TimeGenerated > datetime(2025-09-25 00:45:25Z) and TimeGenerated <= datetime(2025-10-25 00:45:25Z)
+| where OperationName has_any ("Add member to role", "Add app role assignment", "Consent to application", "Add owner")
+| where InitiatedBy.user.UserPrincipalName in ("urvashi.upadhyay@yashtechnologies841.onmicrosoft.com", "umapreethi.v@yash.com", "chirag.gupta@yashtechnologies841.onmicrosoft.com", "ganesh.tanneru@yashtechnologies841.onmicrosoft.com", "sweta.tiwari@yashtechnologies841.onmicrosoft.com") or TargetResources[0].UserPrincipalName in ("urvashi.upadhyay@yashtechnologies841.onmicrosoft.com", "umapreethi.v@yash.com", "chirag.gupta@yashtechnologies841.onmicrosoft.com", "ganesh.tanneru@yashtechnologies841.onmicrosoft.com", "sweta.tiwari@yashtechnologies841.onmicrosoft.com")
+| extend
+    ActionType = case(
+        OperationName has "Add member to role", "Role Assignment",
+        OperationName has "Add app role assignment", "App Role Assignment", 
+        OperationName has "Consent to application", "App Consent",
+        OperationName has "Add owner", "Owner Assignment",
+        "Other"
+    ),
+    IsInitiator = iff(InitiatedBy.user.UserPrincipalName in ("urvashi.upadhyay@yashtechnologies841.onmicrosoft.com", "umapreethi.v@yash.com", "chirag.gupta@yashtechnologies841.onmicrosoft.com", "ganesh.tanneru@yashtechnologies841.onmicrosoft.com", "sweta.tiwari@yashtechnologies841.onmicrosoft.com"), true, false),
+    TargetUser = tostring(TargetResources[0].userPrincipalName)
 | summarize
-TotalSignIns = count(),
-    UniqueIPAddresses = dcount(IPAddress),
-    UniqueCountries = dcount(tostring(LocationDetails.countryOrRegion)),
-    HighRiskSignIns = countif(RiskLevelAggregated == "high"),
-    MediumRiskSignIns = countif(RiskLevelAggregated == "medium"),
-    FailedAttempts = countif(ResultType != "0"),
-    SuccessfulSignIns = countif(ResultType == "0")
-    by UserPrincipalName, UserDisplayName, IsVIP
+    TotalOperations = count(),
+    SuccessfulOperations = countif(Result == "success"),
+    FailedOperations = countif(Result == "failure"),
+    RoleAssignments = countif(ActionType == "Role Assignment"),
+    AppRoleAssignments = countif(ActionType == "App Role Assignment"),
+    AppConsents = countif(ActionType == "App Consent"),
+    OwnerAssignments = countif(ActionType == "Owner Assignment"),
+    UniqueTargets = dcount(TargetUser),
+    FirstOperation = min(TimeGenerated),
+    LastOperation = max(TimeGenerated)
+    by UserPrincipalName = "urvashi.upadhyay@yashtechnologies841.onmicrosoft.com", "umapreethi.v@yash.com", "chirag.gupta@yashtechnologies841.onmicrosoft.com", "ganesh.tanneru@yashtechnologies841.onmicrosoft.com", "sweta.tiwari@yashtechnologies841.onmicrosoft.com", InvolvementType = iff(IsInitiator, "Initiator", "Target")
 | extend
-    VIPRiskScore = (HighRiskSignIns * 10) + (MediumRiskSignIns * 5) + (FailedAttempts * 2) + (UniqueCountries * 3)
+    SuccessRate = round(100.0 * SuccessfulOperations / TotalOperations, 2),
+    RiskScore = (RoleAssignments * 5) + (AppRoleAssignments * 4) + (AppConsents * 6) + (OwnerAssignments * 7)
 | extend
-    AccountClassification = case(
-        VIPRiskScore > 30, "🔴 Critical - Executive at High Risk",
-        VIPRiskScore > 15, "🟠 High - VIP Requires Attention",
-        VIPRiskScore > 5, "🟡 Medium - Monitor Closely", 
-        "🟢 Low - Normal Activity"
+    RiskLevel = case(
+        RiskScore > 50, "🔴 Critical - Excessive Privilege Changes",
+        RiskScore > 30, "🟠 High - Significant Role Activity", 
+        RiskScore > 15, "🟡 Medium - Moderate Privilege Changes",
+        RiskScore > 5, "⚠️ Low - Some Activity",
+        "🟢 Normal"
+    ),
+    ActivityFrequency = case(
+        TotalOperations > 50, "Very High",
+        TotalOperations > 20, "High",
+        TotalOperations > 10, "Moderate", 
+        TotalOperations > 5, "Low",
+        "Very Low"
     )
-| project-reorder UserPrincipalName, UserDisplayName, IsVIP, AccountClassification, VIPRiskScore
-| order by VIPRiskScore desc"""
+| project-reorder UserPrincipalName, InvolvementType, RiskLevel, RiskScore, TotalOperations, SuccessRate, ActivityFrequency
+| order by RiskScore desc"""
 
     credential = DefaultAzureCredential()
     token = credential.get_token("https://api.loganalytics.io/.default").token

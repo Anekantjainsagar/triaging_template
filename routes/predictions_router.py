@@ -1,22 +1,31 @@
+# Add these imports at the top of predictions_router.py
+
 import io
 import pandas as pd
-import numpy as np  # ✅ ADD THIS IMPORT
+import numpy as np
 from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, List, Any
+import os  # ✅ ADD THIS
+import logging
 from fastapi import APIRouter, HTTPException, Query, File, UploadFile
-from backend.backed_fixes import extract_investigation_steps_fixed, clean_dataframe # Import fixed extraction
 
-# Import backend analyzer
+# Make sure these are also imported
+from backend.backed_fixes import extract_investigation_steps_fixed, clean_dataframe
 from backend.predictions_backend import InvestigationAnalyzer
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 # Create router
 router = APIRouter()
 
-import logging
-from backend.backed_fixes import extract_investigation_steps_fixed, clean_dataframe
 
-logger = logging.getLogger(__name__)
+class AnalyzeIPRequest(BaseModel):
+    """Request model for IP analysis"""
+
+    ip_address: str = Field(..., description="IP address to analyze", min_length=1)
+
 
 # Global cache for analyzers and data
 _investigation_analyzer: Optional[InvestigationAnalyzer] = None
@@ -34,6 +43,303 @@ _api_statistics = {
         "BENIGN POSITIVE": 0,
     },
 }
+
+
+def perform_ip_reputation_analysis(ip_address: str, api_key: str) -> Dict[str, Any]:
+    """
+    Perform comprehensive IP reputation analysis using VirusTotal and AbuseIPDB
+
+    Integrates with:
+    - VirusTotal API (detections, geolocation, ASN)
+    - AbuseIPDB API (abuse reports, confidence score)
+    """
+    try:
+        analysis = {
+            "initial_analysis": {
+                "classification": "UNKNOWN",
+                "risk_level": "UNKNOWN",
+                "threat_score": 0,
+                "confidence_score": 50,
+                "summary": f"Analysis for IP {ip_address}",
+                "geolocation": {},
+                "threat_indicators": [],
+                "key_findings": [],
+                "reputation_sources": {},
+            },
+            "executive_summary": {
+                "one_line_summary": f"IP reputation analysis for {ip_address}",
+                "threat_details": "Analyzing from multiple threat intelligence sources",
+                "immediate_actions": ["Monitor for suspicious activity"],
+                "investigation_priority": "P3",
+            },
+            "threat_intelligence": {},
+        }
+
+        vt_result = None
+        abuseipdb_result = None
+
+        # ✅ Check VirusTotal API
+        vt_result = check_ip_virustotal(ip_address)
+        if vt_result:
+            analysis["initial_analysis"]["reputation_sources"]["virustotal"] = vt_result
+
+            # Extract geolocation from VirusTotal
+            if vt_result.get("geolocation"):
+                analysis["initial_analysis"]["geolocation"] = vt_result["geolocation"]
+
+            # Update threat score based on VirusTotal detections
+            detections = vt_result.get("detections", 0)
+            if detections > 0:
+                analysis["initial_analysis"]["classification"] = "TRUE POSITIVE"
+                analysis["initial_analysis"]["risk_level"] = "HIGH"
+                analysis["initial_analysis"]["threat_score"] = min(detections * 5, 100)
+                analysis["initial_analysis"]["confidence_score"] = 85
+                analysis["initial_analysis"][
+                    "summary"
+                ] = f"IP flagged by {detections} vendors on VirusTotal"
+
+                analysis["initial_analysis"]["threat_indicators"].append(
+                    {
+                        "name": "VirusTotal Detection",
+                        "type": "Reputation",
+                        "severity": "High",
+                        "details": f"IP detected as malicious by {detections} security vendors",
+                        "evidence": f"Detection rate: {vt_result.get('detection_rate', 'N/A')}",
+                    }
+                )
+            else:
+                analysis["initial_analysis"]["classification"] = "FALSE POSITIVE"
+                analysis["initial_analysis"]["risk_level"] = "LOW"
+                analysis["initial_analysis"]["threat_score"] = 0
+                analysis["initial_analysis"]["confidence_score"] = 75
+                analysis["initial_analysis"][
+                    "summary"
+                ] = "IP appears clean on VirusTotal"
+
+        # ✅ Check AbuseIPDB API
+        abuseipdb_result = check_ip_abuseipdb(ip_address)
+        if abuseipdb_result:
+            analysis["initial_analysis"]["reputation_sources"][
+                "abuseipdb"
+            ] = abuseipdb_result
+
+            # Extract additional geolocation from AbuseIPDB
+            if (
+                abuseipdb_result.get("geolocation")
+                and not analysis["initial_analysis"]["geolocation"]
+            ):
+                analysis["initial_analysis"]["geolocation"] = abuseipdb_result[
+                    "geolocation"
+                ]
+
+            # Update threat score based on AbuseIPDB confidence
+            confidence = abuseipdb_result.get("confidence_score", 0)
+            total_reports = abuseipdb_result.get("total_reports", 0)
+
+            if confidence > 75:
+                if analysis["initial_analysis"]["classification"] != "TRUE POSITIVE":
+                    analysis["initial_analysis"]["classification"] = "TRUE POSITIVE"
+                    analysis["initial_analysis"]["risk_level"] = "HIGH"
+                analysis["initial_analysis"]["threat_score"] = max(
+                    analysis["initial_analysis"]["threat_score"], 85
+                )
+                analysis["initial_analysis"]["confidence_score"] = max(
+                    analysis["initial_analysis"]["confidence_score"], 88
+                )
+
+                analysis["initial_analysis"]["threat_indicators"].append(
+                    {
+                        "name": "AbuseIPDB Reports",
+                        "type": "Abuse Reports",
+                        "severity": "High",
+                        "details": f"IP has {total_reports} abuse reports with {confidence}% confidence",
+                        "evidence": f"Total reports: {total_reports}, Confidence: {confidence}%",
+                    }
+                )
+            elif confidence > 25:
+                if analysis["initial_analysis"]["risk_level"] == "UNKNOWN":
+                    analysis["initial_analysis"]["risk_level"] = "MEDIUM"
+                analysis["initial_analysis"]["threat_score"] = max(
+                    analysis["initial_analysis"]["threat_score"], 50
+                )
+
+            # Check for high-risk country from AbuseIPDB
+            if abuseipdb_result.get("is_high_risk_country"):
+                analysis["initial_analysis"]["threat_indicators"].append(
+                    {
+                        "name": "High-Risk Country",
+                        "type": "Geolocation",
+                        "severity": "Medium",
+                        "details": f"IP located in high-risk country: {abuseipdb_result.get('country', 'Unknown')}",
+                        "evidence": f"Country: {abuseipdb_result.get('country', 'Unknown')}, ASN: {abuseipdb_result.get('asn', 'N/A')}",
+                    }
+                )
+
+        # ✅ Default classification if no data from either service
+        if analysis["initial_analysis"]["classification"] == "UNKNOWN":
+            analysis["initial_analysis"]["classification"] = "FALSE POSITIVE"
+            analysis["initial_analysis"]["risk_level"] = "LOW"
+            analysis["initial_analysis"]["threat_score"] = 0
+            analysis["initial_analysis"]["confidence_score"] = 50
+
+        # Add key findings
+        if analysis["initial_analysis"]["threat_score"] > 50:
+            analysis["initial_analysis"]["key_findings"].append(
+                {
+                    "category": "High Threat Score",
+                    "severity": "High",
+                    "details": f"Threat score: {analysis['initial_analysis']['threat_score']}/100",
+                    "evidence": "Multiple threat sources flagged this IP",
+                }
+            )
+        else:
+            analysis["initial_analysis"]["key_findings"].append(
+                {
+                    "category": "Reputation Status",
+                    "severity": "Low",
+                    "details": "IP appears to have good reputation",
+                    "evidence": "Threat sources show low/no detections",
+                }
+            )
+
+        # Update executive summary
+        if analysis["initial_analysis"]["threat_score"] > 75:
+            analysis["executive_summary"]["investigation_priority"] = "P1"
+            analysis["executive_summary"][
+                "threat_details"
+            ] = "IP is flagged as malicious by multiple threat sources"
+        elif analysis["initial_analysis"]["threat_score"] > 50:
+            analysis["executive_summary"]["investigation_priority"] = "P2"
+            analysis["executive_summary"][
+                "threat_details"
+            ] = "IP shows moderate threat indicators"
+        else:
+            analysis["executive_summary"]["investigation_priority"] = "P3"
+            analysis["executive_summary"]["threat_details"] = "IP reputation is clean"
+
+        return analysis
+
+    except Exception as e:
+        logger.error(f"Error in IP reputation analysis: {str(e)}")
+        return None
+
+
+def check_ip_virustotal(ip_address: str) -> Dict[str, Any]:
+    """Check IP reputation using VirusTotal API"""
+    try:
+        import requests
+
+        vt_api_key = os.getenv("VIRUSTOTAL_API_KEY")
+        if not vt_api_key:
+            logger.warning("VirusTotal API key not configured")
+            return None
+
+        url = f"https://www.virustotal.com/api/v3/ip_addresses/{ip_address}"
+        headers = {"x-apikey": vt_api_key}
+
+        response = requests.get(url, headers=headers, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+            attributes = data.get("data", {}).get("attributes", {})
+
+            last_analysis_stats = attributes.get("last_analysis_stats", {})
+            detections = last_analysis_stats.get("malicious", 0)
+            total_vendors = (
+                last_analysis_stats.get("malicious", 0)
+                + last_analysis_stats.get("suspicious", 0)
+                + last_analysis_stats.get("undetected", 0)
+                + last_analysis_stats.get("harmless", 0)
+            )
+
+            country = attributes.get("country", "Unknown")
+            city = attributes.get("city", "Unknown")
+            asn = attributes.get("asn", {}).get("name", "Unknown")
+            asn_num = attributes.get("asn", {}).get("asn", "N/A")
+
+            return {
+                "detections": detections,
+                "total_vendors": total_vendors if total_vendors > 0 else 95,
+                "detection_rate": (
+                    f"{detections}/95"
+                    if total_vendors == 0
+                    else f"{detections}/{total_vendors}"
+                ),
+                "country": country,
+                "city": city,
+                "asn": asn,
+                "asn_number": asn_num,
+                "geolocation": {
+                    "country": country,
+                    "city": city,
+                    "isp": asn,
+                    "is_high_risk_country": country
+                    in ["Russia", "China", "Iran", "North Korea", "Syria"],
+                },
+            }
+        else:
+            logger.warning(f"VirusTotal API error: {response.status_code}")
+            return None
+
+    except Exception as e:
+        logger.error(f"Error checking VirusTotal: {str(e)}")
+        return None
+
+
+def check_ip_abuseipdb(ip_address: str) -> Dict[str, Any]:
+    """Check IP reputation using AbuseIPDB API"""
+    try:
+        import requests
+
+        abuseipdb_api_key = os.getenv("ABUSEIPDB_API_KEY")
+        if not abuseipdb_api_key:
+            logger.warning("AbuseIPDB API key not configured")
+            return None
+
+        url = "https://api.abuseipdb.com/api/v2/check"
+        headers = {"Key": abuseipdb_api_key, "Accept": "application/json"}
+        params = {"ipAddress": ip_address, "maxAgeInDays": 90, "verbose": ""}
+
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+            ip_data = data.get("data", {})
+
+            confidence_score = ip_data.get("abuseConfidenceScore", 0)
+            total_reports = ip_data.get("totalReports", 0)
+            country = ip_data.get("countryName", "Unknown")
+            country_code = ip_data.get("countryCode", "N/A")
+            isp = ip_data.get("isp", "Unknown")
+
+            # Get usage type
+            usage_type = ip_data.get("usageType", "Unknown")
+
+            return {
+                "confidence_score": confidence_score,
+                "total_reports": total_reports,
+                "country": country,
+                "country_code": country_code,
+                "isp": isp,
+                "usage_type": usage_type,
+                "is_whitelisted": ip_data.get("isWhitelisted", False),
+                "is_high_risk_country": country
+                in ["Russia", "China", "Iran", "North Korea", "Syria"],
+                "geolocation": {
+                    "country": country,
+                    "city": "N/A",  # AbuseIPDB doesn't provide city
+                    "isp": isp,
+                    "is_high_risk_country": country
+                    in ["Russia", "China", "Iran", "North Korea", "Syria"],
+                },
+            }
+        else:
+            logger.warning(f"AbuseIPDB API error: {response.status_code}")
+            return None
+
+    except Exception as e:
+        logger.error(f"Error checking AbuseIPDB: {str(e)}")
+        return None
 
 
 # ============================================================================
@@ -591,6 +897,9 @@ async def analyze_complete(request: AnalyzeInvestigationRequest, api_key: str = 
         raise HTTPException(
             status_code=500, detail=f"Analysis error: {str(e)}"
         )
+
+
+
 
 
 # ============================================================================
