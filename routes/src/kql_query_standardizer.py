@@ -1,9 +1,3 @@
-"""
-ENHANCED: kql_query_standardizer.py
-With automatic syntax error learning and recovery
-Focuses on PIPE validation only - accepts all data as-is
-"""
-
 import re
 from typing import Tuple, Optional, Dict, List
 from datetime import datetime, timedelta
@@ -347,21 +341,6 @@ class KQLSyntaxErrorLearner:
 
         return query
 
-    def get_learning_stats(self) -> Dict:
-        """Get statistics on learning"""
-        return {
-            "total_errors_learned": len(self.error_history),
-            "unique_error_patterns": len(self.error_patterns),
-            "average_success_rate": (
-                sum(self.correction_success_rate.values())
-                / len(self.correction_success_rate)
-                if self.correction_success_rate
-                else 0
-            ),
-            "error_patterns": self.error_patterns,
-            "success_rates": self.correction_success_rate,
-        }
-
 
 class KQLQueryStandardizer:
     """Standardizes and normalizes generated KQL queries with error learning"""
@@ -642,119 +621,6 @@ class KQLQueryStandardizer:
         )
 
         return standardized, explanation
-
-    def standardize_query(
-        self,
-        raw_kql: str,
-        query_intent: str = "",
-        reference_datetime_obj: Optional[datetime] = None,
-    ) -> Tuple[str, str]:
-        """
-        Standardize a raw KQL query into our format
-        WITH SYNTAX VALIDATION AND AUTO-CORRECTION
-
-        Args:
-            raw_kql: Raw KQL from API or LLM
-            query_intent: What this query is trying to do (for context)
-            reference_datetime_obj: Alert timeGenerated for 7-day calculation
-
-        Returns:
-            Tuple of (standardized_kql, explanation)
-        """
-
-        if not raw_kql or len(raw_kql.strip()) < 20:
-            return "", "Query too short to standardize"
-
-        # STEP 1: Validate incoming query
-        print(f"\n🔍 KQL Validation & Standardization")
-        print(f"{'='*60}")
-
-        is_valid, error_msg, issues = self.syntax_validator.validate_query(raw_kql)
-
-        if not is_valid:
-            print(f"⚠️  Issues detected: {len(issues)}")
-            for issue in issues[:3]:  # Show first 3
-                print(f"   - {issue}")
-
-            # Try to fix
-            print(f"\n🔧 Attempting automatic correction...")
-            raw_kql, fixes = self.syntax_validator.fix_query(raw_kql)
-
-            for fix in fixes:
-                print(f"   ✅ {fix}")
-
-            # Validate again
-            is_valid, error_msg, issues = self.syntax_validator.validate_query(raw_kql)
-
-            if not is_valid:
-                print(f"⚠️  Still has issues after auto-fix: {issues[0]}")
-        else:
-            print(f"✅ Query passed validation")
-
-        # STEP 2: Identify primary table
-        primary_table = self._identify_primary_table(raw_kql)
-        if not primary_table:
-            return "", "Could not identify primary table (SigninLogs/AuditLogs/etc)"
-
-        # STEP 3: Extract main logic
-        main_logic = self._extract_main_logic(raw_kql, primary_table)
-
-        # STEP 4: Check filters
-        has_user_filter = self._has_user_filter(main_logic)
-        has_ip_filter = self._has_ip_filter(main_logic)
-
-        # STEP 5: Build standardized structure
-        standardized = self._build_standardized_structure(
-            primary_table,
-            main_logic,
-            has_user_filter,
-            has_ip_filter,
-            query_intent,
-            reference_datetime_obj,
-        )
-
-        # STEP 6: Final validation
-        final_is_valid, final_error, final_issues = (
-            self.syntax_validator.validate_query(standardized)
-        )
-
-        if not final_is_valid:
-            print(f"⚠️  Final query still has issues: {final_issues[0]}")
-            standardized, _ = self.syntax_validator.fix_query(standardized)
-
-        print(f"✅ Query standardization complete\n")
-
-        # STEP 7: Generate explanation
-        explanation = self._generate_explanation(
-            primary_table, query_intent, has_user_filter, has_ip_filter
-        )
-
-        return standardized, explanation
-
-    def report_execution_error(
-        self,
-        original_query: str,
-        error_message: str,
-        attempted_fix: str,
-        fix_worked: bool,
-    ):
-        """
-        Report KQL execution error for learning
-
-        Call this when a query fails to execute so the system learns
-        """
-        self.error_learner.learn_from_error(
-            original_query=original_query,
-            error_message=error_message,
-            fixed_query=attempted_fix,
-            execution_success=fix_worked,
-        )
-
-    def get_suggested_fix(
-        self, error_message: str, original_query: str
-    ) -> Optional[str]:
-        """Get suggested fix for an error based on learned patterns"""
-        return self.error_learner.suggest_fix_for_error(error_message, original_query)
 
     def _extract_main_logic(self, raw_kql: str, primary_table: str) -> str:
         """Extract the main query logic, removing comment lines and messy formatting"""

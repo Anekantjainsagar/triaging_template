@@ -1,13 +1,6 @@
-"""
-UPDATED: api_kql_generation.py
-- Skip standardization for hardcoded queries (they're perfect as-is)
-- Only apply standardization to AI-generated queries
-- Data injection happens in a separate step via TemplateKQLInjector
-"""
-
 import re
-from typing import Optional, Dict, Tuple
 from datetime import datetime
+from typing import Optional, Tuple
 from routes.src.hardcode_kql_queries import KQLQueryManager
 from routes.src.kql_query_standardizer import KQLQueryStandardizer
 
@@ -477,28 +470,3 @@ class EnhancedKQLGenerator:
             explanation += " (AI-generated query with standardization)"
 
         return explanation
-
-    def get_available_query_types(self):
-        """
-        Get list of all available hardcoded query types
-
-        Returns:
-            Dictionary of query types and descriptions
-        """
-        return self.query_manager.list_available_queries()
-
-
-# BACKWARD COMPATIBILITY: Keep old function signature for existing code
-def generate_kql_with_standardization(
-    step_name: str,
-    explanation: str,
-    rule_context: str = "",
-    reference_datetime_obj: Optional[datetime] = None,
-) -> Tuple[str, str]:
-    gen = EnhancedKQLGenerator(enable_standardization=True)
-    return gen.generate_kql_query(
-        step_name=step_name,
-        explanation=explanation,
-        rule_context=rule_context,
-        reference_datetime_obj=reference_datetime_obj,
-    )
