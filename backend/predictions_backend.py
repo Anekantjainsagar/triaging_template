@@ -197,6 +197,7 @@ class MITREAttackAnalyzer:
             investigation_context += f"""
         ### {step['step_name']}
         Output: {str(step['output'])}
+        **Analyst Remarks/Comments**: {step.get('remarks', 'None')}
         {remarks_info}
         ---
         """
@@ -580,22 +581,24 @@ class MITREAttackAnalyzer:
     - ONLY predict generic follow-up actions based on observed patterns
     - Example: If you saw "Global Administrator assigned" → predict "Discovery of resources" NOT "Discovery of AWS S3 buckets"
     3. **Sub-Technique Mandatory**: ALWAYS include sub-techniques when they exist for a technique
-    4. **Detailed Procedures**: Every technique must have a comprehensive procedure describing the exact attack method
-    5. **Comprehensive Timeline**: Attack timeline must include ALL stages with detailed narratives for each event
-    6. **Explanations**: All assessment fields (attack_stage, sophistication, confidence, dwell_time) must include detailed explanations
-    7. **Color Coding**: 
+    4. **Prediction Quality**: Next steps must include specific sub-techniques and be realistic based on observed attacker behavior
+    5. **Remarks Priority**: Analyst Remarks/Comments (from the investigation data) MUST be given the highest priority for classification and narrative reconstruction. If remarks contradict auto-detected severity, the remarks should generally prevail.
+    6. **Detailed Procedures**: Every technique must have a comprehensive procedure describing the exact attack method
+    7. **Comprehensive Timeline**: Attack timeline must include ALL stages with detailed narratives for each event
+    8. **Explanations**: All assessment fields (attack_stage, sophistication, confidence, dwell_time) must include detailed explanations
+    9. **Color Coding**: 
     - RED = Confirmed observed technique/sub-technique
     - AMBER = Highly likely technique/sub-technique in progress
     - GREEN = Predicted future technique/sub-technique
-    8. **Completeness**: Map ALL relevant MITRE tactics (1-14) with appropriate sub-techniques
-    9. **Specificity**: Use exact MITRE ATT&CK technique IDs and sub-technique IDs (e.g., T1078.004)
-    10. **Actionability**: Recommendations must be specific, prioritized, and implementable
-    11. **Timeline Accuracy**: Correlate MITRE techniques with actual timestamps from investigation
-    12. **Prediction Quality**: Next steps must include specific sub-techniques and be realistic based on observed attacker behavior
-    13. **Geographic Context**: If high-risk countries detected, emphasize in threat profiling
-    14. **Sub-Technique Justification**: Explain WHY each specific sub-technique was selected based on evidence
-    15. **Navigator Compatibility**: Include both parent techniques and sub-techniques in MITRE Navigator layer
-    16. **Coverage Tracking**: Track sub-technique coverage percentage in analysis
+    10. **Completeness**: Map ALL relevant MITRE tactics (1-14) with appropriate sub-techniques
+    11. **Specificity**: Use exact MITRE ATT&CK technique IDs and sub-technique IDs (e.g., T1078.004)
+    12. **Actionability**: Recommendations must be specific, prioritized, and implementable
+    13. **Timeline Accuracy**: Correlate MITRE techniques with actual timestamps from investigation
+    14. **Prediction Quality**: Next steps must include specific sub-techniques and be realistic based on observed attacker behavior
+    15. **Geographic Context**: If high-risk countries detected, emphasize in threat profiling
+    16. **Sub-Technique Justification**: Explain WHY each specific sub-technique was selected based on evidence
+    17. **Navigator Compatibility**: Include both parent techniques and sub-techniques in MITRE Navigator layer
+    18. **Coverage Tracking**: Track sub-technique coverage percentage in analysis
 
     **Sub-Technique Selection Rules**:
     - If evidence shows "cloud account" access → Use T1078.004 (Cloud Accounts)
@@ -875,7 +878,7 @@ Respond ONLY with valid JSON:
                                 "category": "Malicious IP Detected",
                                 "severity": "High",
                                 "details": f"IP address flagged as malicious by {virustotal_malicious_count} VirusTotal vendor(s)",
-                                "evidence": f"VirusTotal detection ratio: {virustotal_malicious_count}/95",
+                                "evidence": f"VirusTotal detection ratio: {virustotal_malious_count}/95",
                                 "impact": "Potential compromise, data exfiltration risk, or botnet activity",
                             }
 
@@ -1149,89 +1152,6 @@ Respond ONLY with valid JSON:
             "key_sub_techniques_observed": key_sub_techniques,
         }
 
-    def extract_investigation_steps(self, df, username: str) -> List[Dict]:
-        """Extract investigation steps with their outputs AND remarks for the specific user - FIXED"""
-        investigation_steps = []
-
-        for idx, row in df.iterrows():
-            # ✅ SKIP HEADER ROW - Check if Step column is NULL/NaN
-            step_value = row.get("Step", None)
-            if pd.isna(step_value) or step_value is None:
-                # This is likely the header row with rule number in "Name" column
-                print(f"⏭️  Skipping header row at index {idx}")
-                continue
-
-            # ✅ SKIP ROWS WITH NO STEP NUMBER
-            try:
-                step_num = int(step_value)
-                if step_num < 1:
-                    print(f"⏭️  Skipping invalid step number: {step_value}")
-                    continue
-            except (ValueError, TypeError):
-                print(f"⏭️  Skipping non-numeric step: {step_value}")
-                continue
-
-            # Extract ALL relevant columns
-            output_value = row.get("Output", "")
-            remarks_value = row.get("Remarks/Comments", "")
-            step_name = row.get("Name", "Unknown Step")
-            explanation = row.get("Explanation", "")
-            kql_query = row.get("KQL Query", "")
-
-            # ✅ Clean up values - handle None/NULL properly
-            output_str = ""
-            if output_value is not None and pd.notna(output_value):
-                output_clean = str(output_value).strip()
-                if output_clean.lower() not in ["nan", "none", "null", ""]:
-                    output_str = output_clean
-
-            remarks_str = ""
-            if remarks_value is not None and pd.notna(remarks_value):
-                remarks_clean = str(remarks_value).strip()
-                if remarks_clean.lower() not in ["nan", "none", "null", ""]:
-                    remarks_str = remarks_clean
-
-            step_data = {
-                "step_number": step_num,
-                "step_name": str(step_name) if pd.notna(step_name) else "Unknown Step",
-                "explanation": str(explanation) if pd.notna(explanation) else "",
-                "kql_query": (
-                    str(kql_query)
-                    if pd.notna(kql_query)
-                    and str(kql_query).strip().lower()
-                    not in ["nan", "none", "null", ""]
-                    else ""
-                ),
-                "output": output_str,  # ✅ Query output
-                "remarks": remarks_str,  # ✅ Analyst remarks
-                "analyst_notes": remarks_str,  # ✅ Additional field for context
-            }
-
-            # ✅ Include step if it has meaningful data
-            # Since username might not be in every step, we include all steps with data
-            has_meaningful_data = (
-                output_str or remarks_str or step_data.get("explanation")
-            )
-
-            if has_meaningful_data:
-                investigation_steps.append(step_data)
-
-        # ✅ Debug logging
-        print(f"📊 Extracted {len(investigation_steps)} valid steps")
-        if investigation_steps:
-            for step in investigation_steps[:3]:  # Show first 3 steps
-                print(f"  - Step {step['step_number']}: {step['step_name']}")
-                print(f"    Output length: {len(step['output'])} chars")
-                print(f"    Remarks length: {len(step['remarks'])} chars")
-        else:
-            print(f"⚠️  No valid investigation steps found!")
-            print(f"   Total rows in dataframe: {len(df)}")
-            print(f"   DataFrame columns: {df.columns.tolist()}")
-            if len(df) > 0:
-                print(f"   First row 'Step' value: {df.iloc[0].get('Step')}")
-                print(f"   First row 'Name' value: {df.iloc[0].get('Name')}")
-
-        return investigation_steps
 
     def _calculate_risk_score(self, investigation_steps: List[Dict]) -> int:
         """Calculate risk score based on investigation data to bias toward true positive"""
@@ -1338,36 +1258,12 @@ Respond ONLY with valid JSON:
     5. **High-risk countries** → Increase suspicion significantly
     6. **Do NOT classify as FALSE POSITIVE if VirusTotal detected malicious IP**
 
-    # OUTPUT FORMAT (JSON only):
-
-    {{
-        "classification": "TRUE POSITIVE" or "FALSE POSITIVE",
-        "risk_level": "Critical" or "High" or "Medium" or "Low",
-        "confidence_score": 85,
-        "key_findings": [
-            {{
-                "step_reference": "Step name",
-                "category": "Malicious IP | Geographic Anomaly | Privilege Escalation | Suspicious Activity",
-                "severity": "Critical | High | Medium | Low",
-                "details": "Specific finding description with evidence",
-                "evidence": "Concrete data from investigation",
-                "impact": "Security and business impact"
-            }}
-        ],
-        "risk_indicators": [
-            {{
-                "indicator": "Risk indicator name",
-                "severity": "High | Medium | Low",
-                "evidence": "Supporting evidence"
-            }}
-        ]
-    }}
-
-    **IMPORTANT:** 
-    - Base classification on ACTUAL evidence, not assumptions
-    - If VirusTotal flagged an IP as malicious (even 1/95), that alone is sufficient for TRUE POSITIVE
-    - Impossible travel across multiple countries in short time = TRUE POSITIVE
-    - VIP user compromise = Higher severity
+    **CRITICAL INSTRUCTIONS (MUST FOLLOW):**
+    - **REMARKS FIRST**: Analyst Remarks/Comments are paramount. If a remark indicates strong suspicion or confirms an event, prioritize TRUE POSITIVE.
+    - **FILTERED OUTPUT**: The provided output is filtered to include only data relevant to the user being analyzed. Use this filtered output as the *only* technical evidence.
+    - **UNBIASED ASSESSMENT**: Base the classification purely on the evidence and remarks. Do not assume or fabricate.
+    - If VirusTotal flagged an IP as malicious (even 1/95 or higher), that alone is sufficient for TRUE POSITIVE.
+    - Impossible travel across multiple countries/states in short time = TRUE POSITIVE.
 
     Now analyze the investigation data and provide your assessment in JSON format:"""
 
@@ -1379,7 +1275,9 @@ Respond ONLY with valid JSON:
         """Main analysis function - unchanged interface"""
         try:
             # Extract investigation steps
-            investigation_steps = self.extract_investigation_steps(df, username)
+            from backend.backed_fixes import extract_investigation_steps_fixed # Use fixed import
+
+            investigation_steps = extract_investigation_steps_fixed(df, username)
 
             if not investigation_steps:
                 print(f"No investigation steps found for user: {username}")

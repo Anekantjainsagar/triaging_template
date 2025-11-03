@@ -470,8 +470,8 @@ async def analyze_mitre(request: AnalyzeInvestigationRequest, api_key: str = "")
 
     try:
         analyzer = get_analyzer(api_key)
-        # ✅ Corrected: Use the method available on the analyzer object
-        investigation_steps = analyzer.extract_investigation_steps(
+        # ✅ Corrected: Use the fixed extraction function
+        investigation_steps = extract_investigation_steps_fixed(
             _uploaded_data, request.username
         )
 
@@ -623,8 +623,8 @@ async def batch_analyze(request: BatchAnalysisRequest, api_key: str = ""):
 
         for username in request.usernames:
             try:
-                # ✅ Corrected: Use the method available on the analyzer object
-                investigation_steps = analyzer.extract_investigation_steps(
+                # ✅ Corrected: Use the fixed extraction function
+                investigation_steps = extract_investigation_steps_fixed(
                     _uploaded_data, username
                 )
 
@@ -718,14 +718,14 @@ async def compare_analyses(request: ComparisonRequest, api_key: str = ""):
         # Analyze both users
         analysis1 = analyzer.perform_complete_analysis(
             request.username1,
-            # ✅ Corrected: Use the method available on the analyzer object
-            analyzer.extract_investigation_steps(_uploaded_data, request.username1),
+            # ✅ Corrected: Use the fixed extraction function
+            extract_investigation_steps_fixed(_uploaded_data, request.username1),
         )
 
         analysis2 = analyzer.perform_complete_analysis(
             request.username2,
-            # ✅ Corrected: Use the method available on the analyzer object
-            analyzer.extract_investigation_steps(_uploaded_data, request.username2),
+            # ✅ Corrected: Use the fixed extraction function
+            extract_investigation_steps_fixed(_uploaded_data, request.username2),
         )
 
         if analysis1.get("status") != "success" or analysis2.get("status") != "success":
