@@ -41,9 +41,8 @@ def main():
 
     workspace_id = os.getenv("LOG_ANALYTICS_WORKSPACE_ID")
 
-    kql_query = """AuditLogs
-| take 1
-"""
+    kql_query = """AuditLogs 
+    | take 1"""
 
     credential = DefaultAzureCredential()
     token = credential.get_token("https://api.loganalytics.io/.default").token
