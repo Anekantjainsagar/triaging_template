@@ -670,7 +670,7 @@ class InvestigationAnalyzer:
         self, username: str, investigation_steps: List[Dict]
     ) -> Optional[Dict[str, Any]]:
         """
-        Perform initial investigation analysis with FIXED JSON parsing
+        Perform initial investigation analysis with UNIQUE findings enforcement
         """
         try:
             steps_with_output = [s for s in investigation_steps if s.get("output")]
@@ -683,70 +683,78 @@ class InvestigationAnalyzer:
                 logger.warning(f"Insufficient data - using fallback")
                 return self._fallback_analysis(username, investigation_steps)
 
-            # Build investigation context
+            # Build investigation context with step numbers for uniqueness
             investigation_context = ""
             for step in investigation_steps:
                 if step.get("output") or step.get("explanation"):
-                    # FIXED: Don't truncate output - keep full content
                     output_text = str(step.get("output", "No output data"))
                     remarks_text = str(step.get("remarks", "None"))
 
                     investigation_context += f"""
-### Step {step['step_number']}: {step['step_name']}
-Explanation: {step.get('explanation', 'N/A')}
-Output: {output_text}
-Remarks: {remarks_text}
----
-"""
+    ### Step {step['step_number']}: {step['step_name']}
+    Explanation: {step.get('explanation', 'N/A')}
+    Output: {output_text}
+    Remarks: {remarks_text}
+    ---
+    """
 
-            # Simplified prompt
+            # IMPROVED PROMPT with uniqueness enforcement
             prompt = f"""You are a cybersecurity analyst. Analyze this investigation for user: {username}
 
-INVESTIGATION DATA:
-{investigation_context}
+    INVESTIGATION DATA:
+    {investigation_context}
 
-Classify as TRUE POSITIVE or FALSE POSITIVE based on evidence.
+    Classify as TRUE POSITIVE or FALSE POSITIVE based on evidence.
 
-CLASSIFICATION RULES:
-- TRUE POSITIVE: Clear malicious activity, multiple suspicious indicators, high-risk patterns
-- FALSE POSITIVE: Normal business activity, legitimate user behavior, benign patterns
+    CLASSIFICATION RULES:
+    - TRUE POSITIVE: Clear malicious activity, multiple suspicious indicators, high-risk patterns
+    - FALSE POSITIVE: Normal business activity, legitimate user behavior, benign patterns
 
-CRITICAL: 
-- If VirusTotal shows "CLEAN" or "0 malicious" → Strongly favor FALSE POSITIVE
-- If only 2 failed attempts out of 72 logins → Likely FALSE POSITIVE
-- If IP is Google (8.8.8.8) or known safe service → FALSE POSITIVE
-- Multiple legitimate indicators → FALSE POSITIVE
+    CRITICAL INSTRUCTIONS:
+    1. **UNIQUE FINDINGS ONLY**: Each finding must be DISTINCT and SPECIFIC to different aspects of the investigation
+    2. **NO DUPLICATE CATEGORIES**: Do NOT create multiple findings with the same category (e.g., two "Geographic Anomaly" findings)
+    3. **SPECIFIC EVIDENCE**: Include EXACT data points from the investigation (IP addresses, locations, timestamps, counts)
+    4. **STEP REFERENCE**: Each finding must reference a DIFFERENT investigation step
 
-CRITICAL INSTRUCTIONS (MUST FOLLOW):
-- **REMARKS FIRST**: Analyst Remarks/Comments are paramount. If a remark indicates strong suspicion or confirms an event, prioritize TRUE POSITIVE.
-- **FILTERED OUTPUT**: The provided output is filtered to include only data relevant to the user being analyzed. Use this filtered output as the *only* technical evidence.
-- **UNBIASED ASSESSMENT**: Base the classification purely on the evidence and remarks. Do not assume or fabricate.
-- If VirusTotal flagged an IP as malicious (even 1/95 or higher), that alone is sufficient for TRUE POSITIVE.
-- Impossible travel across multiple countries/states in short time = TRUE POSITIVE.
+    EXAMPLES OF GOOD vs BAD FINDINGS:
 
-Respond ONLY with valid JSON:
-{{
-    "classification": "TRUE POSITIVE" or "FALSE POSITIVE",
-    "risk_level": "Critical" or "High" or "Medium" or "Low",
-    "confidence_score": 0-100,
-    "key_findings": [
-        {{
-            "step_reference": "Step name",
-            "category": "Category",
-            "severity": "High/Medium/Low",
-            "details": "A detailed, unique finding specific to the filtered output (e.g., '10 successful sign-ins from 6 unique IPs in Gorakhpur and Pune'). DO NOT just copy the finding template.",
-            "evidence": "Specific values from the filtered data (e.g., MinTimeBetweenLocations: 8 hours, FailedSignIns: 5, etc.)",
-            "impact": "Security impact"
-        }}
-    ],
-    "risk_indicators": [
-        {{
-            "indicator": "Risk indicator",
-            "severity": "High/Medium/Low",
-            "evidence": "Evidence"
-        }}
-    ]
-}}"""
+    ❌ BAD (Generic, duplicate):
+    - Category: "Geographic Anomaly" - Details: "Multiple locations detected"
+    - Category: "Geographic Anomaly" - Details: "Unusual access patterns"
+
+    ✅ GOOD (Specific, unique):
+    - Category: "Impossible Travel Pattern" - Details: "User authenticated from Mumbai (10:30 AM) and then Delhi (10:45 AM) - only 15 minutes apart for 1,400 km distance"
+    - Category: "High-Risk IP Detection" - Details: "IP 116.75.193.147 flagged with 3/95 malicious detections on VirusTotal"
+
+    MANDATORY REQUIREMENTS:
+    - Each finding must have a UNIQUE category name
+    - Evidence must include SPECIFIC numbers, IPs, locations, or timestamps
+    - If multiple geographic anomalies exist, combine them into ONE finding with all details
+    - If VirusTotal detected malicious IP, that gets its OWN separate finding
+
+    Respond ONLY with valid JSON:
+    {{
+        "classification": "TRUE POSITIVE" or "FALSE POSITIVE",
+        "risk_level": "Critical" or "High" or "Medium" or "Low",
+        "confidence_score": 0-100,
+        "key_findings": [
+            {{
+                "step_reference": "Step name (must be unique)",
+                "category": "Unique category name (NO duplicates allowed)",
+                "severity": "High/Medium/Low",
+                "details": "SPECIFIC finding with EXACT data points (IPs, locations, counts, timestamps)",
+                "evidence": "CONCRETE evidence with numbers and specifics (e.g., 'FailedSignIns: 5, SuccessRate: 40%, IP: 116.75.193.147')",
+                "impact": "Security impact"
+            }}
+        ],
+        "risk_indicators": [
+            {{
+                "indicator": "Unique risk indicator",
+                "severity": "High/Medium/Low",
+                "evidence": "Specific evidence"
+            }}
+        ]
+    }}"""
 
             logger.info("Sending prompt to Gemini...")
             response = self.model.generate_content(prompt)
@@ -769,25 +777,33 @@ Respond ONLY with valid JSON:
                 analysis_result = json.loads(content)
                 logger.info(f"✅ JSON parsed: {analysis_result.get('classification')}")
 
-                # CRITICAL FIX: Validate the result makes sense
-                # IMPROVED: Smart VirusTotal analysis with detection ratio parsing
+                # ✅ NEW: DEDUPLICATE FINDINGS
+                if "key_findings" in analysis_result:
+                    original_count = len(analysis_result["key_findings"])
+                    analysis_result["key_findings"] = deduplicate_findings(
+                        analysis_result["key_findings"]
+                    )
+                    deduplicated_count = len(analysis_result["key_findings"])
+
+                    if original_count != deduplicated_count:
+                        logger.warning(
+                            f"⚠️ Deduplicated findings: {original_count} → {deduplicated_count}"
+                        )
+
+                # Existing VirusTotal validation logic (keep as is)
                 virustotal_malicious_count = 0
                 has_virustotal_check = False
 
                 for step in investigation_steps:
                     output = str(step.get("output", "")).lower()
 
-                    # Check if this step contains VirusTotal results
                     if "virustotal" in output:
                         has_virustotal_check = True
-
-                        # Parse detection ratio (e.g., "malicious: 1/95" or "1/95")
                         import re
 
-                        # Look for patterns like "malicious: X/Y" or "X/Y" in context
                         malicious_patterns = [
-                            r"malicious[:\s]+(\d+)/(\d+)",  # "Malicious: 1/95"
-                            r"•\s*malicious[:\s]+(\d+)/(\d+)",  # "• Malicious: 1/95"
+                            r"malicious[:\s]+(\d+)/(\d+)",
+                            r"•\s*malicious[:\s]+(\d+)/(\d+)",
                         ]
 
                         for pattern in malicious_patterns:
@@ -796,7 +812,6 @@ Respond ONLY with valid JSON:
                                 malicious_count = int(match.group(1))
                                 total_count = int(match.group(2))
 
-                                # Calculate percentage
                                 if total_count > 0:
                                     malicious_percentage = (
                                         malicious_count / total_count
@@ -807,21 +822,16 @@ Respond ONLY with valid JSON:
                                         f"VirusTotal detection: {malicious_count}/{total_count} ({malicious_percentage:.1f}%)"
                                     )
 
-                                    # IMPORTANT: Any detection by VirusTotal is suspicious
-                                    # Even 1/95 means at least ONE vendor flagged it
                                     if malicious_count > 0:
                                         logger.warning(
                                             f"⚠️ IP flagged as malicious by {malicious_count} vendor(s)"
                                         )
-
                                 break
 
-                # Apply intelligent override logic
+                # Apply intelligent override logic (keep existing logic)
                 if has_virustotal_check:
                     if virustotal_malicious_count == 0:
-                        # Only if NO vendors detected anything, consider FALSE POSITIVE
                         if analysis_result.get("classification") == "TRUE POSITIVE":
-                            # Check if there are OTHER strong indicators
                             other_indicators = False
                             for finding in analysis_result.get("key_findings", []):
                                 if finding.get("severity") in ["High", "Critical"]:
@@ -837,12 +847,10 @@ Respond ONLY with valid JSON:
                                 analysis_result["confidence_score"] = 60
 
                     elif virustotal_malicious_count >= 1:
-                        # If ANY vendor detected malicious activity, this is serious
                         logger.info(
                             f"⚠️ VirusTotal detected malicious IP - maintaining TRUE POSITIVE classification"
                         )
 
-                        # If it was incorrectly classified as FALSE POSITIVE, override it
                         if analysis_result.get("classification") == "FALSE POSITIVE":
                             logger.warning(
                                 "Overriding to TRUE POSITIVE: VirusTotal detected malicious IP"
@@ -853,7 +861,6 @@ Respond ONLY with valid JSON:
                                 analysis_result.get("confidence_score", 70), 80
                             )
 
-                            # Add/update finding about malicious IP
                             malicious_ip_finding = {
                                 "step_reference": "Verify IP Reputation Using VirusTotal",
                                 "category": "Malicious IP Detected",
@@ -863,7 +870,6 @@ Respond ONLY with valid JSON:
                                 "impact": "Potential compromise, data exfiltration risk, or botnet activity",
                             }
 
-                            # Update or add the finding
                             findings = analysis_result.get("key_findings", [])
                             ip_finding_exists = False
                             for i, finding in enumerate(findings):
@@ -880,7 +886,7 @@ Respond ONLY with valid JSON:
                             analysis_result["key_findings"] = findings
 
                 logger.info(
-                    f"Final classification after VirusTotal check: {analysis_result.get('classification')}"
+                    f"Final classification: {analysis_result.get('classification')}"
                 )
 
                 return analysis_result
@@ -898,7 +904,7 @@ Respond ONLY with valid JSON:
         self, username: str, investigation_steps: List[Dict]
     ) -> Dict[str, Any]:
         """
-        FIXED: Fallback analysis with smart VirusTotal detection
+        FIXED: Fallback analysis with deduplication
         """
         logger.info("Using fallback analysis")
 
@@ -907,14 +913,13 @@ Respond ONLY with valid JSON:
         has_virustotal_malicious = False
         malicious_ip_count = 0
 
+        # Existing fallback logic (keep as is, but deduplicate at the end)
         for step in investigation_steps:
             output = str(step.get("output", "")).lower()
 
-            # ✅ SMART VirusTotal Detection
             if "virustotal" in output:
                 import re
 
-                # Parse malicious detection ratio
                 match = re.search(r"malicious[:\s]+(\d+)/(\d+)", output, re.IGNORECASE)
 
                 if match:
@@ -924,7 +929,7 @@ Respond ONLY with valid JSON:
                     if malicious_count > 0:
                         has_virustotal_malicious = True
                         malicious_ip_count = malicious_count
-                        risk_score += 40  # High weight for malicious IP
+                        risk_score += 40
 
                         findings.append(
                             {
@@ -937,9 +942,8 @@ Respond ONLY with valid JSON:
                             }
                         )
                     elif malicious_count == 0:
-                        risk_score -= 10  # Slight reduction for clean IP
+                        risk_score -= 10
 
-            # Check for travel anomalies
             if any(
                 keyword in output
                 for keyword in [
@@ -961,7 +965,6 @@ Respond ONLY with valid JSON:
                     }
                 )
 
-            # Check for failed logins
             if "failed" in output:
                 import re
 
@@ -975,11 +978,9 @@ Respond ONLY with valid JSON:
                 else:
                     risk_score += 15
 
-            # Check for suspicious indicators
             if "suspicious" in output:
                 risk_score += 20
 
-            # Check for privilege escalation
             if any(
                 keyword in output
                 for keyword in [
@@ -992,9 +993,11 @@ Respond ONLY with valid JSON:
             ):
                 risk_score += 15
 
-        # ✅ SMART Classification Logic
+        # ✅ DEDUPLICATE FINDINGS
+        findings = deduplicate_findings(findings)
+
+        # Existing classification logic (keep as is)
         if has_virustotal_malicious:
-            # ANY malicious IP detection = TRUE POSITIVE
             classification = "TRUE POSITIVE"
             risk_level = "High"
             confidence = min(75 + (malicious_ip_count * 5), 95)
@@ -1011,9 +1014,7 @@ Respond ONLY with valid JSON:
             risk_level = "Low"
             confidence = 60
 
-        logger.info(
-            f"Fallback result: {classification} (risk_score={risk_score}, malicious_ip={has_virustotal_malicious})"
-        )
+        logger.info(f"Fallback result: {classification} (risk_score={risk_score})")
 
         return {
             "classification": classification,
@@ -1317,3 +1318,39 @@ Respond ONLY with valid JSON:
         except Exception as e:
             print(f"Error in investigation analysis: {str(e)}")
             return None
+
+
+def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Deduplicate findings to ensure each finding is unique and specific
+
+    Removes duplicate findings based on category and severity,
+    keeping only the most detailed version
+    """
+    if not findings:
+        return findings
+
+    # Group by category
+    category_map = {}
+
+    for finding in findings:
+        category = finding.get("category", "Unknown")
+        severity = finding.get("severity", "Low")
+
+        # Create unique key
+        key = f"{category}_{severity}"
+
+        # Keep the finding with more detailed evidence
+        if key not in category_map:
+            category_map[key] = finding
+        else:
+            # Compare evidence length and keep the more detailed one
+            existing_evidence = category_map[key].get("evidence", "")
+            new_evidence = finding.get("evidence", "")
+
+            if len(new_evidence) > len(existing_evidence):
+                category_map[key] = finding
+
+    # Return deduplicated findings
+    return list(category_map.values())
+
