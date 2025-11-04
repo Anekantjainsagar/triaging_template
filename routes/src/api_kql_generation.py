@@ -463,10 +463,4 @@ class EnhancedKQLGenerator:
             f"This query {ops_text} from {table} to analyze {step_name.lower()}."
         )
 
-        # Add source context
-        if source == "hardcoded":
-            explanation += " (Production-ready hardcoded query)"
-        elif source == "api":
-            explanation += " (AI-generated query with standardization)"
-
         return explanation
