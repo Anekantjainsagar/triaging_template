@@ -345,7 +345,8 @@ def display_predictions_tab_integrated():
         st.markdown("---")
 
         # ✅ CHECK TESTING MODE
-        testing_mode = os.getenv("TESTING", "false").lower() == "true"
+        testing_mode = os.getenv("TESTING")
+        print("Testing Mode", testing_mode)
 
         # Extract entities
         entities = alert_data.get("entities", {})

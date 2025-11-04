@@ -84,7 +84,7 @@ class KQLPipelineTester:
                     {
                         "kind": "Account",
                         "properties": {
-                            "accountName": "anekant.jain",
+                            "accountName": "shivendra.sharma",
                             "upnSuffix": "yash.com",
                             "friendlyName": "Test User",
                         },
@@ -236,6 +236,7 @@ class KQLPipelineTester:
         """Test all hardcoded KQL queries"""
 
         hardcoded_queries = {
+            "Role & Permission Analysis": HardcodedKQLQueries.ROLE_PERMISSION_ANALYSIS,
             "Initial Scope Analysis": HardcodedKQLQueries.INITIAL_SCOPE_ANALYSIS,
             "Authentication Method Analysis": HardcodedKQLQueries.AUTH_METHOD_ANALYSIS,
             "VIP Account Verification": HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION,
@@ -244,7 +245,6 @@ class KQLPipelineTester:
             "Behavioral Anomaly Detection": HardcodedKQLQueries.BEHAVIORAL_ANOMALY_DETECTION,
             "Device Health & Compliance": HardcodedKQLQueries.DEVICE_HEALTH_COMPLIANCE,
             "MFA Configuration Status": HardcodedKQLQueries.MFA_CONFIGURATION_STATUS,
-            "Role & Permission Analysis": HardcodedKQLQueries.ROLE_PERMISSION_ANALYSIS,
             "Conditional Access Analysis": HardcodedKQLQueries.CONDITIONAL_ACCESS_ANALYSIS,
             "Failed Sign-in Analysis": HardcodedKQLQueries.FAILED_SIGNIN_ANALYSIS,
             "Application Access Analysis": HardcodedKQLQueries.APPLICATION_ACCESS_ANALYSIS,

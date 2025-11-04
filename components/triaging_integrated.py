@@ -779,7 +779,7 @@ def display_interactive_steps(
 
                     # Initialize session state for this step
                     if vip_input_key not in st.session_state:
-                        st.session_state[vip_input_key] = ""
+                        st.session_state[vip_input_key] = "ceo@company.com, cfo@company.com, admin@company.com"
 
                     if vip_processed_key not in st.session_state:
                         st.session_state[vip_processed_key] = False

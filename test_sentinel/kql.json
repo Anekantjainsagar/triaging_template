@@ -4,126 +4,127 @@
             "name": "PrimaryResult",
             "columns": [
                 {
-                    "name": "UserPrincipalName",
+                    "name": "TenantId",
                     "type": "string"
                 },
                 {
-                    "name": "UserDisplayName",
+                    "name": "SourceSystem",
                     "type": "string"
                 },
                 {
-                    "name": "IsVIP",
+                    "name": "TimeGenerated",
+                    "type": "datetime"
+                },
+                {
+                    "name": "ResourceId",
                     "type": "string"
                 },
                 {
-                    "name": "AccountClassification",
+                    "name": "OperationName",
                     "type": "string"
                 },
                 {
-                    "name": "VIPRiskScore",
+                    "name": "OperationVersion",
+                    "type": "string"
+                },
+                {
+                    "name": "Category",
+                    "type": "string"
+                },
+                {
+                    "name": "ResultType",
+                    "type": "string"
+                },
+                {
+                    "name": "ResultSignature",
+                    "type": "string"
+                },
+                {
+                    "name": "ResultDescription",
+                    "type": "string"
+                },
+                {
+                    "name": "DurationMs",
                     "type": "long"
                 },
                 {
-                    "name": "TotalSignIns",
-                    "type": "long"
+                    "name": "CorrelationId",
+                    "type": "string"
                 },
                 {
-                    "name": "UniqueIPAddresses",
-                    "type": "long"
+                    "name": "Resource",
+                    "type": "string"
                 },
                 {
-                    "name": "UniqueCountries",
-                    "type": "long"
+                    "name": "ResourceGroup",
+                    "type": "string"
                 },
                 {
-                    "name": "HighRiskSignIns",
-                    "type": "long"
+                    "name": "ResourceProvider",
+                    "type": "string"
                 },
                 {
-                    "name": "MediumRiskSignIns",
-                    "type": "long"
+                    "name": "Identity",
+                    "type": "string"
                 },
                 {
-                    "name": "FailedAttempts",
-                    "type": "long"
+                    "name": "Level",
+                    "type": "string"
                 },
                 {
-                    "name": "SuccessfulSignIns",
-                    "type": "long"
+                    "name": "Location",
+                    "type": "string"
+                },
+                {
+                    "name": "AdditionalDetails",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "Id",
+                    "type": "string"
+                },
+                {
+                    "name": "InitiatedBy",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "LoggedByService",
+                    "type": "string"
+                },
+                {
+                    "name": "Result",
+                    "type": "string"
+                },
+                {
+                    "name": "ResultReason",
+                    "type": "string"
+                },
+                {
+                    "name": "TargetResources",
+                    "type": "dynamic"
+                },
+                {
+                    "name": "AADTenantId",
+                    "type": "string"
+                },
+                {
+                    "name": "ActivityDisplayName",
+                    "type": "string"
+                },
+                {
+                    "name": "ActivityDateTime",
+                    "type": "datetime"
+                },
+                {
+                    "name": "AADOperationType",
+                    "type": "string"
+                },
+                {
+                    "name": "Type",
+                    "type": "string"
                 }
             ],
-            "rows": [
-                [
-                    "sweta.tiwari@yashtechnologies841.onmicrosoft.com",
-                    "sweta tiwari",
-                    "Regular User",
-                    "\ud83d\udfe0 High - VIP Requires Attention",
-                    29,
-                    41,
-                    5,
-                    1,
-                    0,
-                    0,
-                    13,
-                    28
-                ],
-                [
-                    "chirag.gupta@yashtechnologies841.onmicrosoft.com",
-                    "Chirag  Gupta",
-                    "Regular User",
-                    "\ud83d\udfe1 Medium - Monitor Closely",
-                    11,
-                    6,
-                    1,
-                    1,
-                    0,
-                    0,
-                    4,
-                    2
-                ],
-                [
-                    "ganesh.tanneru@yashtechnologies841.onmicrosoft.com",
-                    "Ganesh Tanneru",
-                    "Regular User",
-                    "\ud83d\udfe1 Medium - Monitor Closely",
-                    9,
-                    5,
-                    1,
-                    1,
-                    0,
-                    0,
-                    3,
-                    2
-                ],
-                [
-                    "umapreethi.v@yash.com",
-                    "Umapreethi  Vijayakumar",
-                    "Regular User",
-                    "\ud83d\udfe1 Medium - Monitor Closely",
-                    7,
-                    4,
-                    1,
-                    1,
-                    0,
-                    0,
-                    2,
-                    2
-                ],
-                [
-                    "urvashi.upadhyay@yashtechnologies841.onmicrosoft.com",
-                    "Urvashi Upadhyay",
-                    "Regular User",
-                    "\ud83d\udfe1 Medium - Monitor Closely",
-                    7,
-                    8,
-                    2,
-                    1,
-                    0,
-                    0,
-                    2,
-                    6
-                ]
-            ]
+            "rows": []
         }
     ]
 }

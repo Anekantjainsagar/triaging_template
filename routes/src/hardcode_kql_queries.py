@@ -383,51 +383,71 @@ TimeWindow = case(
 
     # ==================== ROLE & PERMISSION ANALYSIS ====================
 
-    ROLE_PERMISSION_ANALYSIS = """AuditLogs
+    # ==================== ROLE & PERMISSION ANALYSIS ====================
+
+    ROLE_PERMISSION_ANALYSIS = """SigninLogs
 | where TimeGenerated > ago(30d)
-| where OperationName has_any ("Add member to role", "Add app role assignment", "Consent to application", "Add owner")
-| where InitiatedBy.user.userPrincipalName == "<USER_EMAIL>" or TargetResources[0].userPrincipalName == "<USER_EMAIL>"
-| extend
-    ActionType = case(
-        OperationName has "Add member to role", "Role Assignment",
-        OperationName has "Add app role assignment", "App Role Assignment", 
-        OperationName has "Consent to application", "App Consent",
-        OperationName has "Add owner", "Owner Assignment",
-        "Other"
-    ),
-    IsInitiator = iff(InitiatedBy.user.userPrincipalName == "<USER_EMAIL>", true, false),
-    TargetUser = tostring(TargetResources[0].userPrincipalName)
+| where UserPrincipalName == "<USER_EMAIL>"
+| extend AppCategory = case(
+    AppDisplayName has "Admin" or AppDisplayName has "Center" or AppDisplayName has "Portal", "Administrative",
+    AppDisplayName has "Graph" or AppDisplayName has "API", "API Access",
+    AppDisplayName has "Power" or AppDisplayName has "BI", "Business Intelligence",
+    AppDisplayName has "Exchange" or AppDisplayName has "SharePoint", "Collaboration",
+    AppDisplayName has "Azure" or AppDisplayName has "Management", "Cloud Management",
+    "Standard Application"
+)
+| extend RiskTier = case(
+    AppCategory == "Administrative", "High",
+    AppCategory == "Cloud Management", "High", 
+    AppCategory == "API Access", "Medium",
+    AppCategory == "Business Intelligence", "Medium",
+    "Standard"
+)
+| extend IsPrivilegedAccess = iff(RiskTier in ("High", "Medium"), true, false)
 | summarize
-    TotalOperations = count(),
-    SuccessfulOperations = countif(Result == "success"),
-    FailedOperations = countif(Result == "failure"),
-    RoleAssignments = countif(ActionType == "Role Assignment"),
-    AppRoleAssignments = countif(ActionType == "App Role Assignment"),
-    AppConsents = countif(ActionType == "App Consent"),
-    OwnerAssignments = countif(ActionType == "Owner Assignment"),
-    UniqueTargets = dcount(TargetUser),
-    FirstOperation = min(TimeGenerated),
-    LastOperation = max(TimeGenerated)
-    by UserPrincipalName = "<USER_EMAIL>", InvolvementType = iff(IsInitiator, "Initiator", "Target")
+    TotalAccessAttempts = count(),
+    SuccessfulAccess = countif(ResultType == "0"),
+    FailedAccess = countif(ResultType != "0"),
+    RiskyAccess = countif(IsRisky == true),
+    HighRiskAccess = countif(RiskTier == "High"),
+    MediumRiskAccess = countif(RiskTier == "Medium"),
+    StandardAccess = countif(RiskTier == "Standard"),
+    UniqueApplications = dcount(AppDisplayName),
+    UniqueIPAddresses = dcount(IPAddress),
+    UniqueCountries = dcount(tostring(LocationDetails.countryOrRegion)),
+    PrivilegedSignIns = countif(IsPrivilegedAccess == true),
+    FirstAccess = min(TimeGenerated),
+    LastAccess = max(TimeGenerated),
+    HighRiskApps = make_set(iff(RiskTier == "High", AppDisplayName, ""), 10),
+    MediumRiskApps = make_set(iff(RiskTier == "Medium", AppDisplayName, ""), 10),
+    AccessIPs = make_set(IPAddress, 10),
+    AccessCountries = make_set(tostring(LocationDetails.countryOrRegion), 5)
+    by UserPrincipalName, UserDisplayName
 | extend
-    SuccessRate = round(100.0 * SuccessfulOperations / TotalOperations, 2),
-    RiskScore = (RoleAssignments * 5) + (AppRoleAssignments * 4) + (AppConsents * 6) + (OwnerAssignments * 7)
+    SuccessRate = round(100.0 * SuccessfulAccess / TotalAccessAttempts, 2),
+    PrivilegedAccessRate = round(100.0 * PrivilegedSignIns / TotalAccessAttempts, 2),
+    RiskScore = (HighRiskAccess * 7) + (MediumRiskAccess * 5) + (RiskyAccess * 10) + (FailedAccess * 3) + (UniqueCountries * 2)
 | extend
     RiskLevel = case(
-        RiskScore > 50, "🔴 Critical - Excessive Privilege Changes",
-        RiskScore > 30, "🟠 High - Significant Role Activity", 
-        RiskScore > 15, "🟡 Medium - Moderate Privilege Changes",
-        RiskScore > 5, "⚠️ Low - Some Activity",
-        "🟢 Normal"
+        RiskScore > 50, "🔴 Critical - Excessive Privileged Access Risk",
+        RiskScore > 30, "🟠 High - Significant Privilege Activity", 
+        RiskScore > 15, "🟡 Medium - Moderate Privilege Usage",
+        RiskScore > 5, "⚠️ Low - Some Privileged Access",
+        "🟢 Normal - Standard Access Patterns"
     ),
-    ActivityFrequency = case(
-        TotalOperations > 50, "Very High",
-        TotalOperations > 20, "High",
-        TotalOperations > 10, "Moderate", 
-        TotalOperations > 5, "Low",
-        "Very Low"
+    AccessBehavior = case(
+        PrivilegedAccessRate > 50, "Heavy Privileged Usage",
+        PrivilegedAccessRate > 25, "Moderate Privileged Usage",
+        PrivilegedAccessRate > 10, "Light Privileged Usage",
+        "Minimal Privileged Access"
+    ),
+    SecurityPosture = case(
+        RiskyAccess > 5 and PrivilegedAccessRate > 25, "🚨 Critical - Risky Privileged Access",
+        RiskyAccess > 2 and PrivilegedAccessRate > 25, "⚠️ High - Concerning Privilege Patterns",
+        FailedAccess > 10 and PrivilegedAccessRate > 10, "🟡 Medium - Failed Privileged Attempts",
+        "🟢 Normal - Acceptable Risk"
     )
-| project-reorder UserPrincipalName, InvolvementType, RiskLevel, RiskScore, TotalOperations, SuccessRate, ActivityFrequency
+| project-reorder UserPrincipalName, UserDisplayName, RiskLevel, SecurityPosture, RiskScore, PrivilegedAccessRate, TotalAccessAttempts, SuccessRate
 | order by RiskScore desc"""
 
     # ==================== CONDITIONAL ACCESS POLICY ANALYSIS ====================
