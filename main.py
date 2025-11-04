@@ -1,12 +1,10 @@
 import streamlit as st
-
-from styles.soc_dashboard import SOC_DASHBOARD_STYLES
-
 from sentinel.backend import *
+from components.soc_hub import display_ai_analysis
+from styles.soc_dashboard import SOC_DASHBOARD_STYLES
 from sentinel.frontend.dashboard import display_overview_page
 from sentinel.frontend.incident_details import display_incident_detail
 
-from components.soc_hub import display_ai_analysis
 
 # Page configuration
 st.set_page_config(
@@ -18,10 +16,6 @@ st.set_page_config(
 
 # Custom CSS for better styling
 st.markdown(SOC_DASHBOARD_STYLES, unsafe_allow_html=True)
-
-# ============================================================================
-# Session State Initialization
-# ============================================================================
 
 
 def initialize_session_state():
@@ -75,13 +69,7 @@ def initialize_session_state():
 
 initialize_session_state()
 
-# ============================================================================
-# Main Application
-# ============================================================================
-
 def main():
-    """Main Streamlit application"""
-
     # Navigation sidebar
     with st.sidebar:
         st.title("🛡️ Navigation")

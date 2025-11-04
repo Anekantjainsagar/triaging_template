@@ -7,36 +7,8 @@ from components.alert_analysis.main import display_ai_threat_analysis_tab
 from components.alert_analysis.historical_analysis import (
     display_historical_analysis_tab,
 )
-from components.triaging_integrated import display_triaging_workflow
+from components.triaging.triaging_integrated import display_triaging_workflow_cached
 from components.predictions.predictions_page import display_predictions_tab_integrated
-
-
-def display_triaging_workflow_cached(
-    rule_number: str, alert_data: dict, cache_key: str, analysis_key: str
-):
-    # ✅ DEBUG: Show what we're passing to triaging
-    st.info(f"🚀 Starting triaging for: {alert_data.get('title', 'Unknown Alert')}")
-
-    # Call the original triaging workflow with enhanced alert_data
-    display_triaging_workflow(rule_number, alert_data=alert_data)
-
-    # ✅ MONITOR FOR COMPLETION
-    # When triaging completes and Excel is generated, cache it
-    if st.session_state.get("triaging_complete"):
-        if f"excel_cache_{analysis_key}" not in st.session_state:
-            # Store the Excel data in permanent cache
-            excel_data = st.session_state.get("predictions_excel_data")
-            excel_filename = st.session_state.get("predictions_excel_filename")
-
-            if excel_data and excel_filename:
-                st.session_state[f"excel_cache_{analysis_key}"] = excel_data
-                st.session_state[f"excel_filename_{analysis_key}"] = excel_filename
-                st.session_state[cache_key] = True  # Mark as done
-
-                st.success(
-                    "✅ Template cached! You can now switch tabs without losing progress."
-                )
-                st.info("💡 Refresh the page to see the cached version")
 
 
 def display_entities_summary(alert_data):
