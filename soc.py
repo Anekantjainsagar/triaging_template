@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 from frontend.config.styles import apply_custom_css
 from api_client.analyzer_api_client import get_analyzer_client
-from components.historical_analysis import display_historical_analysis_tab
+from components.alert_analysis.historical_analysis import display_historical_analysis_tab
 
 # Triaging imports
 from components.triaging_integrated import display_triaging_workflow
@@ -543,7 +543,7 @@ def display_predictions_tab_integrated():
                 st.warning("⚠️ Please enter a username to analyze")
             else:
                 # Import the analysis functions from predictions_page
-                from components.predictions_page import (
+                from components.predictions.predictions_page import (
                     perform_complete_analysis,
                     perform_initial_analysis,
                     perform_mitre_analysis,
