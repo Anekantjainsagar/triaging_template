@@ -1,9 +1,10 @@
 import os
 import re
-from typing import List, Dict, Tuple
-from difflib import SequenceMatcher
-from crewai import LLM, Agent, Task, Crew
 from dotenv import load_dotenv
+from difflib import SequenceMatcher
+from typing import List, Dict, Tuple
+from crewai import LLM, Agent, Task, Crew
+from routes.src.utils import _strip_step_number_prefix
 
 load_dotenv()
 
@@ -153,7 +154,7 @@ class InvestigationStepMerger:
         ]
 
         for step in steps:
-            step_name = step.get("step_name", "").lower()
+            step_name = _strip_step_number_prefix(step.get("step_name", "")).lower()
             explanation = step.get("explanation", "").lower()
             combined = f"{step_name} {explanation}"
 
@@ -243,13 +244,13 @@ class InvestigationStepMerger:
         unique_generated = []
 
         for gen_step in generated_steps:
-            gen_name = gen_step.get("step_name", "").lower()
+            gen_name = _strip_step_number_prefix(gen_step.get("step_name", "")).lower()
             gen_exp = gen_step.get("explanation", "").lower()
 
             is_duplicate = False
 
             for orig_step in original_steps:
-                orig_name = orig_step.get("step_name", "").lower()
+                orig_name = _strip_step_number_prefix(orig_step.get("step_name", "")).lower()
                 orig_exp = orig_step.get("explanation", "").lower()
 
                 # Check similarity
@@ -328,7 +329,7 @@ class InvestigationStepMerger:
 
         def get_step_category_priority(step: Dict) -> int:
             """Determine step category and priority"""
-            step_name = step.get("step_name", "").lower()
+            step_name = _strip_step_number_prefix(step.get("step_name", "")).lower()
             explanation = step.get("explanation", "").lower()
             combined = f"{step_name} {explanation}"
 

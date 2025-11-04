@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import google.generativeai as genai
 from typing import Dict, List, Any, Optional
+from routes.src.utils import _strip_step_number_prefix
 import logging
 
 logger = logging.getLogger(__name__)
@@ -95,7 +96,7 @@ class MITREAttackAnalyzer:
                     geo_risks["high_risk_locations"].append(
                         {
                             "country": country.title(),
-                            "step": step.get("step_name", "Unknown"),
+                            "step": _strip_step_number_prefix(step.get("step_name", "")),
                             "context": output[:200],
                         }
                     )

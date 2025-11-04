@@ -5,6 +5,7 @@ from typing import Dict, List
 from dotenv import load_dotenv
 from crewai_tools import SerperDevTool
 from crewai import LLM, Agent, Task, Crew
+from routes.src.utils import _strip_step_number_prefix
 
 load_dotenv()
 
@@ -132,7 +133,7 @@ class InvestigationStepLibrary:
         # Check if VIP step already exists
         has_vip_step = False
         for step in steps:
-            step_name = step.get("step_name", "").lower()
+            step_name = _strip_step_number_prefix(step.get("step_name", "")).lower()
             explanation = step.get("explanation", "").lower()
 
             vip_indicators = ["vip", "high-priority"]
@@ -241,7 +242,7 @@ class InvestigationStepLibrary:
         # Check if IP reputation step already exists
         has_ip_step = False
         for step in steps:
-            step_name = step.get("step_name", "").lower()
+            step_name = _strip_step_number_prefix(step.get("step_name", "")).lower()
             tool = step.get("tool", "").strip().lower()
 
             ip_keywords = [
@@ -340,7 +341,7 @@ class InvestigationStepLibrary:
             # ============================================================
             # Generate KQL for remaining steps
             # ============================================================
-            step_name = step.get("step_name", "")
+            step_name = _strip_step_number_prefix(step.get("step_name", ""))
             explanation = step.get("explanation", "")
 
             print(f"   🔧 Generating KQL for step {idx}: {step_name[:50]}...")
@@ -400,7 +401,7 @@ class InvestigationStepLibrary:
         removed_count = 0
 
         for step in steps:
-            step_name = step.get("step_name", "").lower()
+            step_name = _strip_step_number_prefix(step.get("step_name", "")).lower()
             explanation = step.get("explanation", "").lower()
             tool = step.get("tool", "").lower()
 
@@ -465,7 +466,7 @@ class InvestigationStepLibrary:
         removed_count = 0
 
         for step in steps:
-            step_name = step.get("step_name", "")
+            step_name = _strip_step_number_prefix(step.get("step_name", ""))
             kql_query = step.get("kql_query", "").strip()
             tool = step.get("tool", "").strip().lower()
 
@@ -503,7 +504,7 @@ class InvestigationStepLibrary:
         duplicates_removed = 0
 
         for step in steps:
-            step_name = step.get("step_name", "").lower().strip()
+            step_name = _strip_step_number_prefix(step.get("step_name", "")).lower().strip()
 
             if not step_name or len(step_name) < 5:
                 continue
@@ -1070,7 +1071,7 @@ Generate 3-4 UNIQUE, RELEVANT steps NOW:"""
 
     def _is_duplicate_of_existing(self, step: Dict, existing_names: List[str]) -> bool:
         """Check if step duplicates existing steps"""
-        step_name = step.get("step_name", "").lower()
+        step_name = _strip_step_number_prefix(step.get("step_name", "")).lower()
 
         from difflib import SequenceMatcher
 

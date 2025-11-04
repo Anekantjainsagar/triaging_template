@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, Tuple
 from routes.src.hardcode_kql_queries import KQLQueryManager
 from routes.src.kql_query_standardizer import KQLQueryStandardizer
+from routes.src.kql_auditlogs_validator import validate_and_fix_api_query
 
 
 class EnhancedKQLGenerator:
@@ -70,14 +71,6 @@ class EnhancedKQLGenerator:
         rule_context: str = "",
         reference_datetime_obj: Optional[datetime] = None,
     ) -> Tuple[str, str]:
-        """
-        Generate KQL query for investigation step
-
-        CRITICAL CHANGE:
-        - Hardcoded queries: Return AS-IS (no standardization)
-        - AI-generated queries: Apply standardization if enabled
-        - Data injection: Happens later via TemplateKQLInjector
-        """
 
         # Check if this step needs KQL
         if not self._needs_kql(step_name, explanation):
@@ -107,10 +100,11 @@ class EnhancedKQLGenerator:
         # =====================================================
         # CASE 2: No hardcoded query, try API fallback
         # =====================================================
+
         print(f"   ℹ️  No hardcoded query, attempting API fallback...")
 
         kql_query, source = self.query_manager.get_query(
-            query_type=intent, use_fallback=True  # ⭐ Now try API
+            query_type=intent, use_fallback=True
         )
 
         if kql_query and len(kql_query.strip()) > 30:
@@ -126,10 +120,29 @@ class EnhancedKQLGenerator:
                     )
                 )
 
+                # ✅ NEW: Validate for AuditLogs usage
+                print(f"   🔍 Validating for AuditLogs usage...")
+
+                validated_query, validated_explanation, was_fixed = (
+                    validate_and_fix_api_query(
+                        kql_query=kql_query,
+                        step_name=step_name,
+                        explanation=explanation,
+                        reference_datetime_obj=reference_datetime_obj,
+                        max_retries=2,
+                    )
+                )
+
+                if was_fixed:
+                    kql_query = validated_query
+                    standardized_explanation = validated_explanation
+                    print(f"   ✅ Query corrected (AuditLogs removed/replaced)")
+
                 # Validate standardized query
                 is_valid, reason = KQLQueryStandardizer.validate_standardized_query(
                     kql_query
                 )
+
                 if is_valid:
                     print(f"   ✅ Query standardized and validated")
                     return kql_query, standardized_explanation

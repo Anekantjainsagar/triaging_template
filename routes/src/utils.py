@@ -41,3 +41,10 @@ def extract_alert_name(rule_text: str) -> str:
     # If nothing was removed, return the original (it's already just the name)
     return cleaned.strip() if cleaned.strip() != rule_text else rule_text
 
+
+def _strip_step_number_prefix(text: str) -> str:
+    if not text:
+        return text
+
+    cleaned = re.sub(r"^\d+[\.\):]\s*", "", text.strip())
+    return cleaned
