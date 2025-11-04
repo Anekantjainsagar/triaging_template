@@ -217,7 +217,7 @@ def create_complete_mitre_matrix(
     Full details appear on hover. All techniques shown in grey by default,
     with observed and predicted techniques highlighted.
     """
-    from backend.predictions_backend import MITREAttackAnalyzer
+    from backend.predictions.backend import MITREAttackAnalyzer
 
     # Get the complete MITRE data structure
     temp_analyzer = MITREAttackAnalyzer(api_key="dummy")

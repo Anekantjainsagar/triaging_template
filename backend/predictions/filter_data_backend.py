@@ -1,7 +1,7 @@
-import pandas as pd
-import numpy as np
-from typing import List, Dict, Any
 import logging
+import numpy as np
+import pandas as pd
+from typing import List, Dict, Any
 
 # Setup logging for FastAPI
 logging.basicConfig(level=logging.INFO)

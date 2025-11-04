@@ -1,11 +1,10 @@
 import re
 import json
-import pandas as pd
+import logging
 from datetime import datetime
 import google.generativeai as genai
 from typing import Dict, List, Any, Optional
 from routes.src.utils import _strip_step_number_prefix
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +66,7 @@ class MITREAttackAnalyzer:
 
     def _load_mitre_data(self) -> Dict[str, Any]:
         """Load MITRE ATT&CK framework data"""
-        from backend.mitre_data import mitre_structure
+        from data.utils.mitre_data import mitre_structure
 
         return mitre_structure
 
@@ -1134,191 +1133,6 @@ class InvestigationAnalyzer:
             "investigation_priority": "P1" if "TRUE" in classification else "P3",
             "key_sub_techniques_observed": key_sub_techniques,
         }
-
-    def _calculate_risk_score(self, investigation_steps: List[Dict]) -> int:
-        """Calculate risk score based on investigation data to bias toward true positive"""
-        risk_score = 0
-
-        for step in investigation_steps:
-            output = str(step.get("output", "")).lower()
-            remarks = str(step.get("remarks", "")).lower()
-
-            # High-risk indicators
-            if any(
-                country in output
-                for country in ["russia", "china", "north korea", "iran"]
-            ):
-                risk_score += 30
-            if "unknown" in output or "unknown" in remarks:
-                risk_score += 20
-            if "suspicious" in output or "suspicious" in remarks:
-                risk_score += 25
-            if "global admin" in output or "privilege" in output:
-                risk_score += 15
-            if "impossible" in output or "travel" in output:
-                risk_score += 20
-            if any(ip in output for ip in ["ip", "address", "location"]):
-                risk_score += 10
-
-        return min(risk_score, 100)
-
-    def _should_classify_true_positive(self, investigation_steps: List[Dict]) -> bool:
-        """Determine if classification should be TRUE POSITIVE based on risk indicators"""
-        risk_score = self._calculate_risk_score(investigation_steps)
-
-        # Bias toward true positive: threshold lowered to 40
-        return risk_score >= 40
-
-    def build_initial_analysis_prompt(
-        self, username: str, investigation_steps: List[Dict]
-    ) -> str:
-        """Build prompt for initial investigation analysis with improved VirusTotal logic"""
-        investigation_context = ""
-        for step in investigation_steps:
-            # Include remarks if they exist
-            remarks_info = ""
-            if step.get("remarks") and len(step.get("remarks", "")) > 0:
-                remarks_info = f"""
-        **Analyst Notes**: {step['remarks']}
-        """
-
-            investigation_context += f"""
-        ### {step['step_name']}
-        Output: {str(step['output'])}
-        {remarks_info}
-        ---
-        """
-
-        prompt = f"""You are a cybersecurity analyst analyzing investigation data for potential account compromise.
-
-    # INVESTIGATION DATA FOR USER: {username}
-
-    {investigation_context}
-
-    # ANALYSIS REQUIREMENTS:
-
-    1. **Classification**: Classify as TRUE POSITIVE or FALSE POSITIVE
-    2. **Risk Level**: Critical, High, Medium, Low
-    3. **Confidence Score**: 0-100% based on evidence quality
-    4. **Key Findings**: List specific suspicious indicators
-    5. **Risk Indicators**: Technical risk factors observed
-
-    # CLASSIFICATION GUIDELINES:
-
-    **TRUE POSITIVE Indicators (Prioritize these):**
-    - ✅ **ANY IP flagged as malicious by VirusTotal** (even 1/95 detection is SIGNIFICANT)
-    - ✅ Access from unknown locations or devices
-    - ✅ Impossible travel patterns (multiple countries in short time)
-    - ✅ Suspicious IP addresses or high-risk geolocations
-    - ✅ Privilege escalation attempts
-    - ✅ Unusual account activity patterns
-    - ✅ High-risk country connections (Russia, China, Iran, North Korea, Switzerland)
-    - ✅ Multiple failed login attempts followed by success
-    - ✅ VIP user with suspicious activity
-    - ✅ Analyst remarks indicating suspicion
-
-    **CRITICAL: VirusTotal Detection Rules**
-    - `Malicious: 1/95` or higher → **STRONG TRUE POSITIVE indicator**
-    - `Malicious: 0/95` → Consider other factors
-    - Even 1 out of 95 detections means the IP has been associated with malicious activity
-    - Do NOT ignore VirusTotal detections - they are authoritative threat intelligence
-
-    **FALSE POSITIVE Indicators:**
-    - All indicators show normal business activity
-    - Expected user behavior patterns (same location, same device, business hours)
-    - No suspicious technical indicators
-    - Legitimate business travel with proper context
-    - Authorized administrative actions with justification
-    - **VirusTotal shows 0/95 malicious AND no other suspicious indicators**
-
-    # CRITICAL DECISION RULES:
-
-    1. **If VirusTotal shows ANY malicious detection (1/95 or higher)** → Classify as TRUE POSITIVE
-    2. **If impossible travel detected** (e.g., USA → Canada → Switzerland in 5 days) → TRUE POSITIVE
-    3. **If VIP user + suspicious indicators** → Increase severity to High/Critical
-    4. **Multiple risk factors** → TRUE POSITIVE
-    5. **High-risk countries** → Increase suspicion significantly
-    6. **Do NOT classify as FALSE POSITIVE if VirusTotal detected malicious IP**
-
-    **CRITICAL INSTRUCTIONS (MUST FOLLOW):**
-    - **REMARKS FIRST**: Analyst Remarks/Comments are paramount. If a remark indicates strong suspicion or confirms an event, prioritize TRUE POSITIVE.
-    - **FILTERED OUTPUT**: The provided output is filtered to include only data relevant to the user being analyzed. Use this filtered output as the *only* technical evidence.
-    - **UNBIASED ASSESSMENT**: Base the classification purely on the evidence and remarks. Do not assume or fabricate.
-    - If VirusTotal flagged an IP as malicious (even 1/95 or higher), that alone is sufficient for TRUE POSITIVE.
-    - Impossible travel across multiple countries/states in short time = TRUE POSITIVE.
-
-    Respond ONLY with valid JSON:
-    {{
-        "classification": "TRUE POSITIVE" or "FALSE POSITIVE",
-        "risk_level": "Critical" or "High" or "Medium" or "Low",
-        "confidence_score": 85,
-        "key_findings": [
-            {{
-                "step_reference": "Step name",
-                "category": "Malicious IP | Geographic Anomaly | Privilege Escalation | Suspicious Activity",
-                "severity": "Critical | High | Medium | Low",
-                "details": "A detailed, unique finding specific to the filtered output (e.g., '10 successful sign-ins from 6 unique IPs in Gorakhpur and Pune'). DO NOT just copy the finding template.",
-                "evidence": "Specific values from the filtered data (e.g., MinTimeBetweenLocations: 8 hours, FailedSignIns: 5, etc.)",
-                "impact": "Security and business impact"
-            }}
-        ],
-        "risk_indicators": [
-            {{
-                "indicator": "Risk indicator name",
-                "severity": "High | Medium | Low",
-                "evidence": "Supporting evidence"
-            }}
-        ]
-    }}
-
-    Now analyze the investigation data and provide your assessment in JSON format:"""
-
-        return prompt
-
-    def analyze_investigation(
-        self, df: pd.DataFrame, username: str
-    ) -> Optional[Dict[str, Any]]:
-        """Main analysis function - unchanged interface"""
-        try:
-            # Extract investigation steps
-            from backend.backed_fixes import extract_investigation_steps_fixed # Use fixed import
-
-            investigation_steps = extract_investigation_steps_fixed(df, username)
-
-            if not investigation_steps:
-                print(f"No investigation steps found for user: {username}")
-                return None
-
-            # Perform initial analysis
-            initial_analysis = self.perform_initial_analysis(
-                username, investigation_steps
-            )
-
-            if not initial_analysis:
-                print("Initial analysis failed")
-                return None
-
-            # Generate MITRE ATT&CK analysis
-            mitre_analysis = self.mitre_analyzer.analyze_mitre_attack_chain(
-                username,
-                initial_analysis["classification"],
-                initial_analysis,
-                investigation_steps,
-            )
-
-            # Combine results
-            combined_results = {
-                "user_analysis": initial_analysis,
-                "mitre_attack_analysis": mitre_analysis,
-                "investigation_steps_analyzed": len(investigation_steps),
-                "analysis_timestamp": datetime.now().isoformat(),
-            }
-
-            return combined_results
-
-        except Exception as e:
-            print(f"Error in investigation analysis: {str(e)}")
-            return None
 
 
 def deduplicate_findings(findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

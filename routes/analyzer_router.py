@@ -1,17 +1,12 @@
-"""
-SOC Alert Analyzer Router
-FastAPI router for AI-powered security alert analysis
-"""
-
 import pandas as pd
 from datetime import datetime
-from typing import Optional, Dict, List, Any
-from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
+from typing import Optional, Dict, List, Any
+from fastapi import APIRouter, HTTPException
 
 # Import your backend analyzer
-from backend.analyzer_backend import SecurityAlertAnalyzerCrew
-from backend.soc_analyzer import IntelligentSOCAnalyzer
+from backend.alert_analysis.backend import SecurityAlertAnalyzerCrew
+from backend.alert_analysis.soc_analyzer import IntelligentSOCAnalyzer
 
 # Create router
 router = APIRouter()

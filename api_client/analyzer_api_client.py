@@ -1,6 +1,6 @@
-import requests
-import logging
 import time
+import logging
+import requests
 import streamlit as st
 from typing import Dict, Any, Optional
 

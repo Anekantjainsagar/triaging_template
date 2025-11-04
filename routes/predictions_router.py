@@ -11,8 +11,8 @@ import logging
 from fastapi import APIRouter, HTTPException, Query, File, UploadFile
 
 # Make sure these are also imported
-from backend.backed_fixes import extract_investigation_steps_fixed, clean_dataframe
-from backend.predictions_backend import InvestigationAnalyzer
+from backend.predictions.filter_data_backend import extract_investigation_steps_fixed, clean_dataframe
+from backend.predictions.backend import InvestigationAnalyzer
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -900,7 +900,106 @@ async def analyze_complete(request: AnalyzeInvestigationRequest, api_key: str = 
 
 
 
+# Replace the analyze_ip_reputation endpoint
+@router.post(
+    "/analyze/ip_reputation",
+    summary="IP Reputation Analysis",
+    description="Analyze an IP address for reputation and threat indicators",
+)
+async def analyze_ip_reputation(request: AnalyzeIPRequest, api_key: str = ""):
+    """Perform IP reputation analysis - FIXED"""
+    
+    ip_address = request.ip_address.strip()
+    
+    if not ip_address:
+        raise HTTPException(status_code=400, detail="IP address is required")
 
+    try:
+        # Validate IP format
+        import ipaddress
+        try:
+            ipaddress.ip_address(ip_address)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid IP address format: {ip_address}")
+        
+        logger.info(f"🌐 Analyzing IP: {ip_address}")
+        
+        # Perform IP reputation analysis
+        ip_analysis = perform_ip_reputation_analysis(ip_address, api_key)
+        
+        if ip_analysis:
+            logger.info(f"✅ IP analysis complete for {ip_address}: {ip_analysis['initial_analysis']['classification']}")
+            return {
+                "success": True,
+                "ip_address": ip_address,
+                "analysis": ip_analysis,
+                "timestamp": datetime.now().isoformat(),
+            }
+        else:
+            logger.error(f"❌ IP analysis returned None for {ip_address}")
+            return {
+                "success": False,
+                "error": "IP analysis failed",
+                "ip_address": ip_address,
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error in IP reputation analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analysis error: {str(e)}")
+
+
+@router.post(
+    "/analyze/ip_batch",
+    summary="Batch IP Reputation Analysis",
+    description="Analyze multiple IP addresses in batch",
+)
+async def analyze_ip_batch(ip_addresses: List[str] = [], api_key: str = ""):
+    """Perform batch IP reputation analysis - FIXED"""
+    
+    if not ip_addresses or len(ip_addresses) == 0:
+        raise HTTPException(status_code=400, detail="At least one IP address is required")
+
+    try:
+        import ipaddress
+        
+        results = []
+        
+        for ip in ip_addresses:
+            try:
+                ipaddress.ip_address(ip.strip())
+                ip_analysis = perform_ip_reputation_analysis(ip.strip(), api_key)
+                results.append({
+                    "ip_address": ip,
+                    "success": True,
+                    "analysis": ip_analysis,
+                })
+            except ValueError:
+                results.append({
+                    "ip_address": ip,
+                    "success": False,
+                    "error": "Invalid IP format",
+                })
+            except Exception as e:
+                results.append({
+                    "ip_address": ip,
+                    "success": False,
+                    "error": str(e),
+                })
+        
+        return {
+            "success": True,
+            "total": len(ip_addresses),
+            "analyzed": sum(1 for r in results if r["success"]),
+            "failed": sum(1 for r in results if not r["success"]),
+            "results": results,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error in batch IP analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Batch analysis error: {str(e)}")
 
 # ============================================================================
 # Batch Analysis Endpoints

@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import hashlib
 import json
-from frontend.utils.alert_analysis.metrices import extract_detailed_metrics
+from components.alert_analysis.utils.metrices import extract_detailed_metrics
 from api_client.summary_api_client import get_summary_client
 
 
@@ -58,7 +58,7 @@ def display_historical_analysis_tab(data_df: pd.DataFrame):
 
                 # If API didn't return summary_data, extract it locally
                 if not summary_data:
-                    from backend.historical_analysis_backend import extract_summary_data
+                    from backend.alert_analysis.historical_analysis import extract_summary_data
 
                     summary_data = extract_summary_data(metrics, data_df)
             else:
@@ -66,7 +66,7 @@ def display_historical_analysis_tab(data_df: pd.DataFrame):
                 st.warning(
                     f"⚠️ API summary generation failed: {api_result.get('error')}. Using local generation."
                 )
-                from backend.historical_analysis_backend import (
+                from backend.alert_analysis.historical_analysis import (
                     generate_data_summary_with_llm,
                     extract_summary_data,
                 )

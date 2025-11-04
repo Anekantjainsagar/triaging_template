@@ -3,12 +3,12 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException
 
-from backend.historical_analysis_backend import (
+from backend.alert_analysis.historical_analysis import (
     generate_data_summary_with_llm,
     extract_summary_data,
 )
 import pandas as pd
-from frontend.utils.alert_analysis.metrices import extract_detailed_metrics
+from components.alert_analysis.utils.metrices import extract_detailed_metrics
 
 # Create router
 router = APIRouter()

@@ -8,7 +8,7 @@ from datetime import datetime
 from components.predictions.ip_analysis import analyze_ip_entities_parallel
 from api_client.predictions_api_client import get_predictions_client
 from components.triaging.step2_enhance import _upload_to_predictions_api
-from frontend.utils.predictions.display_utils import (
+from components.predictions.utils.display_utils import (
     display_mitre_analysis,
     display_analysis_results,
 )
