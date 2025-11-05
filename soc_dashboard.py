@@ -5,6 +5,7 @@ from datetime import datetime
 from sentinel.backend import *
 import google.generativeai as genai
 from crewai_tools import SerperDevTool
+import json
 
 # Configure these with your API keys
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
@@ -101,6 +102,33 @@ st.markdown(
         border-radius: 8px;
         margin: 10px 0;
     }
+    .field-container {
+        margin-bottom: 1rem;
+    }
+    .field-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+    .field-value {
+        padding: 0.5rem;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        color: #000;
+        margin-top: 0.25rem;
+        word-wrap: break-word;
+    }
+    .field-value-textarea {
+        padding: 0.5rem;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        color: #000;
+        margin-top: 0.25rem;
+        min-height: 80px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
 </style>
 """,
     unsafe_allow_html=True,
@@ -191,6 +219,32 @@ def format_as_bullets(text: str) -> str:
     return "\n".join(bullets)
 
 
+def render_field(label: str, value: str, key: str = None):
+    """Render a field with grey label and black value"""
+    st.markdown(
+        f"""
+        <div class="field-container">
+            <div class="field-label">{label}</div>
+            <div class="field-value">{value}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_textarea_field(label: str, value: str, key: str = None):
+    """Render a textarea field with grey label and black value"""
+    st.markdown(
+        f"""
+        <div class="field-container">
+            <div class="field-label">{label}</div>
+            <div class="field-value-textarea">{value}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 # Replace the entire detail view section (after "if st.session_state.show_details...") with this:
 if st.session_state.show_details and st.session_state.selected_log:
     # DETAILS VIEW - Full Page
@@ -198,7 +252,6 @@ if st.session_state.show_details and st.session_state.selected_log:
 
     # Header with back button
     col1, col2 = st.columns([6, 1])
-    # st.write(log_data)
     with col1:
         heading = log_data.get("Status", {}).get("failureReason", "N/A")
         st.markdown(
@@ -296,43 +349,23 @@ if st.session_state.show_details and st.session_state.selected_log:
     user_col1, user_col2, user_col3 = st.columns(3)
 
     with user_col1:
-        st.text_input(
-            "User Principal Name",
-            value=log_data.get("UserPrincipalName", "N/A"),
-            disabled=True,
-        )
-        st.text_input(
-            "User Display Name",
-            value=log_data.get("UserDisplayName", "N/A"),
-            disabled=True,
-        )
-        st.text_input("Identity", value=log_data.get("Identity", "N/A"), disabled=True)
+        render_field("User Principal Name", log_data.get("UserPrincipalName", "N/A"))
+        render_field("User Display Name", log_data.get("UserDisplayName", "N/A"))
+        render_field("Identity", log_data.get("Identity", "N/A"))
 
     with user_col2:
-        st.text_input("User ID", value=log_data.get("UserId", "N/A"), disabled=True)
-        st.text_input("User Type", value=log_data.get("UserType", "N/A"), disabled=True)
-        st.text_input(
-            "Sign-in Identifier",
-            value=log_data.get("SignInIdentifier", "N/A"),
-            disabled=True,
-        )
+        render_field("User ID", log_data.get("UserId", "N/A"))
+        render_field("User Type", log_data.get("UserType", "N/A"))
+        render_field("Sign-in Identifier", log_data.get("SignInIdentifier", "N/A"))
 
     with user_col3:
-        st.text_input(
-            "Alternate Sign-in Name",
-            value=log_data.get("AlternateSignInName", "N/A"),
-            disabled=True,
+        render_field(
+            "Alternate Sign-in Name", log_data.get("AlternateSignInName", "N/A")
         )
-        st.text_input(
-            "Sign-in Identifier Type",
-            value=log_data.get("SignInIdentifierType", "N/A"),
-            disabled=True,
+        render_field(
+            "Sign-in Identifier Type", log_data.get("SignInIdentifierType", "N/A")
         )
-        st.text_input(
-            "Home Tenant Name",
-            value=log_data.get("HomeTenantName", "N/A"),
-            disabled=True,
-        )
+        render_field("Home Tenant Name", log_data.get("HomeTenantName", "N/A"))
     st.markdown("</div>", unsafe_allow_html=True)
 
     # Location & Network Information
@@ -340,53 +373,44 @@ if st.session_state.show_details and st.session_state.selected_log:
     st.markdown("#### 🌍 Location & Network Information")
     loc_col1, loc_col2, loc_col3 = st.columns(3)
 
+    location_details = log_data.get("LocationDetails", {})
+    geo = {}
+    if isinstance(location_details, dict):
+        geo = location_details.get("geoCoordinates", {})
+
     with loc_col1:
-        st.text_input(
-            "IP Address", value=log_data.get("IPAddress", "N/A"), disabled=True
-        )
-        st.text_input("Location", value=log_data.get("Location", "N/A"), disabled=True)
-        location_details = log_data.get("LocationDetails", {})
+        render_field("IP Address", log_data.get("IPAddress", "N/A"))
+        render_field("Location", log_data.get("Location", "N/A"))
         if isinstance(location_details, dict):
-            st.text_input(
-                "City", value=location_details.get("city", "N/A"), disabled=True
-            )
+            render_field("City", location_details.get("city", "N/A"))
+        else:
+            render_field("City", "N/A")
 
     with loc_col2:
         if isinstance(location_details, dict):
-            st.text_input(
-                "State", value=location_details.get("state", "N/A"), disabled=True
-            )
-            st.text_input(
-                "Country",
-                value=location_details.get("countryOrRegion", "N/A"),
-                disabled=True,
-            )
-            geo = location_details.get("geoCoordinates", {})
+            render_field("State", location_details.get("state", "N/A"))
+            render_field("Country", location_details.get("countryOrRegion", "N/A"))
             if isinstance(geo, dict):
-                st.text_input(
-                    "Latitude", value=str(geo.get("latitude", "N/A")), disabled=True
-                )
+                render_field("Latitude", str(geo.get("latitude", "N/A")))
+            else:
+                render_field("Latitude", "N/A")
         else:
-            st.text_input("State", value="N/A", disabled=True)
-            st.text_input("Country", value="N/A", disabled=True)
-            st.text_input("Latitude", value="N/A", disabled=True)
+            render_field("State", "N/A")
+            render_field("Country", "N/A")
+            render_field("Latitude", "N/A")
 
     with loc_col3:
         if isinstance(location_details, dict) and isinstance(geo, dict):
-            st.text_input(
-                "Longitude", value=str(geo.get("longitude", "N/A")), disabled=True
-            )
+            render_field("Longitude", str(geo.get("longitude", "N/A")))
         else:
-            st.text_input("Longitude", value="N/A", disabled=True)
-        st.text_input(
+            render_field("Longitude", "N/A")
+        render_field(
             "Autonomous System Number",
-            value=log_data.get("AutonomousSystemNumber", "N/A"),
-            disabled=True,
+            str(log_data.get("AutonomousSystemNumber", "N/A")),
         )
-        st.text_input(
+        render_field(
             "Global Secure Access IP",
-            value=log_data.get("GlobalSecureAccessIpAddress", "N/A"),
-            disabled=True,
+            log_data.get("GlobalSecureAccessIpAddress", "N/A"),
         )
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -395,63 +419,39 @@ if st.session_state.show_details and st.session_state.selected_log:
     st.markdown("#### 🔐 Authentication Details")
     auth_col1, auth_col2 = st.columns(2)
 
+    status = log_data.get("Status", {})
     with auth_col1:
-        status = log_data.get("Status", {})
         if isinstance(status, dict):
-            st.text_input(
-                "Error Code", value=str(status.get("errorCode", "N/A")), disabled=True
-            )
-            st.text_area(
-                "Failure Reason",
-                value=status.get("failureReason", "N/A"),
-                height=80,
-                disabled=True,
-            )
+            render_field("Error Code", str(status.get("errorCode", "N/A")))
+            render_textarea_field("Failure Reason", status.get("failureReason", "N/A"))
         else:
-            st.text_input("Error Code", value="N/A", disabled=True)
-            st.text_area("Failure Reason", value="N/A", height=80, disabled=True)
-        st.text_area(
-            "Result Description",
-            value=log_data.get("ResultDescription", "N/A"),
-            height=80,
-            disabled=True,
+            render_field("Error Code", "N/A")
+            render_textarea_field("Failure Reason", "N/A")
+        render_textarea_field(
+            "Result Description", log_data.get("ResultDescription", "N/A")
         )
-        st.text_input(
+        render_field(
             "Authentication Requirement",
-            value=log_data.get("AuthenticationRequirement", "N/A"),
-            disabled=True,
+            log_data.get("AuthenticationRequirement", "N/A"),
         )
-        st.text_input(
-            "Authentication Protocol",
-            value=log_data.get("AuthenticationProtocol", "N/A"),
-            disabled=True,
+        render_field(
+            "Authentication Protocol", log_data.get("AuthenticationProtocol", "N/A")
         )
 
     with auth_col2:
-        st.text_input(
+        render_field(
             "Authentication Methods Used",
-            value=log_data.get("AuthenticationMethodsUsed", "N/A"),
-            disabled=True,
+            str(log_data.get("AuthenticationMethodsUsed", "N/A")),
         )
-        st.text_input(
-            "Conditional Access Status",
-            value=log_data.get("ConditionalAccessStatus", "N/A"),
-            disabled=True,
+        render_field(
+            "Conditional Access Status", log_data.get("ConditionalAccessStatus", "N/A")
         )
-        st.text_input(
-            "Client Credential Type",
-            value=log_data.get("ClientCredentialType", "N/A"),
-            disabled=True,
+        render_field(
+            "Client Credential Type", log_data.get("ClientCredentialType", "N/A")
         )
-        st.text_input(
-            "Incoming Token Type",
-            value=log_data.get("IncomingTokenType", "N/A"),
-            disabled=True,
-        )
-        st.text_input(
-            "Original Transfer Method",
-            value=log_data.get("OriginalTransferMethod", "N/A"),
-            disabled=True,
+        render_field("Incoming Token Type", log_data.get("IncomingTokenType", "N/A"))
+        render_field(
+            "Original Transfer Method", log_data.get("OriginalTransferMethod", "N/A")
         )
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -464,42 +464,22 @@ if st.session_state.show_details and st.session_state.selected_log:
             with st.expander(f"Authentication Step {i+1}", expanded=(i == 0)):
                 det_col1, det_col2 = st.columns(2)
                 with det_col1:
-                    st.text_input(
-                        "Method",
-                        value=detail.get("authenticationMethod", "N/A"),
-                        disabled=True,
-                        key=f"Method_{i}",
+                    render_field("Method", detail.get("authenticationMethod", "N/A"))
+                    render_field(
+                        "Method Detail", detail.get("authenticationMethodDetail", "N/A")
                     )
-                    st.text_input(
-                        "Method Detail",
-                        value=detail.get("authenticationMethodDetail", "N/A"),
-                        disabled=True,
-                        key=f"Detail_{i}",
-                    )
-                    st.text_input(
-                        "Succeeded",
-                        value=str(detail.get("succeeded", "N/A")),
-                        disabled=True,
-                        key=f"Succeeded_{i}",
-                    )
+                    render_field("Succeeded", str(detail.get("succeeded", "N/A")))
                 with det_col2:
-                    st.text_input(
-                        "DateTime",
-                        value=detail.get("authenticationStepDateTime", "N/A"),
-                        disabled=True,
-                        key=f"DateTime_{i}",
+                    render_field(
+                        "DateTime", detail.get("authenticationStepDateTime", "N/A")
                     )
-                    st.text_input(
+                    render_field(
                         "Result Detail",
-                        value=detail.get("authenticationStepResultDetail", "N/A"),
-                        disabled=True,
-                        key=f"Result_{i}",
+                        detail.get("authenticationStepResultDetail", "N/A"),
                     )
-                    st.text_input(
+                    render_field(
                         "Requirement",
-                        value=detail.get("authenticationStepRequirement", "N/A"),
-                        disabled=True,
-                        key=f"Req_{i}",
+                        detail.get("authenticationStepRequirement", "N/A"),
                     )
     else:
         st.info("No authentication details available")
@@ -520,68 +500,40 @@ if st.session_state.show_details and st.session_state.selected_log:
     device_detail = log_data.get("DeviceDetail", {})
     with device_col1:
         if isinstance(device_detail, dict):
-            st.text_input(
-                "Device ID",
-                value=device_detail.get("deviceId", "N/A") or "N/A",
-                disabled=True,
+            render_field("Device ID", device_detail.get("deviceId", "N/A") or "N/A")
+            render_field(
+                "Operating System", device_detail.get("operatingSystem", "N/A")
             )
-            st.text_input(
-                "Operating System",
-                value=device_detail.get("operatingSystem", "N/A"),
-                disabled=True,
-            )
-            st.text_input(
-                "Browser", value=device_detail.get("browser", "N/A"), disabled=True
-            )
+            render_field("Browser", device_detail.get("browser", "N/A"))
         else:
-            st.text_input("Device ID", value="N/A", disabled=True)
-            st.text_input("Operating System", value="N/A", disabled=True)
-            st.text_input("Browser", value="N/A", disabled=True)
+            render_field("Device ID", "N/A")
+            render_field("Operating System", "N/A")
+            render_field("Browser", "N/A")
 
     with device_col2:
         if isinstance(device_detail, dict):
-            st.text_input(
-                "Display Name",
-                value=device_detail.get("displayName", "N/A") or "N/A",
-                disabled=True,
+            render_field(
+                "Display Name", device_detail.get("displayName", "N/A") or "N/A"
             )
-            st.text_input(
-                "Is Compliant",
-                value=str(device_detail.get("isCompliant", "N/A")),
-                disabled=True,
-            )
-            st.text_input(
-                "Is Managed",
-                value=str(device_detail.get("isManaged", "N/A")),
-                disabled=True,
-            )
+            render_field("Is Compliant", str(device_detail.get("isCompliant", "N/A")))
+            render_field("Is Managed", str(device_detail.get("isManaged", "N/A")))
         else:
-            st.text_input("Display Name", value="N/A", disabled=True)
-            st.text_input("Is Compliant", value="N/A", disabled=True)
-            st.text_input("Is Managed", value="N/A", disabled=True)
+            render_field("Display Name", "N/A")
+            render_field("Is Compliant", "N/A")
+            render_field("Is Managed", "N/A")
 
     with device_col3:
         if isinstance(device_detail, dict):
-            st.text_input(
-                "Trust Type",
-                value=device_detail.get("trustType", "N/A") or "N/A",
-                disabled=True,
-            )
-            st.text_input(
-                "Management Type",
-                value=device_detail.get("managementType", "N/A") or "N/A",
-                disabled=True,
+            render_field("Trust Type", device_detail.get("trustType", "N/A") or "N/A")
+            render_field(
+                "Management Type", device_detail.get("managementType", "N/A") or "N/A"
             )
         else:
-            st.text_input("Trust Type", value="N/A", disabled=True)
-            st.text_input("Management Type", value="N/A", disabled=True)
-        st.text_input(
-            "Client App Used", value=log_data.get("ClientAppUsed", "N/A"), disabled=True
-        )
+            render_field("Trust Type", "N/A")
+            render_field("Management Type", "N/A")
+        render_field("Client App Used", log_data.get("ClientAppUsed", "N/A"))
 
-    st.text_area(
-        "User Agent", value=log_data.get("UserAgent", "N/A"), height=80, disabled=True
-    )
+    render_textarea_field("User Agent", log_data.get("UserAgent", "N/A"))
     st.markdown("</div>", unsafe_allow_html=True)
 
     # Application Information
@@ -590,61 +542,35 @@ if st.session_state.show_details and st.session_state.selected_log:
     app_col1, app_col2 = st.columns(2)
 
     with app_col1:
-        st.text_input(
-            "Application Name",
-            value=log_data.get("AppDisplayName", "N/A"),
-            disabled=True,
+        render_field("Application Name", log_data.get("AppDisplayName", "N/A"))
+        render_field("Application ID", log_data.get("AppId", "N/A"))
+        render_field(
+            "Service Principal ID", log_data.get("ServicePrincipalId", "N/A") or "N/A"
         )
-        st.text_input(
-            "Application ID", value=log_data.get("AppId", "N/A"), disabled=True
-        )
-        st.text_input(
-            "Service Principal ID",
-            value=log_data.get("ServicePrincipalId", "N/A") or "N/A",
-            disabled=True,
-        )
-        st.text_input(
+        render_field(
             "Service Principal Name",
-            value=log_data.get("ServicePrincipalName", "N/A") or "N/A",
-            disabled=True,
+            log_data.get("ServicePrincipalName", "N/A") or "N/A",
         )
-        st.text_input(
-            "App Owner Tenant ID",
-            value=log_data.get("AppOwnerTenantId", "N/A"),
-            disabled=True,
-        )
+        render_field("App Owner Tenant ID", log_data.get("AppOwnerTenantId", "N/A"))
 
     with app_col2:
-        st.text_input(
-            "Resource Display Name",
-            value=log_data.get("ResourceDisplayName", "N/A"),
-            disabled=True,
+        render_field(
+            "Resource Display Name", log_data.get("ResourceDisplayName", "N/A")
         )
-        st.text_input("Resource", value=log_data.get("Resource", "N/A"), disabled=True)
-        st.text_input(
-            "Resource Identity",
-            value=log_data.get("ResourceIdentity", "N/A"),
-            disabled=True,
-        )
-        st.text_input(
+        render_field("Resource", log_data.get("Resource", "N/A"))
+        render_field("Resource Identity", log_data.get("ResourceIdentity", "N/A"))
+        render_field(
             "Resource Service Principal ID",
-            value=log_data.get("ResourceServicePrincipalId", "N/A"),
-            disabled=True,
+            log_data.get("ResourceServicePrincipalId", "N/A"),
         )
-        st.text_input(
-            "Resource Owner Tenant ID",
-            value=log_data.get("ResourceOwnerTenantId", "N/A"),
-            disabled=True,
+        render_field(
+            "Resource Owner Tenant ID", log_data.get("ResourceOwnerTenantId", "N/A")
         )
 
-    st.text_input("Resource ID", value=log_data.get("ResourceId", "N/A"), disabled=True)
-    st.text_input(
-        "Resource Group", value=log_data.get("ResourceGroup", "N/A"), disabled=True
-    )
-    st.text_input(
-        "Source App Client ID",
-        value=log_data.get("SourceAppClientId", "N/A") or "N/A",
-        disabled=True,
+    render_field("Resource ID", log_data.get("ResourceId", "N/A"))
+    render_field("Resource Group", log_data.get("ResourceGroup", "N/A"))
+    render_field(
+        "Source App Client ID", log_data.get("SourceAppClientId", "N/A") or "N/A"
     )
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -654,74 +580,47 @@ if st.session_state.show_details and st.session_state.selected_log:
     risk_col1, risk_col2, risk_col3 = st.columns(3)
 
     with risk_col1:
-        st.text_input(
-            "Risk State", value=log_data.get("RiskState", "N/A"), disabled=True
+        render_field("Risk State", log_data.get("RiskState", "N/A"))
+        render_field(
+            "Risk Level Aggregated", log_data.get("RiskLevelAggregated", "N/A")
         )
-        st.text_input(
-            "Risk Level Aggregated",
-            value=log_data.get("RiskLevelAggregated", "N/A"),
-            disabled=True,
+        render_field(
+            "Risk Level During Sign-in", log_data.get("RiskLevelDuringSignIn", "N/A")
         )
-        st.text_input(
-            "Risk Level During Sign-in",
-            value=log_data.get("RiskLevelDuringSignIn", "N/A"),
-            disabled=True,
-        )
-        st.text_input(
-            "Risk Detail", value=log_data.get("RiskDetail", "N/A"), disabled=True
-        )
+        render_field("Risk Detail", log_data.get("RiskDetail", "N/A"))
 
     with risk_col2:
-        st.text_input(
-            "Is Risky", value=str(log_data.get("IsRisky", "N/A")), disabled=True
-        )
-        st.text_input(
-            "Flagged For Review",
-            value=str(log_data.get("FlaggedForReview", "N/A")),
-            disabled=True,
-        )
-        st.text_input(
-            "Is Interactive",
-            value=str(log_data.get("IsInteractive", "N/A")),
-            disabled=True,
-        )
-        st.text_input(
-            "Is Tenant Restricted",
-            value=str(log_data.get("IsTenantRestricted", "N/A")),
-            disabled=True,
+        render_field("Is Risky", str(log_data.get("IsRisky", "N/A")))
+        render_field("Flagged For Review", str(log_data.get("FlaggedForReview", "N/A")))
+        render_field("Is Interactive", str(log_data.get("IsInteractive", "N/A")))
+        render_field(
+            "Is Tenant Restricted", str(log_data.get("IsTenantRestricted", "N/A"))
         )
 
     with risk_col3:
-        st.text_input(
-            "Cross Tenant Access Type",
-            value=log_data.get("CrossTenantAccessType", "N/A"),
-            disabled=True,
+        render_field(
+            "Cross Tenant Access Type", log_data.get("CrossTenantAccessType", "N/A")
         )
-        st.text_input(
+        render_field(
             "Is Through Global Secure Access",
-            value=str(log_data.get("IsThroughGlobalSecureAccess", "N/A")),
-            disabled=True,
+            str(log_data.get("IsThroughGlobalSecureAccess", "N/A")),
         )
         token_protection = log_data.get("TokenProtectionStatusDetails", {})
         if isinstance(token_protection, dict):
-            st.text_input(
+            render_field(
                 "Token Session Status",
-                value=token_protection.get("signInSessionStatus", "N/A"),
-                disabled=True,
+                token_protection.get("signInSessionStatus", "N/A"),
             )
-            st.text_input(
+            render_field(
                 "Token Session Status Code",
-                value=str(token_protection.get("signInSessionStatusCode", "N/A")),
-                disabled=True,
+                str(token_protection.get("signInSessionStatusCode", "N/A")),
             )
 
     risk_events = log_data.get("RiskEventTypes_V2", [])
     if risk_events and isinstance(risk_events, list) and len(risk_events) > 0:
-        st.text_area(
-            "Risk Event Types", value=", ".join(risk_events), height=60, disabled=True
-        )
+        render_textarea_field("Risk Event Types", ", ".join(risk_events))
     else:
-        st.text_input("Risk Event Types", value="None", disabled=True)
+        render_field("Risk Event Types", "None")
     st.markdown("</div>", unsafe_allow_html=True)
 
     # Session & Token Information
@@ -730,30 +629,19 @@ if st.session_state.show_details and st.session_state.selected_log:
     session_col1, session_col2, session_col3 = st.columns(3)
 
     with session_col1:
-        st.text_input(
-            "Session ID", value=log_data.get("SessionId", "N/A") or "N/A", disabled=True
+        render_field("Session ID", log_data.get("SessionId", "N/A") or "N/A")
+        render_field(
+            "Unique Token Identifier", log_data.get("UniqueTokenIdentifier", "N/A")
         )
-        st.text_input(
-            "Unique Token Identifier",
-            value=log_data.get("UniqueTokenIdentifier", "N/A"),
-            disabled=True,
-        )
-        st.text_input(
-            "Token Issuer Name",
-            value=log_data.get("TokenIssuerName", "N/A") or "N/A",
-            disabled=True,
+        render_field(
+            "Token Issuer Name", log_data.get("TokenIssuerName", "N/A") or "N/A"
         )
 
     with session_col2:
-        st.text_input(
-            "Token Issuer Type",
-            value=log_data.get("TokenIssuerType", "N/A"),
-            disabled=True,
-        )
-        st.text_input(
+        render_field("Token Issuer Type", log_data.get("TokenIssuerType", "N/A"))
+        render_field(
             "Federated Credential ID",
-            value=log_data.get("FederatedCredentialId", "N/A") or "N/A",
-            disabled=True,
+            log_data.get("FederatedCredentialId", "N/A") or "N/A",
         )
 
     with session_col3:
@@ -763,14 +651,9 @@ if st.session_state.show_details and st.session_state.selected_log:
             and isinstance(session_policies, list)
             and len(session_policies) > 0
         ):
-            st.text_area(
-                "Session Lifetime Policies",
-                value=str(session_policies),
-                height=80,
-                disabled=True,
-            )
+            render_textarea_field("Session Lifetime Policies", str(session_policies))
         else:
-            st.text_input("Session Lifetime Policies", value="None", disabled=True)
+            render_field("Session Lifetime Policies", "None")
     st.markdown("</div>", unsafe_allow_html=True)
 
     # Tenant & System Information
@@ -779,39 +662,21 @@ if st.session_state.show_details and st.session_state.selected_log:
     tenant_col1, tenant_col2, tenant_col3 = st.columns(3)
 
     with tenant_col1:
-        st.text_input("Tenant ID", value=log_data.get("TenantId", "N/A"), disabled=True)
-        st.text_input(
-            "AAD Tenant ID", value=log_data.get("AADTenantId", "N/A"), disabled=True
-        )
-        st.text_input(
-            "Home Tenant ID", value=log_data.get("HomeTenantId", "N/A"), disabled=True
-        )
+        render_field("Tenant ID", log_data.get("TenantId", "N/A"))
+        render_field("AAD Tenant ID", log_data.get("AADTenantId", "N/A"))
+        render_field("Home Tenant ID", log_data.get("HomeTenantId", "N/A"))
 
     with tenant_col2:
-        st.text_input(
-            "Resource Tenant ID",
-            value=log_data.get("ResourceTenantId", "N/A"),
-            disabled=True,
-        )
-        st.text_input(
-            "Source System", value=log_data.get("SourceSystem", "N/A"), disabled=True
-        )
-        st.text_input(
-            "Resource Provider",
-            value=log_data.get("ResourceProvider", "N/A") or "N/A",
-            disabled=True,
+        render_field("Resource Tenant ID", log_data.get("ResourceTenantId", "N/A"))
+        render_field("Source System", log_data.get("SourceSystem", "N/A"))
+        render_field(
+            "Resource Provider", log_data.get("ResourceProvider", "N/A") or "N/A"
         )
 
     with tenant_col3:
-        st.text_input("Category", value=log_data.get("Category", "N/A"), disabled=True)
-        st.text_input(
-            "Operation Name", value=log_data.get("OperationName", "N/A"), disabled=True
-        )
-        st.text_input(
-            "Operation Version",
-            value=log_data.get("OperationVersion", "N/A"),
-            disabled=True,
-        )
+        render_field("Category", log_data.get("Category", "N/A"))
+        render_field("Operation Name", log_data.get("OperationName", "N/A"))
+        render_field("Operation Version", log_data.get("OperationVersion", "N/A"))
     st.markdown("</div>", unsafe_allow_html=True)
 
     # Additional Technical Details
@@ -820,37 +685,22 @@ if st.session_state.show_details and st.session_state.selected_log:
     tech_col1, tech_col2, tech_col3 = st.columns(3)
 
     with tech_col1:
-        st.text_input(
-            "Correlation ID", value=log_data.get("CorrelationId", "N/A"), disabled=True
-        )
-        st.text_input(
-            "Original Request ID",
-            value=log_data.get("OriginalRequestId", "N/A"),
-            disabled=True,
-        )
-        st.text_input("Record ID", value=log_data.get("Id", "N/A"), disabled=True)
+        render_field("Correlation ID", log_data.get("CorrelationId", "N/A"))
+        render_field("Original Request ID", log_data.get("OriginalRequestId", "N/A"))
+        render_field("Record ID", log_data.get("Id", "N/A"))
 
     with tech_col2:
-        st.text_input(
+        render_field(
             "Processing Time (ms)",
-            value=log_data.get("ProcessingTimeInMilliseconds", "N/A"),
-            disabled=True,
+            str(log_data.get("ProcessingTimeInMilliseconds", "N/A")),
         )
-        st.text_input(
-            "Duration (ms)", value=str(log_data.get("DurationMs", "N/A")), disabled=True
-        )
-        st.text_input("Level", value=log_data.get("Level", "N/A"), disabled=True)
+        render_field("Duration (ms)", str(log_data.get("DurationMs", "N/A")))
+        render_field("Level", log_data.get("Level", "N/A"))
 
     with tech_col3:
-        st.text_input(
-            "Created DateTime",
-            value=log_data.get("CreatedDateTime", "N/A"),
-            disabled=True,
-        )
-        st.text_input("Type", value=log_data.get("Type", "N/A"), disabled=True)
-        st.text_input(
-            "xy_CF", value=log_data.get("xy_CF", "N/A") or "N/A", disabled=True
-        )
+        render_field("Created DateTime", log_data.get("CreatedDateTime", "N/A"))
+        render_field("Type", log_data.get("Type", "N/A"))
+        render_field("xy_CF", log_data.get("xy_CF", "N/A") or "N/A")
     st.markdown("</div>", unsafe_allow_html=True)
 
     # Conditional Access & Policies
@@ -864,30 +714,16 @@ if st.session_state.show_details and st.session_state.selected_log:
             ):
                 pol_col1, pol_col2 = st.columns(2)
                 with pol_col1:
-                    st.text_input(
-                        "Policy ID",
-                        value=policy.get("id", "N/A"),
-                        disabled=True,
-                        key=f"pol_id_{i}",
-                    )
-                    st.text_input(
-                        "Result",
-                        value=policy.get("result", "N/A"),
-                        disabled=True,
-                        key=f"pol_result_{i}",
-                    )
+                    render_field("Policy ID", policy.get("id", "N/A"))
+                    render_field("Result", policy.get("result", "N/A"))
                 with pol_col2:
-                    st.text_input(
+                    render_field(
                         "Enforced Controls",
-                        value=str(policy.get("enforcedGrantControls", [])),
-                        disabled=True,
-                        key=f"pol_enforced_{i}",
+                        str(policy.get("enforcedGrantControls", [])),
                     )
-                    st.text_input(
+                    render_field(
                         "Session Controls",
-                        value=str(policy.get("enforcedSessionControls", [])),
-                        disabled=True,
-                        key=f"pol_session_{i}",
+                        str(policy.get("enforcedSessionControls", [])),
                     )
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -908,9 +744,7 @@ if st.session_state.show_details and st.session_state.selected_log:
     if agent_info and isinstance(agent_info, dict):
         st.markdown('<div class="detail-section">', unsafe_allow_html=True)
         st.markdown("#### 🤖 Agent Information")
-        st.text_input(
-            "Agent Type", value=agent_info.get("agentType", "N/A"), disabled=True
-        )
+        render_field("Agent Type", agent_info.get("agentType", "N/A"))
         st.markdown("</div>", unsafe_allow_html=True)
 
     # Network Location Details
@@ -935,18 +769,12 @@ if st.session_state.show_details and st.session_state.selected_log:
         st.markdown('<div class="detail-section">', unsafe_allow_html=True)
         st.markdown("#### 📋 Authentication Context & Policies")
         if auth_context and len(auth_context) > 0:
-            st.text_area(
-                "Authentication Context Class References",
-                value=str(auth_context),
-                height=80,
-                disabled=True,
+            render_textarea_field(
+                "Authentication Context Class References", str(auth_context)
             )
         if auth_req_policies and len(auth_req_policies) > 0:
-            st.text_area(
-                "Authentication Requirement Policies",
-                value=str(auth_req_policies),
-                height=80,
-                disabled=True,
+            render_textarea_field(
+                "Authentication Requirement Policies", str(auth_req_policies)
             )
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -982,7 +810,7 @@ if st.session_state.show_details and st.session_state.selected_log:
             st.code(json.dumps(log_data, indent=2), language="json")
 
     st.stop()
-    
+
 # MAIN LIST VIEW
 else:
     st.markdown(
@@ -1041,7 +869,9 @@ else:
         st.stop()
 
     if not logs:
-        st.warning(f"⚠️ No logs found for {selected_table} in the last {days_filter} days.")
+        st.warning(
+            f"⚠️ No logs found for {selected_table} in the last {days_filter} days."
+        )
         st.stop()
 
     # Dashboard metrics
@@ -1141,12 +971,16 @@ else:
             )
 
         with col4:
-            if st.button("Next ➡️", disabled=(st.session_state.current_page == total_pages)):
+            if st.button(
+                "Next ➡️", disabled=(st.session_state.current_page == total_pages)
+            ):
                 st.session_state.current_page += 1
                 st.rerun()
 
         with col5:
-            if st.button("Last ⏭️", disabled=(st.session_state.current_page == total_pages)):
+            if st.button(
+                "Last ⏭️", disabled=(st.session_state.current_page == total_pages)
+            ):
                 st.session_state.current_page = total_pages
                 st.rerun()
 
