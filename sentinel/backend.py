@@ -23,6 +23,76 @@ def check_api_status():
         return False, {"status": "error", "error": str(e)}
 
 
+def check_signin_logs_freshness():
+    """Check if SigninLogs.json needs to be refreshed"""
+    signin_logs_path = "sentinel_logs/SigninLogs.json"
+
+    if not os.path.exists(signin_logs_path):
+        return True, "File does not exist"
+
+    try:
+        with open(signin_logs_path, "r") as f:
+            data = json.load(f)
+            timestamp_str = data.get("timestamp")
+
+            if not timestamp_str:
+                return True, "No timestamp found"
+
+            file_timestamp = datetime.fromisoformat(
+                timestamp_str.replace("Z", "+00:00")
+            )
+            current_time = datetime.utcnow()
+            time_diff = current_time - file_timestamp.replace(tzinfo=None)
+
+            if time_diff > timedelta(hours=1):
+                return True, f"Data is {time_diff.total_seconds()/3600:.1f} hours old"
+            else:
+                return False, f"Data is {time_diff.total_seconds()/60:.1f} minutes old"
+    except Exception as e:
+        return True, f"Error: {str(e)}"
+
+
+
+
+def load_logs(table_name, days_filter=30):
+    """Load logs from JSON file with time filtering"""
+    file_path = f"sentinel_logs/{table_name}.json"
+
+    if not os.path.exists(file_path):
+        return None, f"File not found: {file_path}"
+
+    try:
+        with open(file_path, "r") as f:
+            data = json.load(f)
+
+        logs = data.get("data", [])
+
+        if not logs:
+            return [], "No logs available"
+
+        # Filter by days
+        cutoff_date = datetime.utcnow() - timedelta(days=days_filter)
+        filtered_logs = []
+
+        for log in logs:
+            time_generated = log.get("TimeGenerated")
+            if time_generated:
+                try:
+                    log_time = datetime.fromisoformat(
+                        time_generated.replace("Z", "+00:00")
+                    )
+                    if log_time.replace(tzinfo=None) >= cutoff_date:
+                        filtered_logs.append(log)
+                except:
+                    filtered_logs.append(log)
+            else:
+                filtered_logs.append(log)
+
+        return filtered_logs, None
+    except Exception as e:
+        return None, str(e)
+
+
 def format_entity_display(entity):
     kind = entity.get("kind", "Unknown")
     props = entity.get("properties", {})
