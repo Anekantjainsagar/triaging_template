@@ -1,0 +1,58 @@
+[
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-05T06:09:08.3631025Z",
+    "Timestamp": "2025-11-05T06:09:08.3631025Z",
+    "AlertId": "snf457a8ec-67cb-4e8e-a6b5-f3fb31384ca8",
+    "Title": "Test-Suspicious signins",
+    "Category": "SuspiciousActivity",
+    "Severity": "Low",
+    "ServiceSource": "Microsoft Sentinel",
+    "DetectionSource": "Scheduled Alerts",
+    "AttackTechniques": "",
+    "SourceSystem": "",
+    "Type": "AlertInfo"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T19:34:29.3068474Z",
+    "Timestamp": "2025-11-04T19:34:29.3068474Z",
+    "AlertId": "snea8c84e1-08c4-4086-8748-4f99dba0238e",
+    "Title": "Test-Suspicious signins",
+    "Category": "SuspiciousActivity",
+    "Severity": "Low",
+    "ServiceSource": "Microsoft Sentinel",
+    "DetectionSource": "Scheduled Alerts",
+    "AttackTechniques": "",
+    "SourceSystem": "",
+    "Type": "AlertInfo"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T14:27:09.7121284Z",
+    "Timestamp": "2025-11-04T14:27:09.7121284Z",
+    "AlertId": "sn49b5110c-7888-4394-8f55-a2a552189cd5",
+    "Title": "Test-Suspicious signins",
+    "Category": "SuspiciousActivity",
+    "Severity": "Low",
+    "ServiceSource": "Microsoft Sentinel",
+    "DetectionSource": "Scheduled Alerts",
+    "AttackTechniques": "",
+    "SourceSystem": "",
+    "Type": "AlertInfo"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T10:49:37.9305835Z",
+    "Timestamp": "2025-11-04T10:49:37.9305835Z",
+    "AlertId": "snd0107140-8816-4e64-91ae-4205d55cc243",
+    "Title": "Test-Suspicious signins",
+    "Category": "SuspiciousActivity",
+    "Severity": "Low",
+    "ServiceSource": "Microsoft Sentinel",
+    "DetectionSource": "Scheduled Alerts",
+    "AttackTechniques": "",
+    "SourceSystem": "",
+    "Type": "AlertInfo"
+  }
+]

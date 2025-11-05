@@ -1,0 +1,606 @@
+[
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-05T06:45:13.47Z",
+    "IncidentName": "b0254312-3928-4806-aea6-7052d1d97d65",
+    "Title": "Test-Suspicious signins involving multiple users",
+    "Description": "",
+    "Severity": "Low",
+    "Status": "New",
+    "Classification": "",
+    "ClassificationComment": "",
+    "ClassificationReason": "",
+    "Owner": {
+      "objectId": null,
+      "email": null,
+      "assignedTo": null,
+      "userPrincipalName": null
+    },
+    "ProviderName": "Microsoft XDR",
+    "ProviderIncidentId": "856",
+    "FirstActivityTime": "2025-11-04T07:15:45.3020718Z",
+    "LastActivityTime": "2025-11-05T06:09:08.3631025Z",
+    "FirstModifiedTime": null,
+    "LastModifiedTime": "2025-11-05T06:45:13.47Z",
+    "CreatedTime": "2025-11-05T06:45:13.3333333Z",
+    "ClosedTime": null,
+    "IncidentNumber": 437,
+    "RelatedAnalyticRuleIds": [
+      "32495d2d-27d7-4bb7-8417-c757a5794626"
+    ],
+    "AlertIds": [
+      "c7e2049e-9834-f963-3a25-3236c5304220"
+    ],
+    "BookmarkIds": [],
+    "Comments": [],
+    "Tasks": [],
+    "Labels": [],
+    "IncidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/Incidents/b0254312-3928-4806-aea6-7052d1d97d65",
+    "AdditionalData": {
+      "alertsCount": 1,
+      "bookmarksCount": 0,
+      "commentsCount": 0,
+      "alertProductNames": [
+        "Azure Sentinel"
+      ],
+      "tactics": [],
+      "techniques": [],
+      "providerIncidentUrl": "https://security.microsoft.com/incident2/856/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+    },
+    "ModifiedBy": "Incident created from alert",
+    "SourceSystem": "Azure",
+    "Type": "SecurityIncident"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-05T00:45:34.03Z",
+    "IncidentName": "4cf3a6ff-bc38-4fc3-bd9b-4d1224c3c871",
+    "Title": "Test-Suspicious signins involving multiple users",
+    "Description": "",
+    "Severity": "Low",
+    "Status": "New",
+    "Classification": "",
+    "ClassificationComment": "",
+    "ClassificationReason": "",
+    "Owner": {
+      "objectId": null,
+      "email": null,
+      "assignedTo": null,
+      "userPrincipalName": null
+    },
+    "ProviderName": "Microsoft XDR",
+    "ProviderIncidentId": "855",
+    "FirstActivityTime": "2025-11-04T05:43:45.8655243Z",
+    "LastActivityTime": "2025-11-04T19:34:29.3068474Z",
+    "FirstModifiedTime": null,
+    "LastModifiedTime": "2025-11-05T00:45:34.03Z",
+    "CreatedTime": "2025-11-05T00:45:33.88Z",
+    "ClosedTime": null,
+    "IncidentNumber": 436,
+    "RelatedAnalyticRuleIds": [
+      "32495d2d-27d7-4bb7-8417-c757a5794626"
+    ],
+    "AlertIds": [
+      "38a61097-940e-bc5f-b5bb-eb53898e92c9"
+    ],
+    "BookmarkIds": [],
+    "Comments": [],
+    "Tasks": [],
+    "Labels": [],
+    "IncidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/Incidents/4cf3a6ff-bc38-4fc3-bd9b-4d1224c3c871",
+    "AdditionalData": {
+      "alertsCount": 1,
+      "bookmarksCount": 0,
+      "commentsCount": 0,
+      "alertProductNames": [
+        "Azure Sentinel"
+      ],
+      "tactics": [],
+      "techniques": [],
+      "providerIncidentUrl": "https://security.microsoft.com/incident2/855/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+    },
+    "ModifiedBy": "Incident created from alert",
+    "SourceSystem": "Azure",
+    "Type": "SecurityIncident"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T18:47:30.2657409Z",
+    "IncidentName": "04df4150-18ca-4141-8daf-481d4cfade2e",
+    "Title": "Test-Suspicious signins involving multiple users",
+    "Description": "",
+    "Severity": "Low",
+    "Status": "New",
+    "Classification": "",
+    "ClassificationComment": "",
+    "ClassificationReason": "",
+    "Owner": {
+      "objectId": null,
+      "email": null,
+      "assignedTo": null,
+      "userPrincipalName": null
+    },
+    "ProviderName": "Microsoft XDR",
+    "ProviderIncidentId": "848",
+    "FirstActivityTime": "2025-11-03T06:03:25.2973307Z",
+    "LastActivityTime": "2025-11-04T14:27:09.7121284Z",
+    "FirstModifiedTime": null,
+    "LastModifiedTime": "2025-11-04T18:47:30.2657409Z",
+    "CreatedTime": "2025-11-03T06:45:55.88Z",
+    "ClosedTime": null,
+    "IncidentNumber": 433,
+    "RelatedAnalyticRuleIds": [
+      "32495d2d-27d7-4bb7-8417-c757a5794626"
+    ],
+    "AlertIds": [
+      "85058a68-1f01-2f91-a082-08595367110a",
+      "36932172-3c88-8a2a-e069-c611367a54cf",
+      "516e68bb-2975-a7a3-f338-8f4458091840",
+      "e19b2d6d-6818-c01b-7894-3d41fd3281c2",
+      "d11cc1e6-68c7-7743-6dc1-b2abdb064b29",
+      "ba6927a9-0d00-158c-a002-fb7ec07dd934",
+      "bc98e968-80e9-f94a-79fb-5ef467af5e9e"
+    ],
+    "BookmarkIds": [],
+    "Comments": [],
+    "Tasks": [],
+    "Labels": [],
+    "IncidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/Incidents/04df4150-18ca-4141-8daf-481d4cfade2e",
+    "AdditionalData": {
+      "alertsCount": 7,
+      "bookmarksCount": 0,
+      "commentsCount": 0,
+      "alertProductNames": [
+        "Azure Sentinel"
+      ],
+      "tactics": [],
+      "techniques": [],
+      "providerIncidentUrl": "https://security.microsoft.com/incident2/848/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+    },
+    "ModifiedBy": "Microsoft Defender XDR - alert correlation",
+    "SourceSystem": "Azure",
+    "Type": "SecurityIncident"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T18:45:55.8333333Z",
+    "IncidentName": "04df4150-18ca-4141-8daf-481d4cfade2e",
+    "Title": "Test-Suspicious signins involving multiple users",
+    "Description": "",
+    "Severity": "Low",
+    "Status": "New",
+    "Classification": "",
+    "ClassificationComment": "",
+    "ClassificationReason": "",
+    "Owner": {
+      "objectId": null,
+      "email": null,
+      "assignedTo": null,
+      "userPrincipalName": null
+    },
+    "ProviderName": "Microsoft XDR",
+    "ProviderIncidentId": "848",
+    "FirstActivityTime": "2025-11-03T06:03:25.2973307Z",
+    "LastActivityTime": "2025-11-04T14:27:09.7121284Z",
+    "FirstModifiedTime": null,
+    "LastModifiedTime": "2025-11-04T18:45:55.8333333Z",
+    "CreatedTime": "2025-11-03T06:45:55.88Z",
+    "ClosedTime": null,
+    "IncidentNumber": 433,
+    "RelatedAnalyticRuleIds": [
+      "32495d2d-27d7-4bb7-8417-c757a5794626"
+    ],
+    "AlertIds": [
+      "85058a68-1f01-2f91-a082-08595367110a",
+      "36932172-3c88-8a2a-e069-c611367a54cf",
+      "516e68bb-2975-a7a3-f338-8f4458091840",
+      "e19b2d6d-6818-c01b-7894-3d41fd3281c2",
+      "d11cc1e6-68c7-7743-6dc1-b2abdb064b29",
+      "ba6927a9-0d00-158c-a002-fb7ec07dd934",
+      "bc98e968-80e9-f94a-79fb-5ef467af5e9e"
+    ],
+    "BookmarkIds": [],
+    "Comments": [],
+    "Tasks": [],
+    "Labels": [],
+    "IncidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/Incidents/04df4150-18ca-4141-8daf-481d4cfade2e",
+    "AdditionalData": {
+      "alertsCount": 7,
+      "bookmarksCount": 0,
+      "commentsCount": 0,
+      "alertProductNames": [
+        "Azure Sentinel"
+      ],
+      "tactics": [],
+      "techniques": [],
+      "providerIncidentUrl": "https://security.microsoft.com/incident2/848/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+    },
+    "ModifiedBy": "Microsoft Defender XDR - alert correlation",
+    "SourceSystem": "Azure",
+    "Type": "SecurityIncident"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T13:26:38.38683Z",
+    "IncidentName": "04df4150-18ca-4141-8daf-481d4cfade2e",
+    "Title": "Test-Suspicious signins involving multiple users",
+    "Description": "",
+    "Severity": "Low",
+    "Status": "New",
+    "Classification": "",
+    "ClassificationComment": "",
+    "ClassificationReason": "",
+    "Owner": {
+      "objectId": null,
+      "email": null,
+      "assignedTo": null,
+      "userPrincipalName": null
+    },
+    "ProviderName": "Microsoft XDR",
+    "ProviderIncidentId": "848",
+    "FirstActivityTime": "2025-11-03T06:03:25.2973307Z",
+    "LastActivityTime": "2025-11-04T10:49:37.9305835Z",
+    "FirstModifiedTime": null,
+    "LastModifiedTime": "2025-11-04T13:26:38.38683Z",
+    "CreatedTime": "2025-11-03T06:45:55.88Z",
+    "ClosedTime": null,
+    "IncidentNumber": 433,
+    "RelatedAnalyticRuleIds": [
+      "32495d2d-27d7-4bb7-8417-c757a5794626"
+    ],
+    "AlertIds": [
+      "85058a68-1f01-2f91-a082-08595367110a",
+      "516e68bb-2975-a7a3-f338-8f4458091840",
+      "e19b2d6d-6818-c01b-7894-3d41fd3281c2",
+      "d11cc1e6-68c7-7743-6dc1-b2abdb064b29",
+      "ba6927a9-0d00-158c-a002-fb7ec07dd934",
+      "bc98e968-80e9-f94a-79fb-5ef467af5e9e"
+    ],
+    "BookmarkIds": [],
+    "Comments": [],
+    "Tasks": [],
+    "Labels": [],
+    "IncidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/Incidents/04df4150-18ca-4141-8daf-481d4cfade2e",
+    "AdditionalData": {
+      "alertsCount": 6,
+      "bookmarksCount": 0,
+      "commentsCount": 0,
+      "alertProductNames": [
+        "Azure Sentinel"
+      ],
+      "tactics": [],
+      "techniques": [],
+      "providerIncidentUrl": "https://security.microsoft.com/incident2/848/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+    },
+    "ModifiedBy": "Microsoft Defender XDR - alert correlation",
+    "SourceSystem": "Azure",
+    "Type": "SecurityIncident"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T13:26:38.3817739Z",
+    "IncidentName": "17d18f77-9d96-4caa-8ace-ef2cad7a147e",
+    "Title": "Test-Suspicious signins involving multiple users",
+    "Description": "",
+    "Severity": "Low",
+    "Status": "Closed",
+    "Classification": "Undetermined",
+    "ClassificationComment": "",
+    "ClassificationReason": "",
+    "Owner": {
+      "objectId": null,
+      "email": null,
+      "assignedTo": null,
+      "userPrincipalName": null
+    },
+    "ProviderName": "Microsoft XDR",
+    "ProviderIncidentId": "853",
+    "FirstActivityTime": "2025-11-04T12:45:11.5266667Z",
+    "LastActivityTime": "2025-11-04T12:45:11.5266667Z",
+    "FirstModifiedTime": null,
+    "LastModifiedTime": "2025-11-04T13:26:38.3817739Z",
+    "CreatedTime": "2025-11-04T12:45:11.5266667Z",
+    "ClosedTime": "2025-11-04T13:26:38.3814321Z",
+    "IncidentNumber": 435,
+    "RelatedAnalyticRuleIds": [
+      "32495d2d-27d7-4bb7-8417-c757a5794626"
+    ],
+    "AlertIds": [],
+    "BookmarkIds": [],
+    "Comments": [],
+    "Tasks": [],
+    "Labels": [
+      {
+        "labelName": "Redirected",
+        "labelType": "AutoAssigned"
+      }
+    ],
+    "IncidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/Incidents/17d18f77-9d96-4caa-8ace-ef2cad7a147e",
+    "AdditionalData": {
+      "alertsCount": 0,
+      "bookmarksCount": 0,
+      "commentsCount": 0,
+      "alertProductNames": [],
+      "tactics": [],
+      "techniques": [],
+      "providerIncidentUrl": "https://security.microsoft.com/incident2/853/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+    },
+    "ModifiedBy": "Microsoft Defender XDR - alert correlation",
+    "SourceSystem": "Azure",
+    "Type": "SecurityIncident"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T13:23:22.8933333Z",
+    "IncidentName": "04df4150-18ca-4141-8daf-481d4cfade2e",
+    "Title": "Test-Suspicious signins involving multiple users",
+    "Description": "",
+    "Severity": "Low",
+    "Status": "New",
+    "Classification": "",
+    "ClassificationComment": "",
+    "ClassificationReason": "",
+    "Owner": {
+      "objectId": null,
+      "email": null,
+      "assignedTo": null,
+      "userPrincipalName": null
+    },
+    "ProviderName": "Microsoft XDR",
+    "ProviderIncidentId": "848",
+    "FirstActivityTime": "2025-11-03T06:03:25.2973307Z",
+    "LastActivityTime": "2025-11-04T10:49:37.9305835Z",
+    "FirstModifiedTime": null,
+    "LastModifiedTime": "2025-11-04T13:23:22.8933333Z",
+    "CreatedTime": "2025-11-03T06:45:55.88Z",
+    "ClosedTime": null,
+    "IncidentNumber": 433,
+    "RelatedAnalyticRuleIds": [
+      "32495d2d-27d7-4bb7-8417-c757a5794626"
+    ],
+    "AlertIds": [
+      "85058a68-1f01-2f91-a082-08595367110a",
+      "516e68bb-2975-a7a3-f338-8f4458091840",
+      "e19b2d6d-6818-c01b-7894-3d41fd3281c2",
+      "d11cc1e6-68c7-7743-6dc1-b2abdb064b29",
+      "ba6927a9-0d00-158c-a002-fb7ec07dd934",
+      "bc98e968-80e9-f94a-79fb-5ef467af5e9e"
+    ],
+    "BookmarkIds": [],
+    "Comments": [],
+    "Tasks": [],
+    "Labels": [],
+    "IncidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/Incidents/04df4150-18ca-4141-8daf-481d4cfade2e",
+    "AdditionalData": {
+      "alertsCount": 6,
+      "bookmarksCount": 0,
+      "commentsCount": 0,
+      "alertProductNames": [
+        "Azure Sentinel"
+      ],
+      "tactics": [],
+      "techniques": [],
+      "providerIncidentUrl": "https://security.microsoft.com/incident2/848/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+    },
+    "ModifiedBy": "Microsoft Defender XDR - alert correlation",
+    "SourceSystem": "Azure",
+    "Type": "SecurityIncident"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T12:45:11.67Z",
+    "IncidentName": "17d18f77-9d96-4caa-8ace-ef2cad7a147e",
+    "Title": "Test-Suspicious signins involving multiple users",
+    "Description": "",
+    "Severity": "Low",
+    "Status": "New",
+    "Classification": "",
+    "ClassificationComment": "",
+    "ClassificationReason": "",
+    "Owner": {
+      "objectId": null,
+      "email": null,
+      "assignedTo": null,
+      "userPrincipalName": null
+    },
+    "ProviderName": "Microsoft XDR",
+    "ProviderIncidentId": "853",
+    "FirstActivityTime": "2025-11-04T05:43:45.8655243Z",
+    "LastActivityTime": "2025-11-04T10:49:37.9305835Z",
+    "FirstModifiedTime": null,
+    "LastModifiedTime": "2025-11-04T12:45:11.67Z",
+    "CreatedTime": "2025-11-04T12:45:11.5266667Z",
+    "ClosedTime": null,
+    "IncidentNumber": 435,
+    "RelatedAnalyticRuleIds": [
+      "32495d2d-27d7-4bb7-8417-c757a5794626"
+    ],
+    "AlertIds": [
+      "bc98e968-80e9-f94a-79fb-5ef467af5e9e"
+    ],
+    "BookmarkIds": [],
+    "Comments": [],
+    "Tasks": [],
+    "Labels": [],
+    "IncidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/Incidents/17d18f77-9d96-4caa-8ace-ef2cad7a147e",
+    "AdditionalData": {
+      "alertsCount": 1,
+      "bookmarksCount": 0,
+      "commentsCount": 0,
+      "alertProductNames": [
+        "Azure Sentinel"
+      ],
+      "tactics": [],
+      "techniques": [],
+      "providerIncidentUrl": "https://security.microsoft.com/incident2/853/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+    },
+    "ModifiedBy": "Incident created from alert",
+    "SourceSystem": "Azure",
+    "Type": "SecurityIncident"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T07:29:34.9866939Z",
+    "IncidentName": "04df4150-18ca-4141-8daf-481d4cfade2e",
+    "Title": "Test-Suspicious signins involving multiple users",
+    "Description": "",
+    "Severity": "Low",
+    "Status": "New",
+    "Classification": "",
+    "ClassificationComment": "",
+    "ClassificationReason": "",
+    "Owner": {
+      "objectId": null,
+      "email": null,
+      "assignedTo": null,
+      "userPrincipalName": null
+    },
+    "ProviderName": "Microsoft XDR",
+    "ProviderIncidentId": "848",
+    "FirstActivityTime": "2025-11-03T06:03:25.2973307Z",
+    "LastActivityTime": "2025-11-04T05:43:45.8655243Z",
+    "FirstModifiedTime": null,
+    "LastModifiedTime": "2025-11-04T07:29:34.9866939Z",
+    "CreatedTime": "2025-11-03T06:45:55.88Z",
+    "ClosedTime": null,
+    "IncidentNumber": 433,
+    "RelatedAnalyticRuleIds": [
+      "32495d2d-27d7-4bb7-8417-c757a5794626"
+    ],
+    "AlertIds": [
+      "85058a68-1f01-2f91-a082-08595367110a",
+      "516e68bb-2975-a7a3-f338-8f4458091840",
+      "e19b2d6d-6818-c01b-7894-3d41fd3281c2",
+      "d11cc1e6-68c7-7743-6dc1-b2abdb064b29",
+      "ba6927a9-0d00-158c-a002-fb7ec07dd934"
+    ],
+    "BookmarkIds": [],
+    "Comments": [],
+    "Tasks": [],
+    "Labels": [],
+    "IncidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/Incidents/04df4150-18ca-4141-8daf-481d4cfade2e",
+    "AdditionalData": {
+      "alertsCount": 5,
+      "bookmarksCount": 0,
+      "commentsCount": 0,
+      "alertProductNames": [
+        "Azure Sentinel"
+      ],
+      "tactics": [],
+      "techniques": [],
+      "providerIncidentUrl": "https://security.microsoft.com/incident2/848/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+    },
+    "ModifiedBy": "Microsoft Defender XDR - alert correlation",
+    "SourceSystem": "Azure",
+    "Type": "SecurityIncident"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T07:29:34.9780383Z",
+    "IncidentName": "9cd46df2-d3e0-4ed7-b2bb-e2d1cceaf022",
+    "Title": "Test-Suspicious signins involving multiple users",
+    "Description": "",
+    "Severity": "Low",
+    "Status": "Closed",
+    "Classification": "Undetermined",
+    "ClassificationComment": "",
+    "ClassificationReason": "",
+    "Owner": {
+      "objectId": null,
+      "email": null,
+      "assignedTo": null,
+      "userPrincipalName": null
+    },
+    "ProviderName": "Microsoft XDR",
+    "ProviderIncidentId": "852",
+    "FirstActivityTime": "2025-11-04T06:45:23.83Z",
+    "LastActivityTime": "2025-11-04T06:45:23.83Z",
+    "FirstModifiedTime": null,
+    "LastModifiedTime": "2025-11-04T07:29:34.9780383Z",
+    "CreatedTime": "2025-11-04T06:45:23.83Z",
+    "ClosedTime": "2025-11-04T07:29:34.9776956Z",
+    "IncidentNumber": 434,
+    "RelatedAnalyticRuleIds": [
+      "32495d2d-27d7-4bb7-8417-c757a5794626"
+    ],
+    "AlertIds": [],
+    "BookmarkIds": [],
+    "Comments": [],
+    "Tasks": [],
+    "Labels": [
+      {
+        "labelName": "Redirected",
+        "labelType": "AutoAssigned"
+      }
+    ],
+    "IncidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/Incidents/9cd46df2-d3e0-4ed7-b2bb-e2d1cceaf022",
+    "AdditionalData": {
+      "alertsCount": 0,
+      "bookmarksCount": 0,
+      "commentsCount": 0,
+      "alertProductNames": [],
+      "tactics": [],
+      "techniques": [],
+      "providerIncidentUrl": "https://security.microsoft.com/incident2/852/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+    },
+    "ModifiedBy": "Microsoft Defender XDR - alert correlation",
+    "SourceSystem": "Azure",
+    "Type": "SecurityIncident"
+  },
+  {
+    "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+    "TimeGenerated": "2025-11-04T07:27:44.5366667Z",
+    "IncidentName": "04df4150-18ca-4141-8daf-481d4cfade2e",
+    "Title": "Test-Suspicious signins involving multiple users",
+    "Description": "",
+    "Severity": "Low",
+    "Status": "New",
+    "Classification": "",
+    "ClassificationComment": "",
+    "ClassificationReason": "",
+    "Owner": {
+      "objectId": null,
+      "email": null,
+      "assignedTo": null,
+      "userPrincipalName": null
+    },
+    "ProviderName": "Microsoft XDR",
+    "ProviderIncidentId": "848",
+    "FirstActivityTime": "2025-11-03T06:03:25.2973307Z",
+    "LastActivityTime": "2025-11-04T05:43:45.8655243Z",
+    "FirstModifiedTime": null,
+    "LastModifiedTime": "2025-11-04T07:27:44.5366667Z",
+    "CreatedTime": "2025-11-03T06:45:55.88Z",
+    "ClosedTime": null,
+    "IncidentNumber": 433,
+    "RelatedAnalyticRuleIds": [
+      "32495d2d-27d7-4bb7-8417-c757a5794626"
+    ],
+    "AlertIds": [
+      "85058a68-1f01-2f91-a082-08595367110a",
+      "516e68bb-2975-a7a3-f338-8f4458091840",
+      "e19b2d6d-6818-c01b-7894-3d41fd3281c2",
+      "d11cc1e6-68c7-7743-6dc1-b2abdb064b29",
+      "ba6927a9-0d00-158c-a002-fb7ec07dd934"
+    ],
+    "BookmarkIds": [],
+    "Comments": [],
+    "Tasks": [],
+    "Labels": [],
+    "IncidentUrl": "https://portal.azure.com/#asset/Microsoft_Azure_Security_Insights/Incident/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/Incidents/04df4150-18ca-4141-8daf-481d4cfade2e",
+    "AdditionalData": {
+      "alertsCount": 5,
+      "bookmarksCount": 0,
+      "commentsCount": 0,
+      "alertProductNames": [
+        "Azure Sentinel"
+      ],
+      "tactics": [],
+      "techniques": [],
+      "providerIncidentUrl": "https://security.microsoft.com/incident2/848/overview?tid=638456b8-8343-4e48-9ebe-4f5cf9a1997d"
+    },
+    "ModifiedBy": "Microsoft Defender XDR - alert correlation",
+    "SourceSystem": "Azure",
+    "Type": "SecurityIncident"
+  }
+]

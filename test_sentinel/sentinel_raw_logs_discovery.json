@@ -1,0 +1,96 @@
+[
+    {
+        "$table": "DeviceProcessEvents",
+        "count_": 31577
+    },
+    {
+        "$table": "DeviceFileEvents",
+        "count_": 9735
+    },
+    {
+        "$table": "UserPeerAnalytics",
+        "count_": 3941
+    },
+    {
+        "$table": "DeviceRegistryEvents",
+        "count_": 3657
+    },
+    {
+        "$table": "SigninLogs",
+        "count_": 2925
+    },
+    {
+        "$table": "DeviceEvents",
+        "count_": 2637
+    },
+    {
+        "$table": "DeviceNetworkEvents",
+        "count_": 1947
+    },
+    {
+        "$table": "DeviceNetworkInfo",
+        "count_": 1890
+    },
+    {
+        "$table": "Usage",
+        "count_": 1555
+    },
+    {
+        "$table": "IdentityInfo",
+        "count_": 1449
+    },
+    {
+        "$table": "DeviceLogonEvents",
+        "count_": 940
+    },
+    {
+        "$table": "BehaviorAnalytics",
+        "count_": 703
+    },
+    {
+        "$table": "AlertEvidence",
+        "count_": 638
+    },
+    {
+        "$table": "DeviceInfo",
+        "count_": 563
+    },
+    {
+        "$table": "DeviceFileCertificateInfo",
+        "count_": 329
+    },
+    {
+        "$table": "SecurityIncident",
+        "count_": 305
+    },
+    {
+        "$table": "SentinelHealth",
+        "count_": 302
+    },
+    {
+        "$table": "SecurityAlert",
+        "count_": 283
+    },
+    {
+        "$table": "DeviceImageLoadEvents",
+        "count_": 194
+    },
+    {
+        "$table": "AlertInfo",
+        "count_": 126
+    },
+    {
+        "$table": "Operation",
+        "count_": 6
+    }
+]
+
+
+
+
+
+
+
+
+
+
