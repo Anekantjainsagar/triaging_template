@@ -7,6 +7,7 @@ from sentinel.backend import *
 import google.generativeai as genai
 from crewai_tools import SerperDevTool
 from sentinel.frontend.detailed_log_utils import *
+from components.soc_hub_overlay import display_soc_hub_overlay, prepare_alert_from_log
 
 # Configure these with your API keys
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
@@ -624,9 +625,10 @@ def logs_display():
             use_container_width=True,
         ):
             # Prepare alert data for SOC Hub
-            alert_data = prepare_log_for_soc_analysis(log_data, error_info)
-            st.session_state.soc_analysis_data = alert_data
+            alert_data = prepare_alert_from_log(log_data, error_info)
+            st.session_state.soc_alert_data = alert_data
             st.session_state.current_page = "soc_analysis"
+            st.session_state.show_soc_hub = True
             st.rerun()
 
     st.stop()

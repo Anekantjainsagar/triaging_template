@@ -1,3 +1,4 @@
+# [file name]: soc_dashboard.py (updated)
 import os
 import streamlit as st
 from sentinel.utils import *
@@ -5,6 +6,7 @@ from datetime import datetime
 from styles.logs_dashboard import LOGS_STYLES
 from sentinel.frontend.detailed_log_utils import *
 from sentinel.frontend.detailed_log import logs_display
+from components.soc_hub_overlay import display_soc_hub_overlay, prepare_alert_from_log
 
 
 # Page configuration
@@ -17,16 +19,21 @@ if "selected_log" not in st.session_state:
     st.session_state.selected_log = None
 if "selected_log_index" not in st.session_state:
     st.session_state.selected_log_index = None
+if "show_soc_hub" not in st.session_state:
+    st.session_state.show_soc_hub = False
+if "soc_alert_data" not in st.session_state:
+    st.session_state.soc_alert_data = None
 
 # Custom CSS
 st.markdown(LOGS_STYLES, unsafe_allow_html=True)
 
-# Replace the entire detail view section (after "if st.session_state.show_details...") with this:
-if st.session_state.show_details and st.session_state.selected_log:
+# Route to appropriate view
+if st.session_state.show_soc_hub:
+    display_soc_hub_overlay()
+elif st.session_state.show_details and st.session_state.selected_log:
     logs_display()
-
-# MAIN LIST VIEW
 else:
+    # MAIN LIST VIEW
     st.markdown(
         '<div class="main-header">🔒 Sentinel Logs Dashboard - SigninLogs</div>',
         unsafe_allow_html=True,
