@@ -605,6 +605,7 @@ def logs_display():
     # Bottom buttons
     st.markdown("---")
     col1, col2 = st.columns([1, 1])
+
     with col1:
         if st.button(
             "⬅️ Back to List",
@@ -614,8 +615,18 @@ def logs_display():
         ):
             st.session_state.show_details = False
             st.rerun()
+
     with col2:
-        if st.button("📋 Copy JSON", key="copy_json", use_container_width=True):
-            st.code(json.dumps(log_data, indent=2), language="json")
+        if st.button(
+            "🚀 Analyze in SOC Hub",
+            key="analyze_soc_hub",
+            type="primary",
+            use_container_width=True,
+        ):
+            # Prepare alert data for SOC Hub
+            alert_data = prepare_log_for_soc_analysis(log_data, error_info)
+            st.session_state.soc_analysis_data = alert_data
+            st.session_state.current_page = "soc_analysis"
+            st.rerun()
 
     st.stop()

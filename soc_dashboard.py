@@ -1,7 +1,7 @@
 import os
 import streamlit as st
+from sentinel.utils import *
 from datetime import datetime
-from sentinel.backend import *
 from styles.logs_dashboard import LOGS_STYLES
 from sentinel.frontend.detailed_log_utils import *
 from sentinel.frontend.detailed_log import logs_display
