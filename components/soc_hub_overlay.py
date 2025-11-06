@@ -24,18 +24,31 @@ def prepare_alert_from_log(log_data, error_info=None):
     """
 
     # Extract title from failure reason
-    title = log_data.get("Status", {}).get("failureReason", "Sign-in Failure")
+    title = (
+        str(log_data.get("Status", {}).get("errorCode", "N/A"))
+        + " - "
+        + log_data.get("Status", {}).get("failureReason", "Sign-in Failure")
+    )
 
-    # Build comprehensive description
+    # Build comprehensive description with bullet points
     description_parts = []
     if error_info:
-        description_parts.append(error_info)
+        # Split error_info into bullet points
+        error_lines = error_info.split("\n")
+        for line in error_lines:
+            if line.strip():
+                # Remove "Description: " prefix if present
+                cleaned_line = line.replace("Description: ", "").strip()
+                # Add bullet point if not already present
+                if cleaned_line and not cleaned_line.startswith("•"):
+                    description_parts.append(f"• {cleaned_line}")
+                elif cleaned_line:
+                    description_parts.append(cleaned_line)
 
     error_code = log_data.get("Status", {}).get("errorCode", "N/A")
-    result_type = log_data.get("ResultType", "N/A")
-    description_parts.append(f"Error Code: {error_code}, Result Type: {result_type}")
 
-    description = "\n".join(description_parts)
+    # Join with HTML line breaks for proper rendering
+    description = "<br>".join(description_parts)
 
     # ================================================================
     # ENHANCED: Extract comprehensive entity information
@@ -156,6 +169,7 @@ def prepare_alert_from_log(log_data, error_info=None):
     # ================================================================
     # Construct comprehensive alert data structure
     # ================================================================
+
     alert_data = {
         "title": title,
         "alert_name": title,  # ✅ Add alert_name for compatibility
@@ -182,7 +196,7 @@ def prepare_alert_from_log(log_data, error_info=None):
             "location": location_str,
             "location_details": location_details,
             "error_code": error_code,
-            "result_type": result_type,
+            "result_type": error_code,
             "result_description": log_data.get("ResultDescription", "N/A"),
             "app_display_name": app_name,
             "app_id": app_id,
@@ -399,7 +413,6 @@ def display_soc_hub_overlay():
     # Display Basic Alert Info
     # ================================================================
 
-
     # Display alert information
     col1, col2 = st.columns([2, 1])
     with col1:
@@ -408,7 +421,7 @@ def display_soc_hub_overlay():
         time_generated = (
             alert_data.get("full_alert", {}).get("properties", {}).get("timeGenerated")
         )
-        st.markdown(f"**Description:** {description}")
+        st.markdown(description, unsafe_allow_html=True)
         st.markdown(f"**Time Generated:** {format_datetime(time_generated)}")
     with col2:
         severity = alert_data.get("severity", "Unknown")

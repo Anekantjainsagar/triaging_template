@@ -12,7 +12,6 @@ def display_ai_threat_analysis_tab(alert_name, api_client, analysis_key, alert_d
             analysis = result.get("analysis", "")
 
             st.markdown('<div class="threat-intel-box">', unsafe_allow_html=True)
-            st.markdown("### 📋 Comprehensive Threat Intelligence Report")
             st.markdown("</div>", unsafe_allow_html=True)
 
             # Display sections...

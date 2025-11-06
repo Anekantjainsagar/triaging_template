@@ -69,12 +69,13 @@ class InvestigationStepLibrary:
             alert_name, profile, investigation_guidance
         )
 
-        # STEP 3.5: DEDUPLICATE STEPS IMMEDIATELY
-        print("\n🧹 PHASE 3.5: Deduplicating steps...")
-        generated_steps = self._deduplicate_manual_steps(generated_steps)
-
-        # STEP 3.6: Remove AI-generated VIP/IP steps
+        # ✅ NEW: STEP 3.5 - Remove AI-generated VIP/IP steps BEFORE deduplication
+        print("\n🧹 PHASE 3.5: Removing AI-generated VIP/IP steps (will inject clean ones later)...")
         generated_steps = self._remove_duplicate_vip_and_ip_steps(generated_steps)
+
+        # STEP 3.6: DEDUPLICATE REMAINING STEPS
+        print("\n🧹 PHASE 3.6: Deduplicating remaining steps...")
+        generated_steps = self._deduplicate_manual_steps(generated_steps)
 
         # STEP 4: Add VIP USER CHECK (MUST BE BEFORE IP REPUTATION)
         print("\n👤 PHASE 4: Adding VIP user verification step...")
@@ -103,57 +104,203 @@ class InvestigationStepLibrary:
 
         return cleaned_steps
 
-    def _inject_vip_user_step(self, steps: List[Dict], rule_number: str, alert_data: dict = None) -> List[Dict]:
-        # ✅ CHECK: Do we have Account entities in the alert?
-        has_account_entities = False
 
-        if alert_data:
-            # print(alert_data)
-            entities = alert_data.get("entities", {})
-            entities_list = (
-                entities.get("entities", [])
-                if isinstance(entities, dict)
-                else (entities if isinstance(entities, list) else [])
-            )
-            print(entities_list)
+    def _remove_duplicate_vip_and_ip_steps(self, steps: List[Dict]) -> List[Dict]:
+        """
+        Remove ALL AI-generated VIP/IP steps before injection
+        ✅ ENHANCED: More aggressive matching to catch all variants
+        """
+        print("   🧹 Removing ALL AI-generated VIP/IP steps...")
 
-            # Check if any Account entities exist
-            for entity in entities_list:
-                if entity.get("kind", "").lower() == "account":
-                    has_account_entities = True
-                    break
+        filtered_steps = []
+        removed_count = 0
 
-        # ❌ SKIP: No Account entities found
-        if not has_account_entities:
-            print("   ℹ️  No Account entities found - skipping VIP verification step")
-            return steps
-
-        print(f"   ✅ Found Account entities - checking if VIP step needed...")
-
-        # Check if VIP step already exists
-        has_vip_step = False
         for step in steps:
             step_name = _strip_step_number_prefix(step.get("step_name", "")).lower()
             explanation = step.get("explanation", "").lower()
+            tool = step.get("tool", "").lower()
 
-            vip_indicators = ["vip", "high-priority"]
+            # ✅ COMPREHENSIVE VIP DETECTION
+            vip_keywords = [
+                "vip", "high-priority", "high priority", "privileged account",
+                "executive", "executive account", "verify user account status",
+                "check user status", "user account verification", "account status"
+            ]
+            is_vip_step = any(keyword in step_name or keyword in explanation for keyword in vip_keywords)
 
-            if any(
-                indicator in step_name or indicator in explanation
-                for indicator in vip_indicators
-            ):
-                has_vip_step = True
-                print(
-                    f"   ℹ️  VIP user step already exists: {step.get('step_name', '')[:80]}"
-                )
-                break
+            # ✅ COMPREHENSIVE IP REPUTATION DETECTION
+            ip_keywords = [
+                "ip reputation", "source ip reputation", "ip address reputation",
+                "virustotal", "virus total", "abuseipdb", "abuse ipdb",
+                "check ip", "verify ip", "validate ip", "threat intelligence"
+            ]
+            is_ip_step = any(keyword in step_name or keyword in explanation for keyword in ip_keywords)
 
-        if has_vip_step:
+            if is_vip_step:
+                print(f"   ❌ Removing AI VIP step: {step.get('step_name', '')[:60]}")
+                removed_count += 1
+                continue
+
+            if is_ip_step:
+                print(f"   ❌ Removing AI IP step: {step.get('step_name', '')[:60]}")
+                removed_count += 1
+                continue
+
+            # Keep all other steps
+            filtered_steps.append(step)
+
+        print(f"   ✅ Removed {removed_count} AI-generated VIP/IP steps")
+        print(f"   ✅ Remaining steps: {len(filtered_steps)}")
+        return filtered_steps
+
+    def _filter_steps_by_kql_enhanced(self, steps: List[Dict]) -> List[Dict]:
+        """
+        Keep only steps that have KQL queries OR External tools OR special input requirements
+        
+        ✅ FIXED: Now preserves VIP user verification steps even if KQL is placeholder
+        ✅ FIXED: Now preserves IP reputation steps with tool="virustotal"
+        """
+        print("   🔍 Filtering steps by KQL presence...")
+
+        filtered_steps = []
+        removed_count = 0
+
+        for step in steps:
+            step_name = _strip_step_number_prefix(step.get("step_name", ""))
+            kql_query = step.get("kql_query", "").strip()
+            tool = step.get("tool", "").strip().lower()
+            input_required = step.get("input_required", "").strip()  # ✅ NEW: Check input_required
+
+            # ============================================================
+            # PRIORITY 1: Keep VIP user verification steps (by input_required flag)
+            # ============================================================
+            if input_required == "vip_user_list":
+                filtered_steps.append(step)
+                print(f"   ✅ Keeping VIP step: {step_name[:60]}")
+                continue
+
+            # ============================================================
+            # PRIORITY 2: Keep IP reputation steps (by tool)
+            # ============================================================
+            if tool in ["virustotal", "abuseipdb"]:
+                filtered_steps.append(step)
+                print(f"   ✅ Keeping IP reputation step: {step_name[:60]} (Tool: {tool})")
+                continue
+
+            # ============================================================
+            # PRIORITY 3: Keep steps with valid KQL queries (including placeholders)
+            # ============================================================
+            if kql_query and len(kql_query) > 30:
+                # Check if it's a VIP placeholder query (additional safety check)
+                if "<VIP_USER_LIST_PLACEHOLDER>" in kql_query:
+                    filtered_steps.append(step)
+                    print(f"   ✅ Keeping VIP step with placeholder: {step_name[:60]}")
+                else:
+                    filtered_steps.append(step)
+                    print(f"   ✅ Keeping: {step_name[:60]} (has KQL - {len(kql_query)} chars)")
+                continue
+
+            # ============================================================
+            # PRIORITY 4: Fallback - Check step name for VIP/IP keywords
+            # ============================================================
+            step_name_lower = step_name.lower()
+            explanation = step.get("explanation", "").lower()
+            
+            # VIP step detection (safety net)
+            vip_keywords = ["vip", "high-priority", "privileged account", "executive", "account status"]
+            if any(kw in step_name_lower or kw in explanation for kw in vip_keywords):
+                filtered_steps.append(step)
+                print(f"   ✅ Keeping VIP step (by keyword): {step_name[:60]}")
+                continue
+            
+            # IP reputation detection (safety net)
+            ip_keywords = ["ip reputation", "virustotal", "abuseipdb", "threat intelligence"]
+            if any(kw in step_name_lower or kw in explanation for kw in ip_keywords):
+                filtered_steps.append(step)
+                print(f"   ✅ Keeping IP step (by keyword): {step_name[:60]}")
+                continue
+
+            # ============================================================
+            # REMOVE: Steps without KQL, tool, or special requirements
+            # ============================================================
+            print(f"   ⏭️  Removing: {step_name[:60]} (no KQL, no tool, no special input)")
+            removed_count += 1
+
+        print(f"   ✅ Filtered out {removed_count} steps without KQL or tools")
+        print(f"   ✅ Final count: {len(filtered_steps)} investigation steps")
+
+        return filtered_steps
+
+    def _inject_vip_user_step(self, steps: List[Dict], rule_number: str, alert_data: dict = None) -> List[Dict]:
+        """
+        ✅ DIAGNOSTIC VERSION - Shows exactly why VIP step isn't being added
+        """
+        print(f"\n{'='*80}")
+        print(f"🔍 VIP INJECTION DIAGNOSTIC")
+        print(f"{'='*80}")
+        
+        # DIAGNOSTIC 1: Check alert_data
+        print(f"\n1️⃣ Checking alert_data:")
+        if alert_data is None:
+            print(f"   ❌ alert_data is None!")
+            print(f"   💡 VIP step requires alert_data to extract Account entities")
             return steps
-
-        print("   ✅ Injecting VIP user verification step...")
-
-        # ✅ PLACEHOLDER QUERY: Will be replaced with real VIP data during triaging
+        else:
+            print(f"   ✅ alert_data exists")
+            print(f"   📊 alert_data keys: {list(alert_data.keys())}")
+        
+        # DIAGNOSTIC 2: Check entities structure
+        print(f"\n2️⃣ Checking entities structure:")
+        entities = alert_data.get("entities", {})
+        print(f"   📦 entities type: {type(entities)}")
+        print(f"   📦 entities value: {entities if isinstance(entities, list) else 'dict with keys: ' + str(list(entities.keys()) if isinstance(entities, dict) else 'unknown')}")
+        
+        # Extract entities list
+        if isinstance(entities, dict):
+            entities_list = entities.get("entities", [])
+            print(f"   📋 entities.entities list: {len(entities_list)} items")
+        elif isinstance(entities, list):
+            entities_list = entities
+            print(f"   📋 entities is already a list: {len(entities_list)} items")
+        else:
+            entities_list = []
+            print(f"   ⚠️  Unexpected entities type!")
+        
+        # DIAGNOSTIC 3: Check for Account entities
+        print(f"\n3️⃣ Searching for Account entities:")
+        has_account_entities = False
+        account_count = 0
+        
+        for idx, entity in enumerate(entities_list):
+            entity_kind = entity.get("kind", "").lower()
+            print(f"   Entity {idx + 1}: kind='{entity_kind}'")
+            
+            if entity_kind == "account":
+                has_account_entities = True
+                account_count += 1
+                props = entity.get("properties", {})
+                account_name = props.get("accountName", "")
+                upn_suffix = props.get("upnSuffix", "")
+                print(f"      ✅ ACCOUNT FOUND: {account_name}@{upn_suffix}")
+        
+        print(f"\n4️⃣ Account entities summary:")
+        print(f"   Total entities: {len(entities_list)}")
+        print(f"   Account entities: {account_count}")
+        print(f"   Has accounts: {has_account_entities}")
+        
+        # DIAGNOSTIC 4: Decision point
+        print(f"\n5️⃣ Decision:")
+        if not has_account_entities:
+            print(f"   ❌ NO ACCOUNT ENTITIES → Skipping VIP step")
+            print(f"   💡 VIP verification requires at least 1 Account entity")
+            print(f"{'='*80}\n")
+            return steps
+        
+        print(f"   ✅ ACCOUNT ENTITIES FOUND → Injecting VIP step")
+        
+        # DIAGNOSTIC 5: Create VIP step
+        print(f"\n6️⃣ Creating VIP step:")
+        
         placeholder_vip_kql = """// VIP User Verification Query - PLACEHOLDER
     // This query will be dynamically generated during triaging with:
     //   - VIP user list (provided by analyst)
@@ -169,7 +316,7 @@ class InvestigationStepLibrary:
     | where UserPrincipalName == "<USER_EMAIL>"
     | extend IsVIP = iff(UserPrincipalName in (VIPUsers), "⭐ VIP ACCOUNT", "Regular User")
     | summarize
-    TotalSignIns = count(),
+        TotalSignIns = count(),
         UniqueIPAddresses = dcount(IPAddress),
         UniqueCountries = dcount(tostring(LocationDetails.countryOrRegion)),
         HighRiskSignIns = countif(RiskLevelAggregated == "high"),
@@ -188,7 +335,7 @@ class InvestigationStepLibrary:
         )
     | project-reorder UserPrincipalName, UserDisplayName, IsVIP, AccountClassification, VIPRiskScore
     | order by VIPRiskScore desc"""
-
+        
         vip_step = {
             "step_name": "Verify User Account Status and Check if Account is VIP or High-Priority",
             "explanation": "This step analyzes the affected user account to determine their role, privileges, and organizational importance. You will be prompted to provide a list of known VIP users (executives, admins, high-value accounts). The KQL query will then check if the affected users are in the VIP list and assess their risk level based on sign-in patterns, geographic locations, and risk indicators.",
@@ -196,76 +343,94 @@ class InvestigationStepLibrary:
             "data_source": "SigninLogs",
             "priority": "HIGH",
             "tool": "",
-            "input_required": "vip_user_list",
+            "input_required": "vip_user_list",  # ✅ CRITICAL FLAG
             "source": "ai_generated",
             "confidence": "HIGH",
             "kql_query": placeholder_vip_kql,
             "kql_explanation": "Queries SigninLogs to check if affected users are VIP accounts and analyzes their activity patterns, risk levels, and geographic locations. The VIP user list and exact time ranges will be dynamically injected during triaging.",
         }
-
-        # Insert at position 2 (after initial scope verification)
+        
+        print(f"   ✅ VIP step created:")
+        print(f"      step_name: {vip_step['step_name'][:60]}...")
+        print(f"      input_required: '{vip_step['input_required']}'")
+        print(f"      kql_query length: {len(vip_step['kql_query'])} chars")
+        print(f"      Has placeholder: {'<VIP_USER_LIST_PLACEHOLDER>' in vip_step['kql_query']}")
+        
+        # DIAGNOSTIC 6: Insert position
         insert_position = min(2, len(steps))
+        print(f"\n7️⃣ Inserting VIP step:")
+        print(f"   Current step count: {len(steps)}")
+        print(f"   Insert position: {insert_position + 1}")
+        
         steps.insert(insert_position, vip_step)
-        print(f"      ✅ VIP step inserted at position {insert_position + 1}")
-
+        
+        print(f"   ✅ VIP step inserted successfully")
+        print(f"   New step count: {len(steps)}")
+        print(f"{'='*80}\n")
+        
         return steps
 
-    def _inject_ip_reputation_step(
-        self, steps: List[Dict], rule_number: str, alert_data: dict = None
-    ) -> List[Dict]:
-        # ✅ CHECK: Do we have IP entities in the alert?
+
+    def _inject_ip_reputation_step(self, steps: List[Dict], rule_number: str, alert_data: dict = None) -> List[Dict]:
+        """
+        ✅ DIAGNOSTIC VERSION - Shows exactly why IP step isn't being added
+        """
+        print(f"\n{'='*80}")
+        print(f"🔍 IP INJECTION DIAGNOSTIC")
+        print(f"{'='*80}")
+        
+        # DIAGNOSTIC 1: Check alert_data
+        print(f"\n1️⃣ Checking alert_data:")
+        if alert_data is None:
+            print(f"   ❌ alert_data is None!")
+            print(f"   💡 IP step requires alert_data to extract IP entities")
+            return steps
+        else:
+            print(f"   ✅ alert_data exists")
+        
+        # DIAGNOSTIC 2: Check entities structure
+        print(f"\n2️⃣ Checking entities structure:")
+        entities = alert_data.get("entities", {})
+        
+        if isinstance(entities, dict):
+            entities_list = entities.get("entities", [])
+        elif isinstance(entities, list):
+            entities_list = entities
+        else:
+            entities_list = []
+        
+        print(f"   📋 Total entities: {len(entities_list)}")
+        
+        # DIAGNOSTIC 3: Check for IP entities
+        print(f"\n3️⃣ Searching for IP entities:")
         has_ip_entities = False
-
-        if alert_data:
-            entities = alert_data.get("entities", {})
-            entities_list = (
-                entities.get("entities", [])
-                if isinstance(entities, dict)
-                else (entities if isinstance(entities, list) else [])
-            )
-            print(entities_list)
-
-
-            # Check if any IP entities exist
-            for entity in entities_list:
-                if entity.get("kind", "").lower() == "ip":
-                    has_ip_entities = True
-                    break
-
-        # ❌ SKIP: No IP entities found
+        ip_count = 0
+        
+        for idx, entity in enumerate(entities_list):
+            entity_kind = entity.get("kind", "").lower()
+            print(f"   Entity {idx + 1}: kind='{entity_kind}'")
+            
+            if entity_kind == "ip":
+                has_ip_entities = True
+                ip_count += 1
+                props = entity.get("properties", {})
+                ip_address = props.get("address", "")
+                print(f"      ✅ IP FOUND: {ip_address}")
+        
+        print(f"\n4️⃣ IP entities summary:")
+        print(f"   IP entities: {ip_count}")
+        print(f"   Has IPs: {has_ip_entities}")
+        
+        # DIAGNOSTIC 4: Decision
+        print(f"\n5️⃣ Decision:")
         if not has_ip_entities:
-            print("   ℹ️  No IP entities found - skipping IP reputation step")
+            print(f"   ❌ NO IP ENTITIES → Skipping IP step")
+            print(f"{'='*80}\n")
             return steps
-
-        print(f"   ✅ Found IP entities - checking if IP reputation step needed...")
-
-        # Check if IP reputation step already exists
-        has_ip_step = False
-        for step in steps:
-            step_name = _strip_step_number_prefix(step.get("step_name", "")).lower()
-            tool = step.get("tool", "").strip().lower()
-
-            ip_keywords = [
-                "ip reputation",
-                "source ip reputation",
-                "virustotal",
-                "abuseipdb",
-            ]
-            if any(keyword in step_name for keyword in ip_keywords) or tool in [
-                "virustotal",
-                "abuseipdb",
-            ]:
-                has_ip_step = True
-                print(
-                    f"   ℹ️  IP reputation step already exists: {step.get('step_name', '')[:80]}"
-                )
-                break
-
-        if has_ip_step:
-            return steps
-
-        print("   ✅ Injecting IP reputation verification step...")
-
+        
+        print(f"   ✅ IP ENTITIES FOUND → Injecting IP step")
+        
+        # Create IP step
         ip_step = {
             "step_name": "Check Source IP Reputation Using VirusTotal and AbuseIPDB",
             "explanation": "This step validates the reputation of source IP addresses using external threat intelligence platforms (VirusTotal and AbuseIPDB) to identify if the IPs are associated with known malicious activity. IPs are automatically extracted from previous investigation steps. Look for high detection ratios (5+ vendors), recent abuse reports, or associations with known threat actors.",
@@ -279,12 +444,13 @@ class InvestigationStepLibrary:
             "kql_query": "",
             "kql_explanation": "Requires manual checking using external tools (VirusTotal, AbuseIPDB) or the integrated IP reputation checker in the triaging app.",
         }
-
-        # Insert at position 3 (after scope + VIP verification if it exists)
+        
         insert_position = min(3, len(steps))
+        print(f"\n6️⃣ Inserting IP step at position {insert_position + 1}")
         steps.insert(insert_position, ip_step)
-        print(f"      ✅ IP reputation step inserted at position {insert_position + 1}")
-
+        print(f"   ✅ IP step inserted")
+        print(f"{'='*80}\n")
+        
         return steps
 
     def _add_kql_to_steps_enhanced(
@@ -393,54 +559,6 @@ class InvestigationStepLibrary:
 
         return deduplicated_steps
 
-    def _remove_duplicate_vip_and_ip_steps(self, steps: List[Dict]) -> List[Dict]:
-        """Remove AI-generated VIP/IP steps before injection"""
-        print("\n   🧹 Removing AI-generated VIP/IP steps before injection...")
-
-        filtered_steps = []
-        removed_count = 0
-
-        for step in steps:
-            step_name = _strip_step_number_prefix(step.get("step_name", "")).lower()
-            explanation = step.get("explanation", "").lower()
-            tool = step.get("tool", "").lower()
-
-            # Check if this is a VIP user step (but NOT our injected one)
-            is_vip_step = (
-                "vip" in step_name
-                or "high-priority" in step_name
-                or "privileged account" in step_name
-            ) and step.get("input_required", "") != "vip_user_list"
-
-            # Check if this is an IP reputation step (but NOT our injected one)
-            is_ip_step = (
-                "ip reputation" in step_name
-                or "source ip reputation" in step_name
-                or "virustotal" in step_name
-                or "virustotal" in explanation
-                or "abuseipdb" in step_name
-                or "abuseipdb" in explanation
-            ) and tool not in ["virustotal", "abuseipdb"]
-
-            if is_vip_step:
-                print(
-                    f"   ❌ Removing AI-generated VIP step: {step.get('step_name', '')[:60]}"
-                )
-                removed_count += 1
-                continue
-
-            if is_ip_step:
-                print(
-                    f"   ❌ Removing AI-generated IP step: {step.get('step_name', '')[:60]}"
-                )
-                removed_count += 1
-                continue
-
-            filtered_steps.append(step)
-
-        print(f"   ✅ Removed {removed_count} duplicate VIP/IP steps")
-        return filtered_steps
-
     def _get_geography_fallback_kql(self) -> str:
         """Fallback KQL for geographic analysis steps"""
         return """SigninLogs
@@ -457,41 +575,6 @@ class InvestigationStepLibrary:
 | where UniqueLocations >= 1
 | project UserPrincipalName, IPAddress, Countries, Cities, SignInCount, UniqueLocations
 | order by UniqueLocations desc"""
-
-    def _filter_steps_by_kql_enhanced(self, steps: List[Dict]) -> List[Dict]:
-        """Keep only steps that have KQL queries OR External tools"""
-        print("   🔍 Filtering steps by KQL presence...")
-
-        filtered_steps = []
-        removed_count = 0
-
-        for step in steps:
-            step_name = _strip_step_number_prefix(step.get("step_name", ""))
-            kql_query = step.get("kql_query", "").strip()
-            tool = step.get("tool", "").strip().lower()
-
-            # KEEP: Steps with valid KQL queries (including placeholders)
-            if kql_query and len(kql_query) > 30:
-                filtered_steps.append(step)
-                print(
-                    f"   ✅ Keeping: {step_name[:60]} (has KQL - {len(kql_query)} chars)"
-                )
-                continue
-
-            # KEEP: IP reputation and other external tool steps
-            if tool in ["virustotal", "abuseipdb"]:
-                filtered_steps.append(step)
-                print(f"   ✅ Keeping: {step_name[:60]} (External Tool: {tool})")
-                continue
-
-            # REMOVE: Steps without KQL and no tool
-            print(f"   ⏭️  Removing: {step_name[:60]} (no KQL, no tool)")
-            removed_count += 1
-
-        print(f"   ✅ Filtered out {removed_count} steps without KQL or tools")
-        print(f"   ✅ Final count: {len(filtered_steps)} investigation steps")
-
-        return filtered_steps
 
     def _deduplicate_manual_steps(self, steps: List[Dict]) -> List[Dict]:
         """Remove duplicate steps based on step name similarity"""
