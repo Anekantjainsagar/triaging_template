@@ -1,0 +1,460 @@
+{
+  "report_metadata": {
+    "generated_at": "2025-11-07T17:33:33.629215",
+    "log_file": "sentinel_user_data.json",
+    "analysis_engine": "CrewAI + Gemini 2.0 Flash (Optimized)",
+    "total_events_analyzed": 18
+  },
+  "high_priority_events": [
+    {
+      "event_id": "Unknown",
+      "timestamp": "Unknown",
+      "severity": "HIGH",
+      "title": "Impossible Travel - Himanshu S",
+      "user": {
+        "user_principal_name": "himanshu.s@yashtechnologies841.onmicrosoft.com",
+        "user_id": "Unknown",
+        "user_type": "Member",
+        "user_display_name": "Himanshu S"
+      },
+      "location": {
+        "city": "Ahmedabad",
+        "state": "Unknown",
+        "country": "India",
+        "ip_address": "49.249.104.218",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "Unknown",
+        "authentication_requirement": "MFA satisfied by claim in token",
+        "mfa_detail": null,
+        "result_type": "Success",
+        "result_description": "Successful sign-in"
+      },
+      "application": {
+        "app_display_name": "Unknown",
+        "app_id": "Unknown",
+        "resource_display_name": "Unknown",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": false,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 0,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [],
+        "behavioral_patterns": [],
+        "risk_score": 10,
+        "recommended_actions": [],
+        "related_events": [],
+        "attack_vector": "Account Takeover (ATO), Session Hijacking, Credential Theft, use of proxy/VPN by an attacker"
+      },
+      "raw_event_summary": "Rapid geographical change (Ahmedabad to Navi Mumbai in 8 seconds). MFA satisfied by token, CA policy in reportOnlySuccess mode."
+    },
+    {
+      "event_id": "Unknown",
+      "timestamp": "Unknown",
+      "severity": "HIGH",
+      "title": "Impossible Travel - Prakhar Vyas (Member Account)",
+      "user": {
+        "user_principal_name": "Unknown",
+        "user_id": "Unknown",
+        "user_type": "Member",
+        "user_display_name": "Prakhar Vyas"
+      },
+      "location": {
+        "city": "New Delhi",
+        "state": "Unknown",
+        "country": "India",
+        "ip_address": "125.23.93.22",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "Unknown",
+        "authentication_requirement": "MFA satisfied by claim in token",
+        "mfa_detail": null,
+        "result_type": "Success",
+        "result_description": "Successful sign-in"
+      },
+      "application": {
+        "app_display_name": "Unknown",
+        "app_id": "Unknown",
+        "resource_display_name": "Unknown",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": false,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 0,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [],
+        "behavioral_patterns": [],
+        "risk_score": 10,
+        "recommended_actions": [],
+        "related_events": [],
+        "attack_vector": "Account Takeover (ATO), Session Hijacking, Credential Theft, use of proxy/VPN by an attacker"
+      },
+      "raw_event_summary": "Rapid geographical change (New Delhi to Mumbai in under 3 minutes). MFA satisfied by token, CA policy in reportOnlySuccess mode."
+    },
+    {
+      "event_id": "Unknown",
+      "timestamp": "Unknown",
+      "severity": "HIGH",
+      "title": "Multiple First-time and Uncommonly Used Browser - Salunke Ajinkya Bhagwat (Guest User)",
+      "user": {
+        "user_principal_name": "Unknown",
+        "user_id": "Unknown",
+        "user_type": "Guest",
+        "user_display_name": "Salunke Ajinkya Bhagwat"
+      },
+      "location": {
+        "city": "Chhindwara",
+        "state": "Unknown",
+        "country": "India",
+        "ip_address": "Unknown",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "Unknown",
+        "authentication_requirement": "Unknown",
+        "mfa_detail": null,
+        "result_type": "Success",
+        "result_description": "Successful sign-in"
+      },
+      "application": {
+        "app_display_name": "Unknown",
+        "app_id": "Unknown",
+        "resource_display_name": "Unknown",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": false,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": true,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 1,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [],
+        "behavioral_patterns": [],
+        "risk_score": 9,
+        "recommended_actions": [],
+        "related_events": [],
+        "attack_vector": "Account Takeover (ATO), Credential Theft, Reconnaissance (testing different access methods/browsers), bypassing security controls"
+      },
+      "raw_event_summary": "FirstTimeUserConnectedViaBrowser: True AND BrowserUncommonlyUsedInTenant: True. FailedLogOn event just before successful one."
+    }
+  ],
+  "medium_priority_events": [
+    {
+      "event_id": "Unknown",
+      "timestamp": "Unknown",
+      "severity": "MEDIUM",
+      "title": "First-time ISP connection for Rohan Karekar (Guest User)",
+      "user": {
+        "user_principal_name": "Unknown",
+        "user_id": "Unknown",
+        "user_type": "Guest",
+        "user_display_name": "Rohan Karekar"
+      },
+      "location": {
+        "city": "Thathawade",
+        "state": "Unknown",
+        "country": "India",
+        "ip_address": "Unknown",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "Unknown",
+        "authentication_requirement": "Unknown",
+        "mfa_detail": null,
+        "result_type": "Success",
+        "result_description": "Successful sign-in"
+      },
+      "application": {
+        "app_display_name": "Azure DevOps",
+        "app_id": "Unknown",
+        "resource_display_name": "Unknown",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": true,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 0,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [],
+        "behavioral_patterns": [],
+        "risk_score": 6,
+        "recommended_actions": [],
+        "related_events": [],
+        "attack_vector": "Initial Access (if compromised credentials were used), Reconnaissance, Policy Evasion (due to lack of enforced MFA)"
+      },
+      "raw_event_summary": "FirstTimeUserConnectedViaISP: True (ISP not uncommonly used in tenant). Successful sign-in to Azure DevOps."
+    },
+    {
+      "event_id": "Unknown",
+      "timestamp": "Unknown",
+      "severity": "MEDIUM",
+      "title": "First-time ISP connection for Manisha Anil Thete (Guest User)",
+      "user": {
+        "user_principal_name": "Unknown",
+        "user_id": "Unknown",
+        "user_type": "Guest",
+        "user_display_name": "Manisha Anil Thete"
+      },
+      "location": {
+        "city": "Chhindwara",
+        "state": "Unknown",
+        "country": "India",
+        "ip_address": "Unknown",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "Unknown",
+        "authentication_requirement": "Unknown",
+        "mfa_detail": null,
+        "result_type": "Success",
+        "result_description": "Successful sign-in"
+      },
+      "application": {
+        "app_display_name": "Azure DevOps",
+        "app_id": "Unknown",
+        "resource_display_name": "Unknown",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": true,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 0,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [],
+        "behavioral_patterns": [],
+        "risk_score": 6,
+        "recommended_actions": [],
+        "related_events": [],
+        "attack_vector": "Initial Access (if compromised credentials were used), Reconnaissance, Policy Evasion (due to lack of enforced MFA)"
+      },
+      "raw_event_summary": "FirstTimeUserConnectedViaISP: True (ISP not uncommonly used in tenant). Successful sign-in to Azure DevOps."
+    },
+    {
+      "event_id": "Unknown",
+      "timestamp": "Unknown",
+      "severity": "MEDIUM",
+      "title": "First-time ISP connection for Lakhan Patidar (Guest User)",
+      "user": {
+        "user_principal_name": "Unknown",
+        "user_id": "Unknown",
+        "user_type": "Guest",
+        "user_display_name": "Lakhan Patidar"
+      },
+      "location": {
+        "city": "New Delhi",
+        "state": "Unknown",
+        "country": "India",
+        "ip_address": "Unknown",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "Unknown",
+        "authentication_requirement": "Unknown",
+        "mfa_detail": null,
+        "result_type": "Success",
+        "result_description": "Successful sign-in"
+      },
+      "application": {
+        "app_display_name": "YASH-SPN-UES-Azure-App",
+        "app_id": "Unknown",
+        "resource_display_name": "Unknown",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": true,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 0,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [],
+        "behavioral_patterns": [],
+        "risk_score": 6,
+        "recommended_actions": [],
+        "related_events": [],
+        "attack_vector": "Initial Access (if compromised credentials were used), Reconnaissance, Policy Evasion (due to lack of enforced MFA)"
+      },
+      "raw_event_summary": "FirstTimeUserConnectedViaISP: True (ISP not uncommonly used in tenant). Successful sign-in to YASH-SPN-UES-Azure-App."
+    },
+    {
+      "event_id": "Unknown",
+      "timestamp": "Unknown",
+      "severity": "MEDIUM",
+      "title": "First-time ISP connection for Prakhar Vyas (Guest Account)",
+      "user": {
+        "user_principal_name": "Unknown",
+        "user_id": "Unknown",
+        "user_type": "Guest",
+        "user_display_name": "Prakhar Vyas"
+      },
+      "location": {
+        "city": "New Delhi",
+        "state": "Unknown",
+        "country": "India",
+        "ip_address": "Unknown",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "Unknown",
+        "authentication_requirement": "Unknown",
+        "mfa_detail": null,
+        "result_type": "Success",
+        "result_description": "Successful sign-in"
+      },
+      "application": {
+        "app_display_name": "Azure DevOps",
+        "app_id": "Unknown",
+        "resource_display_name": "Unknown",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": true,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 0,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [],
+        "behavioral_patterns": [],
+        "risk_score": 6,
+        "recommended_actions": [],
+        "related_events": [],
+        "attack_vector": "Initial Access (if compromised credentials were used), Reconnaissance, Policy Evasion (due to lack of enforced MFA)"
+      },
+      "raw_event_summary": "FirstTimeUserConnectedViaISP: True (ISP not uncommonly used in tenant). Successful sign-in to Azure DevOps."
+    }
+  ],
+  "low_priority_events": [
+    {
+      "event_id": "Unknown",
+      "timestamp": "Unknown",
+      "severity": "LOW",
+      "title": "Failed Logon for Salunke Ajinkya Bhagwat",
+      "user": {
+        "user_principal_name": "Unknown",
+        "user_id": "Unknown",
+        "user_type": "Unknown",
+        "user_display_name": "Salunke Ajinkya Bhagwat"
+      },
+      "location": {
+        "city": "Unknown",
+        "state": "Unknown",
+        "country": "Unknown",
+        "ip_address": "Unknown",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "Unknown",
+        "authentication_requirement": "Unknown",
+        "mfa_detail": null,
+        "result_type": "50140",
+        "result_description": "'Keep me signed in' interrupt"
+      },
+      "application": {
+        "app_display_name": "Unknown",
+        "app_id": "Unknown",
+        "resource_display_name": "Unknown",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": false,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 0,
+        "action_type": "FailedLogOn"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [],
+        "behavioral_patterns": [],
+        "risk_score": 3,
+        "recommended_actions": [],
+        "related_events": [],
+        "attack_vector": "None directly, but could be a precursor to user frustration leading to less secure practices"
+      },
+      "raw_event_summary": "ActivityType: \"FailedLogOn\" with a specific error message. Password was correct."
+    }
+  ],
+  "summary_statistics": {
+    "high_priority_count": 3,
+    "medium_priority_count": 4,
+    "low_priority_count": 1
+  },
+  "executive_summary": "Identified impossible travel scenarios and unusual sign-in patterns for guest users. MFA enforcement gaps for guest users increase risk. Prioritize investigation of high-severity events and remediation of MFA policy."
+}

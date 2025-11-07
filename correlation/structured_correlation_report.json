@@ -1,0 +1,421 @@
+{
+  "report_metadata": {
+    "generated_at": "2025-11-07T17:05:52.477165",
+    "log_file": "sentinel_user_data.json",
+    "analysis_engine": "CrewAI + Gemini 2.0 Flash (Optimized)",
+    "total_events_analyzed": 25
+  },
+  "high_priority_events": [
+    {
+      "event_id": "9bc481a1-e3c3-40f9-a82f-19c4fc35ff80",
+      "timestamp": "Unknown",
+      "severity": "HIGH",
+      "title": "Pooja Gupta - Repeated Failed Sign-in to Azure Portal (Non-existent User)",
+      "user": {
+        "user_principal_name": "gupta.pooja@yashtechnologies841.onmicrosoft.com",
+        "user_id": "Unknown",
+        "user_type": "Unknown",
+        "user_display_name": "Pooja Gupta"
+      },
+      "location": {
+        "city": "Unknown",
+        "state": "Unknown",
+        "country": "Unknown",
+        "ip_address": "27.107.64.154",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "Password",
+        "authentication_requirement": "Unknown",
+        "mfa_detail": null,
+        "result_type": "Failure",
+        "result_description": "Authorization failed, user account does not exist"
+      },
+      "application": {
+        "app_display_name": "Azure Portal",
+        "app_id": "Unknown",
+        "resource_display_name": "Azure Portal",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": true,
+        "first_time_app": false,
+        "first_time_resource": true,
+        "first_time_country": true,
+        "first_time_isp": true,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": true,
+        "uncommonly_used_isp": true,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 1,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Repeated failed sign-ins",
+          "Non-existent user",
+          "New access pattern"
+        ],
+        "behavioral_patterns": [
+          "Credential stuffing",
+          "Reconnaissance"
+        ],
+        "risk_score": 9,
+        "recommended_actions": [
+          "Immediate Investigation",
+          "Block Malicious IP",
+          "Threat Hunt",
+          "Review B2B Policies",
+          "Account Lockout Policies"
+        ],
+        "related_events": [],
+        "attack_vector": "Credential Stuffing/Brute-force"
+      },
+      "raw_event_summary": "Repeated failed sign-in attempts to Azure Portal by a non-existent user with numerous anomalous behavioral flags."
+    },
+    {
+      "event_id": "c6e6762b-6a44-490a-a87a-a1f093df2f51",
+      "timestamp": "Unknown",
+      "severity": "HIGH",
+      "title": "Harsh Vardhan Choudhary - Successful Sign-in to Azure DevOps with Multiple First-Time Activities (Guest User)",
+      "user": {
+        "user_principal_name": "harsh.choudhary@yash.com",
+        "user_id": "Unknown",
+        "user_type": "Guest",
+        "user_display_name": "Harsh Vardhan Choudhary"
+      },
+      "location": {
+        "city": "Unknown",
+        "state": "Unknown",
+        "country": "Unknown",
+        "ip_address": "Unknown",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "Unknown",
+        "authentication_requirement": "MFA",
+        "mfa_detail": "ReportOnlyInterrupted",
+        "result_type": "Success",
+        "result_description": "Successful Sign-in"
+      },
+      "application": {
+        "app_display_name": "Azure DevOps",
+        "app_id": "Unknown",
+        "resource_display_name": "Azure DevOps",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": true,
+        "first_time_app": false,
+        "first_time_resource": true,
+        "first_time_country": true,
+        "first_time_isp": true,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 0,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Successful sign-in",
+          "Guest user",
+          "Multiple first-time activities"
+        ],
+        "behavioral_patterns": [
+          "Compromised Guest Account",
+          "Insider Threat",
+          "Unsanctioned Access"
+        ],
+        "risk_score": 8,
+        "recommended_actions": [
+          "Immediate User Verification",
+          "Review Guest Account Permissions",
+          "Enforce MFA for Guest Users",
+          "Device/Location Restrictions"
+        ],
+        "related_events": [],
+        "attack_vector": "Compromised Guest Account"
+      },
+      "raw_event_summary": "Successful sign-in by a Guest user to Azure DevOps with numerous First-Time activities. MFA not enforced."
+    },
+    {
+      "event_id": "be2fd03b-ef62-4854-9474-1e5c1db7afeb",
+      "timestamp": "Unknown",
+      "severity": "HIGH",
+      "title": "Saikrishna Siddabathuni - Repeated Failed MFA Challenges to Azure Portal with Numerous First-Time Activities (Guest User)",
+      "user": {
+        "user_principal_name": "saikrishna.s@yash.com",
+        "user_id": "Unknown",
+        "user_type": "Guest",
+        "user_display_name": "Saikrishna Siddabathuni"
+      },
+      "location": {
+        "city": "Unknown",
+        "state": "Unknown",
+        "country": "Unknown",
+        "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "MFA",
+        "authentication_requirement": "Required",
+        "mfa_detail": "Failed",
+        "result_type": "Failure",
+        "result_description": "User did not pass the MFA challenge"
+      },
+      "application": {
+        "app_display_name": "Azure Portal",
+        "app_id": "Unknown",
+        "resource_display_name": "Azure Portal",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": true,
+        "first_time_app": false,
+        "first_time_resource": true,
+        "first_time_country": true,
+        "first_time_isp": true,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 0,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Repeated failed MFA challenges",
+          "Guest user",
+          "New access pattern"
+        ],
+        "behavioral_patterns": [
+          "MFA Fatigue Attack",
+          "Compromised Account",
+          "Targeted Phishing"
+        ],
+        "risk_score": 10,
+        "recommended_actions": [
+          "Immediate Account Lockout/Disablement",
+          "User Contact",
+          "Block Malicious IP",
+          "Review MFA Configuration",
+          "Threat Hunt"
+        ],
+        "related_events": [],
+        "attack_vector": "MFA Fatigue Attack"
+      },
+      "raw_event_summary": "Repeated failed MFA challenges to Azure Portal by a Guest user with numerous First-Time activities."
+    }
+  ],
+  "medium_priority_events": [
+    {
+      "event_id": "f0f706e2-0cf3-4a79-ac87-fa7b0fcda20e",
+      "timestamp": "Unknown",
+      "severity": "MEDIUM",
+      "title": "Urvashi Upadhyay - Successful Sign-in with First-Time Application Usage in Tenant",
+      "user": {
+        "user_principal_name": "urvashi.upadhyay@yashtechnologies841.onmicrosoft.com",
+        "user_id": "Unknown",
+        "user_type": "Member",
+        "user_display_name": "Urvashi Upadhyay"
+      },
+      "location": {
+        "city": "Unknown",
+        "state": "Unknown",
+        "country": "Unknown",
+        "ip_address": "Unknown",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "MFA",
+        "authentication_requirement": "Required",
+        "mfa_detail": "Security Defaults",
+        "result_type": "Success",
+        "result_description": "Successful Sign-in"
+      },
+      "application": {
+        "app_display_name": "Microsoft AppSource",
+        "app_id": "Unknown",
+        "resource_display_name": "Microsoft AppSource",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": false,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 1,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Successful sign-in",
+          "First-time application usage in tenant"
+        ],
+        "behavioral_patterns": [
+          "Shadow IT",
+          "Malicious App Consent",
+          "Legitimate New Business Need"
+        ],
+        "risk_score": 6,
+        "recommended_actions": [
+          "User Verification",
+          "Application Review",
+          "Conditional Access Policy Review"
+        ],
+        "related_events": [],
+        "attack_vector": "Shadow IT/Unauthorized Application Usage"
+      },
+      "raw_event_summary": "Successful Sign-in with First-Time Application Usage in Tenant. MFA satisfied."
+    },
+    {
+      "event_id": "34469046-fee5-472f-b3d7-f370637b26fb",
+      "timestamp": "Unknown",
+      "severity": "MEDIUM",
+      "title": "Ravi Kiran Nuthakki - Successful Sign-in to Azure Portal with First-Time ISP Connection (Guest User)",
+      "user": {
+        "user_principal_name": "ravi.nuthakki@yash.com",
+        "user_id": "Unknown",
+        "user_type": "Guest",
+        "user_display_name": "Ravi Kiran Nuthakki"
+      },
+      "location": {
+        "city": "Unknown",
+        "state": "Unknown",
+        "country": "Unknown",
+        "ip_address": "Unknown",
+        "isp": "mehdi patnam zone (dhcp)"
+      },
+      "authentication": {
+        "authentication_method": "MFA",
+        "authentication_requirement": "Required",
+        "mfa_detail": "Security Defaults",
+        "result_type": "Success",
+        "result_description": "Successful Sign-in"
+      },
+      "application": {
+        "app_display_name": "Azure Portal",
+        "app_id": "Unknown",
+        "resource_display_name": "Azure Portal",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": true,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 1,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Successful sign-in",
+          "Guest user",
+          "First-time ISP connection"
+        ],
+        "behavioral_patterns": [
+          "Compromised Account",
+          "Unsanctioned Access",
+          "Legitimate Travel/Remote Work"
+        ],
+        "risk_score": 7,
+        "recommended_actions": [
+          "User Verification",
+          "Review Guest Account Permissions",
+          "Conditional Access Policy Enhancement"
+        ],
+        "related_events": [],
+        "attack_vector": "Compromised Account"
+      },
+      "raw_event_summary": "Successful Sign-in to Azure Portal with First-Time ISP Connection (Guest User). MFA satisfied."
+    }
+  ],
+  "low_priority_events": [
+    {
+      "event_id": "816f8467-c903-4ce5-9a6b-984f997410b4",
+      "timestamp": "Unknown",
+      "severity": "LOW",
+      "title": "Lalit Paliwal - Failed Authentication (Session Invalidated) followed by Successful Re-authentication",
+      "user": {
+        "user_principal_name": "lalit.paliwal@yash.com",
+        "user_id": "Unknown",
+        "user_type": "Unknown",
+        "user_display_name": "Lalit Paliwal"
+      },
+      "location": {
+        "city": "Unknown",
+        "state": "Unknown",
+        "country": "Unknown",
+        "ip_address": "Unknown",
+        "isp": "Unknown"
+      },
+      "authentication": {
+        "authentication_method": "Password",
+        "authentication_requirement": "Unknown",
+        "mfa_detail": null,
+        "result_type": "Success",
+        "result_description": "Successful Re-authentication"
+      },
+      "application": {
+        "app_display_name": "Azure DevOps",
+        "app_id": "Unknown",
+        "resource_display_name": "Azure DevOps",
+        "resource_id": "Unknown"
+      },
+      "behavioral_flags": {
+        "first_time_device": false,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": false,
+        "first_time_app_in_tenant": false,
+        "uncommonly_used_browser": false,
+        "uncommonly_used_isp": false,
+        "app_uncommonly_used_among_peers": false,
+        "investigation_priority": 0,
+        "action_type": "Sign-in"
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Failed authentication",
+          "Session invalidated",
+          "Successful re-authentication"
+        ],
+        "behavioral_patterns": [],
+        "risk_score": 3,
+        "recommended_actions": [
+          "Monitor for Trends",
+          "User Education",
+          "Review Session Lifetime Policies"
+        ],
+        "related_events": [],
+        "attack_vector": "Low likelihood of direct attack"
+      },
+      "raw_event_summary": "Failed Authentication (Session Invalidated) followed by Successful Re-authentication. No anomalous flags."
+    }
+  ],
+  "summary_statistics": {
+    "high_priority_count": 3,
+    "medium_priority_count": 2,
+    "low_priority_count": 1
+  },
+  "executive_summary": "The analysis reveals critical and high-risk security events, primarily around unauthorized access attempts and potential account compromise. Key findings include repeated failed sign-ins to the Azure Portal by a non-existent user, multiple failed MFA challenges by a guest user, and a critical configuration flaw in a Conditional Access policy."
+}

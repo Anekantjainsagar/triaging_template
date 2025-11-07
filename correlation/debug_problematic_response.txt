@@ -1,0 +1,657 @@
+```json
+{
+  "high_priority_events": [
+    {
+      "event_id": "3c5191ff-9d3c-48c5-bd4c-4d5740543800",
+      "timestamp": "2025-11-07T06:34:25.5296748Z",
+      "severity": "HIGH",
+      "title": "Multiple First-Time and Uncommon Activities on Failed Azure Portal Login (Pooja Gupta)",
+      "user": {
+        "user_principal_name": "gupta.pooja@yashtechnologies841.onmicrosoft.com",
+        "user_id": "f7bbcef3-a43e-448c-801a-6fe973a35e2f",
+        "user_type": "Unknown",
+        "user_display_name": "Pooja Gupta"
+      },
+      "location": {
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "country": "IN",
+        "ip_address": "27.107.64.154",
+        "isp": "tata teleservices limited -gsm division"
+      },
+      "authentication": {
+        "authentication_method": "Password",
+        "authentication_requirement": "multiFactorAuthentication",
+        "mfa_detail": null,
+        "result_type": "90072",
+        "result_description": "User account does not exist in tenant and cannot access the application in that tenant. The account needs to be added as an external user in the tenant first. Sign out and sign in again with a different Azure Active Directory user account"
+      },
+      "application": {
+        "app_display_name": "Azure Portal",
+        "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+        "resource_display_name": "Azure Resource Manager",
+        "resource_id": "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      },
+      "behavioral_flags": {
+        "first_time_device": null,
+        "first_time_browser": true,
+        "first_time_app": true,
+        "first_time_resource": true,
+        "first_time_country": true,
+        "first_time_isp": true,
+        "first_time_app_in_tenant": null,
+        "uncommonly_used_browser": null,
+        "uncommonly_used_isp": null,
+        "app_uncommonly_used_among_peers": true,
+        "investigation_priority": null,
+        "action_type": null
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Compromised Credentials",
+          "Multiple First-Time Events",
+          "Uncommon App Usage"
+        ],
+        "behavioral_patterns": [
+          "Failed Login Attempts",
+          "Anomalous User Behavior"
+        ],
+        "risk_score": 9,
+        "recommended_actions": [
+          "Immediate Account Investigation",
+          "Force Password Reset & Session Revocation",
+          "IP Address Blacklisting/Blocking",
+          "B2B Configuration Review",
+          "Threat Hunting"
+        ],
+        "related_events": [
+          "b2e52929-912f-4de8-9eb8-ccde48e13c00"
+        ],
+        "attack_vector": "Credential Compromise"
+      },
+      "raw_event_summary": "Failed Azure Portal login with multiple first-time indicators."
+    },
+    {
+      "event_id": "b2e52929-912f-4de8-9eb8-ccde48e13c00",
+      "timestamp": "2025-11-07T06:35:35.467776Z",
+      "severity": "HIGH",
+      "title": "Persistent Uncommon Activities on Subsequent Failed Azure Portal Login (Pooja Gupta)",
+      "user": {
+        "user_principal_name": "gupta.pooja@yashtechnologies841.onmicrosoft.com",
+        "user_id": "f7bbcef3-a43e-448c-801a-6fe973a35e2f",
+        "user_type": "Unknown",
+        "user_display_name": "Pooja Gupta"
+      },
+      "location": {
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "country": "IN",
+        "ip_address": "27.107.64.154",
+        "isp": "tata teleservices limited -gsm division"
+      },
+      "authentication": {
+        "authentication_method": "Password",
+        "authentication_requirement": "multiFactorAuthentication",
+        "mfa_detail": null,
+        "result_type": "90072",
+        "result_description": "User account does not exist in tenant and cannot access the application in that tenant. The account needs to be added as an external user in the tenant first. Sign out and sign in again with a different Azure Active Directory user account"
+      },
+      "application": {
+        "app_display_name": "Azure Portal",
+        "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+        "resource_display_name": "Azure Resource Manager",
+        "resource_id": "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      },
+      "behavioral_flags": {
+        "first_time_device": null,
+        "first_time_browser": false,
+        "first_time_app": false,
+        "first_time_resource": false,
+        "first_time_country": false,
+        "first_time_isp": false,
+        "first_time_app_in_tenant": null,
+        "uncommonly_used_browser": null,
+        "uncommonly_used_isp": null,
+        "app_uncommonly_used_among_peers": true,
+        "investigation_priority": null,
+        "action_type": null
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Credential Testing",
+          "Repeated Failed Login Attempts"
+        ],
+        "behavioral_patterns": [
+          "Persistent Anomalous Behavior",
+          "Automated Attack"
+        ],
+        "risk_score": 9,
+        "recommended_actions": [
+          "Escalate Incident",
+          "Confirm Previous Actions",
+          "Enhanced Monitoring"
+        ],
+        "related_events": [
+          "3c5191ff-9d3c-48c5-bd4c-4d5740543800"
+        ],
+        "attack_vector": "Persistent Credential Testing"
+      },
+      "raw_event_summary": "Second failed Azure Portal login reinforcing high risk."
+    },
+    {
+      "event_id": "f414b99d-7507-4905-8009-6870e1994b00",
+      "timestamp": "2025-11-07T06:59:43.3708183Z",
+      "severity": "HIGH",
+      "title": "Multiple First-Time Activities on Failed Azure Portal Login with MFA Challenge Failure (Saikrishna Siddabathuni)",
+      "user": {
+        "user_principal_name": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
+        "user_id": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
+        "user_type": "Guest",
+        "user_display_name": "451fa0fb-e092-49d6-8d49-4f0e63f88458"
+      },
+      "location": {
+        "city": "Unknown",
+        "state": null,
+        "country": "Unknown",
+        "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+        "isp": null
+      },
+      "authentication": {
+        "authentication_method": "Unknown",
+        "authentication_requirement": "singleFactorAuthentication",
+        "mfa_detail": "Mobile app notification",
+        "result_type": "50074",
+        "result_description": "Strong Authentication is required."
+      },
+      "application": {
+        "app_display_name": "Azure Portal",
+        "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+        "resource_display_name": "Azure Resource Manager",
+        "resource_id": "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      },
+      "behavioral_flags": {
+        "first_time_device": null,
+        "first_time_browser": null,
+        "first_time_app": null,
+        "first_time_resource": null,
+        "first_time_country": null,
+        "first_time_isp": null,
+        "first_time_app_in_tenant": null,
+        "uncommonly_used_browser": null,
+        "uncommonly_used_isp": null,
+        "app_uncommonly_used_among_peers": null,
+        "investigation_priority": null,
+        "action_type": null
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "MFA Failure",
+          "Strong Authentication Required"
+        ],
+        "behavioral_patterns": [
+          "Failed MFA Challenge"
+        ],
+        "risk_score": 10,
+        "recommended_actions": [
+          "Critical Incident Response",
+          "Force Password Reset & Revoke Sessions",
+          "Review MFA Configuration",
+          "IP Address Blocking",
+          "User Interview",
+          "Forensic Investigation"
+        ],
+        "related_events": [
+          "f414b99d-7507-4905-8009-6870e1994b00"
+        ],
+        "attack_vector": "MFA Bypass Attempt"
+      },
+      "raw_event_summary": "Failed Azure Portal login requiring strong authentication."
+    },
+    {
+      "event_id": "f414b99d-7507-4905-8009-6870e1994b00",
+      "timestamp": "2025-11-07T06:59:50.6408739Z",
+      "severity": "HIGH",
+      "title": "Persistent Failed Azure Portal Login with MFA Challenge Failure (Saikrishna Siddabathuni)",
+      "user": {
+        "user_principal_name": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
+        "user_id": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
+        "user_type": "Guest",
+        "user_display_name": "451fa0fb-e092-49d6-8d49-4f0e63f88458"
+      },
+      "location": {
+        "city": "Unknown",
+        "state": null,
+        "country": "Unknown",
+        "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+        "isp": null
+      },
+      "authentication": {
+        "authentication_method": "Mobile app notification",
+        "authentication_requirement": "singleFactorAuthentication",
+        "mfa_detail": "Mobile app notification",
+        "result_type": "50074",
+        "result_description": "Strong Authentication is required."
+      },
+      "application": {
+        "app_display_name": "Azure Portal",
+        "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+        "resource_display_name": "Azure Resource Manager",
+        "resource_id": "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      },
+      "behavioral_flags": {
+        "first_time_device": null,
+        "first_time_browser": null,
+        "first_time_app": null,
+        "first_time_resource": null,
+        "first_time_country": null,
+        "first_time_isp": null,
+        "first_time_app_in_tenant": null,
+        "uncommonly_used_browser": null,
+        "uncommonly_used_isp": null,
+        "app_uncommonly_used_among_peers": null,
+        "investigation_priority": null,
+        "action_type": null
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Persistent MFA Failure",
+          "Account Block Recommended"
+        ],
+        "behavioral_patterns": [
+          "Ongoing MFA Fatigue Attack"
+        ],
+        "risk_score": 10,
+        "recommended_actions": [
+          "Verify Previous Actions",
+          "Block User Account Temporarily"
+        ],
+        "related_events": [
+          "f414b99d-7507-4905-8009-6870e1994b00"
+        ],
+        "attack_vector": "Persistent MFA fatigue attack"
+      },
+      "raw_event_summary": "Continued failed MFA attempt, consider blocking user account."
+    },
+    {
+      "event_id": "214e9f6b-cb95-4d2e-a513-4b5a15413400",
+      "timestamp": "2025-11-07T06:41:33.1460602Z",
+      "severity": "HIGH",
+      "title": "Rapid Geographic Shifts (Himanshu S)",
+      "user": {
+        "user_principal_name": "himanshu.s@yashtechnologies841.onmicrosoft.com",
+        "user_id": "a83f7551-447b-41bd-a712-9419cae7296c",
+        "user_type": "Member",
+        "user_display_name": "Himanshu S"
+      },
+      "location": {
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "country": "IN",
+        "ip_address": "49.249.104.218",
+        "isp": "tata teleservices limited -gsm division"
+      },
+      "authentication": {
+        "authentication_method": "Previously satisfied",
+        "authentication_requirement": "singleFactorAuthentication",
+        "mfa_detail": null,
+        "result_type": "0",
+        "result_description": "Not Available"
+      },
+      "application": {
+        "app_display_name": "Office365 Shell WCSS-Client",
+        "app_id": "89bee1f7-5e6e-4d8a-9f3d-ecd601259da7",
+        "resource_display_name": "Microsoft Graph",
+        "resource_id": "00000003-0000-0000-c000-000000000000"
+      },
+      "behavioral_flags": {
+        "first_time_device": null,
+        "first_time_browser": null,
+        "first_time_app": null,
+        "first_time_resource": null,
+        "first_time_country": null,
+        "first_time_isp": null,
+        "first_time_app_in_tenant": null,
+        "uncommonly_used_browser": null,
+        "uncommonly_used_isp": null,
+        "app_uncommonly_used_among_peers": null,
+        "investigation_priority": null,
+        "action_type": null
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Impossible Travel",
+          "Rapid Location Changes"
+        ],
+        "behavioral_patterns": [
+          "Geographic Anomalies",
+          "VPN/Proxy Abuse (Potential)"
+        ],
+        "risk_score": 8,
+        "recommended_actions": [
+          "Immediate Account Investigation",
+          "Force Password Reset & Session Revocation",
+          "Review Recent Activity",
+          "Implement Impossible Travel Detection"
+        ],
+        "related_events": [
+          "76ac8834-caa1-4565-906e-476a21954500",
+          "a4e0c603-b3a6-414f-b7b6-4eaff2e90f00"
+        ],
+        "attack_vector": "Impossible Travel / Session Hijacking"
+      },
+      "raw_event_summary": "Successful login followed by rapid geographic shifts."
+    },
+    {
+      "event_id": "a693b7ce-3a19-4dae-b0da-da7518cf2e00",
+      "timestamp": "2025-11-07T06:37:37.9058163Z",
+      "severity": "HIGH",
+      "title": "Rapid Geographic Shifts (Sam Malviya)",
+      "user": {
+        "user_principal_name": "sam.malviya@yashtechnologies841.onmicrosoft.com",
+        "user_id": "776a89f8-4c1e-459d-8987-e5f127201439",
+        "user_type": "Member",
+        "user_display_name": "Sam Malviya"
+      },
+      "location": {
+        "city": "Navi Mumbai",
+        "state": "Maharashtra",
+        "country": "IN",
+        "ip_address": "14.143.131.254",
+        "isp": "internet service provider"
+      },
+      "authentication": {
+        "authentication_method": "Previously satisfied",
+        "authentication_requirement": "singleFactorAuthentication",
+        "mfa_detail": null,
+        "result_type": "0",
+        "result_description": "Not Available"
+      },
+      "application": {
+        "app_display_name": "make.powerapps.com",
+        "app_id": "a8f7a65c-f5ba-4859-b2d6-df772c264e9d",
+        "resource_display_name": "PowerApps Service",
+        "resource_id": "475226c6-020e-4fb2-8a90-7a972cbfc1d4"
+      },
+      "behavioral_flags": {
+        "first_time_device": null,
+        "first_time_browser": null,
+        "first_time_app": null,
+        "first_time_resource": null,
+        "first_time_country": null,
+        "first_time_isp": null,
+        "first_time_app_in_tenant": null,
+        "uncommonly_used_browser": null,
+        "uncommonly_used_isp": null,
+        "app_uncommonly_used_among_peers": null,
+        "investigation_priority": null,
+        "action_type": null
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Impossible Travel",
+          "Rapid Location Changes"
+        ],
+        "behavioral_patterns": [
+          "Geographic Anomalies",
+          "VPN/Proxy Abuse (Potential)"
+        ],
+        "risk_score": 8,
+        "recommended_actions": [
+          "Immediate Account Investigation",
+          "Force Password Reset & Session Revocation",
+          "Review Recent Activity",
+          "Implement Impossible Travel Detection"
+        ],
+        "related_events": [
+          "c6acae57-b554-41dc-a24f-af7d09683c00"
+        ],
+        "attack_vector": "Impossible Travel / Session Hijacking"
+      },
+      "raw_event_summary": "Successful login followed by rapid geographic shifts."
+    }
+  ],
+  "medium_priority_events": [
+    {
+      "event_id": "16be0252-692f-4230-a8f6-0f9e69db0900",
+      "timestamp": "2025-11-07T06:56:31.3267585Z",
+      "severity": "MEDIUM",
+      "title": "Multiple First-Time Activities on Successful Azure DevOps Login (Harsh Vardhan Choudhary)",
+      "user": {
+        "user_principal_name": "harsh.choudhary@yash.com",
+        "user_id": "a9a93c7f-369b-4c0a-abe9-67d2b95b78b8",
+        "user_type": "Guest",
+        "user_display_name": "Harsh Vardhan  Choudhary"
+      },
+      "location": {
+        "city": "Chhindwara",
+        "state": "Madhya Pradesh",
+        "country": "IN",
+        "ip_address": "2409:40c4:1164:eb5e:4df:9279:9449:7577",
+        "isp": "reliance jio infocomm limited"
+      },
+      "authentication": {
+        "authentication_method": "Previously satisfied",
+        "authentication_requirement": "singleFactorAuthentication",
+        "mfa_detail": null,
+        "result_type": "0",
+        "result_description": "Not Available"
+      },
+      "application": {
+        "app_display_name": "Azure DevOps",
+        "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+        "resource_display_name": "Azure DevOps",
+        "resource_id": "499b84ac-1321-427f-aa17-267ca6975798"
+      },
+      "behavioral_flags": {
+        "first_time_device": true,
+        "first_time_browser": true,
+        "first_time_app": true,
+        "first_time_resource": true,
+        "first_time_country": true,
+        "first_time_isp": true,
+        "first_time_app_in_tenant": null,
+        "uncommonly_used_browser": null,
+        "uncommonly_used_isp": null,
+        "app_uncommonly_used_among_peers": null,
+        "investigation_priority": 0,
+        "action_type": null
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Potential Compromised Guest Account",
+          "New Access Pattern"
+        ],
+        "behavioral_patterns": [
+          "First Time Access From Multiple Vectors",
+          "Compromised Guest Account"
+        ],
+        "risk_score": 8,
+        "recommended_actions": [
+          "User Verification",
+          "Review Guest Account Permissions",
+          "Enhanced Monitoring",
+          "Educate Users"
+        ],
+        "related_events": [],
+        "attack_vector": "Unauthorized Access Attempt"
+      },
+      "raw_event_summary": "Multiple first-time activities on successful Azure DevOps login."
+    },
+    {
+      "event_id": "ce5086fe-6fd9-439b-965c-10a30cc83b00",
+      "timestamp": "2025-11-07T06:43:42.455857Z",
+      "severity": "MEDIUM",
+      "title": "First-Time Application Observed in Tenant (Urvashi Upadhyay)",
+      "user": {
+        "user_principal_name": "urvashi.upadhyay@yashtechnologies841.onmicrosoft.com",
+        "user_id": "fd6746b4-6b06-437d-9ff8-81927a643e53",
+        "user_type": "Member",
+        "user_display_name": "Urvashi Upadhyay"
+      },
+      "location": {
+        "city": "Navi Mumbai",
+        "state": "Maharashtra",
+        "country": "IN",
+        "ip_address": "14.143.131.254",
+        "isp": "internet service provider"
+      },
+      "authentication": {
+        "authentication_method": "Previously satisfied",
+        "authentication_requirement": "multiFactorAuthentication",
+        "mfa_detail": null,
+        "result_type": "0",
+        "result_description": "Not Available"
+      },
+      "application": {
+        "app_display_name": "Microsoft AppSource",
+        "app_id": "a0e1e353-1a3e-42cf-a8ea-3a9746eec58c",
+        "resource_display_name": "Azure Resource Manager",
+        "resource_id": "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      },
+      "behavioral_flags": {
+        "first_time_device": null,
+        "first_time_browser": null,
+        "first_time_app": null,
+        "first_time_resource": null,
+        "first_time_country": null,
+        "first_time_isp": null,
+        "first_time_app_in_tenant": null,
+        "uncommonly_used_browser": null,
+        "uncommonly_used_isp": null,
+        "app_uncommonly_used_among_peers": null,
+        "investigation_priority": 1,
+        "action_type": null
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Shadow IT",
+          "Unauthorized Application Usage"
+        ],
+        "behavioral_patterns": [
+          "New Application Usage",
+          "Potential Data Exfiltration"
+        ],
+        "risk_score": 6,
+        "recommended_actions": [
+          "Application Vetting",
+          "User Interview",
+          "Conditional Access Policy Review"
+        ],
+        "related_events": [],
+        "attack_vector": "Unauthorized Application Usage"
+      },
+      "raw_event_summary": "First-time application observed in tenant."
+    },
+    {
+      "event_id": "bce4db02-55e5-4ad8-ac92-55f351e10200",
+      "timestamp": "2025-11-07T06:59:51.2655103Z",
+      "severity": "MEDIUM",
+      "title": "First-Time ISP Connection in Tenant (Ravi Kiran Nuthakki)",
+      "user": {
+        "user_principal_name": "ravi.nuthakki@yash.com",
+        "user_id": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+        "user_type": "Guest",
+        "user_display_name": "Ravi Kiran Nuthakki"
+      },
+      "location": {
+        "city": "Patnam",
+        "state": "Andhra Pradesh",
+        "country": "IN",
+        "ip_address": "124.123.128.158",
+        "isp": "mehdi patnam zone (dhcp)"
+      },
+      "authentication": {
+        "authentication_method": "Previously satisfied",
+        "authentication_requirement": "multiFactorAuthentication",
+        "mfa_detail": null,
+        "result_type": "0",
+        "result_description": "Not Available"
+      },
+      "application": {
+        "app_display_name": "Azure Portal",
+        "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+        "resource_display_name": "Azure Resource Manager",
+        "resource_id": "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+      },
+      "behavioral_flags": {
+        "first_time_device": null,
+        "first_time_browser": null,
+        "first_time_app": null,
+        "first_time_resource": null,
+        "first_time_country": null,
+        "first_time_isp": null,
+        "first_time_app_in_tenant": null,
+        "uncommonly_used_browser": null,
+        "uncommonly_used_isp": null,
+        "app_uncommonly_used_among_peers": null,
+        "investigation_priority": 1,
+        "action_type": null
+      },
+      "correlation_analysis": {
+        "threat_indicators": [
+          "Compromised Guest Account (Potential)",
+          "Unauthorized Access from New Network"
+        ],
+        "behavioral_patterns": [
+          "New ISP Connection from Guest Account"
+        ],
+        "risk_score": 7,
+        "recommended_actions": [
+          "User Verification",
+          "Review Guest Account Permissions",
+          "Network Baseline Review"
+        ],
+        "related_events": [],
+        "attack_vector": "Unauthorized Access from New Network"
+      },
+      "raw_event_summary": "First-time ISP connection in tenant."
+    }
+  ],
+  "low_priority_events": [
+    {
+      "event_id": "129642cd-da98-4850-902b-8ca9b12b5c00",
+      "timestamp": "2025-11-07T06:49:39.7037187Z",
+      "severity": "LOW",
+      "title": "First-Time ISP Connection for User (Poornima Rathaur)",
+      "user": {
+        "user_principal_name": "poornima.rathaur@yash.com",
+        "user_id": "62eb54b2-36a6-4fc0-b37d-1c862db3e33d",
+        "user_type": "Guest",
+        "user_display_name": "Poornima Rathaur"
+      },
+      "location": {
+        "city": "New Delhi",
+        "state": "Delhi",
+        "country": "IN",
+        "ip_address": "125.23.93.22",
+        "isp": "bharti infotel ltd."
+      },
+      "authentication": {
+        "authentication_method": "Previously satisfied",
+        "authentication_requirement": "singleFactorAuthentication",
+        "mfa_detail": null,
+        "result_type": "0",
+        "result_description": "Not Available"
+      },
+      "application": {
+        "app_display_name": "Azure DevOps",
+        "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+        "resource_display_name": "Azure DevOps",
+        "resource_id": "499b84ac-1321-427f-aa17-267ca6975798"
+      },
+      "behavioral_flags": {
+        "first_time_device": null,
+        "first_time_browser": null,
+        "first_time_app": null,
+        "first_time_resource": null,
+        "first_time_country": null,
+        "first_time_isp": true,
+        "first_time_app_in_tenant": null,
+        "uncommonly_used_browser": null,
+        "uncommonly_used_isp": null,
+        "app_uncommonly_used_among_peers": null,
+        "investigation_priority": 0,
+        "action_type": null
+      },
+      "correlation_analysis": {
+        "threat_indicators

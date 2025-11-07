@@ -1,0 +1,52 @@
+{
+  "AzureDiagnostics": [],
+  "Operation": [],
+  "SentinelAudit": [],
+  "SentinelHealth": [
+    {
+      "TenantId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+      "TimeGenerated": "2025-11-07T06:43:34.8910217Z",
+      "OperationName": "Scheduled analytics rule run",
+      "SentinelResourceId": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/sentinelsoc/providers/Microsoft.OperationalInsights/workspaces/testenvr1/providers/Microsoft.SecurityInsights/alertRules/3fc1a025-d04b-4569-9720-306406bb9a86",
+      "SentinelResourceName": "Global Admin password change AD",
+      "Status": "Success",
+      "Description": "Rule executed successfully, but did not reach the threshold (0) required to generate an alert.",
+      "Reason": "The analytics rule executed successfully. The alert generation threshold was not reached.",
+      "WorkspaceId": "674f96b1-63d6-48ca-9fe6-d613e4292c7f",
+      "SentinelResourceType": "Analytics Rule",
+      "SentinelResourceKind": "Scheduled",
+      "RecordId": "c23a384e-4609-47ff-b705-3c1083ccac83",
+      "ExtendedProperties": {
+        "QueryFrequency": "01:00:00",
+        "AggregationKind": "SingleAlert",
+        "QueryPeriod": "01:00:00",
+        "RuleId": "3fc1a025-d04b-4569-9720-306406bb9a86",
+        "TriggerType": "ScheduledRun",
+        "SuppressionEnabled": false,
+        "TriggerThreshold": 0,
+        "TriggerOperator": "GreaterThan",
+        "EntitiesDroppedDueToMappingIssuesAmount": 0,
+        "AlertsGeneratedAmount": 0,
+        "EntitiesGeneratedAmount": 0,
+        "QueryResultAmount": 0,
+        "QueryEndTimeUTC": "2025-11-07T05:13:34.5994940Z",
+        "QueryStartTimeUTC": "2025-11-07T04:13:34.5994940Z",
+        "SuppressionDuration": "05:00:00",
+        "Issues": [],
+        "QueryPerformanceIndicators": {
+          "TotalCpu": "00:00:00",
+          "DataUsedForQueryProcessing": 0,
+          "TimeSpanOfProcessedData": "00:00:00",
+          "AgeOfOldestDataUsed": "739561.06:19:35.2133088",
+          "NumberOfWorkspaces": 1,
+          "NumberOfRegions": 1,
+          "Parallelism": "N/A"
+        },
+        "CorrelationId": "fdd9aa4b-6172-4389-a39b-e6e36f12dea8"
+      },
+      "SourceSystem": "",
+      "Type": "SentinelHealth"
+    }
+  ],
+  "Usage": []
+}
