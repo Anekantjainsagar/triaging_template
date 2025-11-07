@@ -39,27 +39,72 @@ else:
     )
     exit(1)
 
-# Define 3 x 20-minute intervals from 6:00 AM to 7:00 AM
-target_date = datetime(2025, 11, 4).date()
-today = datetime.utcnow().date()
 
-time_intervals = [
-    (
-        datetime.combine(today, datetime.min.time().replace(hour=6, minute=0)),
-        datetime.combine(today, datetime.min.time().replace(hour=6, minute=20)),
-        "6-6:20",
-    ),
-    (
-        datetime.combine(today, datetime.min.time().replace(hour=6, minute=20)),
-        datetime.combine(today, datetime.min.time().replace(hour=6, minute=40)),
-        "6:20-6:40",
-    ),
-    (
-        datetime.combine(today, datetime.min.time().replace(hour=6, minute=40)),
-        datetime.combine(today, datetime.min.time().replace(hour=7, minute=0)),
-        "6:40-7",
-    ),
-]
+
+def generate_time_intervals(
+    start_hour, end_hour, interval_minutes=20, start_date=None, end_date=None
+):
+    """
+    Generate time intervals continuously from start_date to end_date.
+
+    Args:
+        start_hour: Starting hour on start_date (e.g., 6)
+        end_hour: Ending hour on end_date (e.g., 7)
+        interval_minutes: Minutes per interval (default 20)
+        start_date: Start date (e.g., datetime(2025, 11, 4).date() or None for today)
+        end_date: End date (e.g., datetime(2025, 11, 5).date() or None for today)
+
+    Returns:
+        List of tuples (start_time, end_time, label)
+    """
+    if start_date is None:
+        start_date = datetime.utcnow().date()
+    if end_date is None:
+        end_date = datetime.utcnow().date()
+
+    intervals = []
+
+    # Create start and end datetimes
+    start_datetime = datetime.combine(
+        start_date, datetime.min.time().replace(hour=start_hour)
+    )
+    end_datetime = datetime.combine(
+        end_date, datetime.min.time().replace(hour=end_hour)
+    )
+
+    current_time = start_datetime
+
+    # Generate intervals from start to end
+    while current_time < end_datetime:
+        start_time = current_time
+        end_time = current_time + timedelta(minutes=interval_minutes)
+
+        # Don't exceed end_datetime
+        if end_time > end_datetime:
+            end_time = end_datetime
+
+        # Create label
+        label = f"{start_time.strftime('%Y-%m-%d %H:%M')}-{end_time.strftime('%H:%M')}"
+
+        intervals.append((start_time, end_time, label))
+
+        current_time = end_time
+
+    return intervals
+
+
+# Usage: Pass start hour, end hour, interval minutes, start date, and end date
+time_intervals = generate_time_intervals(
+    start_hour=6,
+    end_hour=7,
+    interval_minutes=15,
+    start_date=datetime(2025, 11, 7).date(),  # or None for today
+    end_date=datetime(2025, 11, 7).date(),  # or None for today
+)
+
+for start, end, label in time_intervals:
+    print(label)
+
 
 # Define table categories
 TABLE_CATEGORIES = {
@@ -186,7 +231,7 @@ def query_table_data(table_name, start_time, end_time):
 
 
 # Create main sentinel_logs folder
-main_folder = "sentinel_logs"
+main_folder = "sentinel_logs1"
 os.makedirs(main_folder, exist_ok=True)
 print(f"\n📁 Created main folder: {main_folder}")
 
@@ -201,8 +246,10 @@ for start_time, end_time, interval_label in time_intervals:
     print(f"Time range: {start_time} to {end_time} UTC")
     print(f"{'='*60}")
 
-    # Create folder for this interval
-    folder_name = f"sentinel_logs_{interval_label.replace(':', '-')}"
+    # Create folder for this interval under sentinel_logs
+    folder_name = os.path.join(
+        main_folder, f"sentinel_logs_{interval_label.replace(':', '-')}"
+    )
     os.makedirs(folder_name, exist_ok=True)
     print(f"\n📁 Created folder: {folder_name}")
 

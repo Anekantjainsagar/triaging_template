@@ -464,25 +464,167 @@ def clean_event(event):
     return event
 
 
+def extract_event_data_from_logs(log_data: dict, event_id: str) -> dict:
+    """
+    Extract complete event data directly from log_data by matching CorrelationId.
+    This ensures we get accurate data instead of AI-generated placeholders.
+    """
+    signin_logs = log_data.get("SigninLogs", [])
+    behavior_analytics = log_data.get("BehaviorAnalytics", [])
+
+    # Find the matching SigninLog entry
+    matching_log = None
+    for log in signin_logs:
+        if log.get("CorrelationId") == event_id:
+            matching_log = log
+            break
+
+    if not matching_log:
+        return None
+
+    # Find matching BehaviorAnalytics entry
+    matching_behavior = None
+    for behavior in behavior_analytics:
+        if behavior.get("SourceRecordId") == matching_log.get("Id"):
+            matching_behavior = behavior
+            break
+
+    # Extract comprehensive event data
+    event_data = {
+        "event_id": matching_log.get("CorrelationId", "Unknown"),
+        "timestamp": matching_log.get(
+            "TimeGenerated", matching_log.get("CreatedDateTime", "Unknown")
+        ),
+        "severity": "Unknown",  # Will be determined by AI analysis
+        "title": "Unknown",  # Will be determined by AI analysis
+        # User information
+        "user": {
+            "user_principal_name": matching_log.get("UserPrincipalName", "Unknown"),
+            "user_id": matching_log.get("UserId", "Unknown"),
+            "user_type": matching_log.get("UserType", "Unknown"),
+            "user_display_name": matching_log.get(
+                "UserDisplayName", matching_log.get("Identity", "Unknown")
+            ),
+        },
+        # Location information
+        "location": {
+            "city": matching_log.get("LocationDetails", {}).get("city", "Unknown"),
+            "state": matching_log.get("LocationDetails", {}).get("state", None),
+            "country": matching_log.get("LocationDetails", {}).get(
+                "countryOrRegion", "Unknown"
+            ),
+            "ip_address": matching_log.get("IPAddress", "Unknown"),
+            "isp": (
+                matching_behavior.get("DevicesInsights", {}).get("ISP")
+                if matching_behavior
+                else None
+            ),
+        },
+        # Authentication information
+        "authentication": {
+            "authentication_method": "Unknown",  # Will be extracted from AuthenticationDetails
+            "authentication_requirement": matching_log.get(
+                "AuthenticationRequirement", "Unknown"
+            ),
+            "mfa_detail": matching_log.get("MfaDetail"),
+            "result_type": str(matching_log.get("ResultType", "Unknown")),
+            "result_description": matching_log.get("ResultDescription")
+            or matching_log.get("Status", {}).get("failureReason", "Success"),
+        },
+        # Application information
+        "application": {
+            "app_display_name": matching_log.get("AppDisplayName", "Unknown"),
+            "app_id": matching_log.get("AppId", "Unknown"),
+            "resource_display_name": matching_log.get("ResourceDisplayName", None),
+            "resource_id": matching_log.get("ResourceIdentity", None),
+        },
+        # Behavioral flags
+        "behavioral_flags": {
+            "first_time_device": False,
+            "first_time_browser": False,
+            "first_time_app": False,
+            "first_time_resource": False,
+            "first_time_country": False,
+            "first_time_isp": False,
+            "first_time_app_in_tenant": False,
+            "uncommonly_used_browser": False,
+            "uncommonly_used_isp": False,
+            "app_uncommonly_used_among_peers": False,
+            "investigation_priority": 0,
+            "action_type": (
+                matching_behavior.get("ActionType")
+                if matching_behavior
+                else matching_log.get("OperationName", "Sign-in")
+            ),
+        },
+        # Add raw log reference for AI to extract additional details
+        "raw_log": matching_log,
+    }
+
+    # Extract authentication method from AuthenticationDetails
+    auth_details = matching_log.get("AuthenticationDetails", [])
+    if auth_details and isinstance(auth_details, list) and len(auth_details) > 0:
+        event_data["authentication"]["authentication_method"] = auth_details[0].get(
+            "authenticationMethod", "Unknown"
+        )
+
+    # Extract behavioral flags if available
+    if matching_behavior:
+        activity_insights = matching_behavior.get("ActivityInsights", {})
+        event_data["behavioral_flags"]["first_time_isp"] = (
+            activity_insights.get("FirstTimeUserConnectedViaISP") == "True"
+        )
+        event_data["behavioral_flags"]["uncommonly_used_browser"] = (
+            activity_insights.get("BrowserUncommonlyUsedInTenant") == "True"
+        )
+        event_data["behavioral_flags"]["first_time_browser"] = (
+            activity_insights.get("FirstTimeUserConnectedViaBrowser") == "True"
+        )
+        event_data["behavioral_flags"]["uncommonly_used_isp"] = (
+            activity_insights.get("ISPUncommonlyUsedInTenant") == "True"
+        )
+        event_data["behavioral_flags"]["investigation_priority"] = (
+            matching_behavior.get("InvestigationPriority", 0)
+        )
+
+    return event_data
+
+
 def parse_events_from_crew_output(
     crew_output: str, log_data: dict
 ) -> SecurityCorrelationReport:
     """
     Parse the crew output and structure it into SecurityEvent objects.
-    OPTIMIZED VERSION: Reduced prompt size and increased token limits.
+    ENHANCED VERSION: Extracts actual data from logs instead of relying solely on AI.
     """
     genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
     model = genai.GenerativeModel("gemini-2.0-flash-exp")
 
-    # Extract only essential log context (not full logs)
+    # Create a mapping of event IDs for quick lookup
+    event_id_map = {}
+    for log in log_data.get("SigninLogs", []):
+        correlation_id = log.get("CorrelationId")
+        if correlation_id:
+            event_id_map[correlation_id] = log
+
+    # Extract only essential log context
     log_summary = {
         "total_events": len(log_data.get("SigninLogs", [])),
-        "sample_event_ids": [
+        "event_ids": [
             log.get("CorrelationId") for log in log_data.get("SigninLogs", [])[:20]
         ],
+        "users": list(
+            set(
+                [
+                    log.get("UserPrincipalName")
+                    for log in log_data.get("SigninLogs", [])
+                    if log.get("UserPrincipalName")
+                ]
+            )
+        )[:20],
     }
 
-    # Truncate crew output to prevent token overflow
+    # Truncate crew output
     max_crew_output_length = 12000
     truncated_crew_output = crew_output[:max_crew_output_length]
     if len(crew_output) > max_crew_output_length:
@@ -496,14 +638,16 @@ Extract security events from the analysis below and structure them into JSON.
 
 CRITICAL RULES:
 1. Output MUST be valid, complete JSON - no truncation
-2. ALL strings must be properly terminated and escaped
-3. LIMIT to max 8 events per priority level (high/medium/low)
-4. Keep all descriptions under 150 characters
-5. Keep all arrays under 8 items each
-6. Use "Unknown" for missing required string fields, null for optional fields
-7. Ensure ALL brackets and braces are closed
-8. NO trailing commas
-9. Double-check the last event in each array is properly closed
+2. For event_id field, use ONLY the actual CorrelationId values from these available events: {', '.join(log_summary['event_ids'][:10])}
+3. You MUST use one of these real event IDs for each event, NOT made-up IDs
+4. For user information, use ONLY these actual users: {', '.join(log_summary['users'][:15])}
+5. ALL strings must be properly terminated and escaped
+6. LIMIT to max 8 events per priority level (high/medium/low)
+7. Keep all descriptions under 150 characters
+8. Keep all arrays under 8 items each
+9. Ensure ALL brackets and braces are closed
+10. NO trailing commas
+11. Double-check the last event in each array is properly closed
 
 JSON SCHEMA:
 {{
@@ -513,40 +657,48 @@ JSON SCHEMA:
   "executive_summary": "Brief summary under 400 chars"
 }}
 
-Each event needs: event_id, timestamp, severity, title, user (user_principal_name, user_id, user_type, user_display_name), location (city, state, country, ip_address, isp), authentication (authentication_method, authentication_requirement, mfa_detail, result_type, result_description), application (app_display_name, app_id, resource_display_name, resource_id), behavioral_flags (booleans for first_time_* and uncommonly_used_*, investigation_priority, action_type), correlation_analysis (threat_indicators array, behavioral_patterns array, risk_score 1-10, recommended_actions array, related_events array, attack_vector), raw_event_summary
+Each event MUST have:
+- event_id: MUST be one of these CorrelationIds: {', '.join(log_summary['event_ids'][:10])}
+- timestamp: ISO format timestamp
+- severity: HIGH, MEDIUM, or LOW
+- title: Brief description of the security concern
+- user: object with user_principal_name, user_id, user_type, user_display_name (use ONLY real users from list above)
+- location: object with city, state, country, ip_address, isp
+- authentication: object with authentication_method, authentication_requirement, mfa_detail, result_type, result_description
+- application: object with app_display_name, app_id, resource_display_name, resource_id
+- behavioral_flags: object with booleans for first_time_* and uncommonly_used_*, investigation_priority (int), action_type (string)
+- correlation_analysis: object with threat_indicators (array), behavioral_patterns (array), risk_score (1-10), recommended_actions (array), related_events (array), attack_vector (string)
+- raw_event_summary: Brief summary string
 
 ANALYSIS OUTPUT:
 {truncated_crew_output}
 
-LOG CONTEXT:
-Total events analyzed: {log_summary['total_events']}
-Sample event IDs: {', '.join(log_summary['sample_event_ids'][:10])}
+AVAILABLE EVENT IDS (use these exact values):
+{', '.join(log_summary['event_ids'][:15])}
 
-IMPORTANT: Return ONLY the JSON object. Ensure it is complete and valid. Double-check the closing braces.
+AVAILABLE USERS (use these exact values):
+{', '.join(log_summary['users'][:15])}
+
+IMPORTANT: Return ONLY the JSON object with REAL event IDs and user names from the lists above. Do not invent any IDs or usernames. Ensure it is complete and valid.
 """
 
     try:
-        print("🔄 Generating structured output from Gemini...")
+        print("📄 Generating structured output from Gemini...")
         response = generate_with_retry(model, structured_prompt)
         response_text = response.text.strip()
 
         # Enhanced JSON cleaning
         def clean_json_string(json_str: str) -> str:
             """Clean JSON string and fix common issues"""
-            # Remove markdown code blocks
             if json_str.startswith("```json"):
                 json_str = json_str[7:]
             if json_str.startswith("```"):
                 json_str = json_str[3:]
             if json_str.endswith("```"):
                 json_str = json_str[:-3]
-
             json_str = json_str.strip()
-
-            # Remove trailing commas before closing brackets
             json_str = re.sub(r",\s*}", "}", json_str)
             json_str = re.sub(r",\s*]", "]", json_str)
-
             return json_str
 
         cleaned_response = clean_json_string(response_text)
@@ -559,16 +711,41 @@ IMPORTANT: Return ONLY the JSON object. Ensure it is complete and valid. Double-
         # Parse JSON
         parsed_data = json.loads(cleaned_response)
 
-        # Clean all events
+        # ENHANCED: Enrich events with actual data from logs
         for priority in [
             "high_priority_events",
             "medium_priority_events",
             "low_priority_events",
         ]:
             if priority in parsed_data:
-                parsed_data[priority] = [
-                    clean_event(event) for event in parsed_data[priority]
-                ]
+                enriched_events = []
+                for event in parsed_data[priority]:
+                    event_id = event.get("event_id")
+
+                    # Extract actual data from logs
+                    actual_data = extract_event_data_from_logs(log_data, event_id)
+
+                    if actual_data:
+                        # Merge AI analysis with actual data
+                        event["user"] = actual_data["user"]
+                        event["location"] = actual_data["location"]
+                        event["authentication"] = actual_data["authentication"]
+                        event["application"] = actual_data["application"]
+                        event["timestamp"] = actual_data["timestamp"]
+
+                        # Update behavioral flags with actual data
+                        for key in actual_data["behavioral_flags"]:
+                            if actual_data["behavioral_flags"][
+                                key
+                            ]:  # Only update if we have actual data
+                                event["behavioral_flags"][key] = actual_data[
+                                    "behavioral_flags"
+                                ][key]
+
+                    # Clean the event
+                    enriched_events.append(clean_event(event))
+
+                parsed_data[priority] = enriched_events
             else:
                 parsed_data[priority] = []
 
@@ -577,7 +754,7 @@ IMPORTANT: Return ONLY the JSON object. Ensure it is complete and valid. Double-
             "report_metadata": {
                 "generated_at": datetime.now().isoformat(),
                 "log_file": "sentinel_user_data.json",
-                "analysis_engine": "CrewAI + Gemini 2.0 Flash (Optimized)",
+                "analysis_engine": "CrewAI + Gemini 2.0 Flash (Optimized + Data Enriched)",
                 "total_events_analyzed": len(log_data.get("SigninLogs", [])),
             },
             "summary_statistics": {
@@ -590,7 +767,7 @@ IMPORTANT: Return ONLY the JSON object. Ensure it is complete and valid. Double-
             **parsed_data,
         }
 
-        print("✅ Successfully parsed structured output")
+        print("✅ Successfully parsed and enriched structured output")
         return SecurityCorrelationReport(**report_data)
 
     except json.JSONDecodeError as e:
@@ -600,11 +777,9 @@ IMPORTANT: Return ONLY the JSON object. Ensure it is complete and valid. Double-
         print(f"First 300 chars: {response_text[:300]}...")
         print(f"Last 300 chars: ...{response_text[-300:]}")
 
-        # Save for debugging
         with open("debug_failed_response.txt", "w", encoding="utf-8") as f:
             f.write(response_text)
         print("💾 Failed response saved to 'debug_failed_response.txt'")
-
         raise
 
     except Exception as e:
@@ -748,7 +923,7 @@ def main():
     print("🚀 Starting Advanced Security Correlation Engine (OPTIMIZED)\n")
 
     # Find sentinel_logs directory
-    sentinel_logs_dir = "sentinel_logs"
+    sentinel_logs_dir = "sentinel_logs1"
     if not os.path.exists(sentinel_logs_dir):
         print(f"❌ Directory not found: {sentinel_logs_dir}")
         return
