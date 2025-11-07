@@ -9,7 +9,7 @@ def save_as_markdown(results, filename="kql_results.md"):
     """Convert KQL results to markdown table format"""
 
     if not results.get("tables"):
-        with open(filename, "w", encoding="utf-8") as f:  # Add encoding here
+        with open(filename, "w", encoding="utf-8") as f:
             f.write("# KQL Query Results\n\nNo data returned.\n")
         return
 
@@ -17,7 +17,7 @@ def save_as_markdown(results, filename="kql_results.md"):
     columns = table["columns"]
     rows = table["rows"]
 
-    with open(filename, "w", encoding="utf-8") as f:  # Add encoding here
+    with open(filename, "w", encoding="utf-8") as f:
         # Write column headers
         headers = [col["name"] for col in columns]
         f.write("| " + " | ".join(headers) + " |\n")
@@ -41,8 +41,20 @@ def main():
 
     workspace_id = os.getenv("LOG_ANALYTICS_WORKSPACE_ID")
 
-    kql_query = """AuditLogs 
-    | take 1"""
+    kql_query = """SigninLogs
+| where TimeGenerated > ago(1d)
+| join kind=inner (
+    DeviceProcessEvents
+    | where TimeGenerated > ago(1d)
+) on $left.UserPrincipalName == $right.InitiatingProcessAccountUpn
+| where abs(datetime_diff('minute', SigninLogs.TimeGenerated, DeviceProcessEvents.TimeGenerated)) < 10
+| project 
+    SigninLogs.UserPrincipalName, 
+    SigninLogs.IPAddress, 
+    DeviceProcessEvents.ProcessCommandLine, 
+    SigninLogs.TimeGenerated, 
+    DeviceProcessEvents.TimeGenerated
+"""
 
     credential = DefaultAzureCredential()
     token = credential.get_token("https://api.loganalytics.io/.default").token
