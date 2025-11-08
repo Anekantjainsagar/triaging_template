@@ -1,9 +1,15 @@
 {
   "report_metadata": {
-    "generated_at": "2025-11-08T09:20:07.594634",
-    "report_type": "Advanced Security Correlation Analysis v4.0",
+    "generated_at": "2025-11-08T18:02:54.238036",
+    "report_type": "Advanced Security Correlation Analysis v5.0 - Fixed Edition",
     "total_users": 21,
-    "total_events": 38
+    "total_events": 38,
+    "improvements": [
+      "Intelligent time gap detection using outlier analysis",
+      "Proper ResultDescription extraction for failures",
+      "Enhanced Unknown data handling",
+      "Frequent activity grouping (not hardcoded thresholds)"
+    ]
   },
   "summary": {
     "high_risk_count": 0,
@@ -21,6 +27,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:00:02.722851+00:00",
@@ -53,7 +65,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 1,
@@ -64,7 +76,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -81,7 +94,7 @@
           "browser": "Chrome 142.0.0",
           "os": "MacOs",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -93,6 +106,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:02:42.758783+00:00",
@@ -125,7 +144,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 1,
@@ -136,7 +155,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -153,7 +173,7 @@
           "browser": "Chrome 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -165,6 +185,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:24:22.937498+00:00",
@@ -197,7 +223,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 1,
@@ -208,7 +234,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -225,7 +252,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -237,6 +264,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:33:34.948641+00:00",
@@ -269,7 +302,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 1,
@@ -280,7 +313,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -297,7 +331,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -307,14 +341,39 @@
       "user_display_name": "Shubham  Patidar",
       "user_type": "Guest",
       "total_events": 2,
-      "total_clusters": 1,
+      "total_clusters": 2,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 879.41656,
+            "q2": 879.41656,
+            "q3": 879.41656,
+            "iqr": 0.0,
+            "mean": 879.41656,
+            "std_dev": 0.0,
+            "normal_gaps_count": 1,
+            "outlier_count": 0,
+            "total_gaps": 1,
+            "final_threshold": 879.41656
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:35:28.730472+00:00",
+          "end_time": "2025-11-07T05:35:28.730472+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T05:50:08.147032+00:00",
           "end_time": "2025-11-07T05:50:08.147032+00:00",
-          "duration_seconds": 879,
-          "event_count": 2,
+          "duration_seconds": 0,
+          "event_count": 1,
           "unique_apps": 1,
           "has_failures": false,
           "failure_count": 0
@@ -348,7 +407,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 2,
@@ -359,7 +418,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -376,7 +436,7 @@
           "browser": "Mobile Safari 18.6",
           "os": "Ios 18.6.2",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:50:08.1470327Z",
@@ -386,7 +446,7 @@
           "browser": "Chrome 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -398,6 +458,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:35:35.208272+00:00",
@@ -430,7 +496,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 1,
@@ -441,7 +507,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -458,7 +525,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -470,6 +537,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:37:00.431884+00:00",
@@ -502,7 +575,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 1,
@@ -513,7 +586,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -530,7 +604,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -542,6 +616,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:47:17.825934+00:00",
@@ -574,7 +654,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 1,
@@ -585,7 +665,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -602,7 +683,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -614,6 +695,21 @@
       "total_events": 2,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 16.536887,
+            "q2": 16.536887,
+            "q3": 16.536887,
+            "iqr": 0.0,
+            "mean": 16.536887,
+            "std_dev": 0.0,
+            "normal_gaps_count": 1,
+            "outlier_count": 0,
+            "total_gaps": 1,
+            "final_threshold": 30
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:49:13.644167+00:00",
@@ -632,16 +728,9 @@
           "country": "IN",
           "ip_address": "14.194.129.210",
           "timestamp": "2025-11-07T05:49:13.6441674Z"
-        },
-        {
-          "city": "Mumbai",
-          "state": "Maharashtra",
-          "country": "IN",
-          "ip_address": "14.194.129.210",
-          "timestamp": "2025-11-07T05:49:30.1810549Z"
         }
       ],
-      "unique_locations": 2,
+      "unique_locations": 1,
       "applications": [
         {
           "app_name": "YASH-SPN-UES-Azure-App",
@@ -653,7 +742,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 2,
@@ -664,7 +753,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -681,7 +771,7 @@
           "browser": "Edge 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:49:30.1810549Z",
@@ -691,7 +781,7 @@
           "browser": "Edge 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -703,6 +793,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:58:47.353741+00:00",
@@ -735,7 +831,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 1,
@@ -746,7 +842,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -763,7 +860,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -773,14 +870,39 @@
       "user_display_name": "Raviraj Ramesh Jadhav",
       "user_type": "Guest",
       "total_events": 2,
-      "total_clusters": 1,
+      "total_clusters": 2,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 48.208159,
+            "q2": 48.208159,
+            "q3": 48.208159,
+            "iqr": 0.0,
+            "mean": 48.208159,
+            "std_dev": 0.0,
+            "normal_gaps_count": 1,
+            "outlier_count": 0,
+            "total_gaps": 1,
+            "final_threshold": 48.208159
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:58:58.758577+00:00",
+          "end_time": "2025-11-07T05:58:58.758577+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T05:59:46.966736+00:00",
           "end_time": "2025-11-07T05:59:46.966736+00:00",
-          "duration_seconds": 48,
-          "event_count": 2,
+          "duration_seconds": 0,
+          "event_count": 1,
           "unique_apps": 1,
           "has_failures": false,
           "failure_count": 0
@@ -793,16 +915,9 @@
           "country": "IN",
           "ip_address": "152.58.31.232",
           "timestamp": "2025-11-07T05:58:58.7585772Z"
-        },
-        {
-          "city": "Kusgaon Budruk",
-          "state": "Maharashtra",
-          "country": "IN",
-          "ip_address": "152.58.31.232",
-          "timestamp": "2025-11-07T05:59:46.9667361Z"
         }
       ],
-      "unique_locations": 2,
+      "unique_locations": 1,
       "applications": [
         {
           "app_name": "YASH-SPN-UES-Azure-App",
@@ -814,7 +929,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 2,
@@ -825,7 +940,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -842,7 +958,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:59:46.9667361Z",
@@ -852,7 +968,7 @@
           "browser": "Chrome 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -864,6 +980,21 @@
       "total_events": 2,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 6.572781,
+            "q2": 6.572781,
+            "q3": 6.572781,
+            "iqr": 0.0,
+            "mean": 6.572781,
+            "std_dev": 0.0,
+            "normal_gaps_count": 1,
+            "outlier_count": 0,
+            "total_gaps": 1,
+            "final_threshold": 30
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:59:47.519643+00:00",
@@ -882,16 +1013,9 @@
           "country": "IN",
           "ip_address": "125.23.93.22",
           "timestamp": "2025-11-07T05:59:47.5196435Z"
-        },
-        {
-          "city": "New Delhi",
-          "state": "Delhi",
-          "country": "IN",
-          "ip_address": "125.23.93.22",
-          "timestamp": "2025-11-07T05:59:54.0924248Z"
         }
       ],
-      "unique_locations": 2,
+      "unique_locations": 1,
       "applications": [
         {
           "app_name": "Azure DevOps",
@@ -909,7 +1033,7 @@
       "unique_apps": 2,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 2,
@@ -920,7 +1044,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 3,
@@ -937,7 +1062,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:59:54.0924248Z",
@@ -947,7 +1072,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -959,6 +1084,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:02:28.926449+00:00",
@@ -991,7 +1122,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 1,
@@ -1002,7 +1133,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 2,
@@ -1018,7 +1150,7 @@
           "browser": "Chrome 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -1028,14 +1160,39 @@
       "user_display_name": "Uday  Sharma",
       "user_type": "Guest",
       "total_events": 2,
-      "total_clusters": 1,
+      "total_clusters": 2,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 51.957053,
+            "q2": 51.957053,
+            "q3": 51.957053,
+            "iqr": 0.0,
+            "mean": 51.957053,
+            "std_dev": 0.0,
+            "normal_gaps_count": 1,
+            "outlier_count": 0,
+            "total_gaps": 1,
+            "final_threshold": 51.957053
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:34:48.845144+00:00",
+          "end_time": "2025-11-07T05:34:48.845144+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T05:35:40.802197+00:00",
           "end_time": "2025-11-07T05:35:40.802197+00:00",
-          "duration_seconds": 51,
-          "event_count": 2,
+          "duration_seconds": 0,
+          "event_count": 1,
           "unique_apps": 1,
           "has_failures": false,
           "failure_count": 0
@@ -1048,16 +1205,9 @@
           "country": "IN",
           "ip_address": "14.194.129.210",
           "timestamp": "2025-11-07T05:34:48.8451442Z"
-        },
-        {
-          "city": "Mumbai",
-          "state": "Maharashtra",
-          "country": "IN",
-          "ip_address": "14.194.129.210",
-          "timestamp": "2025-11-07T05:35:40.8021972Z"
         }
       ],
-      "unique_locations": 2,
+      "unique_locations": 1,
       "applications": [
         {
           "app_name": "Azure Portal",
@@ -1069,7 +1219,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 2,
         "total_single_factor": 0,
@@ -1080,7 +1230,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 2,
@@ -1096,7 +1247,7 @@
           "browser": "Edge 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:35:40.8021972Z",
@@ -1106,7 +1257,7 @@
           "browser": "Edge 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -1118,6 +1269,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:53:23.721182+00:00",
@@ -1150,7 +1307,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 1,
         "total_single_factor": 0,
@@ -1161,7 +1318,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 2,
@@ -1177,7 +1335,7 @@
           "browser": "Chrome 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -1187,15 +1345,40 @@
       "user_display_name": "Himanshu S",
       "user_type": "Member",
       "total_events": 4,
-      "total_clusters": 1,
+      "total_clusters": 2,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 19.2500805,
+            "q2": 31.6844,
+            "q3": 35.1135615,
+            "iqr": 15.863481000000004,
+            "mean": 25.680961333333332,
+            "std_dev": 13.630382393894466,
+            "normal_gaps_count": 3,
+            "outlier_count": 0,
+            "total_gaps": 3,
+            "final_threshold": 35.1135615
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:54:41.422883+00:00",
+          "end_time": "2025-11-07T05:55:19.923044+00:00",
+          "duration_seconds": 38,
+          "event_count": 3,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T05:55:58.465767+00:00",
           "end_time": "2025-11-07T05:55:58.465767+00:00",
-          "duration_seconds": 77,
-          "event_count": 4,
-          "unique_apps": 2,
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
           "has_failures": false,
           "failure_count": 0
         }
@@ -1207,30 +1390,9 @@
           "country": "IN",
           "ip_address": "14.143.131.254",
           "timestamp": "2025-11-07T05:54:41.4228833Z"
-        },
-        {
-          "city": "Navi Mumbai",
-          "state": "Maharashtra",
-          "country": "IN",
-          "ip_address": "14.143.131.254",
-          "timestamp": "2025-11-07T05:55:13.1072838Z"
-        },
-        {
-          "city": "Navi Mumbai",
-          "state": "Maharashtra",
-          "country": "IN",
-          "ip_address": "14.143.131.254",
-          "timestamp": "2025-11-07T05:55:19.9230443Z"
-        },
-        {
-          "city": "Navi Mumbai",
-          "state": "Maharashtra",
-          "country": "IN",
-          "ip_address": "14.143.131.254",
-          "timestamp": "2025-11-07T05:55:58.4657679Z"
         }
       ],
-      "unique_locations": 4,
+      "unique_locations": 1,
       "applications": [
         {
           "app_name": "Office365 Shell WCSS-Client",
@@ -1248,7 +1410,7 @@
       "unique_apps": 2,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 4,
@@ -1259,7 +1421,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 2,
@@ -1275,7 +1438,7 @@
           "browser": "Chrome 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:55:13.1072838Z",
@@ -1285,7 +1448,7 @@
           "browser": "Chrome 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:55:19.9230443Z",
@@ -1295,7 +1458,7 @@
           "browser": "Chrome 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:55:58.4657679Z",
@@ -1305,7 +1468,7 @@
           "browser": "Chrome 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -1317,6 +1480,12 @@
       "total_events": 2,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "parsing_error"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:09:54.459189+00:00",
@@ -1349,7 +1518,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 2,
         "total_single_factor": 0,
@@ -1360,7 +1529,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 1,
@@ -1374,7 +1544,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:09:54.4591897Z",
@@ -1384,7 +1554,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -1396,6 +1566,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:27:15.900396+00:00",
@@ -1428,7 +1604,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 1,
         "total_single_factor": 0,
@@ -1439,7 +1615,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 1,
@@ -1453,7 +1630,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -1463,20 +1640,45 @@
       "user_display_name": "Sarat Kumar Indukuri",
       "user_type": "Member",
       "total_events": 6,
-      "total_clusters": 2,
+      "total_clusters": 3,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 28.940578,
+            "q2": 30.570581,
+            "q3": 43.919609,
+            "iqr": 14.979031000000003,
+            "mean": 175.0562282,
+            "std_dev": 296.48749583184696,
+            "normal_gaps_count": 3,
+            "outlier_count": 2,
+            "total_gaps": 5,
+            "final_threshold": 37.245095
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:36:32.636857+00:00",
-          "end_time": "2025-11-07T05:37:45.497044+00:00",
-          "duration_seconds": 72,
-          "event_count": 3,
-          "unique_apps": 2,
+          "end_time": "2025-11-07T05:36:32.636857+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
           "has_failures": false,
           "failure_count": 0
         },
         {
           "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T05:37:16.556466+00:00",
+          "end_time": "2025-11-07T05:37:45.497044+00:00",
+          "duration_seconds": 28,
+          "event_count": 2,
+          "unique_apps": 2,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_002",
           "start_time": "2025-11-07T05:50:32.978283+00:00",
           "end_time": "2025-11-07T05:51:07.917998+00:00",
           "duration_seconds": 34,
@@ -1495,42 +1697,14 @@
           "timestamp": "2025-11-07T05:36:32.6368576Z"
         },
         {
-          "city": "Mangalhat",
-          "state": "Telangana",
-          "country": "IN",
-          "ip_address": "27.6.114.176",
-          "timestamp": "2025-11-07T05:37:16.5564666Z"
-        },
-        {
-          "city": "Mangalhat",
-          "state": "Telangana",
-          "country": "IN",
-          "ip_address": "27.6.114.176",
-          "timestamp": "2025-11-07T05:37:45.4970442Z"
-        },
-        {
-          "city": "Mangalhat",
-          "state": "Telangana",
-          "country": "IN",
-          "ip_address": "27.6.114.176",
-          "timestamp": "2025-11-07T05:50:32.9782837Z"
-        },
-        {
           "city": "Hyderabad",
           "state": "Telangana",
           "country": "IN",
           "ip_address": "27.6.114.176",
           "timestamp": "2025-11-07T05:50:37.3474179Z"
-        },
-        {
-          "city": "Mangalhat",
-          "state": "Telangana",
-          "country": "IN",
-          "ip_address": "27.6.114.176",
-          "timestamp": "2025-11-07T05:51:07.9179987Z"
         }
       ],
-      "unique_locations": 6,
+      "unique_locations": 2,
       "applications": [
         {
           "app_name": "Microsoft Account Controls V2",
@@ -1566,7 +1740,7 @@
       "unique_apps": 5,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 6,
         "total_single_factor": 0,
@@ -1577,7 +1751,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 1,
@@ -1591,7 +1766,7 @@
           "browser": "Chrome 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:37:16.5564666Z",
@@ -1601,7 +1776,7 @@
           "browser": "Chrome 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Unknown"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:37:45.4970442Z",
@@ -1611,7 +1786,7 @@
           "browser": "Chrome 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:50:32.9782837Z",
@@ -1621,7 +1796,7 @@
           "browser": "Chrome 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:50:37.3474179Z",
@@ -1631,7 +1806,7 @@
           "browser": "Chrome 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:51:07.9179987Z",
@@ -1641,7 +1816,7 @@
           "browser": "Chrome 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -1653,6 +1828,21 @@
       "total_events": 4,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 12.5587935,
+            "q2": 17.603388,
+            "q3": 17.623894999999997,
+            "iqr": 5.065101499999997,
+            "mean": 14.253996333333333,
+            "std_dev": 4.765785811934505,
+            "normal_gaps_count": 3,
+            "outlier_count": 0,
+            "total_gaps": 3,
+            "final_threshold": 30
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:41:08.426034+00:00",
@@ -1673,28 +1863,14 @@
           "timestamp": "2025-11-07T05:41:08.4260348Z"
         },
         {
-          "city": "Ahmedabad",
-          "state": "Gujarat",
-          "country": "IN",
-          "ip_address": "49.249.104.218",
-          "timestamp": "2025-11-07T05:41:15.9402337Z"
-        },
-        {
           "city": "Navi Mumbai",
           "state": "Maharashtra",
           "country": "IN",
           "ip_address": "14.143.131.254",
           "timestamp": "2025-11-07T05:41:33.5846353Z"
-        },
-        {
-          "city": "Ahmedabad",
-          "state": "Gujarat",
-          "country": "IN",
-          "ip_address": "49.249.104.218",
-          "timestamp": "2025-11-07T05:41:51.1880231Z"
         }
       ],
-      "unique_locations": 4,
+      "unique_locations": 2,
       "applications": [
         {
           "app_name": "Azure Portal",
@@ -1706,7 +1882,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 4,
         "total_single_factor": 0,
@@ -1717,7 +1893,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 1,
@@ -1731,7 +1908,7 @@
           "browser": "Edge 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:41:15.9402337Z",
@@ -1741,7 +1918,7 @@
           "browser": "Edge 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:41:33.5846353Z",
@@ -1751,7 +1928,7 @@
           "browser": "Edge 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         },
         {
           "timestamp": "2025-11-07T05:41:51.1880231Z",
@@ -1761,7 +1938,7 @@
           "browser": "Edge 141.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     },
@@ -1773,6 +1950,12 @@
       "total_events": 1,
       "total_clusters": 1,
       "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
         {
           "cluster_id": "CLUSTER_000",
           "start_time": "2025-11-07T05:48:09.762769+00:00",
@@ -1805,7 +1988,7 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Previously satisfied"
+          "Single Sign-On"
         ],
         "total_mfa": 1,
         "total_single_factor": 0,
@@ -1816,7 +1999,8 @@
         "success_rate": 100.0,
         "failure_reasons": [],
         "critical_failures": 0,
-        "failed_event_timeline": []
+        "failed_event_timeline": [],
+        "failure_categories": {}
       },
       "behavioral_anomalies": [],
       "risk_score": 1,
@@ -1830,7 +2014,7 @@
           "browser": "Edge 142.0.0",
           "os": "Windows10",
           "result": "\u2705 Success",
-          "auth_method": "Previously satisfied"
+          "auth_method": "Single Sign-On"
         }
       ]
     }
