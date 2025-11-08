@@ -2,357 +2,820 @@ import json
 import os
 import re
 from dotenv import load_dotenv
-from typing import List, Optional
-from datetime import datetime
+from typing import List, Optional, Dict, Tuple
+from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
-from crewai import Agent, Task, Crew, Process
-from crewai.tools import BaseTool
-import google.generativeai as genai
-from langchain_google_genai import ChatGoogleGenerativeAI
+from collections import defaultdict
+import statistics
+import numpy as np
 
-import time
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_exponential,
-    retry_if_exception_type,
-)
-from litellm.exceptions import RateLimitError
-
-
+os.environ["CREWAI_TELEMETRY"] = "false"
 load_dotenv()
 
+
 # ============================================================================
-# STRUCTURED OUTPUT MODELS
+# ENHANCED USER GROUPING & CORRELATION MODELS
 # ============================================================================
 
 
-@retry(
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=4, max=60),
-    retry=retry_if_exception_type(RateLimitError),
-    before_sleep=lambda retry_state: print(
-        f"⏳ Rate limit hit. Retrying in {retry_state.next_action.sleep} seconds..."
-    ),
-)
-def run_crew_with_retry(crew):
-    """Run crew with automatic retry on rate limit"""
-    return crew.kickoff()
+class EventDetails(BaseModel):
+    """Complete event with all available data"""
+
+    event_id: str
+    timestamp: str
+    user_principal_name: str
+    user_id: str
+    user_display_name: str
+    user_type: str
+
+    # Enhanced authentication tracking
+    authentication_method: str
+    authentication_requirement: str
+    result_type: str
+    result_signature: str
+    result_description: str
+
+    # Location
+    ip_address: str
+    location_city: Optional[str]
+    location_state: Optional[str]
+    location_country: str
+
+    # Application
+    app_display_name: str
+    app_id: str
+    resource_display_name: Optional[str]
+
+    # Device
+    operating_system: Optional[str]
+    browser: Optional[str]
+
+    # Classification
+    is_success: bool
+    failure_reason: Optional[str]
 
 
-@retry(
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=2, min=8, max=120),
-    retry=retry_if_exception_type((RateLimitError, json.JSONDecodeError)),
-    before_sleep=lambda retry_state: print(
-        f"⏳ Retry attempt {retry_state.attempt_number}. Waiting {retry_state.next_action.sleep}s..."
-    ),
-)
-def generate_with_retry(model, prompt):
-    """Enhanced retry with JSON validation and increased token limit"""
-    response = model.generate_content(
-        prompt,
-        generation_config=genai.types.GenerationConfig(
-            max_output_tokens=8192,  # Increased from default
-            temperature=0.1,
+class EventCluster(BaseModel):
+    """Group of related events based on time proximity"""
+
+    cluster_id: str
+    events: List[EventDetails]
+    start_time: str
+    end_time: str
+    duration_seconds: int
+    event_count: int
+    unique_apps: int
+    unique_locations: int
+    has_failures: bool
+    failure_count: int
+
+
+class UserActivityGroup(BaseModel):
+    """All activities for a single user grouped by clusters"""
+
+    user_principal_name: str
+    user_id: str
+    user_display_name: str
+    user_type: str
+    total_events: int
+
+    # Cluster analysis
+    total_clusters: int
+    clusters: List[Dict]
+
+    # Location analysis
+    locations: List[Dict]
+    unique_locations: int
+
+    # Application analysis
+    applications: List[Dict]
+    unique_apps: int
+
+    # Authentication analysis
+    authentication_summary: Dict
+
+    # Failure analysis
+    failure_analysis: Dict
+
+    # Risk assessment
+    behavioral_anomalies: List[str]
+    risk_score: int
+    risk_factors: List[str]
+
+    # Timeline
+    timeline: List[Dict]
+
+
+# ============================================================================
+# DATA EXTRACTION - IMPROVED VERSION
+# ============================================================================
+
+
+def extract_failure_reason(signin_log: dict) -> Tuple[bool, Optional[str]]:
+    """Extract failure reason from multiple possible fields"""
+
+    is_success = signin_log.get("ResultType") == "0"
+    failure_reason = None
+
+    if not is_success:
+        # Primary source: ResultDescription
+        failure_reason = signin_log.get("ResultDescription", "").strip()
+
+        # Fallback sources
+        if not failure_reason:
+            failure_reason = (
+                signin_log.get("Status", {}).get("failureReason", "").strip()
+            )
+
+        if not failure_reason:
+            # Parse from ActionType
+            action_type = signin_log.get("ActionType", "")
+            if action_type:
+                failure_reason = action_type
+
+        if not failure_reason:
+            failure_reason = f"Unknown failure (Code: {signin_log.get('ResultType')})"
+
+    return is_success, failure_reason
+
+
+def extract_complete_event_data(signin_log: dict) -> EventDetails:
+    """Extract all available data from a sign-in log entry"""
+
+    auth_details = signin_log.get("AuthenticationDetails", [])
+    auth_method = "Unknown"
+    if auth_details and isinstance(auth_details, list) and len(auth_details) > 0:
+        auth_method = auth_details[0].get("authenticationMethod", "Unknown")
+
+    location_details = signin_log.get("LocationDetails", {})
+    device_detail = signin_log.get("DeviceDetail", {})
+
+    is_success, failure_reason = extract_failure_reason(signin_log)
+
+    return EventDetails(
+        event_id=signin_log.get("CorrelationId", signin_log.get("Id", "Unknown")),
+        timestamp=signin_log.get(
+            "TimeGenerated", signin_log.get("CreatedDateTime", "Unknown")
         ),
+        user_principal_name=signin_log.get("UserPrincipalName", "Unknown"),
+        user_id=signin_log.get("UserId", "Unknown"),
+        user_display_name=signin_log.get(
+            "UserDisplayName", signin_log.get("Identity", "Unknown")
+        ),
+        user_type=signin_log.get("UserType", "Unknown"),
+        authentication_method=auth_method,
+        authentication_requirement=signin_log.get(
+            "AuthenticationRequirement", "Unknown"
+        ),
+        result_type=str(signin_log.get("ResultType", "Unknown")),
+        result_signature=signin_log.get("ResultSignature", "Unknown"),
+        result_description=failure_reason if not is_success else "Success",
+        ip_address=signin_log.get("IPAddress", "Unknown"),
+        location_city=location_details.get("city"),
+        location_state=location_details.get("state"),
+        location_country=location_details.get("countryOrRegion", "Unknown"),
+        app_display_name=signin_log.get("AppDisplayName", "Unknown"),
+        app_id=signin_log.get("AppId", "Unknown"),
+        resource_display_name=signin_log.get("ResourceDisplayName"),
+        operating_system=device_detail.get("operatingSystem"),
+        browser=device_detail.get("browser"),
+        is_success=is_success,
+        failure_reason=failure_reason if not is_success else None,
     )
-
-    # Validate response is complete JSON before returning
-    response_text = response.text.strip()
-
-    # Remove markdown code blocks
-    if response_text.startswith("```json"):
-        response_text = response_text[7:]
-    if response_text.startswith("```"):
-        response_text = response_text[3:]
-    if response_text.endswith("```"):
-        response_text = response_text[:-3]
-
-    response_text = response_text.strip()
-
-    # Quick validation - will raise JSONDecodeError if invalid
-    try:
-        json.loads(response_text)
-    except json.JSONDecodeError as e:
-        print(f"⚠️ Response is not valid JSON at position {e.pos}: {e.msg}")
-        print(f"Response length: {len(response_text)}")
-        print(f"Last 200 chars: ...{response_text[-200:]}")
-        raise
-
-    return response
-
-
-class UserDetails(BaseModel):
-    """User information from the security event"""
-
-    user_principal_name: str = Field(
-        description="The user's UPN or email", default="Unknown"
-    )
-    user_id: str = Field(description="The unique user ID", default="Unknown")
-    user_type: str = Field(description="Member or Guest", default="Unknown")
-    user_display_name: Optional[str] = Field(
-        default=None, description="User's display name"
-    )
-
-
-class LocationDetails(BaseModel):
-    """Geographic and network location information"""
-
-    city: str = Field(description="City of sign-in")
-    state: Optional[str] = Field(default=None, description="State/region")
-    country: str = Field(description="Country of sign-in")
-    ip_address: str = Field(description="IP address used")
-    isp: Optional[str] = Field(default=None, description="Internet Service Provider")
-
-
-class AuthenticationDetails(BaseModel):
-    """Authentication method and status"""
-
-    authentication_method: str = Field(description="Method used for authentication")
-    authentication_requirement: str = Field(description="MFA or single factor")
-    mfa_detail: Optional[str] = Field(default=None, description="MFA method details")
-    result_type: str = Field(description="Result code (0=success, other=failure)")
-    result_description: str = Field(description="Human-readable result description")
-
-
-class ApplicationDetails(BaseModel):
-    """Application and resource being accessed"""
-
-    app_display_name: str = Field(description="Application name")
-    app_id: str = Field(description="Application ID")
-    resource_display_name: Optional[str] = Field(
-        default=None, description="Resource name"
-    )
-    resource_id: Optional[str] = Field(default=None, description="Resource ID")
-
-
-class BehavioralFlags(BaseModel):
-    """Behavioral analytics flags"""
-
-    first_time_device: bool = Field(default=False)
-    first_time_browser: bool = Field(default=False)
-    first_time_app: bool = Field(default=False)
-    first_time_resource: bool = Field(default=False)
-    first_time_country: bool = Field(default=False)
-    first_time_isp: bool = Field(default=False)
-    first_time_app_in_tenant: bool = Field(default=False)
-    uncommonly_used_browser: bool = Field(default=False)
-    uncommonly_used_isp: bool = Field(default=False)
-    app_uncommonly_used_among_peers: bool = Field(default=False)
-    investigation_priority: Optional[int] = Field(default=None)
-    action_type: Optional[str] = Field(default=None)
-
-
-class CorrelationAnalysis(BaseModel):
-    """AI-generated correlation and risk analysis"""
-
-    threat_indicators: List[str] = Field(
-        description="List of threat indicators found", max_length=10
-    )
-    behavioral_patterns: List[str] = Field(
-        description="Notable behavioral patterns", max_length=10
-    )
-    risk_score: int = Field(description="Risk score from 1-10", ge=1, le=10)
-    recommended_actions: List[str] = Field(
-        description="Recommended actions", max_length=10
-    )
-    related_events: List[str] = Field(
-        default=[], description="Related event IDs or patterns", max_length=10
-    )
-    attack_vector: Optional[str] = Field(
-        default=None, description="Potential attack vector"
-    )
-
-
-class SecurityEvent(BaseModel):
-    """Complete security event with correlation"""
-
-    # Metadata
-    event_id: str = Field(description="Unique event identifier (CorrelationId)")
-    timestamp: str = Field(description="When the event occurred")
-    severity: str = Field(description="HIGH, MEDIUM, or LOW")
-    title: str = Field(description="Brief title summarizing the event")
-
-    # Core Details
-    user: UserDetails
-    location: LocationDetails
-    authentication: AuthenticationDetails
-    application: ApplicationDetails
-    behavioral_flags: BehavioralFlags
-
-    # Analysis
-    correlation_analysis: CorrelationAnalysis
-    raw_event_summary: str = Field(description="Brief summary of raw event")
-
-
-class SecurityCorrelationReport(BaseModel):
-    """Complete correlation report with prioritized events"""
-
-    report_metadata: dict = Field(description="Report generation metadata")
-    high_priority_events: List[SecurityEvent] = Field(default=[])
-    medium_priority_events: List[SecurityEvent] = Field(default=[])
-    low_priority_events: List[SecurityEvent] = Field(default=[])
-    summary_statistics: dict = Field(description="Overall statistics")
-    executive_summary: str = Field(description="High-level summary for leadership")
 
 
 # ============================================================================
-# TOOLS
+# DYNAMIC TIME GAP ANALYSIS - NO HARDCODING
 # ============================================================================
 
 
-class LogAnalysisTool(BaseTool):
-    name: str = "Log Analysis Tool"
-    description: str = "Analyzes security log data and extracts structured information"
+def calculate_dynamic_time_gap(events: List[EventDetails]) -> int:
+    """
+    Dynamically calculate optimal time gap for clustering events
+    Based on inter-event time distribution analysis
+    """
 
-    def _run(self, log_data: dict) -> str:
-        """Process log data and return formatted string for AI analysis"""
-        return json.dumps(log_data, indent=2)
+    if len(events) < 2:
+        return 300  # Default 5 minutes for single event
+
+    # Calculate time gaps between consecutive events
+    time_gaps = []
+    for i in range(len(events) - 1):
+        try:
+            t1 = datetime.fromisoformat(events[i].timestamp.replace("Z", "+00:00"))
+            t2 = datetime.fromisoformat(events[i + 1].timestamp.replace("Z", "+00:00"))
+            gap_seconds = (t2 - t1).total_seconds()
+            if gap_seconds >= 0:  # Only positive gaps
+                time_gaps.append(gap_seconds)
+        except:
+            continue
+
+    if not time_gaps:
+        return 300  # Default if parsing fails
+
+    # Statistical analysis of gaps
+    time_gaps.sort()
+
+    # Calculate percentiles and statistics
+    q1 = np.percentile(time_gaps, 25)
+    q3 = np.percentile(time_gaps, 75)
+    iqr = q3 - q1
+    median = np.percentile(time_gaps, 50)
+    mean = statistics.mean(time_gaps)
+
+    # Outlier detection using IQR method
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+
+    normal_gaps = [g for g in time_gaps if lower_bound <= g <= upper_bound]
+
+    if normal_gaps:
+        # Use 1.5x the median of normal gaps as clustering threshold
+        threshold = median * 1.5
+    else:
+        # Fallback to mean if all gaps are outliers
+        threshold = mean * 1.5
+
+    # Cap threshold between 60 seconds (1 min) and 3600 seconds (1 hour)
+    threshold = max(60, min(3600, threshold))
+
+    return int(threshold)
+
+
+def cluster_user_events(
+    events: List[EventDetails], dynamic_gap: Optional[int] = None
+) -> List[EventCluster]:
+    """
+    Cluster events based on temporal proximity
+    Uses dynamic time gap if not provided
+    """
+
+    if not events:
+        return []
+
+    if dynamic_gap is None:
+        dynamic_gap = calculate_dynamic_time_gap(events)
+
+    events_sorted = sorted(events, key=lambda e: e.timestamp)
+    clusters = []
+    current_cluster = [events_sorted[0]]
+
+    for i in range(1, len(events_sorted)):
+        try:
+            t_prev = datetime.fromisoformat(
+                events_sorted[i - 1].timestamp.replace("Z", "+00:00")
+            )
+            t_curr = datetime.fromisoformat(
+                events_sorted[i].timestamp.replace("Z", "+00:00")
+            )
+            gap = (t_curr - t_prev).total_seconds()
+
+            if gap <= dynamic_gap:
+                # Add to current cluster
+                current_cluster.append(events_sorted[i])
+            else:
+                # Start new cluster
+                if current_cluster:
+                    clusters.append(create_cluster(current_cluster, len(clusters)))
+                current_cluster = [events_sorted[i]]
+        except:
+            current_cluster.append(events_sorted[i])
+
+    # Add final cluster
+    if current_cluster:
+        clusters.append(create_cluster(current_cluster, len(clusters)))
+
+    return clusters
+
+
+def create_cluster(events: List[EventDetails], cluster_idx: int) -> EventCluster:
+    """Create an EventCluster from a list of events"""
+
+    times = [datetime.fromisoformat(e.timestamp.replace("Z", "+00:00")) for e in events]
+    start_time = min(times)
+    end_time = max(times)
+    duration = int((end_time - start_time).total_seconds())
+
+    unique_apps = len(set(e.app_id for e in events))
+    unique_locations = len(
+        set(f"{e.location_city},{e.location_country}" for e in events)
+    )
+
+    failures = [e for e in events if not e.is_success]
+
+    return EventCluster(
+        cluster_id=f"CLUSTER_{cluster_idx:03d}",
+        events=events,
+        start_time=start_time.isoformat(),
+        end_time=end_time.isoformat(),
+        duration_seconds=duration,
+        event_count=len(events),
+        unique_apps=unique_apps,
+        unique_locations=unique_locations,
+        has_failures=len(failures) > 0,
+        failure_count=len(failures),
+    )
 
 
 # ============================================================================
-# CREWAI AGENTS AND TASKS
+# ENHANCED FAILURE ANALYSIS
 # ============================================================================
 
 
-def create_security_analysts():
-    """Create specialized security analyst agents"""
-    from crewai import LLM
+def analyze_failures(events: List[EventDetails]) -> Dict:
+    """Analyze failure patterns with detailed reasons"""
 
-    # Configure Gemini LLM for all agents
-    gemini_llm = LLM(
-        model="gemini/gemini-2.5-flash",
-        api_key=os.getenv("GOOGLE_API_KEY"),
-        temperature=0.1,
-        max_retries=5,
-        timeout=300,
-    )
+    failures = [e for e in events if not e.is_success]
 
-    # Behavioral Analysis Agent
-    behavioral_analyst = Agent(
-        role="Behavioral Security Analyst",
-        goal="Identify anomalous user behavior patterns and first-time activities",
-        backstory="""You are an expert in behavioral analytics and user activity patterns.
-        You excel at spotting unusual combinations of first-time activities that may indicate
-        compromised accounts or insider threats. You understand the context of user behavior
-        and can distinguish between legitimate new activities and suspicious patterns.""",
-        verbose=False,
-        allow_delegation=False,
-        llm=gemini_llm,
-    )
+    if not failures:
+        return {
+            "total_failures": 0,
+            "success_rate": 100.0,
+            "failure_reasons": [],
+            "critical_failures": 0,
+            "failed_event_timeline": [],
+        }
 
-    # Authentication Security Agent
-    auth_analyst = Agent(
-        role="Authentication Security Specialist",
-        goal="Analyze authentication events, MFA failures, and access patterns",
-        backstory="""You are a specialist in authentication security and identity protection.
-        You can quickly identify failed authentication attempts, weak authentication methods,
-        and patterns that suggest credential compromise or brute force attacks. You understand
-        the nuances of MFA, conditional access policies, and authentication flows.""",
-        verbose=False,
-        allow_delegation=False,
-        llm=gemini_llm,
-    )
+    # Group failures by reason
+    failure_groups = defaultdict(list)
+    for failure in failures:
+        reason = failure.result_description or "Unknown"
+        failure_groups[reason].append(failure)
 
-    # Threat Intelligence Agent
-    threat_analyst = Agent(
-        role="Threat Intelligence Analyst",
-        goal="Correlate multiple indicators to identify potential security incidents",
-        backstory="""You are a seasoned threat intelligence analyst who connects the dots
-        between seemingly unrelated events. You understand attack vectors, threat actor TTPs,
-        and can assess risk levels based on multiple indicators. You provide actionable
-        recommendations for security teams.""",
-        verbose=False,
-        allow_delegation=False,
-        llm=gemini_llm,
-    )
+    # Classify severity
+    critical_keywords = [
+        "strong authentication required",
+        "account does not exist",
+        "permission denied",
+        "unauthorized",
+        "access denied",
+    ]
 
-    return behavioral_analyst, auth_analyst, threat_analyst
+    critical_count = 0
+    for reason, fail_list in failure_groups.items():
+        if any(keyword in reason.lower() for keyword in critical_keywords):
+            critical_count += len(fail_list)
 
+    failure_timeline = [
+        {
+            "timestamp": f.timestamp,
+            "app": f.app_display_name,
+            "reason": f.result_description,
+            "location": f"{f.location_city}, {f.location_country}",
+        }
+        for f in sorted(failures, key=lambda e: e.timestamp)
+    ]
 
-def create_analysis_tasks(log_data: dict, agents: tuple):
-    """Create analysis tasks for the agents"""
-    behavioral_analyst, auth_analyst, threat_analyst = agents
+    success_rate = ((len(events) - len(failures)) / len(events) * 100) if events else 0
 
-    # Task 1: Behavioral Analysis
-    behavioral_task = Task(
-        description=f"""Analyze the following security log data and identify all behavioral anomalies:
-        
-        {json.dumps(log_data, indent=2)}
-        
-        Focus on:
-        1. FirstTime activities (device, browser, app, resource, country, ISP)
-        2. Uncommonly used attributes among peers
-        3. Multiple simultaneous first-time behaviors
-        4. Investigation priority flags
-        
-        For each anomalous event, extract:
-        - User details (UPN, ID, type)
-        - All behavioral flags
-        - Timestamp and location
-        - Context of the activity
-        """,
-        agent=behavioral_analyst,
-        expected_output="Detailed list of behavioral anomalies with full context",
-    )
-
-    # Task 2: Authentication Analysis
-    auth_task = Task(
-        description=f"""Analyze authentication events from the log data:
-        
-        {json.dumps(log_data, indent=2)}
-        
-        Focus on:
-        1. Failed authentication attempts (ResultType != 0)
-        2. MFA failures or challenges
-        3. Authentication method patterns
-        4. Session-related errors
-        5. Conditional access policy evaluations
-        
-        For each security-relevant event, extract:
-        - Authentication details (method, requirement, result)
-        - MFA status and details
-        - Result codes and descriptions
-        - IP address and application accessed
-        """,
-        agent=auth_analyst,
-        expected_output="Comprehensive authentication security assessment",
-    )
-
-    # Task 3: Threat Correlation and Risk Scoring
-    correlation_task = Task(
-        description=f"""Based on the behavioral and authentication analysis, perform threat correlation:
-        
-        Original Log Data:
-        {json.dumps(log_data, indent=2)}
-        
-        Your task:
-        1. Correlate findings from behavioral and authentication analysis
-        2. Identify high-risk events (multiple indicators + failed auth)
-        3. Score each event's risk level (1-10)
-        4. Determine severity (HIGH/MEDIUM/LOW)
-        5. Identify potential attack vectors
-        6. Provide specific recommended actions
-        
-        Prioritize events with:
-        - Failed MFA + multiple FirstTime flags = HIGH severity
-        - Multiple FirstTime flags + successful auth = MEDIUM severity
-        - Single anomaly or routine errors = LOW severity
-        
-        Create a structured report with all events categorized by severity.
-        Keep your output concise and focused on the most critical findings.
-        """,
-        agent=threat_analyst,
-        expected_output="Complete security correlation report with risk scores and recommendations",
-        context=[behavioral_task, auth_task],
-    )
-
-    return [behavioral_task, auth_task, correlation_task]
+    return {
+        "total_failures": len(failures),
+        "success_rate": round(success_rate, 2),
+        "failure_reasons": [
+            {
+                "reason": reason,
+                "count": len(fail_list),
+                "severity": (
+                    "CRITICAL"
+                    if any(keyword in reason.lower() for keyword in critical_keywords)
+                    else "WARNING"
+                ),
+            }
+            for reason, fail_list in failure_groups.items()
+        ],
+        "critical_failures": critical_count,
+        "failed_event_timeline": failure_timeline[:10],  # Last 10 failures
+    }
 
 
 # ============================================================================
-# MAIN PROCESSING FUNCTIONS
+# RISK SCORING - UPDATED VERSION
+# ============================================================================
+
+
+def calculate_user_risk_score(
+    upn: str, events: List[EventDetails], clusters: List[EventCluster]
+) -> Tuple[int, List[str]]:
+    """Enhanced risk scoring with failure consideration"""
+
+    risk_score = 1
+    risk_factors = []
+
+    # Factor 1: Cluster-based anomalies
+    if len(clusters) > 3:
+        risk_score += 2
+        risk_factors.append(f"Multiple activity clusters: {len(clusters)}")
+
+    # Factor 2: Failure analysis
+    failure_info = analyze_failures(events)
+
+    if failure_info["total_failures"] > 2:
+        risk_score += 3
+        risk_factors.append(
+            f"High failure count: {failure_info['total_failures']} "
+            f"({failure_info['success_rate']}% success rate)"
+        )
+
+    if failure_info["critical_failures"] > 0:
+        risk_score += 2
+        risk_factors.append(
+            f"Critical failures detected: {failure_info['critical_failures']}"
+        )
+
+    # Factor 3: Geographic anomalies
+    unique_locations = len(
+        set(f"{e.location_city},{e.location_country}" for e in events)
+    )
+    if unique_locations > 2:
+        risk_score += 2
+        risk_factors.append(
+            f"Geographically diverse access: {unique_locations} locations"
+        )
+
+    # Factor 4: Within-cluster rapid access
+    for cluster in clusters:
+        if cluster.event_count > 5 and cluster.duration_seconds < 300:
+            risk_score += 2
+            risk_factors.append(
+                f"Rapid event cluster: {cluster.event_count} events in {cluster.duration_seconds}s"
+            )
+            break
+
+    # Factor 5: Single factor authentication
+    single_factor = sum(
+        1 for e in events if "single" in e.authentication_requirement.lower()
+    )
+    multi_factor = sum(
+        1 for e in events if "multi" in e.authentication_requirement.lower()
+    )
+
+    if single_factor > multi_factor * 2:
+        risk_score += 1
+        risk_factors.append("Predominantly single-factor authentication")
+
+    # Factor 6: Guest user access
+    if events and "guest" in events[0].user_type.lower():
+        risk_score += 1
+        risk_factors.append("Guest user cross-tenant access")
+
+    # Factor 7: Multiple application access
+    unique_apps = len(set(e.app_id for e in events))
+    if unique_apps > 5:
+        risk_score += 1
+        risk_factors.append(f"Accessing {unique_apps} different applications")
+
+    # Factor 8: Cluster location changes
+    location_changes = 0
+    for i in range(len(clusters) - 1):
+        loc1 = f"{clusters[i].events[0].location_city},{clusters[i].events[0].location_country}"
+        loc2 = f"{clusters[i+1].events[0].location_city},{clusters[i+1].events[0].location_country}"
+        if loc1 != loc2:
+            location_changes += 1
+
+    if location_changes > 1:
+        risk_score += 1
+        risk_factors.append(f"Location changes between clusters: {location_changes}")
+
+    # Cap risk score
+    risk_score = min(risk_score, 10)
+
+    return risk_score, risk_factors
+
+
+# ============================================================================
+# ACTIVITY GROUP CREATION
+# ============================================================================
+
+
+def create_user_activity_summary(
+    upn: str, events: List[EventDetails]
+) -> UserActivityGroup:
+    """Create comprehensive activity summary with cluster analysis"""
+
+    if not events:
+        return None
+
+    # Calculate dynamic time gap
+    dynamic_gap = calculate_dynamic_time_gap(events)
+
+    # Create clusters
+    clusters = cluster_user_events(events, dynamic_gap)
+
+    # Risk assessment
+    risk_score, risk_factors = calculate_user_risk_score(upn, events, clusters)
+
+    # Location analysis
+    locations = []
+    for event in events:
+        loc = {
+            "city": event.location_city,
+            "state": event.location_state,
+            "country": event.location_country,
+            "ip_address": event.ip_address,
+            "timestamp": event.timestamp,
+        }
+        if loc not in locations:
+            locations.append(loc)
+
+    # Application analysis
+    applications = []
+    app_access_count = defaultdict(int)
+    for event in events:
+        app_access_count[event.app_id] += 1
+
+    for app_id, count in app_access_count.items():
+        app_events = [e for e in events if e.app_id == app_id]
+        if app_events:
+            first_app = app_events[0]
+            applications.append(
+                {
+                    "app_name": first_app.app_display_name,
+                    "app_id": app_id,
+                    "resource": first_app.resource_display_name,
+                    "access_count": count,
+                }
+            )
+
+    # Authentication analysis
+    auth_summary = {
+        "methods": list(
+            set(
+                e.authentication_method
+                for e in events
+                if e.authentication_method != "Unknown"
+            )
+        ),
+        "total_mfa": sum(
+            1 for e in events if "multi" in e.authentication_requirement.lower()
+        ),
+        "total_single_factor": sum(
+            1 for e in events if "single" in e.authentication_requirement.lower()
+        ),
+        "failed_attempts": sum(1 for e in events if not e.is_success),
+    }
+
+    # Failure analysis
+    failure_analysis = analyze_failures(events)
+
+    # Cluster details for timeline
+    cluster_details = [
+        {
+            "cluster_id": c.cluster_id,
+            "start_time": c.start_time,
+            "end_time": c.end_time,
+            "duration_seconds": c.duration_seconds,
+            "event_count": c.event_count,
+            "unique_apps": c.unique_apps,
+            "has_failures": c.has_failures,
+            "failure_count": c.failure_count,
+        }
+        for c in clusters
+    ]
+
+    # Timeline
+    timeline = [
+        {
+            "timestamp": e.timestamp,
+            "app": e.app_display_name,
+            "location": f"{e.location_city}, {e.location_country}",
+            "ip_address": e.ip_address,
+            "browser": e.browser,
+            "os": e.operating_system,
+            "result": (
+                "✅ Success" if e.is_success else f"❌ Failed: {e.result_description}"
+            ),
+            "auth_method": e.authentication_method,
+        }
+        for e in events
+    ]
+
+    # Behavioral anomalies
+    anomalies = []
+
+    if failure_analysis["total_failures"] > 3:
+        anomalies.append(
+            f"Suspicious failure pattern: {failure_analysis['total_failures']} failures"
+        )
+
+    if len(clusters) > 3:
+        anomalies.append(
+            f"Multiple distinct activity sessions: {len(clusters)} clusters"
+        )
+        
+    unique_apps = len(set(e.app_id for e in events))
+    if unique_apps > 5:
+        anomalies.append(f"Access to {unique_apps} applications (unusually high)")
+
+    first_event = events[0]
+
+    return UserActivityGroup(
+        user_principal_name=upn,
+        user_id=first_event.user_id,
+        user_display_name=first_event.user_display_name,
+        user_type=first_event.user_type,
+        total_events=len(events),
+        total_clusters=len(clusters),
+        clusters=cluster_details,
+        locations=locations,
+        unique_locations=len(locations),
+        applications=applications,
+        unique_apps=len(applications),
+        authentication_summary=auth_summary,
+        failure_analysis=failure_analysis,
+        behavioral_anomalies=anomalies,
+        risk_score=risk_score,
+        risk_factors=risk_factors,
+        timeline=timeline,
+    )
+
+
+# ============================================================================
+# DATA GROUPING
+# ============================================================================
+
+
+def group_events_by_user(log_data: dict) -> Dict[str, List[EventDetails]]:
+    """Group all sign-in events by user"""
+
+    user_groups: Dict[str, List[EventDetails]] = defaultdict(list)
+
+    for signin_log in log_data.get("SigninLogs", []):
+        try:
+            event = extract_complete_event_data(signin_log)
+            user_groups[event.user_principal_name].append(event)
+        except Exception as e:
+            print(f"⚠️ Error parsing event: {e}")
+            continue
+
+    # Sort events by timestamp
+    for upn in user_groups:
+        user_groups[upn].sort(key=lambda e: e.timestamp)
+
+    return dict(user_groups)
+
+
+# ============================================================================
+# REPORT GENERATION
+# ============================================================================
+
+
+def generate_json_report(user_groups: Dict[str, UserActivityGroup], output_path: str):
+    """Generate comprehensive JSON report"""
+
+    high_risk = []
+    medium_risk = []
+    low_risk = []
+
+    for upn, group in user_groups.items():
+        group_dict = group.model_dump()
+
+        if group.risk_score >= 7:
+            high_risk.append(group_dict)
+        elif group.risk_score >= 5:
+            medium_risk.append(group_dict)
+        else:
+            low_risk.append(group_dict)
+
+    report = {
+        "report_metadata": {
+            "generated_at": datetime.now().isoformat(),
+            "report_type": "Advanced Security Correlation Analysis v4.0",
+            "total_users": len(user_groups),
+            "total_events": sum(g.total_events for g in user_groups.values()),
+        },
+        "summary": {
+            "high_risk_count": len(high_risk),
+            "medium_risk_count": len(medium_risk),
+            "low_risk_count": len(low_risk),
+        },
+        "high_priority_events": sorted(
+            high_risk, key=lambda x: x["risk_score"], reverse=True
+        ),
+        "medium_priority_events": sorted(
+            medium_risk, key=lambda x: x["risk_score"], reverse=True
+        ),
+        "low_priority_events": sorted(
+            low_risk, key=lambda x: x["risk_score"], reverse=True
+        ),
+    }
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2, default=str)
+
+    print(f"✅ JSON report saved to {output_path}")
+
+
+def generate_markdown_report(
+    user_groups: Dict[str, UserActivityGroup], output_path: str
+):
+    """Generate comprehensive markdown report"""
+
+    md_report = f"""# 🔒 Advanced Security Correlation Analysis Report v4.0
+
+**Generated:** {datetime.now().isoformat()}  
+**Report Type:** Enhanced Cluster-Based User Activity Correlation with Failure Analysis  
+**Total Users:** {len(user_groups)}  
+**Total Events:** {sum(g.total_events for g in user_groups.values())}  
+
+---
+
+## 📊 EXECUTIVE SUMMARY
+
+"""
+
+    high_risk = [g for g in user_groups.values() if g.risk_score >= 7]
+    medium_risk = [g for g in user_groups.values() if 5 <= g.risk_score < 7]
+    low_risk = [g for g in user_groups.values() if g.risk_score < 5]
+
+    md_report += f"""
+- 🔴 **CRITICAL RISK USERS:** {len(high_risk)}
+- 🟡 **MEDIUM RISK USERS:** {len(medium_risk)}
+- 🟢 **LOW RISK USERS:** {len(low_risk)}
+
+---
+
+## 🔴 CRITICAL PRIORITY - Risk Score 7-10
+
+"""
+
+    for group in sorted(high_risk, key=lambda g: g.risk_score, reverse=True)[:5]:
+        md_report += f"""
+### {group.user_display_name} ({group.user_principal_name})
+
+**Risk Score:** {group.risk_score}/10 | **Events:** {group.total_events} | **Clusters:** {group.total_clusters}
+
+#### 🎯 Key Risk Factors
+{chr(10).join(f"- {factor}" for factor in group.risk_factors[:5])}
+
+#### ❌ Failure Analysis
+- **Total Failures:** {group.failure_analysis['total_failures']}
+- **Success Rate:** {group.failure_analysis['success_rate']}%
+- **Critical Failures:** {group.failure_analysis['critical_failures']}
+
+**Failure Reasons:**
+"""
+        for failure in group.failure_analysis["failure_reasons"][:3]:
+            md_report += f"- {failure['reason']} (Count: {failure['count']}, Severity: {failure['severity']})\n"
+
+        md_report += f"""
+#### 📍 Geographic Activity
+"""
+        for loc in group.locations[:5]:
+            md_report += f"- {loc['city']}, {loc['state']} ({loc['country']}) - IP: {loc['ip_address']}\n"
+
+        md_report += f"""
+#### 💻 Applications ({group.unique_apps})
+"""
+        for app in sorted(
+            group.applications, key=lambda x: x["access_count"], reverse=True
+        )[:5]:
+            md_report += f"- {app['app_name']} - {app['access_count']} accesses\n"
+
+        md_report += f"""
+#### 📅 Activity Clusters ({group.total_clusters})
+"""
+        for cluster in group.clusters[:3]:
+            md_report += f"- {cluster['cluster_id']}: {cluster['event_count']} events, {cluster['duration_seconds']}s duration, Failures: {cluster['failure_count']}\n"
+
+        md_report += "\n---\n"
+
+    md_report += f"""
+
+## 🟡 MEDIUM PRIORITY - Risk Score 5-6
+
+"""
+
+    for group in sorted(medium_risk, key=lambda g: g.risk_score, reverse=True)[:10]:
+        md_report += f"""
+### {group.user_display_name}
+
+**Score:** {group.risk_score}/10 | **Events:** {group.total_events} | **Failures:** {group.failure_analysis['total_failures']} | **Clusters:** {group.total_clusters}
+
+**Risk Factors:** {', '.join(group.risk_factors[:3])}
+
+---
+"""
+
+    md_report += f"""
+
+## 🟢 LOW PRIORITY - Risk Score 1-4
+
+**Count:** {len(low_risk)} users | Minimal suspicious activity
+
+---
+
+**Report Generated By:** Advanced Security Correlation Engine v4.0  
+**Analysis Date:** {datetime.now().isoformat()}
+"""
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(md_report)
+
+    print(f"✅ Markdown report saved to {output_path}")
+
+
+# ============================================================================
+# MAIN EXECUTION WITH FOLDER PROCESSING
 # ============================================================================
 
 
@@ -370,719 +833,122 @@ def load_json(json_file_path: str) -> Optional[dict]:
         return json.loads(content)
 
 
-def clean_event(event):
-    """Clean a single event to ensure valid types"""
-    # Ensure all required nested structures exist
-    if "location" not in event:
-        event["location"] = {}
-    if "authentication" not in event:
-        event["authentication"] = {}
-    if "user" not in event:
-        event["user"] = {}
-    if "application" not in event:
-        event["application"] = {}
-    if "behavioral_flags" not in event:
-        event["behavioral_flags"] = {}
-    if "correlation_analysis" not in event:
-        event["correlation_analysis"] = {}
-
-    # Fix user fields
-    user = event.get("user", {})
-    if user.get("user_type") is None or user.get("user_type") == "":
-        user["user_type"] = "Unknown"
-    if user.get("user_principal_name") is None:
-        user["user_principal_name"] = "Unknown"
-    if user.get("user_id") is None:
-        user["user_id"] = "Unknown"
-
-    # Fix location fields
-    location = event.get("location", {})
-    if location.get("country") is None or location.get("country") == "":
-        location["country"] = "Unknown"
-    if location.get("city") is None or location.get("city") == "":
-        location["city"] = "Unknown"
-    if location.get("ip_address") is None:
-        location["ip_address"] = "Unknown"
-
-    # Fix authentication fields
-    auth = event.get("authentication", {})
-    if auth.get("authentication_method") is None:
-        auth["authentication_method"] = "Unknown"
-    if auth.get("authentication_requirement") is None:
-        auth["authentication_requirement"] = "Unknown"
-    if isinstance(auth.get("mfa_detail"), dict):
-        auth["mfa_detail"] = None
-    if auth.get("result_type") is None:
-        auth["result_type"] = "Unknown"
-    if auth.get("result_description") is None:
-        auth["result_description"] = "Not Available"
-
-    # Fix application fields
-    app = event.get("application", {})
-    if app.get("app_display_name") is None:
-        app["app_display_name"] = "Unknown"
-    if app.get("app_id") is None:
-        app["app_id"] = "Unknown"
-
-    # Fix event metadata fields
-    if event.get("event_id") is None:
-        event["event_id"] = "Unknown"
-    if event.get("timestamp") is None:
-        event["timestamp"] = datetime.now().isoformat()
-    if event.get("severity") is None:
-        event["severity"] = "LOW"
-    if event.get("title") is None:
-        event["title"] = "Untitled Event"
-    if event.get("raw_event_summary") is None:
-        event["raw_event_summary"] = "No summary available"
-
-    # Ensure all required correlation_analysis fields exist
-    corr = event.get("correlation_analysis", {})
-    if "threat_indicators" not in corr or not isinstance(
-        corr["threat_indicators"], list
-    ):
-        corr["threat_indicators"] = []
-    if "behavioral_patterns" not in corr or not isinstance(
-        corr["behavioral_patterns"], list
-    ):
-        corr["behavioral_patterns"] = []
-    if "risk_score" not in corr:
-        corr["risk_score"] = 1
-    if "recommended_actions" not in corr or not isinstance(
-        corr["recommended_actions"], list
-    ):
-        corr["recommended_actions"] = []
-    if "related_events" not in corr or not isinstance(corr["related_events"], list):
-        corr["related_events"] = []
-
-    # Limit array sizes
-    corr["threat_indicators"] = corr["threat_indicators"][:10]
-    corr["behavioral_patterns"] = corr["behavioral_patterns"][:10]
-    corr["recommended_actions"] = corr["recommended_actions"][:10]
-    corr["related_events"] = corr["related_events"][:10]
-
-    return event
-
-
-def extract_event_data_from_logs(log_data: dict, event_id: str) -> dict:
-    """
-    Extract complete event data directly from log_data by matching CorrelationId.
-    This ensures we get accurate data instead of AI-generated placeholders.
-    """
-    signin_logs = log_data.get("SigninLogs", [])
-    behavior_analytics = log_data.get("BehaviorAnalytics", [])
-
-    # Find the matching SigninLog entry
-    matching_log = None
-    for log in signin_logs:
-        if log.get("CorrelationId") == event_id:
-            matching_log = log
-            break
-
-    if not matching_log:
-        return None
-
-    # Find matching BehaviorAnalytics entry
-    matching_behavior = None
-    for behavior in behavior_analytics:
-        if behavior.get("SourceRecordId") == matching_log.get("Id"):
-            matching_behavior = behavior
-            break
-
-    # Extract comprehensive event data
-    event_data = {
-        "event_id": matching_log.get("CorrelationId", "Unknown"),
-        "timestamp": matching_log.get(
-            "TimeGenerated", matching_log.get("CreatedDateTime", "Unknown")
-        ),
-        "severity": "Unknown",  # Will be determined by AI analysis
-        "title": "Unknown",  # Will be determined by AI analysis
-        # User information
-        "user": {
-            "user_principal_name": matching_log.get("UserPrincipalName", "Unknown"),
-            "user_id": matching_log.get("UserId", "Unknown"),
-            "user_type": matching_log.get("UserType", "Unknown"),
-            "user_display_name": matching_log.get(
-                "UserDisplayName", matching_log.get("Identity", "Unknown")
-            ),
-        },
-        # Location information
-        "location": {
-            "city": matching_log.get("LocationDetails", {}).get("city", "Unknown"),
-            "state": matching_log.get("LocationDetails", {}).get("state", None),
-            "country": matching_log.get("LocationDetails", {}).get(
-                "countryOrRegion", "Unknown"
-            ),
-            "ip_address": matching_log.get("IPAddress", "Unknown"),
-            "isp": (
-                matching_behavior.get("DevicesInsights", {}).get("ISP")
-                if matching_behavior
-                else None
-            ),
-        },
-        # Authentication information
-        "authentication": {
-            "authentication_method": "Unknown",  # Will be extracted from AuthenticationDetails
-            "authentication_requirement": matching_log.get(
-                "AuthenticationRequirement", "Unknown"
-            ),
-            "mfa_detail": matching_log.get("MfaDetail"),
-            "result_type": str(matching_log.get("ResultType", "Unknown")),
-            "result_description": matching_log.get("ResultDescription")
-            or matching_log.get("Status", {}).get("failureReason", "Success"),
-        },
-        # Application information
-        "application": {
-            "app_display_name": matching_log.get("AppDisplayName", "Unknown"),
-            "app_id": matching_log.get("AppId", "Unknown"),
-            "resource_display_name": matching_log.get("ResourceDisplayName", None),
-            "resource_id": matching_log.get("ResourceIdentity", None),
-        },
-        # Behavioral flags
-        "behavioral_flags": {
-            "first_time_device": False,
-            "first_time_browser": False,
-            "first_time_app": False,
-            "first_time_resource": False,
-            "first_time_country": False,
-            "first_time_isp": False,
-            "first_time_app_in_tenant": False,
-            "uncommonly_used_browser": False,
-            "uncommonly_used_isp": False,
-            "app_uncommonly_used_among_peers": False,
-            "investigation_priority": 0,
-            "action_type": (
-                matching_behavior.get("ActionType")
-                if matching_behavior
-                else matching_log.get("OperationName", "Sign-in")
-            ),
-        },
-        # Add raw log reference for AI to extract additional details
-        "raw_log": matching_log,
-    }
-
-    # Extract authentication method from AuthenticationDetails
-    auth_details = matching_log.get("AuthenticationDetails", [])
-    if auth_details and isinstance(auth_details, list) and len(auth_details) > 0:
-        event_data["authentication"]["authentication_method"] = auth_details[0].get(
-            "authenticationMethod", "Unknown"
-        )
-
-    # Extract behavioral flags if available
-    if matching_behavior:
-        activity_insights = matching_behavior.get("ActivityInsights", {})
-        event_data["behavioral_flags"]["first_time_isp"] = (
-            activity_insights.get("FirstTimeUserConnectedViaISP") == "True"
-        )
-        event_data["behavioral_flags"]["uncommonly_used_browser"] = (
-            activity_insights.get("BrowserUncommonlyUsedInTenant") == "True"
-        )
-        event_data["behavioral_flags"]["first_time_browser"] = (
-            activity_insights.get("FirstTimeUserConnectedViaBrowser") == "True"
-        )
-        event_data["behavioral_flags"]["uncommonly_used_isp"] = (
-            activity_insights.get("ISPUncommonlyUsedInTenant") == "True"
-        )
-        event_data["behavioral_flags"]["investigation_priority"] = (
-            matching_behavior.get("InvestigationPriority", 0)
-        )
-
-    return event_data
-
-
-def parse_events_from_crew_output(
-    crew_output: str, log_data: dict
-) -> SecurityCorrelationReport:
-    """
-    Parse the crew output and structure it into SecurityEvent objects.
-    ENHANCED VERSION: Extracts actual data from logs instead of relying solely on AI.
-    """
-    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-    model = genai.GenerativeModel("gemini-2.0-flash-exp")
-
-    # Create a mapping of event IDs for quick lookup
-    event_id_map = {}
-    for log in log_data.get("SigninLogs", []):
-        correlation_id = log.get("CorrelationId")
-        if correlation_id:
-            event_id_map[correlation_id] = log
-
-    # Extract only essential log context
-    log_summary = {
-        "total_events": len(log_data.get("SigninLogs", [])),
-        "event_ids": [
-            log.get("CorrelationId") for log in log_data.get("SigninLogs", [])[:20]
-        ],
-        "users": list(
-            set(
-                [
-                    log.get("UserPrincipalName")
-                    for log in log_data.get("SigninLogs", [])
-                    if log.get("UserPrincipalName")
-                ]
-            )
-        )[:20],
-    }
-
-    # Truncate crew output
-    max_crew_output_length = 12000
-    truncated_crew_output = crew_output[:max_crew_output_length]
-    if len(crew_output) > max_crew_output_length:
-        print(
-            f"⚠️ Crew output truncated from {len(crew_output)} to {max_crew_output_length} chars"
-        )
-
-    structured_prompt = f"""You are a security data extraction specialist. Output ONLY valid, complete JSON.
-
-Extract security events from the analysis below and structure them into JSON.
-
-CRITICAL RULES:
-1. Output MUST be valid, complete JSON - no truncation
-2. For event_id field, use ONLY the actual CorrelationId values from these available events: {', '.join(log_summary['event_ids'][:10])}
-3. You MUST use one of these real event IDs for each event, NOT made-up IDs
-4. For user information, use ONLY these actual users: {', '.join(log_summary['users'][:15])}
-5. ALL strings must be properly terminated and escaped
-6. LIMIT to max 8 events per priority level (high/medium/low)
-7. Keep all descriptions under 150 characters
-8. Keep all arrays under 8 items each
-9. Ensure ALL brackets and braces are closed
-10. NO trailing commas
-11. Double-check the last event in each array is properly closed
-
-JSON SCHEMA:
-{{
-  "high_priority_events": [ /* max 8 events */ ],
-  "medium_priority_events": [ /* max 8 events */ ],
-  "low_priority_events": [ /* max 8 events */ ],
-  "executive_summary": "Brief summary under 400 chars"
-}}
-
-Each event MUST have:
-- event_id: MUST be one of these CorrelationIds: {', '.join(log_summary['event_ids'][:10])}
-- timestamp: ISO format timestamp
-- severity: HIGH, MEDIUM, or LOW
-- title: Brief description of the security concern
-- user: object with user_principal_name, user_id, user_type, user_display_name (use ONLY real users from list above)
-- location: object with city, state, country, ip_address, isp
-- authentication: object with authentication_method, authentication_requirement, mfa_detail, result_type, result_description
-- application: object with app_display_name, app_id, resource_display_name, resource_id
-- behavioral_flags: object with booleans for first_time_* and uncommonly_used_*, investigation_priority (int), action_type (string)
-- correlation_analysis: object with threat_indicators (array), behavioral_patterns (array), risk_score (1-10), recommended_actions (array), related_events (array), attack_vector (string)
-- raw_event_summary: Brief summary string
-
-ANALYSIS OUTPUT:
-{truncated_crew_output}
-
-AVAILABLE EVENT IDS (use these exact values):
-{', '.join(log_summary['event_ids'][:15])}
-
-AVAILABLE USERS (use these exact values):
-{', '.join(log_summary['users'][:15])}
-
-IMPORTANT: Return ONLY the JSON object with REAL event IDs and user names from the lists above. Do not invent any IDs or usernames. Ensure it is complete and valid.
-"""
-
-    try:
-        print("📄 Generating structured output from Gemini...")
-        response = generate_with_retry(model, structured_prompt)
-        response_text = response.text.strip()
-
-        # Enhanced JSON cleaning
-        def clean_json_string(json_str: str) -> str:
-            """Clean JSON string and fix common issues"""
-            if json_str.startswith("```json"):
-                json_str = json_str[7:]
-            if json_str.startswith("```"):
-                json_str = json_str[3:]
-            if json_str.endswith("```"):
-                json_str = json_str[:-3]
-            json_str = json_str.strip()
-            json_str = re.sub(r",\s*}", "}", json_str)
-            json_str = re.sub(r",\s*]", "]", json_str)
-            return json_str
-
-        cleaned_response = clean_json_string(response_text)
-
-        # Save for debugging
-        with open("debug_cleaned_response.json", "w", encoding="utf-8") as f:
-            f.write(cleaned_response)
-        print("💾 Cleaned response saved to 'debug_cleaned_response.json'")
-
-        # Parse JSON
-        parsed_data = json.loads(cleaned_response)
-
-        # ENHANCED: Enrich events with actual data from logs
-        for priority in [
-            "high_priority_events",
-            "medium_priority_events",
-            "low_priority_events",
-        ]:
-            if priority in parsed_data:
-                enriched_events = []
-                for event in parsed_data[priority]:
-                    event_id = event.get("event_id")
-
-                    # Extract actual data from logs
-                    actual_data = extract_event_data_from_logs(log_data, event_id)
-
-                    if actual_data:
-                        # Merge AI analysis with actual data
-                        event["user"] = actual_data["user"]
-                        event["location"] = actual_data["location"]
-                        event["authentication"] = actual_data["authentication"]
-                        event["application"] = actual_data["application"]
-                        event["timestamp"] = actual_data["timestamp"]
-
-                        # Update behavioral flags with actual data
-                        for key in actual_data["behavioral_flags"]:
-                            if actual_data["behavioral_flags"][
-                                key
-                            ]:  # Only update if we have actual data
-                                event["behavioral_flags"][key] = actual_data[
-                                    "behavioral_flags"
-                                ][key]
-
-                    # Clean the event
-                    enriched_events.append(clean_event(event))
-
-                parsed_data[priority] = enriched_events
-            else:
-                parsed_data[priority] = []
-
-        # Build final report
-        report_data = {
-            "report_metadata": {
-                "generated_at": datetime.now().isoformat(),
-                "log_file": "sentinel_user_data.json",
-                "analysis_engine": "CrewAI + Gemini 2.0 Flash (Optimized + Data Enriched)",
-                "total_events_analyzed": len(log_data.get("SigninLogs", [])),
-            },
-            "summary_statistics": {
-                "high_priority_count": len(parsed_data.get("high_priority_events", [])),
-                "medium_priority_count": len(
-                    parsed_data.get("medium_priority_events", [])
-                ),
-                "low_priority_count": len(parsed_data.get("low_priority_events", [])),
-            },
-            **parsed_data,
-        }
-
-        print("✅ Successfully parsed and enriched structured output")
-        return SecurityCorrelationReport(**report_data)
-
-    except json.JSONDecodeError as e:
-        print(f"❌ JSON parsing error: {e}")
-        print(f"Error at position {e.pos}: {e.msg}")
-        print(f"Response length: {len(response_text)}")
-        print(f"First 300 chars: {response_text[:300]}...")
-        print(f"Last 300 chars: ...{response_text[-300:]}")
-
-        with open("debug_failed_response.txt", "w", encoding="utf-8") as f:
-            f.write(response_text)
-        print("💾 Failed response saved to 'debug_failed_response.txt'")
-        raise
-
-    except Exception as e:
-        print(f"❌ Error creating report: {e}")
-        if "parsed_data" in locals():
-            print(f"Parsed data keys: {list(parsed_data.keys())}")
-        raise
-
-
-def generate_markdown_report(report: SecurityCorrelationReport, output_path: str):
-    """Generate beautiful markdown report from structured data"""
-
-    md_content = f"""# 🔒 Security Correlation Analysis Report
-
-**Generated:** {report.report_metadata['generated_at']}  
-**Analysis Engine:** {report.report_metadata['analysis_engine']}  
-**Total Events Analyzed:** {report.report_metadata['total_events_analyzed']}
-
----
-
-## 📊 Executive Summary
-
-{report.executive_summary}
-
----
-
-## 📈 Summary Statistics
-
-- 🔴 **High Priority Events:** {report.summary_statistics['high_priority_count']}
-- 🟡 **Medium Priority Events:** {report.summary_statistics['medium_priority_count']}
-- 🟢 **Low Priority Events:** {report.summary_statistics['low_priority_count']}
-
----
-
-"""
-
-    # Helper function to format events
-    def format_event_section(events: List[SecurityEvent], emoji: str):
-        if not events:
-            return ""
-
-        section = ""
-        for idx, event in enumerate(events, 1):
-            section += f"""### {emoji} Event {idx}: {event.title}
-
-**Event ID:** `{event.event_id}`  
-**Timestamp:** `{event.timestamp}`  
-**Risk Score:** {event.correlation_analysis.risk_score}/10
-
-#### 👤 User Information
-- **User:** {event.user.user_principal_name}
-- **User ID:** `{event.user.user_id}`
-- **Type:** {event.user.user_type}
-- **Display Name:** {event.user.user_display_name or 'N/A'}
-
-#### 📍 Location & Network
-- **Location:** {event.location.city}, {event.location.country}
-- **IP Address:** `{event.location.ip_address}`
-- **ISP:** {event.location.isp or 'N/A'}
-
-#### 🔐 Authentication Details
-- **Method:** {event.authentication.authentication_method}
-- **Requirement:** {event.authentication.authentication_requirement}
-- **MFA Detail:** {event.authentication.mfa_detail or 'N/A'}
-- **Result Code:** `{event.authentication.result_type}`
-- **Result:** {event.authentication.result_description}
-
-#### 💻 Application & Resource
-- **Application:** {event.application.app_display_name}
-- **App ID:** `{event.application.app_id}`
-- **Resource:** {event.application.resource_display_name or 'N/A'}
-
-#### 🎯 Behavioral Flags
-- First Time Device: {'✅' if event.behavioral_flags.first_time_device else '❌'}
-- First Time Browser: {'✅' if event.behavioral_flags.first_time_browser else '❌'}
-- First Time App: {'✅' if event.behavioral_flags.first_time_app else '❌'}
-- First Time Resource: {'✅' if event.behavioral_flags.first_time_resource else '❌'}
-- First Time Country: {'✅' if event.behavioral_flags.first_time_country else '❌'}
-- First Time ISP: {'✅' if event.behavioral_flags.first_time_isp else '❌'}
-- Uncommonly Used Browser: {'✅' if event.behavioral_flags.uncommonly_used_browser else '❌'}
-- Investigation Priority: {event.behavioral_flags.investigation_priority or 'N/A'}
-
-#### 🔍 Correlation Analysis
-
-**Threat Indicators:**
-{chr(10).join(f'- {indicator}' for indicator in event.correlation_analysis.threat_indicators)}
-
-**Behavioral Patterns:**
-{chr(10).join(f'- {pattern}' for pattern in event.correlation_analysis.behavioral_patterns)}
-
-**Attack Vector:** {event.correlation_analysis.attack_vector or 'Not identified'}
-
-**Recommended Actions:**
-{chr(10).join(f'{i}. {action}' for i, action in enumerate(event.correlation_analysis.recommended_actions, 1))}
-
-**Related Events:** {', '.join(event.correlation_analysis.related_events) if event.correlation_analysis.related_events else 'None identified'}
-
-**Raw Event Summary:** {event.raw_event_summary}
-
----
-
-"""
-        return section
-
-    # Add high priority events
-    if report.high_priority_events:
-        md_content += "## 🔴 HIGH PRIORITY EVENTS (Immediate Action Required)\n\n"
-        md_content += format_event_section(report.high_priority_events, "🚨")
-
-    # Add medium priority events
-    if report.medium_priority_events:
-        md_content += "## 🟡 MEDIUM PRIORITY EVENTS (Investigation Recommended)\n\n"
-        md_content += format_event_section(report.medium_priority_events, "⚠️")
-
-    # Add low priority events
-    if report.low_priority_events:
-        md_content += "## 🟢 LOW PRIORITY EVENTS (Informational)\n\n"
-        md_content += format_event_section(report.low_priority_events, "ℹ️")
-
-    # Add footer
-    md_content += """
----
-
-## 📝 Notes
-
-This report was generated using AI-powered security correlation analysis. All events have been 
-analyzed for behavioral anomalies, authentication patterns, and threat indicators. Please review 
-high-priority events immediately and validate medium-priority events with the respective users.
-
-**Report Generated By:** Advanced Security Correlation Engine v2.0 (Optimized)
-"""
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(md_content)
-
-    print(f"✅ Markdown report saved to {output_path}")
+def process_single_file(json_path: str) -> Dict[str, UserActivityGroup]:
+    """Process a single JSON file and return user groups"""
+
+    print(f"📄 Processing: {json_path}")
+    log_data = load_json(json_path)
+
+    if not log_data:
+        return {}
+
+    signin_count = len(log_data.get("SigninLogs", []))
+    print(f"✅ Loaded {signin_count} sign-in events\n")
+
+    print("🔄 Grouping events by user...")
+    user_events = group_events_by_user(log_data)
+    print(f"   ✅ Found {len(user_events)} unique users\n")
+
+    print("📊 Creating activity summaries with cluster analysis...")
+    user_groups = {}
+    for upn, events in user_events.items():
+        summary = create_user_activity_summary(upn, events)
+        if summary:
+            user_groups[upn] = summary
+    print(f"   ✅ Analyzed {len(user_groups)} users\n")
+
+    return user_groups
 
 
 def main():
-    """Main execution function"""
-    print("🚀 Starting Advanced Security Correlation Engine (OPTIMIZED)\n")
+    """Main execution with folder processing"""
+    print("🚀 Starting Advanced Security Correlation Engine v4.0\n")
 
-    # Find sentinel_logs directory
     sentinel_logs_dir = "sentinel_logs1"
-    if not os.path.exists(sentinel_logs_dir):
-        print(f"❌ Directory not found: {sentinel_logs_dir}")
-        return
 
-    # Get all subdirectories (time intervals)
-    subdirs = [
-        d
-        for d in os.listdir(sentinel_logs_dir)
-        if os.path.isdir(os.path.join(sentinel_logs_dir, d))
-    ]
+    # Check if sentinel_logs directory exists
+    if os.path.exists(sentinel_logs_dir) and os.path.isdir(sentinel_logs_dir):
+        print(
+            f"📁 Found {sentinel_logs_dir}/ directory. Processing time intervals...\n"
+        )
 
-    if not subdirs:
-        print(f"❌ No subdirectories found in {sentinel_logs_dir}")
-        return
-
-    print(f"📁 Found {len(subdirs)} time intervals to process\n")
-
-    # Create agents once
-    print("🤖 Initializing security analyst agents...")
-    agents = create_security_analysts()
-
-    # Process each subdirectory
-    for subdir in sorted(subdirs):
-        subdir_path = os.path.join(sentinel_logs_dir, subdir)
-        print(f"\n{'='*70}")
-        print(f"📂 Processing interval: {subdir}")
-        print(f"{'='*70}\n")
-
-        # Find sentinel_user_data_*.json files
-        user_data_files = [
-            f
-            for f in os.listdir(subdir_path)
-            if f.startswith("sentinel_user_data_") and f.endswith(".json")
+        # Get all subdirectories (time intervals)
+        subdirs = [
+            d
+            for d in os.listdir(sentinel_logs_dir)
+            if os.path.isdir(os.path.join(sentinel_logs_dir, d))
         ]
 
-        if not user_data_files:
-            print(f"⚠️ No sentinel_user_data_*.json files found in {subdir_path}")
-            continue
+        if subdirs:
+            print(f"📂 Found {len(subdirs)} time intervals\n")
 
-        for json_file in user_data_files:
-            json_path = os.path.join(subdir_path, json_file)
-            print(f"📄 Processing: {json_file}")
+            for subdir in sorted(subdirs):
+                subdir_path = os.path.join(sentinel_logs_dir, subdir)
+                print(f"\n{'='*70}")
+                print(f"📂 Processing interval: {subdir}")
+                print(f"{'='*70}\n")
 
-            # Load log data
-            log_data = load_json(json_path)
-            if not log_data:
-                continue
+                # Find JSON files
+                json_files = [
+                    f
+                    for f in os.listdir(subdir_path)
+                    if f.endswith(".json")
+                    and "cleaned_sentinel_user_data_" in f.lower()
+                ]
 
-            print(f"✅ Loaded {len(log_data.get('SigninLogs', []))} sign-in events\n")
+                if not json_files:
+                    print(f"⚠️ No JSON files found in {subdir}\n")
+                    continue
 
-            # Create tasks
-            print("📋 Creating analysis tasks...")
-            tasks = create_analysis_tasks(log_data, agents)
+                for json_file in json_files:
+                    json_path = os.path.join(subdir_path, json_file)
 
-            # Create and run crew
-            print("🔄 Running correlation analysis...\n")
-            crew = Crew(
-                agents=list(agents),
-                tasks=tasks,
-                process=Process.sequential,
-                verbose=False,
+                    user_groups = process_single_file(json_path)
+
+                    if not user_groups:
+                        continue
+
+                    # Generate reports in same directory
+                    base_name = json_file.replace(".json", "")
+                    md_output = os.path.join(
+                        subdir_path, f"correlation_analysis_{base_name}.md"
+                    )
+                    json_output = os.path.join(
+                        subdir_path, f"correlation_analysis_{base_name}.json"
+                    )
+
+                    print("📝 Generating reports...")
+                    generate_markdown_report(user_groups, md_output)
+                    generate_json_report(user_groups, json_output)
+
+                    print(
+                        f"✅ Reports generated:\n   - {md_output}\n   - {json_output}\n"
+                    )
+        else:
+            print(f"⚠️ No subdirectories found in {sentinel_logs_dir}")
+    else:
+        # Fallback: Process single file in current directory
+        print("ℹ️ No sentinel_logs directory found. Processing single file...\n")
+
+        json_path = "sentinel_user_data.json"
+
+        if not os.path.exists(json_path):
+            print(
+                f"❌ Neither directory '{sentinel_logs_dir}' nor file '{json_path}' found"
             )
+            return
 
-            result = run_crew_with_retry(crew)
-            print("\n✅ Analysis complete!\n")
+        user_groups = process_single_file(json_path)
 
-            # Generate output filenames in same directory
-            base_name = json_file.replace("sentinel_user_data_", "").replace(
-                ".json", ""
-            )
-            md_output_path = os.path.join(
-                subdir_path, f"structured_correlation_report_{base_name}.md"
-            )
-            json_output_path = os.path.join(
-                subdir_path, f"structured_correlation_report_{base_name}.json"
-            )
-            fallback_md_path = os.path.join(
-                subdir_path, f"crew_raw_output_{base_name}.md"
-            )
+        if not user_groups:
+            return
 
-            # Parse results into structured format
-            print("📊 Structuring results...")
-            try:
-                structured_report = parse_events_from_crew_output(str(result), log_data)
-
-                # Save structured JSON
-                with open(json_output_path, "w", encoding="utf-8") as f:
-                    json.dump(structured_report.model_dump(), f, indent=2)
-                print(f"✅ Structured JSON saved to {json_output_path}")
-
-                # Generate markdown report
-                print("📝 Generating markdown report...")
-                generate_markdown_report(structured_report, md_output_path)
-
-                # Print summary
-                print("\n" + "=" * 60)
-                print("📊 ANALYSIS SUMMARY")
-                print("=" * 60)
-                print(
-                    f"🔴 High Priority Events: {len(structured_report.high_priority_events)}"
-                )
-                print(
-                    f"🟡 Medium Priority Events: {len(structured_report.medium_priority_events)}"
-                )
-                print(
-                    f"🟢 Low Priority Events: {len(structured_report.low_priority_events)}"
-                )
-                print("=" * 60)
-                print(f"\n📄 Reports generated:")
-                print(f"   - Markdown: {md_output_path}")
-                print(f"   - JSON: {json_output_path}")
-
-            except Exception as e:
-                print(f"\n⚠️ Failed to create structured report: {e}")
-                print(f"💾 Saving raw crew output as fallback...")
-
-                fallback_content = f"""# 🔒 Security Correlation Analysis Report (Raw Output)
-
-**Generated:** {datetime.now().isoformat()}  
-**Status:** ⚠️ Fallback Mode - Structured parsing failed  
-**Analysis Engine:** CrewAI + Gemini 2.0 Flash
-
----
-
-## ⚠️ Notice
-
-This report contains the raw output from the security analysis crew. 
-The structured JSON parsing failed due to data validation errors.
-
-**Error Details:**
-```
-{str(e)}
-```
-
----
-
-## 📊 Raw Analysis Output
-
-{str(result)}
-
----
-
-## 📝 Next Steps
-
-1. Review the raw analysis output above
-2. Manual triage of identified events
-3. Check the Pydantic validation errors and adjust data cleaning logic
-4. Re-run the analysis after fixing data issues
-
-**Report Generated By:** Advanced Security Correlation Engine v2.0 (Fallback Mode)
-"""
-
-                with open(fallback_md_path, "w", encoding="utf-8") as f:
-                    f.write(fallback_content)
-
-                print(f"✅ Raw output saved to {fallback_md_path}")
+        print("📝 Generating reports...")
+        generate_markdown_report(user_groups, "correlation_analysis_report.md")
+        generate_json_report(user_groups, "correlation_analysis_report.json")
 
     print("\n" + "=" * 70)
-    print("🎉 All intervals processed successfully!")
+    print("✅ Analysis complete!")
     print("=" * 70)
 
 

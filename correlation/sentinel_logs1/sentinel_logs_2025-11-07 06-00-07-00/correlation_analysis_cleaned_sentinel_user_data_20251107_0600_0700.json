@@ -1,0 +1,2432 @@
+{
+  "report_metadata": {
+    "generated_at": "2025-11-08T09:20:08.143512",
+    "report_type": "Advanced Security Correlation Analysis v4.0",
+    "total_users": 27,
+    "total_events": 47
+  },
+  "summary": {
+    "high_risk_count": 0,
+    "medium_risk_count": 0,
+    "low_risk_count": 27
+  },
+  "high_priority_events": [],
+  "medium_priority_events": [],
+  "low_priority_events": [
+    {
+      "user_principal_name": "prabhat.sutar@yash.com",
+      "user_id": "5364c24a-51fb-4641-a30f-5179dc3c3ca5",
+      "user_display_name": "Prabhat Sutar",
+      "user_type": "Guest",
+      "total_events": 4,
+      "total_clusters": 2,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:06:49.564149+00:00",
+          "end_time": "2025-11-07T06:19:04.124933+00:00",
+          "duration_seconds": 734,
+          "event_count": 3,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T06:56:11.472254+00:00",
+          "end_time": "2025-11-07T06:56:11.472254+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T06:06:49.564149Z"
+        },
+        {
+          "city": "Bhopal",
+          "state": "Madhya Pradesh",
+          "country": "IN",
+          "ip_address": "2409:40c4:f:8aec:a1ad:938d:cb33:5f5f",
+          "timestamp": "2025-11-07T06:15:59.4271629Z"
+        },
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T06:19:04.1249337Z"
+        },
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.194.129.210",
+          "timestamp": "2025-11-07T06:56:11.4722546Z"
+        }
+      ],
+      "unique_locations": 4,
+      "applications": [
+        {
+          "app_name": "YASH-SPN-UES-Azure-App",
+          "app_id": "b8d957b6-3709-49a0-b182-1bc63498c116",
+          "resource": "Microsoft Graph",
+          "access_count": 3
+        },
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 2,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 4,
+        "total_single_factor": 0,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 4,
+      "risk_factors": [
+        "Geographically diverse access: 3 locations",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:06:49.564149Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:15:59.4271629Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "Bhopal, IN",
+          "ip_address": "2409:40c4:f:8aec:a1ad:938d:cb33:5f5f",
+          "browser": "Chrome 137.0.0",
+          "os": "Linux",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:19:04.1249337Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:56:11.4722546Z",
+          "app": "Azure DevOps",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "raviraj.jadhav@yash.com",
+      "user_id": "6c65fe55-abdc-4b88-a95a-b15dd04f53ce",
+      "user_display_name": "Raviraj Ramesh Jadhav",
+      "user_type": "Guest",
+      "total_events": 2,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:01:00.664887+00:00",
+          "end_time": "2025-11-07T06:02:55.295423+00:00",
+          "duration_seconds": 114,
+          "event_count": 2,
+          "unique_apps": 2,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Kusgaon Budruk",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "152.58.31.232",
+          "timestamp": "2025-11-07T06:01:00.6648879Z"
+        },
+        {
+          "city": "Kusgaon Budruk",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "152.58.31.232",
+          "timestamp": "2025-11-07T06:02:55.2954231Z"
+        }
+      ],
+      "unique_locations": 2,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        },
+        {
+          "app_name": "YASH-SPN-UES-Azure-App",
+          "app_id": "b8d957b6-3709-49a0-b182-1bc63498c116",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 2,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 2,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:01:00.6648879Z",
+          "app": "Azure DevOps",
+          "location": "Kusgaon Budruk, IN",
+          "ip_address": "152.58.31.232",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:02:55.2954231Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "Kusgaon Budruk, IN",
+          "ip_address": "152.58.31.232",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "rohan.karekar@yash.com",
+      "user_id": "5e50bd0d-a115-4d2f-9687-1d9d81bb4bcc",
+      "user_display_name": "Rohan Karekar",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:03:04.667838+00:00",
+          "end_time": "2025-11-07T06:03:04.667838+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Thathawade (Dattwadi)",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "2401:4900:1c17:c527:8002:824f:f57c:5fa0",
+          "timestamp": "2025-11-07T06:03:04.6678386Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:03:04.6678386Z",
+          "app": "Azure DevOps",
+          "location": "Thathawade (Dattwadi), IN",
+          "ip_address": "2401:4900:1c17:c527:8002:824f:f57c:5fa0",
+          "browser": "Chrome 142.0.0",
+          "os": "MacOs",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "manisha.thete@yash.com",
+      "user_id": "5a702960-b019-4c58-b38c-12ca88c56744",
+      "user_display_name": "Manisha Anil Thete",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:08:05.390017+00:00",
+          "end_time": "2025-11-07T06:08:05.390017+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Chhindwara",
+          "state": "Madhya Pradesh",
+          "country": "IN",
+          "ip_address": "2401:4900:8fc9:5dbc:dd57:95ba:5d09:2524",
+          "timestamp": "2025-11-07T06:08:05.3900176Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:08:05.3900176Z",
+          "app": "Azure DevOps",
+          "location": "Chhindwara, IN",
+          "ip_address": "2401:4900:8fc9:5dbc:dd57:95ba:5d09:2524",
+          "browser": "Chrome 142.0.0",
+          "os": "MacOs",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "lakhan.patidar@yash.com",
+      "user_id": "d4a04583-3012-45cd-b8d6-75b4ade12767",
+      "user_display_name": "Lakhan  Patidar",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:09:48.141231+00:00",
+          "end_time": "2025-11-07T06:09:48.141231+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T06:09:48.1412314Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "YASH-SPN-UES-Azure-App",
+          "app_id": "b8d957b6-3709-49a0-b182-1bc63498c116",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:09:48.1412314Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "prakhar.vyas@yash.com",
+      "user_id": "9c7aca29-416d-4c78-8df1-8ab95584d27f",
+      "user_display_name": "Prakhar  Vyas",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:12:51.507234+00:00",
+          "end_time": "2025-11-07T06:12:51.507234+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T06:12:51.5072348Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:12:51.5072348Z",
+          "app": "Azure DevOps",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "ajinkya.bhagwat@yash.com",
+      "user_id": "3d2143b0-fbe9-44b0-8895-11d69db48801",
+      "user_display_name": "Salunke Ajinkya  Bhagwat",
+      "user_type": "Guest",
+      "total_events": 4,
+      "total_clusters": 2,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:15:01.683551+00:00",
+          "end_time": "2025-11-07T06:15:32.890148+00:00",
+          "duration_seconds": 31,
+          "event_count": 3,
+          "unique_apps": 1,
+          "has_failures": true,
+          "failure_count": 1
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T06:37:42.110703+00:00",
+          "end_time": "2025-11-07T06:37:42.110703+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Chhindwara",
+          "state": "Madhya Pradesh",
+          "country": "IN",
+          "ip_address": "2409:4043:684:808f:ee06:b9c3:51b7:1526",
+          "timestamp": "2025-11-07T06:15:01.6835517Z"
+        },
+        {
+          "city": "Chhindwara",
+          "state": "Madhya Pradesh",
+          "country": "IN",
+          "ip_address": "2409:4043:684:808f:ee06:b9c3:51b7:1526",
+          "timestamp": "2025-11-07T06:15:12.020129Z"
+        },
+        {
+          "city": "Chhindwara",
+          "state": "Madhya Pradesh",
+          "country": "IN",
+          "ip_address": "2409:4043:684:808f:ee06:b9c3:51b7:1526",
+          "timestamp": "2025-11-07T06:15:32.8901487Z"
+        },
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.194.129.210",
+          "timestamp": "2025-11-07T06:37:42.1107034Z"
+        }
+      ],
+      "unique_locations": 4,
+      "applications": [
+        {
+          "app_name": "YASH-SPN-UES-Azure-App",
+          "app_id": "b8d957b6-3709-49a0-b182-1bc63498c116",
+          "resource": "Microsoft Graph",
+          "access_count": 4
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Password",
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 4,
+        "failed_attempts": 1
+      },
+      "failure_analysis": {
+        "total_failures": 1,
+        "success_rate": 75.0,
+        "failure_reasons": [
+          {
+            "reason": "This error occurred due to 'Keep me signed in' interrupt when the user was signing-in.",
+            "count": 1,
+            "severity": "WARNING"
+          }
+        ],
+        "critical_failures": 0,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T06:15:12.020129Z",
+            "app": "YASH-SPN-UES-Azure-App",
+            "reason": "This error occurred due to 'Keep me signed in' interrupt when the user was signing-in.",
+            "location": "Chhindwara, IN"
+          }
+        ]
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:15:01.6835517Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "Chhindwara, IN",
+          "ip_address": "2409:4043:684:808f:ee06:b9c3:51b7:1526",
+          "browser": "Chrome 141.0.0",
+          "os": "Android",
+          "result": "\u2705 Success",
+          "auth_method": "Unknown"
+        },
+        {
+          "timestamp": "2025-11-07T06:15:12.020129Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "Chhindwara, IN",
+          "ip_address": "2409:4043:684:808f:ee06:b9c3:51b7:1526",
+          "browser": "Chrome 141.0.0",
+          "os": "Android",
+          "result": "\u274c Failed: This error occurred due to 'Keep me signed in' interrupt when the user was signing-in.",
+          "auth_method": "Password"
+        },
+        {
+          "timestamp": "2025-11-07T06:15:32.8901487Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "Chhindwara, IN",
+          "ip_address": "2409:4043:684:808f:ee06:b9c3:51b7:1526",
+          "browser": "Chrome Mobile 141.0.0",
+          "os": "Android",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:37:42.1107034Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "prajvi.jain@yash.com",
+      "user_id": "433462c1-12e5-40b4-b194-b3bb621b5c63",
+      "user_display_name": "Prajvi Jain",
+      "user_type": "Guest",
+      "total_events": 2,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:24:10.257969+00:00",
+          "end_time": "2025-11-07T06:25:52.778682+00:00",
+          "duration_seconds": 102,
+          "event_count": 2,
+          "unique_apps": 2,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T06:24:10.257969Z"
+        },
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T06:25:52.7786825Z"
+        }
+      ],
+      "unique_locations": 2,
+      "applications": [
+        {
+          "app_name": "YASH-SPN-UES-Azure-App",
+          "app_id": "b8d957b6-3709-49a0-b182-1bc63498c116",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        },
+        {
+          "app_name": "YASH-SPN-UES-Grafana-Dashboard",
+          "app_id": "c7e7d8bc-667d-4bc3-aa6f-c1384ee164da",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 2,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 2,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:24:10.257969Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Edge 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:25:52.7786825Z",
+          "app": "YASH-SPN-UES-Grafana-Dashboard",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Edge 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "ishita.porwal@yash.com",
+      "user_id": "485c75d7-f41f-44a2-89cc-a5c2b5aa439f",
+      "user_display_name": "Ishita  Porwal",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:30:40.246198+00:00",
+          "end_time": "2025-11-07T06:30:40.246198+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T06:30:40.2461987Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "YASH-SPN-UES-Azure-App",
+          "app_id": "b8d957b6-3709-49a0-b182-1bc63498c116",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:30:40.2461987Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "yukta.nagle@yash.com",
+      "user_id": "c8339cad-ead2-4c77-a40f-2bf5d22f1150",
+      "user_display_name": "Yukta Nagle",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:31:58.869159+00:00",
+          "end_time": "2025-11-07T06:31:58.869159+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.194.129.210",
+          "timestamp": "2025-11-07T06:31:58.8691596Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "YASH-SPN-UES-Azure-App",
+          "app_id": "b8d957b6-3709-49a0-b182-1bc63498c116",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:31:58.8691596Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "gupta.pooja@yashtechnologies841.onmicrosoft.com",
+      "user_id": "f7bbcef3-a43e-448c-801a-6fe973a35e2f",
+      "user_display_name": "Pooja Gupta",
+      "user_type": "",
+      "total_events": 2,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:34:25.529674+00:00",
+          "end_time": "2025-11-07T06:35:35.467776+00:00",
+          "duration_seconds": 69,
+          "event_count": 2,
+          "unique_apps": 1,
+          "has_failures": true,
+          "failure_count": 2
+        }
+      ],
+      "locations": [
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "27.107.64.154",
+          "timestamp": "2025-11-07T06:34:25.5296748Z"
+        },
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "27.107.64.154",
+          "timestamp": "2025-11-07T06:35:35.467776Z"
+        }
+      ],
+      "unique_locations": 2,
+      "applications": [
+        {
+          "app_name": "Azure Portal",
+          "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+          "resource": "Azure Resource Manager",
+          "access_count": 2
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Password"
+        ],
+        "total_mfa": 2,
+        "total_single_factor": 0,
+        "failed_attempts": 2
+      },
+      "failure_analysis": {
+        "total_failures": 2,
+        "success_rate": 0.0,
+        "failure_reasons": [
+          {
+            "reason": "User account does not exist in tenant and cannot access the application in that tenant. The account needs to be added as an external user in the tenant first. Sign out and sign in again with a different Azure Active Directory user account",
+            "count": 2,
+            "severity": "CRITICAL"
+          }
+        ],
+        "critical_failures": 2,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T06:34:25.5296748Z",
+            "app": "Azure Portal",
+            "reason": "User account does not exist in tenant and cannot access the application in that tenant. The account needs to be added as an external user in the tenant first. Sign out and sign in again with a different Azure Active Directory user account",
+            "location": "Mumbai, IN"
+          },
+          {
+            "timestamp": "2025-11-07T06:35:35.467776Z",
+            "app": "Azure Portal",
+            "reason": "User account does not exist in tenant and cannot access the application in that tenant. The account needs to be added as an external user in the tenant first. Sign out and sign in again with a different Azure Active Directory user account",
+            "location": "Mumbai, IN"
+          }
+        ]
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Critical failures detected: 2"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:34:25.5296748Z",
+          "app": "Azure Portal",
+          "location": "Mumbai, IN",
+          "ip_address": "27.107.64.154",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u274c Failed: User account does not exist in tenant and cannot access the application in that tenant. The account needs to be added as an external user in the tenant first. Sign out and sign in again with a different Azure Active Directory user account",
+          "auth_method": "Password"
+        },
+        {
+          "timestamp": "2025-11-07T06:35:35.467776Z",
+          "app": "Azure Portal",
+          "location": "Mumbai, IN",
+          "ip_address": "27.107.64.154",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u274c Failed: User account does not exist in tenant and cannot access the application in that tenant. The account needs to be added as an external user in the tenant first. Sign out and sign in again with a different Azure Active Directory user account",
+          "auth_method": "Password"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "palak.patel@yash.com",
+      "user_id": "71808d19-c9ca-4cf6-ab44-e82a3f903d22",
+      "user_display_name": "Palak  Patel",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:40:22.701751+00:00",
+          "end_time": "2025-11-07T06:40:22.701751+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.194.129.210",
+          "timestamp": "2025-11-07T06:40:22.7017512Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "YASH-SPN-UES-Azure-App",
+          "app_id": "b8d957b6-3709-49a0-b182-1bc63498c116",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:40:22.7017512Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "shrikant.bhosale@yash.com",
+      "user_id": "0484693d-89cf-4f34-9236-d982f18a836d",
+      "user_display_name": "Bhosale  Shrikant Shrirang",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:42:28.684062+00:00",
+          "end_time": "2025-11-07T06:42:28.684062+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Thathawade (Dattwadi)",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "2405:201:1019:f0f4:dcb:ad4d:1aec:9640",
+          "timestamp": "2025-11-07T06:42:28.6840621Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Ams-Single-Tenant",
+          "app_id": "0c4f8ab6-fdc0-4a50-826d-e1f69317a988",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:42:28.6840621Z",
+          "app": "Ams-Single-Tenant",
+          "location": "Thathawade (Dattwadi), IN",
+          "ip_address": "2405:201:1019:f0f4:dcb:ad4d:1aec:9640",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "lalit.paliwal@yash.com",
+      "user_id": "0baa129b-e1f4-4fbb-9761-056482496154",
+      "user_display_name": "Lalit Paliwal",
+      "user_type": "Guest",
+      "total_events": 2,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:45:28.891519+00:00",
+          "end_time": "2025-11-07T06:46:02.528163+00:00",
+          "duration_seconds": 33,
+          "event_count": 2,
+          "unique_apps": 1,
+          "has_failures": true,
+          "failure_count": 1
+        }
+      ],
+      "locations": [
+        {
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "country": "IN",
+          "ip_address": "49.249.104.218",
+          "timestamp": "2025-11-07T06:45:28.891519Z"
+        },
+        {
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "country": "IN",
+          "ip_address": "49.249.104.218",
+          "timestamp": "2025-11-07T06:46:02.5281637Z"
+        }
+      ],
+      "unique_locations": 2,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 2
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Password",
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 2,
+        "failed_attempts": 1
+      },
+      "failure_analysis": {
+        "total_failures": 1,
+        "success_rate": 50.0,
+        "failure_reasons": [
+          {
+            "reason": "Session is invalid due to expiration or recent password change.",
+            "count": 1,
+            "severity": "WARNING"
+          }
+        ],
+        "critical_failures": 0,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T06:45:28.891519Z",
+            "app": "Azure DevOps",
+            "reason": "Session is invalid due to expiration or recent password change.",
+            "location": "Ahmedabad, IN"
+          }
+        ]
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:45:28.891519Z",
+          "app": "Azure DevOps",
+          "location": "Ahmedabad, IN",
+          "ip_address": "49.249.104.218",
+          "browser": "Firefox 142.0",
+          "os": "MacOs",
+          "result": "\u274c Failed: Session is invalid due to expiration or recent password change.",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:46:02.5281637Z",
+          "app": "Azure DevOps",
+          "location": "Ahmedabad, IN",
+          "ip_address": "49.249.104.218",
+          "browser": "Firefox 142.0",
+          "os": "MacOs",
+          "result": "\u2705 Success",
+          "auth_method": "Password"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "lakshmi.damaraju@yash.com",
+      "user_id": "82b2414a-6b97-4560-a2e9-b4f2a51b43c9",
+      "user_display_name": "Venkata Sailakshmisoundarya Bharathi Damaraju",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:45:30.611523+00:00",
+          "end_time": "2025-11-07T06:45:30.611523+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "203.197.238.210",
+          "timestamp": "2025-11-07T06:45:30.6115234Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:45:30.6115234Z",
+          "app": "Azure DevOps",
+          "location": "Delhi, IN",
+          "ip_address": "203.197.238.210",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "poornima.rathaur@yash.com",
+      "user_id": "62eb54b2-36a6-4fc0-b37d-1c862db3e33d",
+      "user_display_name": "Poornima Rathaur",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:49:39.703718+00:00",
+          "end_time": "2025-11-07T06:49:39.703718+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T06:49:39.7037187Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:49:39.7037187Z",
+          "app": "Azure DevOps",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "himanshu.koshti@yash.com",
+      "user_id": "8ad07f34-832f-4cdb-a39e-7f6d75133509",
+      "user_display_name": "Himanshu  Koshti",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:55:57.545664+00:00",
+          "end_time": "2025-11-07T06:55:57.545664+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "country": "IN",
+          "ip_address": "2401:4900:1c18:82b:1d2d:5e73:79f6:4685",
+          "timestamp": "2025-11-07T06:55:57.5456644Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:55:57.5456644Z",
+          "app": "Azure DevOps",
+          "location": "Bengaluru, IN",
+          "ip_address": "2401:4900:1c18:82b:1d2d:5e73:79f6:4685",
+          "browser": "Edge 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "harsh.choudhary@yash.com",
+      "user_id": "a9a93c7f-369b-4c0a-abe9-67d2b95b78b8",
+      "user_display_name": "Harsh Vardhan  Choudhary",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:56:31.326758+00:00",
+          "end_time": "2025-11-07T06:56:31.326758+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Chhindwara",
+          "state": "Madhya Pradesh",
+          "country": "IN",
+          "ip_address": "2409:40c4:1164:eb5e:4df:9279:9449:7577",
+          "timestamp": "2025-11-07T06:56:31.3267585Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:56:31.3267585Z",
+          "app": "Azure DevOps",
+          "location": "Chhindwara, IN",
+          "ip_address": "2409:40c4:1164:eb5e:4df:9279:9449:7577",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
+      "user_id": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
+      "user_display_name": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
+      "user_type": "Guest",
+      "total_events": 2,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:59:43.370818+00:00",
+          "end_time": "2025-11-07T06:59:50.640873+00:00",
+          "duration_seconds": 7,
+          "event_count": 2,
+          "unique_apps": 1,
+          "has_failures": true,
+          "failure_count": 2
+        }
+      ],
+      "locations": [
+        {
+          "city": null,
+          "state": null,
+          "country": "Unknown",
+          "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+          "timestamp": "2025-11-07T06:59:43.3708183Z"
+        },
+        {
+          "city": null,
+          "state": null,
+          "country": "Unknown",
+          "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+          "timestamp": "2025-11-07T06:59:50.6408739Z"
+        }
+      ],
+      "unique_locations": 2,
+      "applications": [
+        {
+          "app_name": "Azure Portal",
+          "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+          "resource": "Azure Resource Manager",
+          "access_count": 2
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Mobile app notification"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 2,
+        "failed_attempts": 2
+      },
+      "failure_analysis": {
+        "total_failures": 2,
+        "success_rate": 0.0,
+        "failure_reasons": [
+          {
+            "reason": "Strong Authentication is required.",
+            "count": 2,
+            "severity": "WARNING"
+          }
+        ],
+        "critical_failures": 0,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T06:59:43.3708183Z",
+            "app": "Azure Portal",
+            "reason": "Strong Authentication is required.",
+            "location": "None, Unknown"
+          },
+          {
+            "timestamp": "2025-11-07T06:59:50.6408739Z",
+            "app": "Azure Portal",
+            "reason": "Strong Authentication is required.",
+            "location": "None, Unknown"
+          }
+        ]
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:59:43.3708183Z",
+          "app": "Azure Portal",
+          "location": "None, Unknown",
+          "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows",
+          "result": "\u274c Failed: Strong Authentication is required.",
+          "auth_method": "Unknown"
+        },
+        {
+          "timestamp": "2025-11-07T06:59:50.6408739Z",
+          "app": "Azure Portal",
+          "location": "None, Unknown",
+          "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows",
+          "result": "\u274c Failed: Strong Authentication is required.",
+          "auth_method": "Mobile app notification"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "tanay.dwivedi@yash.com",
+      "user_id": "dee8107f-c4a8-45e7-a20d-29e8664e1e43",
+      "user_display_name": "Tanay  Dwivedi",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:03:13.671072+00:00",
+          "end_time": "2025-11-07T06:03:13.671072+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "203.197.238.210",
+          "timestamp": "2025-11-07T06:03:13.6710729Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure Portal",
+          "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+          "resource": "Azure Resource Manager",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 1,
+        "total_single_factor": 0,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:03:13.6710729Z",
+          "app": "Azure Portal",
+          "location": "Delhi, IN",
+          "ip_address": "203.197.238.210",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "himanshu.s@yashtechnologies841.onmicrosoft.com",
+      "user_id": "a83f7551-447b-41bd-a712-9419cae7296c",
+      "user_display_name": "Himanshu S",
+      "user_type": "Member",
+      "total_events": 6,
+      "total_clusters": 2,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:05:54.685670+00:00",
+          "end_time": "2025-11-07T06:06:57.748651+00:00",
+          "duration_seconds": 63,
+          "event_count": 3,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T06:41:33.146060+00:00",
+          "end_time": "2025-11-07T06:41:59.346244+00:00",
+          "duration_seconds": 26,
+          "event_count": 3,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "country": "IN",
+          "ip_address": "49.249.104.218",
+          "timestamp": "2025-11-07T06:05:54.6856708Z"
+        },
+        {
+          "city": "Navi Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.143.131.254",
+          "timestamp": "2025-11-07T06:06:02.9216555Z"
+        },
+        {
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "country": "IN",
+          "ip_address": "49.249.104.218",
+          "timestamp": "2025-11-07T06:06:57.748651Z"
+        },
+        {
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "country": "IN",
+          "ip_address": "49.249.104.218",
+          "timestamp": "2025-11-07T06:41:33.1460602Z"
+        },
+        {
+          "city": "Navi Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.143.131.254",
+          "timestamp": "2025-11-07T06:41:42.1201348Z"
+        },
+        {
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "country": "IN",
+          "ip_address": "49.249.104.218",
+          "timestamp": "2025-11-07T06:41:59.3462449Z"
+        }
+      ],
+      "unique_locations": 6,
+      "applications": [
+        {
+          "app_name": "Office365 Shell WCSS-Client",
+          "app_id": "89bee1f7-5e6e-4d8a-9f3d-ecd601259da7",
+          "resource": "Office365 Shell WCSS-Server",
+          "access_count": 6
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 6,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Predominantly single-factor authentication"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:05:54.6856708Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Ahmedabad, IN",
+          "ip_address": "49.249.104.218",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:06:02.9216555Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:06:57.748651Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Ahmedabad, IN",
+          "ip_address": "49.249.104.218",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:41:33.1460602Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Ahmedabad, IN",
+          "ip_address": "49.249.104.218",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:41:42.1201348Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:41:59.3462449Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Ahmedabad, IN",
+          "ip_address": "49.249.104.218",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "prakhar.vyas@yashtechnologies841.onmicrosoft.com",
+      "user_id": "83700f8f-ee89-4c7e-baef-57e3d336d98e",
+      "user_display_name": "Prakhar Vyas",
+      "user_type": "Member",
+      "total_events": 3,
+      "total_clusters": 2,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:12:31.198457+00:00",
+          "end_time": "2025-11-07T06:15:23.545947+00:00",
+          "duration_seconds": 172,
+          "event_count": 2,
+          "unique_apps": 2,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T06:25:04.237394+00:00",
+          "end_time": "2025-11-07T06:25:04.237394+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T06:12:31.198457Z"
+        },
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.194.129.210",
+          "timestamp": "2025-11-07T06:15:23.5459477Z"
+        },
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T06:25:04.2373948Z"
+        }
+      ],
+      "unique_locations": 3,
+      "applications": [
+        {
+          "app_name": "make.powerapps.com",
+          "app_id": "a8f7a65c-f5ba-4859-b2d6-df772c264e9d",
+          "resource": "PowerApps Service",
+          "access_count": 1
+        },
+        {
+          "app_name": "PowerApps - apps.powerapps.com",
+          "app_id": "3e62f81e-590b-425b-9531-cad6683656cf",
+          "resource": "PowerApps Service",
+          "access_count": 2
+        }
+      ],
+      "unique_apps": 2,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 3,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Predominantly single-factor authentication"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:12:31.198457Z",
+          "app": "make.powerapps.com",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:15:23.5459477Z",
+          "app": "PowerApps - apps.powerapps.com",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:25:04.2373948Z",
+          "app": "PowerApps - apps.powerapps.com",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "sanket.upadhyay@yash.com",
+      "user_id": "a6e6fe28-3d1f-4ddd-ace2-b27394e82dab",
+      "user_display_name": "Sanket  Upadhyay",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:27:51.727718+00:00",
+          "end_time": "2025-11-07T06:27:51.727718+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.194.129.210",
+          "timestamp": "2025-11-07T06:27:51.7277181Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure Portal",
+          "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+          "resource": "Azure Resource Manager",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 1,
+        "total_single_factor": 0,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:27:51.7277181Z",
+          "app": "Azure Portal",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "srikanth.kunapareddy@yashtechnologies841.onmicrosoft.com",
+      "user_id": "4aa107f9-1b67-451f-b381-a5efef45e7c8",
+      "user_display_name": "Srikanth Kunapareddy",
+      "user_type": "Member",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:34:55.669912+00:00",
+          "end_time": "2025-11-07T06:34:55.669912+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Vijayawada",
+          "state": "Andhra Pradesh",
+          "country": "IN",
+          "ip_address": "49.205.106.192",
+          "timestamp": "2025-11-07T06:34:55.6699127Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Dynamics 365 Business Central",
+          "app_id": "996def3d-b36c-4153-8607-a6fd3c01b89f",
+          "resource": "Windows Azure Active Directory",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Predominantly single-factor authentication"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:34:55.6699127Z",
+          "app": "Dynamics 365 Business Central",
+          "location": "Vijayawada, IN",
+          "ip_address": "49.205.106.192",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "sam.malviya@yashtechnologies841.onmicrosoft.com",
+      "user_id": "776a89f8-4c1e-459d-8987-e5f127201439",
+      "user_display_name": "Sam Malviya",
+      "user_type": "Member",
+      "total_events": 2,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:37:37.905816+00:00",
+          "end_time": "2025-11-07T06:38:59.463744+00:00",
+          "duration_seconds": 81,
+          "event_count": 2,
+          "unique_apps": 2,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Navi Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.143.131.254",
+          "timestamp": "2025-11-07T06:37:37.9058163Z"
+        },
+        {
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "country": "IN",
+          "ip_address": "49.249.104.218",
+          "timestamp": "2025-11-07T06:38:59.4637445Z"
+        }
+      ],
+      "unique_locations": 2,
+      "applications": [
+        {
+          "app_name": "make.powerapps.com",
+          "app_id": "a8f7a65c-f5ba-4859-b2d6-df772c264e9d",
+          "resource": "PowerApps Service",
+          "access_count": 1
+        },
+        {
+          "app_name": "PowerApps - apps.powerapps.com",
+          "app_id": "3e62f81e-590b-425b-9531-cad6683656cf",
+          "resource": "Microsoft People Cards Service",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 2,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 2,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Predominantly single-factor authentication"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:37:37.9058163Z",
+          "app": "make.powerapps.com",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Edge 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:38:59.4637445Z",
+          "app": "PowerApps - apps.powerapps.com",
+          "location": "Ahmedabad, IN",
+          "ip_address": "49.249.104.218",
+          "browser": "Edge 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "ravi.nuthakki@yash.com",
+      "user_id": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+      "user_display_name": "Ravi Kiran Nuthakki",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:59:51.265510+00:00",
+          "end_time": "2025-11-07T06:59:51.265510+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Patnam",
+          "state": "Andhra Pradesh",
+          "country": "IN",
+          "ip_address": "124.123.128.158",
+          "timestamp": "2025-11-07T06:59:51.2655103Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure Portal",
+          "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+          "resource": "Azure Resource Manager",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 1,
+        "total_single_factor": 0,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:59:51.2655103Z",
+          "app": "Azure Portal",
+          "location": "Patnam, IN",
+          "ip_address": "124.123.128.158",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    },
+    {
+      "user_principal_name": "urvashi.upadhyay@yashtechnologies841.onmicrosoft.com",
+      "user_id": "fd6746b4-6b06-437d-9ff8-81927a643e53",
+      "user_display_name": "Urvashi Upadhyay",
+      "user_type": "Member",
+      "total_events": 2,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T06:43:42.455857+00:00",
+          "end_time": "2025-11-07T06:47:39.591496+00:00",
+          "duration_seconds": 237,
+          "event_count": 2,
+          "unique_apps": 2,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Navi Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.143.131.254",
+          "timestamp": "2025-11-07T06:43:42.455857Z"
+        },
+        {
+          "city": "Ahmedabad",
+          "state": "Gujarat",
+          "country": "IN",
+          "ip_address": "49.249.104.218",
+          "timestamp": "2025-11-07T06:47:39.5914968Z"
+        }
+      ],
+      "unique_locations": 2,
+      "applications": [
+        {
+          "app_name": "Microsoft AppSource",
+          "app_id": "a0e1e353-1a3e-42cf-a8ea-3a9746eec58c",
+          "resource": "Azure Resource Manager",
+          "access_count": 1
+        },
+        {
+          "app_name": "Microsoft Power BI",
+          "app_id": "871c010f-5e61-4fb1-83ac-98610a7e9110",
+          "resource": "Power BI Service",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 2,
+      "authentication_summary": {
+        "methods": [
+          "Previously satisfied"
+        ],
+        "total_mfa": 1,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": []
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 1,
+      "risk_factors": [],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T06:43:42.455857Z",
+          "app": "Microsoft AppSource",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Edge 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        },
+        {
+          "timestamp": "2025-11-07T06:47:39.5914968Z",
+          "app": "Microsoft Power BI",
+          "location": "Ahmedabad, IN",
+          "ip_address": "49.249.104.218",
+          "browser": "Edge 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Previously satisfied"
+        }
+      ]
+    }
+  ]
+}

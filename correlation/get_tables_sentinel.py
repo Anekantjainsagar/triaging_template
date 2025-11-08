@@ -95,9 +95,9 @@ def generate_time_intervals(
 
 # Usage: Pass start hour, end hour, interval minutes, start date, and end date
 time_intervals = generate_time_intervals(
-    start_hour=6,
-    end_hour=7,
-    interval_minutes=15,
+    start_hour=5,
+    end_hour=10,
+    interval_minutes=60,
     start_date=datetime(2025, 11, 7).date(),  # or None for today
     end_date=datetime(2025, 11, 7).date(),  # or None for today
 )
