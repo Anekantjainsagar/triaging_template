@@ -114,21 +114,21 @@ class UserActivityGroup(BaseModel):
 def safe_get(data: dict, key: str, default="Unknown") -> str:
     """Safely extract data with proper Unknown handling"""
     value = data.get(key, default)
-
+    
     # Handle various empty cases
     if value is None or value == "" or value == {} or value == []:
         return default
-
+    
     # Handle nested empty strings in dicts
     if isinstance(value, dict) and not any(v for v in value.values() if v):
         return default
-
+        
     return str(value) if value != default else default
 
 
 def extract_failure_reason(signin_log: dict) -> Tuple[bool, Optional[str]]:
     """Extract failure reason from multiple possible fields - FIXED"""
-
+    
     result_type = safe_get(signin_log, "ResultType", "Unknown")
     is_success = result_type == "0"
     failure_reason = None
@@ -136,7 +136,7 @@ def extract_failure_reason(signin_log: dict) -> Tuple[bool, Optional[str]]:
     if not is_success:
         # Primary source: ResultDescription - NOW PROPERLY EXTRACTED
         result_desc = safe_get(signin_log, "ResultDescription", "")
-
+        
         if result_desc and result_desc != "Unknown" and result_desc.strip():
             failure_reason = result_desc.strip()
         else:
@@ -157,9 +157,9 @@ def extract_failure_reason(signin_log: dict) -> Tuple[bool, Optional[str]]:
 
 def extract_authentication_method(signin_log: dict) -> str:
     """Extract authentication method with better fallback handling"""
-
+    
     auth_details = signin_log.get("AuthenticationDetails", [])
-
+    
     if auth_details and isinstance(auth_details, list):
         for detail in auth_details:
             if isinstance(detail, dict):
@@ -171,12 +171,12 @@ def extract_authentication_method(signin_log: dict) -> str:
                     actual_method = detail.get("authenticationMethodDetail", "")
                     if actual_method and actual_method != "Unknown":
                         return f"Previously satisfied ({actual_method})"
-
+    
     # Fallback to AuthenticationMethodsUsed
     auth_methods_used = signin_log.get("AuthenticationMethodsUsed", "")
     if auth_methods_used and auth_methods_used != "":
         return auth_methods_used
-
+    
     return "Single Sign-On"
 
 
@@ -184,7 +184,7 @@ def extract_complete_event_data(signin_log: dict) -> EventDetails:
     """Extract all available data from a sign-in log entry - FIXED"""
 
     auth_method = extract_authentication_method(signin_log)
-
+    
     location_details = signin_log.get("LocationDetails", {})
     device_detail = signin_log.get("DeviceDetail", {})
 
@@ -194,30 +194,20 @@ def extract_complete_event_data(signin_log: dict) -> EventDetails:
     city = safe_get(location_details, "city", None)
     state = safe_get(location_details, "state", None)
     country = safe_get(location_details, "countryOrRegion", "Unknown")
-
+    
     # Extract device info
     os_info = safe_get(device_detail, "operatingSystem", None)
     browser_info = safe_get(device_detail, "browser", None)
 
     return EventDetails(
-        event_id=safe_get(
-            signin_log, "Id", safe_get(signin_log, "CorrelationId", "Unknown")
-        ),
-        timestamp=safe_get(
-            signin_log,
-            "TimeGenerated",
-            safe_get(signin_log, "CreatedDateTime", "Unknown"),
-        ),
+        event_id=safe_get(signin_log, "Id", safe_get(signin_log, "CorrelationId", "Unknown")),
+        timestamp=safe_get(signin_log, "TimeGenerated", safe_get(signin_log, "CreatedDateTime", "Unknown")),
         user_principal_name=safe_get(signin_log, "UserPrincipalName", "Unknown"),
         user_id=safe_get(signin_log, "UserId", "Unknown"),
-        user_display_name=safe_get(
-            signin_log, "UserDisplayName", safe_get(signin_log, "Identity", "Unknown")
-        ),
+        user_display_name=safe_get(signin_log, "UserDisplayName", safe_get(signin_log, "Identity", "Unknown")),
         user_type=safe_get(signin_log, "UserType", "Unknown"),
         authentication_method=auth_method,
-        authentication_requirement=safe_get(
-            signin_log, "AuthenticationRequirement", "Unknown"
-        ),
+        authentication_requirement=safe_get(signin_log, "AuthenticationRequirement", "Unknown"),
         result_type=safe_get(signin_log, "ResultType", "Unknown"),
         result_signature=safe_get(signin_log, "ResultSignature", "Unknown"),
         result_description=failure_reason if not is_success else "Success",
@@ -288,7 +278,7 @@ def calculate_intelligent_time_gap(events: List[EventDetails]) -> Tuple[int, Dic
             "method": "median_fallback",
             "reason": "all_outliers",
             "median": q2,
-            "total_gaps": len(time_gaps),
+            "total_gaps": len(time_gaps)
         }
     else:
         # Use 75th percentile of normal gaps as threshold
@@ -304,19 +294,19 @@ def calculate_intelligent_time_gap(events: List[EventDetails]) -> Tuple[int, Dic
             "std_dev": std_dev,
             "normal_gaps_count": len(normal_gaps),
             "outlier_count": len(time_gaps) - len(normal_gaps),
-            "total_gaps": len(time_gaps),
+            "total_gaps": len(time_gaps)
         }
 
     # Apply safety bounds: 30 seconds to 30 minutes
     threshold = max(30, min(1800, threshold))
-
+    
     metadata["final_threshold"] = threshold
 
     return int(threshold), metadata
 
 
 def cluster_user_events_intelligent(
-    events: List[EventDetails],
+    events: List[EventDetails]
 ) -> Tuple[List[EventCluster], Dict]:
     """
     Cluster events using intelligent time gap detection
@@ -370,17 +360,17 @@ def create_cluster(events: List[EventDetails], cluster_idx: int) -> EventCluster
             times.append(datetime.fromisoformat(e.timestamp.replace("Z", "+00:00")))
         except:
             continue
-
+    
     if not times:
         # Fallback to current time
         times = [datetime.now()]
-
+    
     start_time = min(times)
     end_time = max(times)
     duration = int((end_time - start_time).total_seconds())
 
     unique_apps = len(set(e.app_id for e in events if e.app_id != "Unknown"))
-
+    
     unique_locs = set()
     for e in events:
         if e.location_city and e.location_city != "Unknown":
@@ -422,7 +412,7 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
             "failure_reasons": [],
             "critical_failures": 0,
             "failed_event_timeline": [],
-            "failure_categories": {},
+            "failure_categories": {}
         }
 
     # Group failures by exact reason (from ResultDescription)
@@ -441,18 +431,23 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
         "password",
         "locked",
         "disabled",
-        "expired",
+        "expired"
     ]
-
-    warning_keywords = ["keep me signed in", "interrupt", "session", "timeout"]
+    
+    warning_keywords = [
+        "keep me signed in",
+        "interrupt",
+        "session",
+        "timeout"
+    ]
 
     critical_count = 0
     warning_count = 0
-
+    
     failure_reasons_list = []
     for reason, fail_list in failure_groups.items():
         reason_lower = reason.lower()
-
+        
         # Determine severity
         if any(keyword in reason_lower for keyword in critical_keywords):
             severity = "CRITICAL"
@@ -462,15 +457,13 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
             warning_count += len(fail_list)
         else:
             severity = "INFO"
-
-        failure_reasons_list.append(
-            {
-                "reason": reason,
-                "count": len(fail_list),
-                "severity": severity,
-                "result_codes": list(set(f.result_type for f in fail_list)),
-            }
-        )
+        
+        failure_reasons_list.append({
+            "reason": reason,
+            "count": len(fail_list),
+            "severity": severity,
+            "result_codes": list(set(f.result_type for f in fail_list))
+        })
 
     # Sort by count descending
     failure_reasons_list.sort(key=lambda x: x["count"], reverse=True)
@@ -478,17 +471,15 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
     # Create detailed timeline
     failure_timeline = []
     for f in sorted(failures, key=lambda e: e.timestamp):
-        failure_timeline.append(
-            {
-                "timestamp": f.timestamp,
-                "app": f.app_display_name,
-                "reason": f.failure_reason or f.result_description,
-                "result_code": f.result_type,
-                "location": f"{f.location_city or 'Unknown'}, {f.location_country}",
-                "ip_address": f.ip_address,
-                "auth_method": f.authentication_method,
-            }
-        )
+        failure_timeline.append({
+            "timestamp": f.timestamp,
+            "app": f.app_display_name,
+            "reason": f.failure_reason or f.result_description,
+            "result_code": f.result_type,
+            "location": f"{f.location_city or 'Unknown'}, {f.location_country}",
+            "ip_address": f.ip_address,
+            "auth_method": f.authentication_method
+        })
 
     success_rate = ((len(events) - len(failures)) / len(events) * 100) if events else 0
 
@@ -498,32 +489,29 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
         "session_failures": 0,
         "access_denied": 0,
         "user_errors": 0,
-        "other": 0,
+        "other": 0
     }
-
+    
     for f in failures:
         reason_lower = (f.failure_reason or "").lower()
         categorized = False
-
-        if any(
-            kw in reason_lower
-            for kw in ["authentication", "password", "credential", "mfa"]
-        ):
+        
+        if any(kw in reason_lower for kw in ["authentication", "password", "credential", "mfa"]):
             failure_categories["authentication_failures"] += 1
             categorized = True
-
+        
         if any(kw in reason_lower for kw in ["session", "expired", "timeout"]):
             failure_categories["session_failures"] += 1
             categorized = True
-
+        
         if any(kw in reason_lower for kw in ["denied", "unauthorized", "permission"]):
             failure_categories["access_denied"] += 1
             categorized = True
-
+        
         if any(kw in reason_lower for kw in ["not exist", "not found", "invalid"]):
             failure_categories["user_errors"] += 1
             categorized = True
-
+        
         if not categorized:
             failure_categories["other"] += 1
 
@@ -534,7 +522,7 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
         "critical_failures": critical_count,
         "warning_failures": warning_count,
         "failed_event_timeline": failure_timeline[:10],  # Last 10 failures
-        "failure_categories": failure_categories,
+        "failure_categories": failure_categories
     }
 
 
@@ -571,7 +559,7 @@ def calculate_user_risk_score(
         risk_factors.append(
             f"Critical authentication failures: {failure_info['critical_failures']}"
         )
-
+    
     # Specific failure categories
     if failure_info.get("failure_categories", {}).get("access_denied", 0) > 0:
         risk_score += 2
@@ -581,11 +569,8 @@ def calculate_user_risk_score(
 
     # Factor 3: Geographic anomalies
     unique_locations = len(
-        set(
-            f"{e.location_city},{e.location_country}"
-            for e in events
-            if e.location_city and e.location_city != "Unknown"
-        )
+        set(f"{e.location_city},{e.location_country}" for e in events 
+            if e.location_city and e.location_city != "Unknown")
     )
     if unique_locations > 2:
         risk_score += 2
@@ -648,6 +633,91 @@ def calculate_user_risk_score(
 # ============================================================================
 
 
+def generate_alert_title(group: UserActivityGroup) -> str:
+    """Generate a Sentinel-style alert title based on risk factors"""
+    
+    user_name = group.user_display_name
+    risk_level = "HIGH" if group.risk_score >= 7 else "MEDIUM" if group.risk_score >= 5 else "LOW"
+    
+    # Determine primary threat type
+    threat_types = []
+    
+    # Check for authentication failures
+    if group.failure_analysis.get("critical_failures", 0) > 0:
+        threat_types.append("Critical Authentication Failures")
+    elif group.failure_analysis.get("total_failures", 0) > 3:
+        threat_types.append("Multiple Failed Sign-ins")
+    
+    # Check for access denied
+    if group.failure_analysis.get("failure_categories", {}).get("access_denied", 0) > 0:
+        threat_types.append("Unauthorized Access Attempts")
+    
+    # Check for geographic anomalies
+    if group.unique_locations > 2:
+        threat_types.append("Geographically Distributed Access")
+    
+    # Check for rapid activity
+    rapid_clusters = sum(1 for c in group.clusters[1:] if isinstance(c, dict) and c.get('event_count', 0) > 5 and c.get('duration_seconds', 999) < 300)
+    if rapid_clusters > 0:
+        threat_types.append("Suspicious Rapid Activity")
+    
+    # Check for multiple applications
+    if group.unique_apps > 5:
+        threat_types.append("Excessive Application Access")
+    
+    # Check for guest user
+    if "guest" in group.user_type.lower():
+        threat_types.append("Cross-Tenant Guest Activity")
+    
+    # Check for single-factor auth predominance
+    auth_summary = group.authentication_summary
+    if auth_summary.get("total_single_factor", 0) > auth_summary.get("total_mfa", 0) * 2:
+        threat_types.append("Weak Authentication Methods")
+    
+    # Build title
+    if not threat_types:
+        threat_types.append("Abnormal User Behavior")
+    
+    # Create a concise title (max 2 threat types)
+    primary_threats = " & ".join(threat_types[:2])
+    
+    # Add count indicators
+    failure_count = group.failure_analysis.get("total_failures", 0)
+    event_count = group.total_events
+    
+    if failure_count > 0:
+        title = f"🚨 [{risk_level} RISK] {primary_threats} - {user_name} ({failure_count} failures/{event_count} events)"
+    else:
+        title = f"⚠️ [{risk_level} RISK] {primary_threats} - {user_name} ({event_count} events)"
+    
+    return title
+
+
+def generate_alert_summary(group: UserActivityGroup) -> str:
+    """Generate a brief alert summary in Sentinel style"""
+    
+    summary_parts = []
+    
+    # Failure info
+    if group.failure_analysis.get("total_failures", 0) > 0:
+        success_rate = group.failure_analysis.get("success_rate", 0)
+        summary_parts.append(f"Success rate: {success_rate}%")
+    
+    # Location info
+    if group.unique_locations > 1:
+        summary_parts.append(f"{group.unique_locations} locations")
+    
+    # App access
+    if group.unique_apps > 3:
+        summary_parts.append(f"{group.unique_apps} applications")
+    
+    # Cluster info
+    if group.total_clusters > 2:
+        summary_parts.append(f"{group.total_clusters} activity sessions")
+    
+    return " | ".join(summary_parts) if summary_parts else "Normal activity pattern"
+
+
 def create_user_activity_summary(
     upn: str, events: List[EventDetails]
 ) -> UserActivityGroup:
@@ -670,15 +740,13 @@ def create_user_activity_summary(
             loc_key = f"{event.location_city}|{event.ip_address}"
             if loc_key not in seen_locs:
                 seen_locs.add(loc_key)
-                locations.append(
-                    {
-                        "city": event.location_city,
-                        "state": event.location_state,
-                        "country": event.location_country,
-                        "ip_address": event.ip_address,
-                        "timestamp": event.timestamp,
-                    }
-                )
+                locations.append({
+                    "city": event.location_city,
+                    "state": event.location_state,
+                    "country": event.location_country,
+                    "ip_address": event.ip_address,
+                    "timestamp": event.timestamp,
+                })
 
     # Application analysis
     applications = []
@@ -691,24 +759,19 @@ def create_user_activity_summary(
         app_events = [e for e in events if e.app_id == app_id]
         if app_events:
             first_app = app_events[0]
-            applications.append(
-                {
-                    "app_name": first_app.app_display_name,
-                    "app_id": app_id,
-                    "resource": first_app.resource_display_name,
-                    "access_count": count,
-                }
-            )
+            applications.append({
+                "app_name": first_app.app_display_name,
+                "app_id": app_id,
+                "resource": first_app.resource_display_name,
+                "access_count": count,
+            })
 
     # Authentication analysis
-    auth_methods = list(
-        set(
-            e.authentication_method
-            for e in events
-            if e.authentication_method != "Unknown"
-        )
-    )
-
+    auth_methods = list(set(
+        e.authentication_method for e in events 
+        if e.authentication_method != "Unknown"
+    ))
+    
     auth_summary = {
         "methods": auth_methods,
         "total_mfa": sum(
@@ -726,42 +789,39 @@ def create_user_activity_summary(
     # Add gap analysis metadata to cluster details
     cluster_details = []
     for c in clusters:
-        cluster_details.append(
-            {
-                "cluster_id": c.cluster_id,
-                "start_time": c.start_time,
-                "end_time": c.end_time,
-                "duration_seconds": c.duration_seconds,
-                "event_count": c.event_count,
-                "unique_apps": c.unique_apps,
-                "has_failures": c.has_failures,
-                "failure_count": c.failure_count,
-            }
-        )
-
+        cluster_details.append({
+            "cluster_id": c.cluster_id,
+            "start_time": c.start_time,
+            "end_time": c.end_time,
+            "duration_seconds": c.duration_seconds,
+            "event_count": c.event_count,
+            "unique_apps": c.unique_apps,
+            "has_failures": c.has_failures,
+            "failure_count": c.failure_count,
+        })
+    
     # Add gap analysis metadata
     if gap_metadata:
-        cluster_details.insert(0, {"clustering_metadata": gap_metadata})
+        cluster_details.insert(0, {
+            "clustering_metadata": gap_metadata
+        })
 
     # Timeline
     timeline = []
     for e in events:
-        timeline.append(
-            {
-                "timestamp": e.timestamp,
-                "app": e.app_display_name,
-                "location": f"{e.location_city or 'Unknown'}, {e.location_country}",
-                "ip_address": e.ip_address,
-                "browser": e.browser or "Unknown",
-                "os": e.operating_system or "Unknown",
-                "result": (
-                    "✅ Success"
-                    if e.is_success
-                    else f"❌ Failed: {e.failure_reason or e.result_description}"
-                ),
-                "auth_method": e.authentication_method,
-            }
-        )
+        timeline.append({
+            "timestamp": e.timestamp,
+            "app": e.app_display_name,
+            "location": f"{e.location_city or 'Unknown'}, {e.location_country}",
+            "ip_address": e.ip_address,
+            "browser": e.browser or "Unknown",
+            "os": e.operating_system or "Unknown",
+            "result": (
+                "✅ Success" if e.is_success 
+                else f"❌ Failed: {e.failure_reason or e.result_description}"
+            ),
+            "auth_method": e.authentication_method,
+        })
 
     # Behavioral anomalies
     anomalies = []
@@ -781,14 +841,15 @@ def create_user_activity_summary(
         anomalies.append(
             f"Multiple distinct activity sessions: {len(clusters)} clusters"
         )
-
+        
     unique_apps = len(applications)
     if unique_apps > 5:
         anomalies.append(f"Access to {unique_apps} applications (unusually high)")
-
+    
     # Check for rapid failures
     rapid_failures = sum(
-        1 for c in clusters if c.failure_count > 2 and c.duration_seconds < 180
+        1 for c in clusters 
+        if c.failure_count > 2 and c.duration_seconds < 180
     )
     if rapid_failures > 0:
         anomalies.append(f"Rapid failure clusters detected: {rapid_failures}")
@@ -825,9 +886,9 @@ def group_events_by_user(log_data: dict) -> Dict[str, List[EventDetails]]:
     """Group all sign-in events by user"""
 
     user_groups: Dict[str, List[EventDetails]] = defaultdict(list)
-
+    
     parse_errors = 0
-
+    
     for signin_log in log_data.get("SigninLogs", []):
         try:
             event = extract_complete_event_data(signin_log)
@@ -864,6 +925,10 @@ def generate_json_report(user_groups: Dict[str, UserActivityGroup], output_path:
 
     for upn, group in user_groups.items():
         group_dict = group.model_dump()
+        
+        # Add alert title and summary
+        group_dict['alert_title'] = generate_alert_title(group)
+        group_dict['alert_summary'] = generate_alert_summary(group)
 
         if group.risk_score >= 7:
             high_risk.append(group_dict)
@@ -882,8 +947,8 @@ def generate_json_report(user_groups: Dict[str, UserActivityGroup], output_path:
                 "Intelligent time gap detection using outlier analysis",
                 "Proper ResultDescription extraction for failures",
                 "Enhanced Unknown data handling",
-                "Frequent activity grouping (not hardcoded thresholds)",
-            ],
+                "Frequent activity grouping (not hardcoded thresholds)"
+            ]
         },
         "summary": {
             "high_risk_count": len(high_risk),
@@ -942,12 +1007,41 @@ def generate_markdown_report(
 
 ---
 
+## 🚨 TOP SECURITY ALERTS
+
+"""
+
+    # Show top 5 alerts across all risk levels
+    all_groups = sorted(
+        user_groups.values(), 
+        key=lambda g: (g.risk_score, g.failure_analysis.get('critical_failures', 0)), 
+        reverse=True
+    )[:5]
+    
+    for idx, group in enumerate(all_groups, 1):
+        alert_title = generate_alert_title(group)
+        alert_summary = generate_alert_summary(group)
+        
+        md_report += f"""
+**{idx}. {alert_title}**
+- {alert_summary}
+- Top Risk Factor: {group.risk_factors[0] if group.risk_factors else 'N/A'}
+"""
+
+    md_report += f"""
+
+---
+
 ## 🔴 CRITICAL PRIORITY - Risk Score 7-10
 
 """
 
     for group in sorted(high_risk, key=lambda g: g.risk_score, reverse=True)[:10]:
-
+        
+        # Generate alert title
+        alert_title = generate_alert_title(group)
+        alert_summary = generate_alert_summary(group)
+        
         # Get clustering metadata if available
         clustering_info = ""
         if group.clusters and isinstance(group.clusters[0], dict):
@@ -959,16 +1053,16 @@ def generate_markdown_report(
 - Time Gap Threshold: `{meta.get('final_threshold', 'N/A')}` seconds
 - Total Time Gaps Analyzed: `{meta.get('total_gaps', 'N/A')}`
 """
-                if "normal_gaps_count" in meta:
-                    clustering_info += (
-                        f"- Normal Activity Gaps: `{meta['normal_gaps_count']}`\n"
-                    )
+                if 'normal_gaps_count' in meta:
+                    clustering_info += f"- Normal Activity Gaps: `{meta['normal_gaps_count']}`\n"
                     clustering_info += f"- Outlier Gaps: `{meta['outlier_count']}`\n"
 
         md_report += f"""
-### 👤 {group.user_display_name} ({group.user_principal_name})
+### {alert_title}
 
-**Risk Score:** {group.risk_score}/10 | **Events:** {group.total_events} | **Clusters:** {group.total_clusters} | **Type:** {group.user_type}
+**Alert Summary:** {alert_summary}
+
+**User Details:** {group.user_display_name} ({group.user_principal_name}) | Type: {group.user_type}
 
 {clustering_info}
 
@@ -983,18 +1077,20 @@ def generate_markdown_report(
 
 **Failure Categories:**
 """
-
+        
         # Show failure categories
-        if "failure_categories" in group.failure_analysis:
-            for cat, count in group.failure_analysis["failure_categories"].items():
+        if 'failure_categories' in group.failure_analysis:
+            for cat, count in group.failure_analysis['failure_categories'].items():
                 if count > 0:
                     md_report += f"- {cat.replace('_', ' ').title()}: {count}\n"
 
         md_report += "\n**Top Failure Reasons:**\n"
         for failure in group.failure_analysis["failure_reasons"][:5]:
-            severity_emoji = {"CRITICAL": "🔴", "WARNING": "🟡", "INFO": "ℹ️"}.get(
-                failure["severity"], "⚪"
-            )
+            severity_emoji = {
+                "CRITICAL": "🔴",
+                "WARNING": "🟡",
+                "INFO": "ℹ️"
+            }.get(failure['severity'], "⚪")
             md_report += f"- {severity_emoji} **{failure['reason']}** (Count: {failure['count']}, Severity: {failure['severity']})\n"
 
         md_report += f"""
@@ -1002,11 +1098,9 @@ def generate_markdown_report(
 """
         for loc in group.locations[:5]:
             city_state = f"{loc['city']}"
-            if loc.get("state"):
+            if loc.get('state'):
                 city_state += f", {loc['state']}"
-            md_report += (
-                f"- {city_state} ({loc['country']}) - IP: `{loc['ip_address']}`\n"
-            )
+            md_report += f"- {city_state} ({loc['country']}) - IP: `{loc['ip_address']}`\n"
 
         md_report += f"""
 #### 💻 Applications Accessed ({group.unique_apps})
@@ -1014,10 +1108,8 @@ def generate_markdown_report(
         for app in sorted(
             group.applications, key=lambda x: x["access_count"], reverse=True
         )[:5]:
-            resource = f" → {app['resource']}" if app.get("resource") else ""
-            md_report += (
-                f"- **{app['app_name']}**{resource} - {app['access_count']} times\n"
-            )
+            resource = f" → {app['resource']}" if app.get('resource') else ""
+            md_report += f"- **{app['app_name']}**{resource} - {app['access_count']} times\n"
 
         md_report += f"""
 #### 🔐 Authentication Summary
@@ -1028,32 +1120,20 @@ def generate_markdown_report(
 #### 📅 Activity Clusters ({group.total_clusters})
 """
         # Skip first entry if it's metadata
-        cluster_start_idx = (
-            1
-            if (
-                group.clusters
-                and isinstance(group.clusters[0], dict)
-                and "clustering_metadata" in group.clusters[0]
-            )
-            else 0
-        )
-
-        for cluster in group.clusters[cluster_start_idx : cluster_start_idx + 5]:
-            if isinstance(cluster, dict) and "cluster_id" in cluster:
-                duration_min = cluster["duration_seconds"] / 60
-                failure_indicator = (
-                    f", ❌ {cluster['failure_count']} failures"
-                    if cluster["failure_count"] > 0
-                    else ""
-                )
+        cluster_start_idx = 1 if (group.clusters and isinstance(group.clusters[0], dict) and "clustering_metadata" in group.clusters[0]) else 0
+        
+        for cluster in group.clusters[cluster_start_idx:cluster_start_idx+5]:
+            if isinstance(cluster, dict) and 'cluster_id' in cluster:
+                duration_min = cluster['duration_seconds'] / 60
+                failure_indicator = f", ❌ {cluster['failure_count']} failures" if cluster['failure_count'] > 0 else ""
                 md_report += f"- **{cluster['cluster_id']}**: {cluster['event_count']} events over {duration_min:.1f} minutes{failure_indicator}\n"
 
         # Show recent failed events
-        if group.failure_analysis["failed_event_timeline"]:
+        if group.failure_analysis['failed_event_timeline']:
             md_report += f"""
 #### ⚠️ Recent Failed Events
 """
-            for fail_event in group.failure_analysis["failed_event_timeline"][:3]:
+            for fail_event in group.failure_analysis['failed_event_timeline'][:3]:
                 md_report += f"- `{fail_event['timestamp']}` - **{fail_event['app']}** - {fail_event['reason']}\n"
                 md_report += f"  - Location: {fail_event['location']}, IP: `{fail_event['ip_address']}`\n"
 
@@ -1066,14 +1146,17 @@ def generate_markdown_report(
 """
 
     for group in sorted(medium_risk, key=lambda g: g.risk_score, reverse=True)[:10]:
+        alert_title = generate_alert_title(group)
+        alert_summary = generate_alert_summary(group)
+        
         failure_info = ""
-        if group.failure_analysis["total_failures"] > 0:
+        if group.failure_analysis['total_failures'] > 0:
             failure_info = f" | Failures: {group.failure_analysis['total_failures']} ({group.failure_analysis['success_rate']}% success)"
-
+        
         md_report += f"""
-### 👤 {group.user_display_name} ({group.user_principal_name})
+### {alert_title}
 
-**Score:** {group.risk_score}/10 | **Events:** {group.total_events} | **Clusters:** {group.total_clusters}{failure_info}
+**Alert Summary:** {alert_summary}
 
 **Risk Factors:** {', '.join(group.risk_factors[:3])}
 

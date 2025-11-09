@@ -1,6 +1,6 @@
 {
   "report_metadata": {
-    "generated_at": "2025-11-08T18:02:54.390855",
+    "generated_at": "2025-11-09T11:50:52.966130",
     "report_type": "Advanced Security Correlation Analysis v5.0 - Fixed Edition",
     "total_users": 27,
     "total_events": 47,
@@ -83,8 +83,8 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Single Sign-On",
-          "Password"
+          "Password",
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 2,
@@ -952,8 +952,8 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Single Sign-On",
-          "Password"
+          "Password",
+          "Single Sign-On"
         ],
         "total_mfa": 0,
         "total_single_factor": 4,
@@ -1835,8 +1835,8 @@
       "unique_apps": 1,
       "authentication_summary": {
         "methods": [
-          "Mobile app notification",
-          "Single Sign-On"
+          "Single Sign-On",
+          "Mobile app notification"
         ],
         "total_mfa": 0,
         "total_single_factor": 2,
