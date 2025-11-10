@@ -8,9 +8,9 @@ from typing import List, Optional, Dict, Tuple
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 from collections import defaultdict
-import statistics
 import numpy as np
 import google.generativeai as genai
+
 
 
 os.environ["CREWAI_TELEMETRY"] = "false"
@@ -358,89 +358,40 @@ def extract_complete_event_data(signin_log: dict) -> EventDetails:
 # INTELLIGENT TIME GAP ANALYSIS - USING OUTLIER DETECTION
 # ============================================================================
 
-
-def generate_alert_description_with_ollama(group: "UserActivityGroup") -> str:
-    """
-    Generate alert description using Ollama
-    
-    Args:
-        group: UserActivityGroup object
-        
-    Returns:
-        Alert description string
-    """
-    try:
-        import requests
-        
-        # Prepare context
-        context = f"""You are a security analyst. Generate a clear 2-3 sentence description of this security incident.
-
-USER: {group.user_display_name} ({group.user_principal_name})
-RISK SCORE: {group.risk_score}/10
-EVENTS: {group.total_events}
-FAILURES: {group.failure_analysis.get('total_failures', 0)}
-SUCCESS RATE: {group.failure_analysis.get('success_rate', 100)}%
-LOCATIONS: {group.unique_locations}
-APPS: {group.unique_apps}
-
-KEY ISSUES: {', '.join(group.risk_factors[:3])}
-
-Generate only 2-3 sentences explaining what happened and why it's concerning. Use simple language."""
-
-        response = requests.post(
-            f"{OLLAMA_BASE_URL}/api/generate",
-            json={
-                "model": OLLAMA_MODEL,
-                "prompt": context,
-                "stream": False,
-                "options": {
-                    "temperature": 0.3,
-                    "num_predict": 150
-                }
-            },
-            timeout=300
-        )
-        
-        if response.status_code == 200:
-            result = response.json()
-            description = result.get("response", "").strip()
-            
-            if len(description) >= 50:
-                return description
-                
-    except Exception as e:
-        print(f"   ⚠️ Ollama error: {str(e)[:100]}")
-    
-    return generate_fallback_alert_description(group)
-
-
-def generate_alert_description_with_llm(group: "UserActivityGroup") -> str:
+def generate_alert_description_with_llm(group: "UserActivityGroup", max_retries: int = 3) -> str:
     """
     Generate a detailed, easy-to-understand alert description using LLM
-    Tries Gemini first, falls back to Ollama, then to template-based fallback
+    Tries Gemini with retries, falls back to Ollama, then to template-based fallback
 
     Args:
         group: UserActivityGroup object with all activity details
+        max_retries: Maximum number of retry attempts for Gemini (default: 3)
 
     Returns:
         2-3 sentence alert description in plain language
     """
 
-    # Check if we should skip Gemini due to rate limit exhaustion
+    # Check if we should skip Gemini due to daily quota exhaustion
     if gemini_model and not gemini_rate_limiter.rate_limit_exceeded:
-        try:
-            # Apply rate limiting
-            gemini_rate_limiter.wait_if_needed()
-            
-            # Check again after waiting
-            if gemini_rate_limiter.rate_limit_exceeded:
-                print(f"   ⚠️ Gemini quota exceeded, switching to {'Ollama' if ollama_available else 'fallback'}")
-                if ollama_available:
-                    return generate_alert_description_with_ollama(group)
-                return generate_fallback_alert_description(group)
+        retry_count = 0
+        last_error = None
+        
+        while retry_count < max_retries:
+            try:
+                # Apply rate limiting
+                wait_time = gemini_rate_limiter.wait_if_needed()
+                
+                # Check if rate limit was exceeded during wait
+                if gemini_rate_limiter.rate_limit_exceeded:
+                    print(f"   ⚠️ Gemini daily quota exhausted, switching to {'Ollama' if ollama_available else 'fallback'}")
+                    break
+                
+                # Show retry attempt if this is a retry
+                if retry_count > 0:
+                    print(f"   🔄 Retry attempt {retry_count}/{max_retries} for Gemini API...")
 
-            # Prepare context for LLM
-            context = f"""You are a security analyst explaining a potential security incident to a non-technical manager. 
+                # Prepare context for LLM
+                context = f"""You are a security analyst explaining a potential security incident to a non-technical manager. 
 Generate a clear, concise 2-3 sentence description that explains what happened and why it's concerning.
 
 USER DETAILS:
@@ -472,44 +423,202 @@ Generate a 2-3 sentence description that:
 4. Does NOT use bullet points or lists
 5. Focuses on the most concerning aspects"""
 
-            # Generate description using Gemini
-            response = gemini_model.generate_content(
-                context,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,
-                    max_output_tokens=150,
-                ),
-            )
+                # Generate description using Gemini
+                response = gemini_model.generate_content(
+                    context,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.3,
+                        max_output_tokens=150,
+                    ),
+                )
 
-            description = response.text.strip()
+                description = response.text.strip()
 
-            # Basic validation
-            if len(description) >= 50 and len(description) <= 500:
-                return description
+                # Basic validation
+                if len(description) >= 50 and len(description) <= 500:
+                    # Success! Return the description
+                    if retry_count > 0:
+                        print(f"   ✅ Gemini API succeeded after {retry_count} retries")
+                    return description
+                else:
+                    # Invalid response, but not an API error - don't retry
+                    print(f"   ⚠️ Gemini returned invalid response (length: {len(description)}), using fallback")
+                    break
 
-        except Exception as e:
-            error_msg = str(e).lower()
-            
-            # Check for rate limit errors - switch to fallback immediately
-            if "429" in error_msg or "quota" in error_msg or "rate limit" in error_msg or "resource_exhausted" in error_msg:
-                print(f"   ⚠️ Gemini rate limit hit. Switching to {'Ollama' if ollama_available else 'fallback'}")
-                gemini_rate_limiter.rate_limit_exceeded = True
-                if ollama_available:
-                    return generate_alert_description_with_ollama(group)
-                return generate_fallback_alert_description(group)
-            
-            # For other errors, try Ollama or fallback
-            print(f"   ⚠️ Gemini error: {str(e)[:100]}")
-            if ollama_available:
-                return generate_alert_description_with_ollama(group)
-            return generate_fallback_alert_description(group)
+            except Exception as e:
+                last_error = e
+                error_msg = str(e).lower()
+                
+                # Check for PERMANENT errors that shouldn't be retried
+                if "429" in error_msg or "quota" in error_msg or "resource_exhausted" in error_msg:
+                    print(f"   ⚠️ Gemini quota/rate limit hit. Marking as exhausted.")
+                    gemini_rate_limiter.rate_limit_exceeded = True
+                    break
+                
+                # Check for API key errors (permanent)
+                if "api key" in error_msg or "invalid_api_key" in error_msg or "authentication" in error_msg:
+                    print(f"   ❌ Gemini API key error: {str(e)[:100]}")
+                    print(f"   ⚠️ Disabling Gemini for this session")
+                    gemini_rate_limiter.rate_limit_exceeded = True
+                    break
+                
+                # TRANSIENT errors that should be retried
+                transient_errors = [
+                    "timeout", "503", "502", "500",  # Server errors
+                    "connection", "network",         # Network errors
+                    "unavailable", "overloaded"      # Service errors
+                ]
+                
+                is_transient = any(err in error_msg for err in transient_errors)
+                
+                if is_transient and retry_count < max_retries - 1:
+                    # Wait with exponential backoff before retrying
+                    backoff_time = min(2 ** retry_count, 10)  # Max 10 seconds
+                    print(f"   ⚠️ Gemini error (transient): {str(e)[:100]}")
+                    print(f"   ⏳ Waiting {backoff_time}s before retry...")
+                    time.sleep(backoff_time)
+                    retry_count += 1
+                    continue
+                else:
+                    # Non-transient error or max retries reached
+                    print(f"   ⚠️ Gemini error: {str(e)[:100]}")
+                    if retry_count >= max_retries - 1:
+                        print(f"   ❌ Max retries ({max_retries}) reached for Gemini")
+                    break
+        
+        # If we exited the retry loop without success, log it
+        if retry_count > 0 and last_error:
+            print(f"   ⚠️ Gemini failed after {retry_count} retries. Switching to {'Ollama' if ollama_available else 'fallback'}")
 
-    # If Gemini is not available or rate limit exceeded, use Ollama
+    # Fallback to Ollama if available
     if ollama_available:
         return generate_alert_description_with_ollama(group)
     
-    # Final fallback
+    # Final fallback to template-based
     return generate_fallback_alert_description(group)
+
+
+def generate_alert_description_with_ollama(group: "UserActivityGroup", max_retries: int = 2) -> str:
+    """
+    Generate alert description using Ollama with retry logic
+    
+    Args:
+        group: UserActivityGroup object
+        max_retries: Maximum retry attempts
+        
+    Returns:
+        Alert description string
+    """
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            import requests
+            
+            if retry_count > 0:
+                print(f"   🔄 Retry attempt {retry_count}/{max_retries} for Ollama...")
+            
+            # Prepare context
+            context = f"""You are a security analyst. Generate a clear 2-3 sentence description of this security incident.
+
+USER: {group.user_display_name} ({group.user_principal_name})
+RISK SCORE: {group.risk_score}/10
+EVENTS: {group.total_events}
+FAILURES: {group.failure_analysis.get('total_failures', 0)}
+SUCCESS RATE: {group.failure_analysis.get('success_rate', 100)}%
+LOCATIONS: {group.unique_locations}
+APPS: {group.unique_apps}
+
+KEY ISSUES: {', '.join(group.risk_factors[:3])}
+
+Generate only 2-3 sentences explaining what happened and why it's concerning. Use simple language."""
+
+            response = requests.post(
+                f"{OLLAMA_BASE_URL}/api/generate",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": context,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.3,
+                        "num_predict": 150
+                    }
+                },
+                timeout=30  # Reduced timeout
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                description = result.get("response", "").strip()
+                
+                if len(description) >= 50:
+                    if retry_count > 0:
+                        print(f"   ✅ Ollama succeeded after {retry_count} retries")
+                    return description
+            
+            # Failed but no exception - try next retry
+            if retry_count < max_retries - 1:
+                print(f"   ⚠️ Ollama returned invalid response, retrying...")
+                time.sleep(1)
+                retry_count += 1
+                continue
+            else:
+                break
+                    
+        except Exception as e:
+            error_msg = str(e).lower()
+            
+            # Check for connection errors
+            if "connection" in error_msg or "timeout" in error_msg:
+                if retry_count < max_retries - 1:
+                    print(f"   ⚠️ Ollama connection error, retrying...")
+                    time.sleep(2)
+                    retry_count += 1
+                    continue
+            
+            print(f"   ⚠️ Ollama error: {str(e)[:100]}")
+            break
+    
+    print(f"   ⚠️ Ollama failed after {retry_count + 1} attempts, using template fallback")
+    return generate_fallback_alert_description(group)
+
+
+def test_gemini_connection() -> bool:
+    """
+    Test Gemini API connection at startup
+    Returns True if successful, False otherwise
+    """
+    if not gemini_model:
+        return False
+    
+    try:
+        print("🧪 Testing Gemini API connection...")
+        response = gemini_model.generate_content(
+            "Say 'OK' if you can read this.",
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1,
+                max_output_tokens=10,
+            ),
+        )
+        
+        if response and response.text:
+            print("✅ Gemini API connection successful")
+            return True
+        else:
+            print("⚠️ Gemini API returned empty response")
+            return False
+            
+    except Exception as e:
+        error_msg = str(e).lower()
+        print(f"❌ Gemini API test failed: {str(e)[:100]}")
+        
+        # Check if it's an API key error
+        if "api key" in error_msg or "invalid_api_key" in error_msg:
+            print("⚠️ Invalid or missing API key. Please check your GOOGLE_API_KEY in .env")
+        elif "quota" in error_msg or "429" in error_msg:
+            print("⚠️ API quota exceeded. Check your quota at https://aistudio.google.com/app/apikey")
+        
+        return False
 
 
 def generate_fallback_alert_description(group: "UserActivityGroup") -> str:
