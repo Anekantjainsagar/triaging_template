@@ -12,7 +12,6 @@ import numpy as np
 import google.generativeai as genai
 
 
-
 os.environ["CREWAI_TELEMETRY"] = "false"
 load_dotenv()
 
@@ -22,32 +21,32 @@ class RateLimiter:
     Rate limiter for Gemini API calls
     Implements token bucket algorithm with request tracking
     """
-    
+
     def __init__(self, requests_per_minute=15, requests_per_day=1500):
         """
         Initialize rate limiter
-        
+
         Args:
             requests_per_minute: Max requests per minute (Gemini free tier: 15 RPM)
             requests_per_day: Max requests per day (Gemini free tier: 1500 RPD)
         """
         self.requests_per_minute = requests_per_minute
         self.requests_per_day = requests_per_day
-        
-        
+
         # Track recent requests (timestamp of each request)
         from collections import deque
+
         self.minute_requests = deque()
         self.day_requests = deque()
-        
+
         # Thread-safe lock
         self.lock = Lock()
-        
+
         # Tracking
         self.total_requests = 0
         self.total_wait_time = 0
         self.rate_limit_exceeded = False  # Flag to switch to fallback
-        
+
     def wait_if_needed(self):
         """
         Check rate limits and wait if necessary
@@ -55,45 +54,49 @@ class RateLimiter:
         """
         if self.rate_limit_exceeded:
             return 0  # Skip waiting if we've already exceeded limits
-            
+
         with self.lock:
             current_time = time.time()
             wait_time = 0
-            
+
             # Clean up old requests (older than 1 minute)
             while self.minute_requests and current_time - self.minute_requests[0] > 60:
                 self.minute_requests.popleft()
-            
+
             # Clean up old requests (older than 24 hours)
             while self.day_requests and current_time - self.day_requests[0] > 86400:
                 self.day_requests.popleft()
-            
+
             # Check per-minute limit - with conservative buffer
-            if len(self.minute_requests) >= self.requests_per_minute - 2:  # Leave 2 request buffer
+            if (
+                len(self.minute_requests) >= self.requests_per_minute - 2
+            ):  # Leave 2 request buffer
                 # Need to wait until oldest request is 60 seconds old
                 oldest_request = self.minute_requests[0]
                 wait_time = 60 - (current_time - oldest_request) + 2  # Add 2s buffer
-                
+
                 if wait_time > 0:
                     print(f"   ⏳ Rate limit: Waiting {wait_time:.1f}s (RPM limit)")
                     time.sleep(wait_time)
                     current_time = time.time()
                     self.total_wait_time += wait_time
-            
+
             # Check per-day limit
             if len(self.day_requests) >= self.requests_per_day:
                 # Mark as exceeded and stop using Gemini
                 self.rate_limit_exceeded = True
-                print(f"   ⚠️ Daily quota reached. Switching to fallback for remaining requests.")
+                print(
+                    f"   ⚠️ Daily quota reached. Switching to fallback for remaining requests."
+                )
                 return 0
-            
+
             # Record this request
             self.minute_requests.append(current_time)
             self.day_requests.append(current_time)
             self.total_requests += 1
-            
+
             return wait_time
-    
+
     def get_stats(self):
         """Get rate limiter statistics"""
         with self.lock:
@@ -104,8 +107,9 @@ class RateLimiter:
                 "requests_today": len(self.day_requests),
                 "rpm_limit": self.requests_per_minute,
                 "rpd_limit": self.requests_per_day,
-                "rate_limit_exceeded": self.rate_limit_exceeded
+                "rate_limit_exceeded": self.rate_limit_exceeded,
             }
+
 
 # Configure Gemini API with rate limiting
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -114,7 +118,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_CHAT", "llama2")
 
 gemini_rate_limiter = RateLimiter(
     requests_per_minute=15,  # Free tier: 15, Paid tier: 1000
-    requests_per_day=1500    # Free tier: 1500, Paid tier: 50000
+    requests_per_day=1500,  # Free tier: 1500, Paid tier: 50000
 )
 
 # Try to configure Gemini
@@ -122,7 +126,7 @@ gemini_model = None
 if GOOGLE_API_KEY:
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
-        gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        gemini_model = genai.GenerativeModel("gemini-2.5-flash")
         print("✅ Gemini API configured with rate limiting (15 RPM, 1500 RPD)")
     except Exception as e:
         print(f"⚠️ Failed to configure Gemini: {e}")
@@ -132,6 +136,7 @@ if GOOGLE_API_KEY:
 ollama_available = False
 try:
     import requests
+
     response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=2)
     if response.status_code == 200:
         ollama_available = True
@@ -139,8 +144,71 @@ try:
 except:
     ollama_available = False
 
+
+def test_gemini_connection() -> bool:
+    """
+    Test Gemini API connection at startup
+    Returns True if successful, False otherwise
+    """
+    if not gemini_model:
+        return False
+
+    try:
+        print("🧪 Testing Gemini API connection...")
+        response = gemini_model.generate_content(
+            "Say 'OK' if you can read this.",
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1,
+                max_output_tokens=50,  # INCREASED from 10
+            ),
+        )
+
+        # FIX: Properly check response before accessing .text
+        if (
+            response
+            and hasattr(response, "candidates")
+            and response.candidates
+            and len(response.candidates) > 0
+            and hasattr(response.candidates[0], "content")
+            and hasattr(response.candidates[0].content, "parts")
+            and response.candidates[0].content.parts
+        ):
+            print(f"✅ Gemini API test response: {response.text[:50]}")
+            return True
+        else:
+            print("⚠️ Gemini API returned empty or invalid response")
+            if response and hasattr(response, "candidates") and response.candidates:
+                print(f"   Finish reason: {response.candidates[0].finish_reason}")
+            return False
+
+    except Exception as e:
+        error_msg = str(e).lower()
+        print(f"❌ Gemini API test failed: {str(e)[:100]}")
+
+        # Check if it's an API key error
+        if "api key" in error_msg or "invalid_api_key" in error_msg:
+            print(
+                "⚠️ Invalid or missing API key. Please check your GOOGLE_API_KEY in .env"
+            )
+        elif "quota" in error_msg or "429" in error_msg:
+            print(
+                "⚠️ API quota exceeded. Check your quota at https://aistudio.google.com/app/apikey"
+            )
+
+        return False
+
+
+if gemini_model and GOOGLE_API_KEY:
+    # Test connection at startup
+    if not test_gemini_connection():
+        print("⚠️ Gemini API test failed. Will use fallback methods.")
+        gemini_model = None  # Disable Gemini if test fails
+
+
 if not gemini_model and not ollama_available:
-    print("⚠️ Warning: Neither Gemini nor Ollama configured. Alert descriptions will use fallback mode.")
+    print(
+        "⚠️ Warning: Neither Gemini nor Ollama configured. Alert descriptions will use fallback mode."
+    )
 
 # ============================================================================
 # ENHANCED USER GROUPING & CORRELATION MODELS
@@ -243,21 +311,21 @@ class UserActivityGroup(BaseModel):
 def safe_get(data: dict, key: str, default="Unknown") -> str:
     """Safely extract data with proper Unknown handling"""
     value = data.get(key, default)
-    
+
     # Handle various empty cases
     if value is None or value == "" or value == {} or value == []:
         return default
-    
+
     # Handle nested empty strings in dicts
     if isinstance(value, dict) and not any(v for v in value.values() if v):
         return default
-        
+
     return str(value) if value != default else default
 
 
 def extract_failure_reason(signin_log: dict) -> Tuple[bool, Optional[str]]:
     """Extract failure reason from multiple possible fields - FIXED"""
-    
+
     result_type = safe_get(signin_log, "ResultType", "Unknown")
     is_success = result_type == "0"
     failure_reason = None
@@ -265,7 +333,7 @@ def extract_failure_reason(signin_log: dict) -> Tuple[bool, Optional[str]]:
     if not is_success:
         # Primary source: ResultDescription - NOW PROPERLY EXTRACTED
         result_desc = safe_get(signin_log, "ResultDescription", "")
-        
+
         if result_desc and result_desc != "Unknown" and result_desc.strip():
             failure_reason = result_desc.strip()
         else:
@@ -286,9 +354,9 @@ def extract_failure_reason(signin_log: dict) -> Tuple[bool, Optional[str]]:
 
 def extract_authentication_method(signin_log: dict) -> str:
     """Extract authentication method with better fallback handling"""
-    
+
     auth_details = signin_log.get("AuthenticationDetails", [])
-    
+
     if auth_details and isinstance(auth_details, list):
         for detail in auth_details:
             if isinstance(detail, dict):
@@ -300,12 +368,12 @@ def extract_authentication_method(signin_log: dict) -> str:
                     actual_method = detail.get("authenticationMethodDetail", "")
                     if actual_method and actual_method != "Unknown":
                         return f"Previously satisfied ({actual_method})"
-    
+
     # Fallback to AuthenticationMethodsUsed
     auth_methods_used = signin_log.get("AuthenticationMethodsUsed", "")
     if auth_methods_used and auth_methods_used != "":
         return auth_methods_used
-    
+
     return "Single Sign-On"
 
 
@@ -329,14 +397,24 @@ def extract_complete_event_data(signin_log: dict) -> EventDetails:
     browser_info = safe_get(device_detail, "browser", None)
 
     return EventDetails(
-        event_id=safe_get(signin_log, "Id", safe_get(signin_log, "CorrelationId", "Unknown")),
-        timestamp=safe_get(signin_log, "TimeGenerated", safe_get(signin_log, "CreatedDateTime", "Unknown")),
+        event_id=safe_get(
+            signin_log, "Id", safe_get(signin_log, "CorrelationId", "Unknown")
+        ),
+        timestamp=safe_get(
+            signin_log,
+            "TimeGenerated",
+            safe_get(signin_log, "CreatedDateTime", "Unknown"),
+        ),
         user_principal_name=safe_get(signin_log, "UserPrincipalName", "Unknown"),
         user_id=safe_get(signin_log, "UserId", "Unknown"),
-        user_display_name=safe_get(signin_log, "UserDisplayName", safe_get(signin_log, "Identity", "Unknown")),
+        user_display_name=safe_get(
+            signin_log, "UserDisplayName", safe_get(signin_log, "Identity", "Unknown")
+        ),
         user_type=safe_get(signin_log, "UserType", "Unknown"),
         authentication_method=auth_method,
-        authentication_requirement=safe_get(signin_log, "AuthenticationRequirement", "Unknown"),
+        authentication_requirement=safe_get(
+            signin_log, "AuthenticationRequirement", "Unknown"
+        ),
         result_type=safe_get(signin_log, "ResultType", "Unknown"),
         result_signature=safe_get(signin_log, "ResultSignature", "Unknown"),
         result_description=failure_reason if not is_success else "Success",
@@ -358,7 +436,10 @@ def extract_complete_event_data(signin_log: dict) -> EventDetails:
 # INTELLIGENT TIME GAP ANALYSIS - USING OUTLIER DETECTION
 # ============================================================================
 
-def generate_alert_description_with_llm(group: "UserActivityGroup", max_retries: int = 3) -> str:
+
+def generate_alert_description_with_llm(
+    group: "UserActivityGroup", max_retries: int = 3
+) -> str:
     """
     Generate a detailed, easy-to-understand alert description using LLM
     Tries Gemini with retries, falls back to Ollama, then to template-based fallback
@@ -375,20 +456,24 @@ def generate_alert_description_with_llm(group: "UserActivityGroup", max_retries:
     if gemini_model and not gemini_rate_limiter.rate_limit_exceeded:
         retry_count = 0
         last_error = None
-        
+
         while retry_count < max_retries:
             try:
                 # Apply rate limiting
                 wait_time = gemini_rate_limiter.wait_if_needed()
-                
+
                 # Check if rate limit was exceeded during wait
                 if gemini_rate_limiter.rate_limit_exceeded:
-                    print(f"   ⚠️ Gemini daily quota exhausted, switching to {'Ollama' if ollama_available else 'fallback'}")
+                    print(
+                        f"   ⚠️ Gemini daily quota exhausted, switching to {'Ollama' if ollama_available else 'fallback'}"
+                    )
                     break
-                
+
                 # Show retry attempt if this is a retry
                 if retry_count > 0:
-                    print(f"   🔄 Retry attempt {retry_count}/{max_retries} for Gemini API...")
+                    print(
+                        f"   🔄 Retry attempt {retry_count}/{max_retries} for Gemini API..."
+                    )
 
                 # Prepare context for LLM
                 context = f"""You are a security analyst explaining a potential security incident to a non-technical manager. 
@@ -427,12 +512,33 @@ Generate a 2-3 sentence description that:
                 response = gemini_model.generate_content(
                     context,
                     generation_config=genai.types.GenerationConfig(
-                        temperature=0.3,
-                        max_output_tokens=150,
+                        temperature=0.1,
                     ),
                 )
 
+                # FIX: Properly check response before accessing .text
+                if (not response or 
+                    not hasattr(response, 'candidates') or 
+                    not response.candidates or
+                    not hasattr(response.candidates[0], 'content') or
+                    not hasattr(response.candidates[0].content, 'parts') or
+                    not response.candidates[0].content.parts):
+                    print(f"   ⚠️ Gemini returned empty or invalid response, using fallback")
+                    if response and hasattr(response, 'candidates') and response.candidates:
+                        finish_reason = response.candidates[0].finish_reason
+                        # Convert enum to string name for display
+                        finish_reason_name = str(finish_reason).split('.')[-1] if hasattr(finish_reason, 'name') else str(finish_reason)
+                        print(f"   Finish reason: {finish_reason_name}")
+                        
+                        # Check if response was truncated (finish_reason = 2 means MAX_TOKENS)
+                        if finish_reason == 2 or (hasattr(finish_reason, 'name') and finish_reason.name == 'MAX_TOKENS'):
+                            print(f"   ⚠️ Gemini response truncated (MAX_TOKENS), retrying...")
+                            retry_count += 1
+                            continue
+                    break
+
                 description = response.text.strip()
+                # print(description)
 
                 # Basic validation
                 if len(description) >= 50 and len(description) <= 500:
@@ -442,38 +548,53 @@ Generate a 2-3 sentence description that:
                     return description
                 else:
                     # Invalid response, but not an API error - don't retry
-                    print(f"   ⚠️ Gemini returned invalid response (length: {len(description)}), using fallback")
+                    print(
+                        f"   ⚠️ Gemini returned invalid response (length: {len(description)}), using fallback"
+                    )
                     break
 
             except Exception as e:
                 last_error = e
                 error_msg = str(e).lower()
-                
+
                 # Check for PERMANENT errors that shouldn't be retried
-                if "429" in error_msg or "quota" in error_msg or "resource_exhausted" in error_msg:
+                if (
+                    "429" in error_msg
+                    or "quota" in error_msg
+                    or "resource_exhausted" in error_msg
+                ):
                     print(f"   ⚠️ Gemini quota/rate limit hit. Marking as exhausted.")
                     gemini_rate_limiter.rate_limit_exceeded = True
                     break
-                
+
                 # Check for API key errors (permanent)
-                if "api key" in error_msg or "invalid_api_key" in error_msg or "authentication" in error_msg:
+                if (
+                    "api key" in error_msg
+                    or "invalid_api_key" in error_msg
+                    or "authentication" in error_msg
+                ):
                     print(f"   ❌ Gemini API key error: {str(e)[:100]}")
                     print(f"   ⚠️ Disabling Gemini for this session")
                     gemini_rate_limiter.rate_limit_exceeded = True
                     break
-                
+
                 # TRANSIENT errors that should be retried
                 transient_errors = [
-                    "timeout", "503", "502", "500",  # Server errors
-                    "connection", "network",         # Network errors
-                    "unavailable", "overloaded"      # Service errors
+                    "timeout",
+                    "503",
+                    "502",
+                    "500",  # Server errors
+                    "connection",
+                    "network",  # Network errors
+                    "unavailable",
+                    "overloaded",  # Service errors
                 ]
-                
+
                 is_transient = any(err in error_msg for err in transient_errors)
-                
+
                 if is_transient and retry_count < max_retries - 1:
                     # Wait with exponential backoff before retrying
-                    backoff_time = min(2 ** retry_count, 10)  # Max 10 seconds
+                    backoff_time = min(2**retry_count, 10)  # Max 10 seconds
                     print(f"   ⚠️ Gemini error (transient): {str(e)[:100]}")
                     print(f"   ⏳ Waiting {backoff_time}s before retry...")
                     time.sleep(backoff_time)
@@ -485,39 +606,43 @@ Generate a 2-3 sentence description that:
                     if retry_count >= max_retries - 1:
                         print(f"   ❌ Max retries ({max_retries}) reached for Gemini")
                     break
-        
+
         # If we exited the retry loop without success, log it
         if retry_count > 0 and last_error:
-            print(f"   ⚠️ Gemini failed after {retry_count} retries. Switching to {'Ollama' if ollama_available else 'fallback'}")
+            print(
+                f"   ⚠️ Gemini failed after {retry_count} retries. Switching to {'Ollama' if ollama_available else 'fallback'}"
+            )
 
     # Fallback to Ollama if available
     if ollama_available:
         return generate_alert_description_with_ollama(group)
-    
+
     # Final fallback to template-based
     return generate_fallback_alert_description(group)
 
 
-def generate_alert_description_with_ollama(group: "UserActivityGroup", max_retries: int = 2) -> str:
+def generate_alert_description_with_ollama(
+    group: "UserActivityGroup", max_retries: int = 2
+) -> str:
     """
     Generate alert description using Ollama with retry logic
-    
+
     Args:
         group: UserActivityGroup object
         max_retries: Maximum retry attempts
-        
+
     Returns:
         Alert description string
     """
     retry_count = 0
-    
+
     while retry_count < max_retries:
         try:
             import requests
-            
+
             if retry_count > 0:
                 print(f"   🔄 Retry attempt {retry_count}/{max_retries} for Ollama...")
-            
+
             # Prepare context
             context = f"""You are a security analyst. Generate a clear 2-3 sentence description of this security incident.
 
@@ -539,23 +664,20 @@ Generate only 2-3 sentences explaining what happened and why it's concerning. Us
                     "model": OLLAMA_MODEL,
                     "prompt": context,
                     "stream": False,
-                    "options": {
-                        "temperature": 0.3,
-                        "num_predict": 150
-                    }
+                    "options": {"temperature": 0.3, "num_predict": 150},
                 },
-                timeout=30  # Reduced timeout
+                timeout=30,  # Reduced timeout
             )
-            
+
             if response.status_code == 200:
                 result = response.json()
                 description = result.get("response", "").strip()
-                
+
                 if len(description) >= 50:
                     if retry_count > 0:
                         print(f"   ✅ Ollama succeeded after {retry_count} retries")
                     return description
-            
+
             # Failed but no exception - try next retry
             if retry_count < max_retries - 1:
                 print(f"   ⚠️ Ollama returned invalid response, retrying...")
@@ -564,10 +686,10 @@ Generate only 2-3 sentences explaining what happened and why it's concerning. Us
                 continue
             else:
                 break
-                    
+
         except Exception as e:
             error_msg = str(e).lower()
-            
+
             # Check for connection errors
             if "connection" in error_msg or "timeout" in error_msg:
                 if retry_count < max_retries - 1:
@@ -575,66 +697,30 @@ Generate only 2-3 sentences explaining what happened and why it's concerning. Us
                     time.sleep(2)
                     retry_count += 1
                     continue
-            
+
             print(f"   ⚠️ Ollama error: {str(e)[:100]}")
             break
-    
-    print(f"   ⚠️ Ollama failed after {retry_count + 1} attempts, using template fallback")
+
+    print(
+        f"   ⚠️ Ollama failed after {retry_count + 1} attempts, using template fallback"
+    )
     return generate_fallback_alert_description(group)
-
-
-def test_gemini_connection() -> bool:
-    """
-    Test Gemini API connection at startup
-    Returns True if successful, False otherwise
-    """
-    if not gemini_model:
-        return False
-    
-    try:
-        print("🧪 Testing Gemini API connection...")
-        response = gemini_model.generate_content(
-            "Say 'OK' if you can read this.",
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.1,
-                max_output_tokens=10,
-            ),
-        )
-        
-        if response and response.text:
-            print("✅ Gemini API connection successful")
-            return True
-        else:
-            print("⚠️ Gemini API returned empty response")
-            return False
-            
-    except Exception as e:
-        error_msg = str(e).lower()
-        print(f"❌ Gemini API test failed: {str(e)[:100]}")
-        
-        # Check if it's an API key error
-        if "api key" in error_msg or "invalid_api_key" in error_msg:
-            print("⚠️ Invalid or missing API key. Please check your GOOGLE_API_KEY in .env")
-        elif "quota" in error_msg or "429" in error_msg:
-            print("⚠️ API quota exceeded. Check your quota at https://aistudio.google.com/app/apikey")
-        
-        return False
 
 
 def generate_fallback_alert_description(group: "UserActivityGroup") -> str:
     """
     Fallback method to generate alert description when LLM is unavailable
-    
+
     Args:
         group: UserActivityGroup object
-        
+
     Returns:
         Alert description string
     """
 
     user_name = group.user_display_name
-    failures = group.failure_analysis.get('total_failures', 0)
-    success_rate = group.failure_analysis.get('success_rate', 100)
+    failures = group.failure_analysis.get("total_failures", 0)
+    success_rate = group.failure_analysis.get("success_rate", 100)
     locations = group.unique_locations
     apps = group.unique_apps
     clusters = group.total_clusters
@@ -669,7 +755,7 @@ def generate_fallback_alert_description(group: "UserActivityGroup") -> str:
         )
 
     # Sentence 2: Supporting details
-    if group.failure_analysis.get('critical_failures', 0) > 0:
+    if group.failure_analysis.get("critical_failures", 0) > 0:
         sentences.append(
             f"The activity includes {group.failure_analysis['critical_failures']} critical authentication failures "
             f"requiring immediate attention."
@@ -682,7 +768,9 @@ def generate_fallback_alert_description(group: "UserActivityGroup") -> str:
 
     # Sentence 3: Recommendation (optional, only if high risk)
     if group.risk_score >= 7:
-        sentences.append("Immediate investigation is recommended to verify account security.")
+        sentences.append(
+            "Immediate investigation is recommended to verify account security."
+        )
 
     return " ".join(sentences[:3])  # Return max 3 sentences
 
@@ -800,7 +888,7 @@ def calculate_intelligent_time_gap(events: List[EventDetails]) -> Tuple[int, Dic
             "method": "median_fallback",
             "reason": "all_outliers",
             "median": q2,
-            "total_gaps": len(time_gaps)
+            "total_gaps": len(time_gaps),
         }
     else:
         # Use 75th percentile of normal gaps as threshold
@@ -816,19 +904,19 @@ def calculate_intelligent_time_gap(events: List[EventDetails]) -> Tuple[int, Dic
             "std_dev": std_dev,
             "normal_gaps_count": len(normal_gaps),
             "outlier_count": len(time_gaps) - len(normal_gaps),
-            "total_gaps": len(time_gaps)
+            "total_gaps": len(time_gaps),
         }
 
     # Apply safety bounds: 30 seconds to 30 minutes
     threshold = max(30, min(1800, threshold))
-    
+
     metadata["final_threshold"] = threshold
 
     return int(threshold), metadata
 
 
 def cluster_user_events_intelligent(
-    events: List[EventDetails]
+    events: List[EventDetails],
 ) -> Tuple[List[EventCluster], Dict]:
     """
     Cluster events using intelligent time gap detection
@@ -882,17 +970,17 @@ def create_cluster(events: List[EventDetails], cluster_idx: int) -> EventCluster
             times.append(datetime.fromisoformat(e.timestamp.replace("Z", "+00:00")))
         except:
             continue
-    
+
     if not times:
         # Fallback to current time
         times = [datetime.now()]
-    
+
     start_time = min(times)
     end_time = max(times)
     duration = int((end_time - start_time).total_seconds())
 
     unique_apps = len(set(e.app_id for e in events if e.app_id != "Unknown"))
-    
+
     unique_locs = set()
     for e in events:
         if e.location_city and e.location_city != "Unknown":
@@ -934,7 +1022,7 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
             "failure_reasons": [],
             "critical_failures": 0,
             "failed_event_timeline": [],
-            "failure_categories": {}
+            "failure_categories": {},
         }
 
     # Group failures by exact reason (from ResultDescription)
@@ -953,23 +1041,18 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
         "password",
         "locked",
         "disabled",
-        "expired"
+        "expired",
     ]
-    
-    warning_keywords = [
-        "keep me signed in",
-        "interrupt",
-        "session",
-        "timeout"
-    ]
+
+    warning_keywords = ["keep me signed in", "interrupt", "session", "timeout"]
 
     critical_count = 0
     warning_count = 0
-    
+
     failure_reasons_list = []
     for reason, fail_list in failure_groups.items():
         reason_lower = reason.lower()
-        
+
         # Determine severity
         if any(keyword in reason_lower for keyword in critical_keywords):
             severity = "CRITICAL"
@@ -979,13 +1062,15 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
             warning_count += len(fail_list)
         else:
             severity = "INFO"
-        
-        failure_reasons_list.append({
-            "reason": reason,
-            "count": len(fail_list),
-            "severity": severity,
-            "result_codes": list(set(f.result_type for f in fail_list))
-        })
+
+        failure_reasons_list.append(
+            {
+                "reason": reason,
+                "count": len(fail_list),
+                "severity": severity,
+                "result_codes": list(set(f.result_type for f in fail_list)),
+            }
+        )
 
     # Sort by count descending
     failure_reasons_list.sort(key=lambda x: x["count"], reverse=True)
@@ -993,15 +1078,17 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
     # Create detailed timeline
     failure_timeline = []
     for f in sorted(failures, key=lambda e: e.timestamp):
-        failure_timeline.append({
-            "timestamp": f.timestamp,
-            "app": f.app_display_name,
-            "reason": f.failure_reason or f.result_description,
-            "result_code": f.result_type,
-            "location": f"{f.location_city or 'Unknown'}, {f.location_country}",
-            "ip_address": f.ip_address,
-            "auth_method": f.authentication_method
-        })
+        failure_timeline.append(
+            {
+                "timestamp": f.timestamp,
+                "app": f.app_display_name,
+                "reason": f.failure_reason or f.result_description,
+                "result_code": f.result_type,
+                "location": f"{f.location_city or 'Unknown'}, {f.location_country}",
+                "ip_address": f.ip_address,
+                "auth_method": f.authentication_method,
+            }
+        )
 
     success_rate = ((len(events) - len(failures)) / len(events) * 100) if events else 0
 
@@ -1011,29 +1098,32 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
         "session_failures": 0,
         "access_denied": 0,
         "user_errors": 0,
-        "other": 0
+        "other": 0,
     }
-    
+
     for f in failures:
         reason_lower = (f.failure_reason or "").lower()
         categorized = False
-        
-        if any(kw in reason_lower for kw in ["authentication", "password", "credential", "mfa"]):
+
+        if any(
+            kw in reason_lower
+            for kw in ["authentication", "password", "credential", "mfa"]
+        ):
             failure_categories["authentication_failures"] += 1
             categorized = True
-        
+
         if any(kw in reason_lower for kw in ["session", "expired", "timeout"]):
             failure_categories["session_failures"] += 1
             categorized = True
-        
+
         if any(kw in reason_lower for kw in ["denied", "unauthorized", "permission"]):
             failure_categories["access_denied"] += 1
             categorized = True
-        
+
         if any(kw in reason_lower for kw in ["not exist", "not found", "invalid"]):
             failure_categories["user_errors"] += 1
             categorized = True
-        
+
         if not categorized:
             failure_categories["other"] += 1
 
@@ -1044,13 +1134,14 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
         "critical_failures": critical_count,
         "warning_failures": warning_count,
         "failed_event_timeline": failure_timeline[:10],  # Last 10 failures
-        "failure_categories": failure_categories
+        "failure_categories": failure_categories,
     }
 
 
 # ============================================================================
 # RISK SCORING - UPDATED VERSION
 # ============================================================================
+
 
 def calculate_user_risk_score(
     upn: str, events: List[EventDetails], clusters: List[EventCluster]
@@ -1084,7 +1175,7 @@ def calculate_user_risk_score(
         risk_factors.append(
             f"Critical authentication failures: {failure_info['critical_failures']}"
         )
-    
+
     # Specific failure categories
     if failure_info.get("failure_categories", {}).get("access_denied", 0) > 0:
         risk_score += 2
@@ -1094,8 +1185,11 @@ def calculate_user_risk_score(
 
     # Factor 3: Geographic anomalies
     unique_locations = len(
-        set(f"{e.location_city},{e.location_country}" for e in events 
-            if e.location_city and e.location_city != "Unknown")
+        set(
+            f"{e.location_city},{e.location_country}"
+            for e in events
+            if e.location_city and e.location_city != "Unknown"
+        )
     )
     if unique_locations > 2:
         risk_score += 2
@@ -1159,6 +1253,7 @@ def calculate_user_risk_score(
 
     return risk_score, risk_factors
 
+
 # ============================================================================
 # ACTIVITY GROUP CREATION
 # ============================================================================
@@ -1166,61 +1261,74 @@ def calculate_user_risk_score(
 
 def generate_alert_title(group: UserActivityGroup) -> str:
     """Generate a Sentinel-style alert title based on risk factors"""
-    
+
     user_name = group.user_display_name
-    risk_level = "HIGH" if group.risk_score >= 7 else "MEDIUM" if group.risk_score >= 5 else "LOW"
-    
+    risk_level = (
+        "HIGH"
+        if group.risk_score >= 7
+        else "MEDIUM" if group.risk_score >= 5 else "LOW"
+    )
+
     # Determine primary threat type
     threat_types = []
-    
+
     # Check for authentication failures
     if group.failure_analysis.get("critical_failures", 0) > 0:
         threat_types.append("Critical Authentication Failures")
     elif group.failure_analysis.get("total_failures", 0) > 3:
         threat_types.append("Multiple Failed Sign-ins")
-    
+
     # Check for access denied
     if group.failure_analysis.get("failure_categories", {}).get("access_denied", 0) > 0:
         threat_types.append("Unauthorized Access Attempts")
-    
+
     # Check for geographic anomalies
     if group.unique_locations > 2:
         threat_types.append("Geographically Distributed Access")
-    
+
     # Check for rapid activity
-    rapid_clusters = sum(1 for c in group.clusters[1:] if isinstance(c, dict) and c.get('event_count', 0) > 5 and c.get('duration_seconds', 999) < 300)
+    rapid_clusters = sum(
+        1
+        for c in group.clusters[1:]
+        if isinstance(c, dict)
+        and c.get("event_count", 0) > 5
+        and c.get("duration_seconds", 999) < 300
+    )
     if rapid_clusters > 0:
         threat_types.append("Suspicious Rapid Activity")
-    
+
     # Check for multiple applications
     if group.unique_apps > 5:
         threat_types.append("Excessive Application Access")
-    
+
     # Check for guest user
     if "guest" in group.user_type.lower():
         threat_types.append("Cross-Tenant Guest Activity")
-    
+
     # Check for single-factor auth predominance
     auth_summary = group.authentication_summary
-    if auth_summary.get("total_single_factor", 0) > auth_summary.get("total_mfa", 0) * 2:
+    if (
+        auth_summary.get("total_single_factor", 0)
+        > auth_summary.get("total_mfa", 0) * 2
+    ):
         threat_types.append("Weak Authentication Methods")
-    
+
     # Build title
     if not threat_types:
         threat_types.append("Abnormal User Behavior")
-    
+
     # Create a concise title (max 2 threat types)
     primary_threats = " & ".join(threat_types[:2])
-    
+
     # Add count indicators
     failure_count = group.failure_analysis.get("total_failures", 0)
     event_count = group.total_events
-    
+
     if failure_count > 0:
         title = f"🚨 [{risk_level} RISK] {primary_threats} - {user_name} ({failure_count} failures/{event_count} events)"
     else:
         title = f"⚠️ [{risk_level} RISK] {primary_threats} - {user_name} ({event_count} events)"
-    
+
     return title
 
 

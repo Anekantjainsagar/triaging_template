@@ -1,0 +1,34 @@
+[2025-11-10 15:26:41] [HEADER] ================================================================================
+[2025-11-10 15:26:41] [HEADER] 🚀 AZURE SENTINEL LOG ANALYSIS WORKFLOW
+[2025-11-10 15:26:41] [HEADER] ================================================================================
+[2025-11-10 15:26:41] [INFO] Configuration: 2025-11-07 to 2025-11-07, 6:00 - 8:00, 60min intervals
+[2025-11-10 15:26:41] [HEADER] 
+================================================================================
+[2025-11-10 15:26:41] [HEADER] STEP 1: FETCHING DATA FROM AZURE SENTINEL
+[2025-11-10 15:26:41] [HEADER] ================================================================================
+[2025-11-10 15:26:46] [SUCCESS] ✅ Data fetching complete. Processed 2 intervals
+[2025-11-10 15:26:46] [HEADER] 
+================================================================================
+[2025-11-10 15:26:46] [HEADER] STEP 2: CLEANING USER DATA FILES
+[2025-11-10 15:26:46] [HEADER] ================================================================================
+[2025-11-10 15:26:46] [INFO] ⏭️  Skipping (already cleaned): sentinel_logs1\sentinel_logs_2025-11-07 06-00-07-00\cleaned_sentinel_user_data_20251107_0600_0700.json
+[2025-11-10 15:26:46] [INFO] ⏭️  Skipping (already cleaned): sentinel_logs1\sentinel_logs_2025-11-07 07-00-08-00\cleaned_sentinel_user_data_20251107_0700_0800.json
+[2025-11-10 15:26:46] [SUCCESS] 
+✅ Cleaning complete. Processed 2 files
+[2025-11-10 15:26:46] [HEADER] 
+================================================================================
+[2025-11-10 15:26:46] [HEADER] STEP 3: RUNNING CORRELATION ANALYSIS
+[2025-11-10 15:26:46] [HEADER] ================================================================================
+[2025-11-10 15:26:46] [INFO] 📊 Analyzing: sentinel_logs1\sentinel_logs_2025-11-07 06-00-07-00\cleaned_sentinel_user_data_20251107_0600_0700.json
+[2025-11-10 15:29:43] [SUCCESS] ✅ Analysis complete: correlation_analysis_sentinel_user_data_20251107_0600_0700.md
+[2025-11-10 15:29:43] [INFO] 📊 Analyzing: sentinel_logs1\sentinel_logs_2025-11-07 07-00-08-00\cleaned_sentinel_user_data_20251107_0700_0800.json
+[2025-11-10 15:32:14] [SUCCESS] ✅ Analysis complete: correlation_analysis_sentinel_user_data_20251107_0700_0800.md
+[2025-11-10 15:32:14] [HEADER] 
+================================================================================
+[2025-11-10 15:32:14] [HEADER] 🎉 WORKFLOW COMPLETED SUCCESSFULLY
+[2025-11-10 15:32:14] [HEADER] ================================================================================
+[2025-11-10 15:32:14] [INFO] 
+📊 SUMMARY:
+[2025-11-10 15:32:14] [INFO]   • Intervals Processed: 2
+[2025-11-10 15:32:14] [INFO]   • Files Cleaned: 2
+[2025-11-10 15:32:14] [INFO]   • Correlations Analyzed: 2
