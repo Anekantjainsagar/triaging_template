@@ -40,7 +40,6 @@ else:
     exit(1)
 
 
-
 def generate_time_intervals(
     start_hour, end_hour, interval_minutes=20, start_date=None, end_date=None
 ):
@@ -91,19 +90,6 @@ def generate_time_intervals(
         current_time = end_time
 
     return intervals
-
-
-# Usage: Pass start hour, end hour, interval minutes, start date, and end date
-time_intervals = generate_time_intervals(
-    start_hour=5,
-    end_hour=10,
-    interval_minutes=60,
-    start_date=datetime(2025, 11, 7).date(),  # or None for today
-    end_date=datetime(2025, 11, 7).date(),  # or None for today
-)
-
-for start, end, label in time_intervals:
-    print(label)
 
 
 # Define table categories
@@ -230,77 +216,163 @@ def query_table_data(table_name, start_time, end_time):
         return []
 
 
-# Create main sentinel_logs folder
-main_folder = "sentinel_logs1"
-os.makedirs(main_folder, exist_ok=True)
-print(f"\n📁 Created main folder: {main_folder}")
+def fetch_sentinel_data(
+    start_date,
+    end_date,
+    start_hour,
+    end_hour,
+    interval_minutes=60,
+    base_folder="sentinel_logs1",
+    skip_if_exists=False,
+):
+    """
+    Fetch Sentinel data for specified time range
 
-# Get all tables once
-tables = get_all_tables()
-print("Available tables:", tables)
+    Args:
+        start_date: datetime.date object
+        end_date: datetime.date object
+        start_hour: Starting hour (0-23)
+        end_hour: Ending hour (0-23)
+        interval_minutes: Minutes per interval
+        base_folder: Base output folder
+        skip_if_exists: Skip fetching if folder already exists
 
-# Process each 20-minute interval
-for start_time, end_time, interval_label in time_intervals:
-    print(f"\n{'='*60}")
-    print(f"Processing interval: {interval_label} AM")
-    print(f"Time range: {start_time} to {end_time} UTC")
-    print(f"{'='*60}")
+    Returns:
+        Dict mapping interval folders to their output files
+    """
+    from datetime import datetime, timedelta
 
-    # Create folder for this interval under sentinel_logs
-    folder_name = os.path.join(
-        main_folder, f"sentinel_logs_{interval_label.replace(':', '-')}"
-    )
-    os.makedirs(folder_name, exist_ok=True)
-    print(f"\n📁 Created folder: {folder_name}")
+    def generate_time_intervals(
+        start_hour, end_hour, interval_minutes, start_date, end_date
+    ):
+        """Generate time intervals"""
+        intervals = []
+        start_datetime = datetime.combine(
+            start_date, datetime.min.time().replace(hour=start_hour)
+        )
+        end_datetime = datetime.combine(
+            end_date, datetime.min.time().replace(hour=end_hour)
+        )
 
-    # Query data from all tables and separate by category
-    category_data = {
-        "Platform_Operations": {},
-        "Endpoint_Security": {},
-        "User_Data": {},
-    }
-    total_records = 0
+        current_time = start_datetime
 
-    print("\nQuerying tables by category...")
+        while current_time < end_datetime:
+            start_time = current_time
+            end_time = current_time + timedelta(minutes=interval_minutes)
 
-    for category, table_list in TABLE_CATEGORIES.items():
-        print(f"\n  === {category} ===")
-        category_records = 0
+            if end_time > end_datetime:
+                end_time = end_datetime
 
-        for table in table_list:
-            if table in tables:
-                print(f"    Querying {table}...", end=" ")
-                records = query_table_data(table, start_time, end_time)
-                category_data[category][table] = records
-                category_records += len(records)
-                total_records += len(records)
-                print(f"✓ {len(records)} records")
-            else:
-                print(f"    ⚠ Table {table} not found in workspace")
-
-        print(f"    Total records in {category}: {category_records}")
-
-    # Save to separate JSON files in the interval folder
-    timestamp = start_time.strftime("%Y%m%d_%H%M")
-    for category, data in category_data.items():
-        if data:  # Only create file if there's data
-            output_filename = os.path.join(
-                folder_name,
-                f"sentinel_{category.lower()}_{timestamp}_{end_time.strftime('%H%M')}.json",
+            label = (
+                f"{start_time.strftime('%Y-%m-%d %H:%M')}-{end_time.strftime('%H:%M')}"
             )
+            intervals.append((start_time, end_time, label))
+            current_time = end_time
 
-            with open(output_filename, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, default=str)
+        return intervals
 
-            print(f"\n  ✓ Successfully saved {category} data to {output_filename}")
-            print(f"    File size: {os.path.getsize(output_filename) / 1024:.2f} KB")
+    # Generate intervals
+    time_intervals = generate_time_intervals(
+        start_hour, end_hour, interval_minutes, start_date, end_date
+    )
 
-    print(f"\n  🎯 Summary for {interval_label}: {total_records} total records")
+    # Create main folder
+    os.makedirs(base_folder, exist_ok=True)
+    print(f"\n📁 Using base folder: {base_folder}")
 
-print("\n" + "=" * 60)
-print("✅ All intervals processed successfully!")
-print("=" * 60)
-print("\nFolders created:")
-for _, _, interval_label in time_intervals:
-    folder_name = f"sentinel_logs_{interval_label.replace(':', '-')}"
-    print(f"  - {folder_name}/")
+    # Get all tables once
+    tables = get_all_tables()
+
+    # Track output paths
+    output_paths = {}
+
+    # Process each interval
+    for start_time, end_time, interval_label in time_intervals:
+        print(f"\n{'='*60}")
+        print(f"Processing interval: {interval_label}")
+        print(f"Time range: {start_time} to {end_time} UTC")
+        print(f"{'='*60}")
+
+        # Create folder for this interval
+        folder_name = os.path.join(
+            base_folder, f"sentinel_logs_{interval_label.replace(':', '-')}"
+        )
+
+        # Skip if exists and skip flag is set
+        if skip_if_exists and os.path.exists(folder_name):
+            print(f"⏭️  Skipping (folder exists): {folder_name}")
+
+            # Check for existing files
+            existing_files = {}
+            for category in TABLE_CATEGORIES.keys():
+                timestamp = start_time.strftime("%Y%m%d_%H%M")
+                filename = f"sentinel_{category.lower()}_{timestamp}_{end_time.strftime('%H%M')}.json"
+                filepath = os.path.join(folder_name, filename)
+                if os.path.exists(filepath):
+                    existing_files[category.lower().replace("_", "")] = filepath
+
+            if existing_files:
+                output_paths[folder_name] = existing_files
+            continue
+
+        os.makedirs(folder_name, exist_ok=True)
+        print(f"📁 Created folder: {folder_name}")
+
+        # Query data from all tables
+        category_data = {
+            "Platform_Operations": {},
+            "Endpoint_Security": {},
+            "User_Data": {},
+        }
+        total_records = 0
+
+        print("\nQuerying tables by category...")
+
+        for category, table_list in TABLE_CATEGORIES.items():
+            print(f"\n  === {category} ===")
+            category_records = 0
+
+            for table in table_list:
+                if table in tables:
+                    print(f"    Querying {table}...", end=" ")
+                    records = query_table_data(table, start_time, end_time)
+                    category_data[category][table] = records
+                    category_records += len(records)
+                    total_records += len(records)
+                    print(f"✓ {len(records)} records")
+                else:
+                    print(f"    ⚠ Table {table} not found")
+
+            print(f"    Total records in {category}: {category_records}")
+
+        # Save to separate JSON files
+        timestamp = start_time.strftime("%Y%m%d_%H%M")
+        interval_files = {}
+
+        for category, data in category_data.items():
+            if data:
+                output_filename = os.path.join(
+                    folder_name,
+                    f"sentinel_{category.lower()}_{timestamp}_{end_time.strftime('%H%M')}.json",
+                )
+
+                with open(output_filename, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, default=str)
+
+                print(f"\n  ✓ Saved {category} to {output_filename}")
+                print(f"    Size: {os.path.getsize(output_filename) / 1024:.2f} KB")
+
+                # Track user data file specifically
+                if category == "User_Data":
+                    interval_files["user_data"] = output_filename
+
+                interval_files[category.lower().replace("_", "")] = output_filename
+
+        output_paths[folder_name] = interval_files
+        print(f"\n  🎯 Summary: {total_records} total records")
+
+    print("\n" + "=" * 60)
+    print("✅ Data fetching complete!")
+    print("=" * 60)
+
+    return output_paths

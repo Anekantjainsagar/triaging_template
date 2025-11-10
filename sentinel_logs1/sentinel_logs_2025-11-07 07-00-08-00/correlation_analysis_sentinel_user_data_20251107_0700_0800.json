@@ -1,0 +1,2367 @@
+{
+  "report_metadata": {
+    "generated_at": "2025-11-10T08:30:01.666327",
+    "report_type": "Advanced Security Correlation Analysis v5.0 - Fixed Edition",
+    "total_users": 20,
+    "total_events": 48,
+    "improvements": [
+      "Intelligent time gap detection using outlier analysis",
+      "Proper ResultDescription extraction for failures",
+      "Enhanced Unknown data handling",
+      "Frequent activity grouping (not hardcoded thresholds)"
+    ]
+  },
+  "summary": {
+    "high_risk_count": 0,
+    "medium_risk_count": 1,
+    "low_risk_count": 19
+  },
+  "high_priority_events": [],
+  "medium_priority_events": [
+    {
+      "user_principal_name": "chandrakant.v@yashtechnologies841.onmicrosoft.com",
+      "user_id": "02c54d7e-9db4-4ee3-836c-7ba33f274621",
+      "user_display_name": "Chandrakant Vishwakarma",
+      "user_type": "Member",
+      "total_events": 12,
+      "total_clusters": 5,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 5.658272999999999,
+            "q2": 18.364215,
+            "q3": 43.221439000000004,
+            "iqr": 37.563166,
+            "mean": 72.58037472727273,
+            "std_dev": 163.795743250287,
+            "normal_gaps_count": 10,
+            "outlier_count": 1,
+            "total_gaps": 11,
+            "final_threshold": 33.22356225
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:08:52.143822+00:00",
+          "end_time": "2025-11-07T07:08:52.143822+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T07:09:27.239412+00:00",
+          "end_time": "2025-11-07T07:09:27.239412+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_002",
+          "start_time": "2025-11-07T07:19:14.853490+00:00",
+          "end_time": "2025-11-07T07:19:51.604309+00:00",
+          "duration_seconds": 36,
+          "event_count": 6,
+          "unique_apps": 2,
+          "has_failures": true,
+          "failure_count": 1
+        },
+        {
+          "cluster_id": "CLUSTER_003",
+          "start_time": "2025-11-07T07:20:43.013055+00:00",
+          "end_time": "2025-11-07T07:21:10.620534+00:00",
+          "duration_seconds": 27,
+          "event_count": 2,
+          "unique_apps": 2,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_004",
+          "start_time": "2025-11-07T07:22:01.967822+00:00",
+          "end_time": "2025-11-07T07:22:10.527944+00:00",
+          "duration_seconds": 8,
+          "event_count": 2,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Navi Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.143.131.254",
+          "timestamp": "2025-11-07T07:08:52.1438223Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure Portal",
+          "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+          "resource": "Azure Resource Manager",
+          "access_count": 1
+        },
+        {
+          "app_name": "Azure Sponsorships",
+          "app_id": "dc995b03-9027-4d58-a1f0-5217b056a724",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        },
+        {
+          "app_name": "Microsoft 365 Security and Compliance Center",
+          "app_id": "80ccca67-54bd-44ab-8625-4b79c4dc7775",
+          "resource": "Windows Azure Active Directory",
+          "access_count": 3
+        },
+        {
+          "app_name": "Office365 Shell WCSS-Client",
+          "app_id": "89bee1f7-5e6e-4d8a-9f3d-ecd601259da7",
+          "resource": "Office365 Shell WCSS-Server",
+          "access_count": 6
+        },
+        {
+          "app_name": "Microsoft Azure Purview Studio",
+          "app_id": "632d803a-b0c2-49b4-a944-e13c384c04a8",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 5,
+      "authentication_summary": {
+        "methods": [
+          "Password",
+          "Single Sign-On"
+        ],
+        "total_mfa": 12,
+        "total_single_factor": 0,
+        "failed_attempts": 1
+      },
+      "failure_analysis": {
+        "total_failures": 1,
+        "success_rate": 91.67,
+        "failure_reasons": [
+          {
+            "reason": "Strong Authentication is required.",
+            "count": 1,
+            "severity": "INFO",
+            "result_codes": [
+              "50074"
+            ]
+          }
+        ],
+        "critical_failures": 0,
+        "warning_failures": 0,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T07:19:14.8534901Z",
+            "app": "Microsoft 365 Security and Compliance Center",
+            "reason": "Strong Authentication is required.",
+            "result_code": "50074",
+            "location": "Navi Mumbai, IN",
+            "ip_address": "14.143.131.254",
+            "auth_method": "Password"
+          }
+        ],
+        "failure_categories": {
+          "authentication_failures": 1,
+          "session_failures": 0,
+          "access_denied": 0,
+          "user_errors": 0,
+          "other": 0
+        }
+      },
+      "behavioral_anomalies": [
+        "Multiple distinct activity sessions: 5 clusters"
+      ],
+      "risk_score": 5,
+      "risk_factors": [
+        "Multiple activity clusters: 5",
+        "Rapid event cluster: 6 events in 36s"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:08:52.1438223Z",
+          "app": "Azure Portal",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:09:27.2394125Z",
+          "app": "Azure Sponsorships",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:19:14.8534901Z",
+          "app": "Microsoft 365 Security and Compliance Center",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u274c Failed: Strong Authentication is required.",
+          "auth_method": "Password"
+        },
+        {
+          "timestamp": "2025-11-07T07:19:17.9610758Z",
+          "app": "Microsoft 365 Security and Compliance Center",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Password"
+        },
+        {
+          "timestamp": "2025-11-07T07:19:36.3252904Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:19:40.2877634Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:19:47.176425Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:19:51.6043098Z",
+          "app": "Microsoft 365 Security and Compliance Center",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Password"
+        },
+        {
+          "timestamp": "2025-11-07T07:20:43.013055Z",
+          "app": "Microsoft Azure Purview Studio",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:21:10.6205343Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:22:01.9678228Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:22:10.5279442Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\ud83d\udea8 [MEDIUM RISK] Suspicious Rapid Activity - Chandrakant Vishwakarma (1 failures/12 events)",
+      "alert_summary": "Success rate: 91.67% | 5 applications | 5 activity sessions"
+    }
+  ],
+  "low_priority_events": [
+    {
+      "user_principal_name": "aarushi.trivedi@yashtechnologies841.onmicrosoft.com",
+      "user_id": "bf6a5922-4e52-450b-aa13-29792fe354e3",
+      "user_display_name": "Aarushi Trivedi",
+      "user_type": "Unknown",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:01:32.834253+00:00",
+          "end_time": "2025-11-07T07:01:32.834253+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": true,
+          "failure_count": 1
+        }
+      ],
+      "locations": [
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.194.129.210",
+          "timestamp": "2025-11-07T07:01:32.8342532Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 1,
+        "total_single_factor": 0,
+        "failed_attempts": 1
+      },
+      "failure_analysis": {
+        "total_failures": 1,
+        "success_rate": 0.0,
+        "failure_reasons": [
+          {
+            "reason": "The session has expired or is invalid due to sign-in frequency checks by conditional access.",
+            "count": 1,
+            "severity": "CRITICAL",
+            "result_codes": [
+              "70044"
+            ]
+          }
+        ],
+        "critical_failures": 1,
+        "warning_failures": 0,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T07:01:32.8342532Z",
+            "app": "Azure DevOps",
+            "reason": "The session has expired or is invalid due to sign-in frequency checks by conditional access.",
+            "result_code": "70044",
+            "location": "Mumbai, IN",
+            "ip_address": "14.194.129.210",
+            "auth_method": "Single Sign-On"
+          }
+        ],
+        "failure_categories": {
+          "authentication_failures": 0,
+          "session_failures": 1,
+          "access_denied": 0,
+          "user_errors": 1,
+          "other": 0
+        }
+      },
+      "behavioral_anomalies": [
+        "Critical authentication failures: 1"
+      ],
+      "risk_score": 4,
+      "risk_factors": [
+        "Critical authentication failures: 1"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:01:32.8342532Z",
+          "app": "Azure DevOps",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u274c Failed: The session has expired or is invalid due to sign-in frequency checks by conditional access.",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\ud83d\udea8 [LOW RISK] Critical Authentication Failures - Aarushi Trivedi (1 failures/1 events)",
+      "alert_summary": "Success rate: 0.0%"
+    },
+    {
+      "user_principal_name": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
+      "user_id": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
+      "user_display_name": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:00:03.700532+00:00",
+          "end_time": "2025-11-07T07:00:03.700532+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": true,
+          "failure_count": 1
+        }
+      ],
+      "locations": [],
+      "unique_locations": 0,
+      "applications": [
+        {
+          "app_name": "Azure Portal",
+          "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+          "resource": "Azure Resource Manager",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Mobile app notification"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 1
+      },
+      "failure_analysis": {
+        "total_failures": 1,
+        "success_rate": 0.0,
+        "failure_reasons": [
+          {
+            "reason": "Strong Authentication is required.",
+            "count": 1,
+            "severity": "INFO",
+            "result_codes": [
+              "50074"
+            ]
+          }
+        ],
+        "critical_failures": 0,
+        "warning_failures": 0,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T07:00:03.7005324Z",
+            "app": "Azure Portal",
+            "reason": "Strong Authentication is required.",
+            "result_code": "50074",
+            "location": "Unknown, Unknown",
+            "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+            "auth_method": "Mobile app notification"
+          }
+        ],
+        "failure_categories": {
+          "authentication_failures": 1,
+          "session_failures": 0,
+          "access_denied": 0,
+          "user_errors": 0,
+          "other": 0
+        }
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:00:03.7005324Z",
+          "app": "Azure Portal",
+          "location": "Unknown, Unknown",
+          "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows",
+          "result": "\u274c Failed: Strong Authentication is required.",
+          "auth_method": "Mobile app notification"
+        }
+      ],
+      "alert_title": "\ud83d\udea8 [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - 451fa0fb-e092-49d6-8d49-4f0e63f88458 (1 failures/1 events)",
+      "alert_summary": "Success rate: 0.0%"
+    },
+    {
+      "user_principal_name": "swaraj.sontakke@yash.com",
+      "user_id": "f109c76f-7d0f-489f-80cb-8e62786b7943",
+      "user_display_name": "Swaraj Arvind Sontakke",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:03:08.229988+00:00",
+          "end_time": "2025-11-07T07:03:08.229988+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T07:03:08.2299881Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:03:08.2299881Z",
+          "app": "Azure DevOps",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Edge 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Swaraj Arvind Sontakke (1 events)",
+      "alert_summary": "Normal activity pattern"
+    },
+    {
+      "user_principal_name": "aarushi.trivedi@yash.com",
+      "user_id": "2ecd7e69-314c-4506-bacb-cde486245659",
+      "user_display_name": "Aarushi  Trivedi",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:03:09.793446+00:00",
+          "end_time": "2025-11-07T07:03:09.793446+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.194.129.210",
+          "timestamp": "2025-11-07T07:03:09.793446Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:03:09.793446Z",
+          "app": "Azure DevOps",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Aarushi  Trivedi (1 events)",
+      "alert_summary": "Normal activity pattern"
+    },
+    {
+      "user_principal_name": "abhishek.parihar@aaseya.com",
+      "user_id": "3460d0f2-9c9f-4126-abf2-9803102f7789",
+      "user_display_name": "Abhishek Parihar",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:15:26.256412+00:00",
+          "end_time": "2025-11-07T07:15:26.256412+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Bhilai Charoda",
+          "state": "Chhattisgarh",
+          "country": "IN",
+          "ip_address": "2405:201:3022:a85e:11c6:919:deee:b1a0",
+          "timestamp": "2025-11-07T07:15:26.2564129Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:15:26.2564129Z",
+          "app": "Azure DevOps",
+          "location": "Bhilai Charoda, IN",
+          "ip_address": "2405:201:3022:a85e:11c6:919:deee:b1a0",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Abhishek Parihar (1 events)",
+      "alert_summary": "Normal activity pattern"
+    },
+    {
+      "user_principal_name": "ajinkya.bhagwat@yash.com",
+      "user_id": "3d2143b0-fbe9-44b0-8895-11d69db48801",
+      "user_display_name": "Salunke Ajinkya  Bhagwat",
+      "user_type": "Guest",
+      "total_events": 2,
+      "total_clusters": 2,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 1596.090068,
+            "q2": 1596.090068,
+            "q3": 1596.090068,
+            "iqr": 0.0,
+            "mean": 1596.090068,
+            "std_dev": 0.0,
+            "normal_gaps_count": 1,
+            "outlier_count": 0,
+            "total_gaps": 1,
+            "final_threshold": 1596.090068
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:18:55.545257+00:00",
+          "end_time": "2025-11-07T07:18:55.545257+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T07:45:31.635325+00:00",
+          "end_time": "2025-11-07T07:45:31.635325+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T07:18:55.5452571Z"
+        },
+        {
+          "city": "Chhindwara",
+          "state": "Madhya Pradesh",
+          "country": "IN",
+          "ip_address": "2409:4043:684:808f:ee06:b9c3:51b7:1526",
+          "timestamp": "2025-11-07T07:45:31.6353256Z"
+        }
+      ],
+      "unique_locations": 2,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        },
+        {
+          "app_name": "YASH-SPN-UES-Azure-App",
+          "app_id": "b8d957b6-3709-49a0-b182-1bc63498c116",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 2,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 2,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:18:55.5452571Z",
+          "app": "Azure DevOps",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:45:31.6353256Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "Chhindwara, IN",
+          "ip_address": "2409:4043:684:808f:ee06:b9c3:51b7:1526",
+          "browser": "Chrome Mobile 141.0.0",
+          "os": "Android",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Salunke Ajinkya  Bhagwat (2 events)",
+      "alert_summary": "2 locations"
+    },
+    {
+      "user_principal_name": "chetan.garad@yash.com",
+      "user_id": "79bcf3ce-385b-4b46-b4ab-6356cbac2bb4",
+      "user_display_name": "Chetan Rajendra Garad",
+      "user_type": "Guest",
+      "total_events": 3,
+      "total_clusters": 2,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 26.88008125,
+            "q2": 40.8042235,
+            "q3": 54.728365749999995,
+            "iqr": 27.848284499999995,
+            "mean": 40.8042235,
+            "std_dev": 27.8482845,
+            "normal_gaps_count": 2,
+            "outlier_count": 0,
+            "total_gaps": 2,
+            "final_threshold": 54.728365749999995
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:21:01.611871+00:00",
+          "end_time": "2025-11-07T07:21:01.611871+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T07:22:10.264379+00:00",
+          "end_time": "2025-11-07T07:22:23.220318+00:00",
+          "duration_seconds": 12,
+          "event_count": 2,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Kothrud",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "203.199.133.30",
+          "timestamp": "2025-11-07T07:21:01.6118719Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 3
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 3,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:21:01.6118719Z",
+          "app": "Azure DevOps",
+          "location": "Kothrud, IN",
+          "ip_address": "203.199.133.30",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:22:10.2643799Z",
+          "app": "Azure DevOps",
+          "location": "Kothrud, IN",
+          "ip_address": "203.199.133.30",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:22:23.220318Z",
+          "app": "Azure DevOps",
+          "location": "Kothrud, IN",
+          "ip_address": "203.199.133.30",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Chetan Rajendra Garad (3 events)",
+      "alert_summary": "Normal activity pattern"
+    },
+    {
+      "user_principal_name": "prakhar.kabra@yash.com",
+      "user_id": "aaccc91f-6aec-4765-a755-bca7011a74eb",
+      "user_display_name": "Prakhar  Kabra",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:21:55.623374+00:00",
+          "end_time": "2025-11-07T07:21:55.623374+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.194.129.210",
+          "timestamp": "2025-11-07T07:21:55.6233742Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:21:55.6233742Z",
+          "app": "Azure DevOps",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Prakhar  Kabra (1 events)",
+      "alert_summary": "Normal activity pattern"
+    },
+    {
+      "user_principal_name": "lokesh.sapre@yash.com",
+      "user_id": "dab422c4-b954-4061-8bba-ef6410adf960",
+      "user_display_name": "Lokesh Sapre",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:23:53.807605+00:00",
+          "end_time": "2025-11-07T07:23:53.807605+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T07:23:53.8076053Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "YASH-SPN-UES-Azure-App",
+          "app_id": "b8d957b6-3709-49a0-b182-1bc63498c116",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:23:53.8076053Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Chrome 142.0.0",
+          "os": "MacOs",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Lokesh Sapre (1 events)",
+      "alert_summary": "Normal activity pattern"
+    },
+    {
+      "user_principal_name": "palak.patel@yash.com",
+      "user_id": "71808d19-c9ca-4cf6-ab44-e82a3f903d22",
+      "user_display_name": "Palak  Patel",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:43:56.091037+00:00",
+          "end_time": "2025-11-07T07:43:56.091037+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.194.129.210",
+          "timestamp": "2025-11-07T07:43:56.0910375Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "YASH-SPN-UES-Azure-App",
+          "app_id": "b8d957b6-3709-49a0-b182-1bc63498c116",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 3,
+      "risk_factors": [
+        "Predominantly single-factor authentication",
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:43:56.0910375Z",
+          "app": "YASH-SPN-UES-Azure-App",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Palak  Patel (1 events)",
+      "alert_summary": "Normal activity pattern"
+    },
+    {
+      "user_principal_name": "saikrishna.s@yash.com",
+      "user_id": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
+      "user_display_name": "Saikrishna Siddabathuni",
+      "user_type": "Guest",
+      "total_events": 2,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 0.015631,
+            "q2": 0.015631,
+            "q3": 0.015631,
+            "iqr": 0.0,
+            "mean": 0.015631,
+            "std_dev": 0.0,
+            "normal_gaps_count": 1,
+            "outlier_count": 0,
+            "total_gaps": 1,
+            "final_threshold": 30
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:01:09.891603+00:00",
+          "end_time": "2025-11-07T07:01:09.907234+00:00",
+          "duration_seconds": 0,
+          "event_count": 2,
+          "unique_apps": 1,
+          "has_failures": true,
+          "failure_count": 1
+        }
+      ],
+      "locations": [
+        {
+          "city": "Karwan",
+          "state": "Telangana",
+          "country": "IN",
+          "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+          "timestamp": "2025-11-07T07:01:09.8916038Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure Portal",
+          "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+          "resource": "Azure Resource Manager",
+          "access_count": 2
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Mobile app notification",
+          "Single Sign-On"
+        ],
+        "total_mfa": 2,
+        "total_single_factor": 0,
+        "failed_attempts": 1
+      },
+      "failure_analysis": {
+        "total_failures": 1,
+        "success_rate": 50.0,
+        "failure_reasons": [
+          {
+            "reason": "Strong Authentication is required.",
+            "count": 1,
+            "severity": "INFO",
+            "result_codes": [
+              "50074"
+            ]
+          }
+        ],
+        "critical_failures": 0,
+        "warning_failures": 0,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T07:01:09.8916038Z",
+            "app": "Azure Portal",
+            "reason": "Strong Authentication is required.",
+            "result_code": "50074",
+            "location": "Karwan, IN",
+            "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+            "auth_method": "Single Sign-On"
+          }
+        ],
+        "failure_categories": {
+          "authentication_failures": 1,
+          "session_failures": 0,
+          "access_denied": 0,
+          "user_errors": 0,
+          "other": 0
+        }
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:01:09.8916038Z",
+          "app": "Azure Portal",
+          "location": "Karwan, IN",
+          "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u274c Failed: Strong Authentication is required.",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:01:09.9072342Z",
+          "app": "Azure Portal",
+          "location": "Karwan, IN",
+          "ip_address": "2401:4900:1cb1:3d45:b136:793b:84f2:baf2",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Mobile app notification"
+        }
+      ],
+      "alert_title": "\ud83d\udea8 [LOW RISK] Cross-Tenant Guest Activity - Saikrishna Siddabathuni (1 failures/2 events)",
+      "alert_summary": "Success rate: 50.0%"
+    },
+    {
+      "user_principal_name": "chandrakantvish@yashtechnologies841.onmicrosoft.com",
+      "user_id": "f321dd86-a11e-4638-ac4a-3d7a0cd1f172",
+      "user_display_name": "Chandrakant Vishwakarma",
+      "user_type": "Member",
+      "total_events": 8,
+      "total_clusters": 3,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 7.894043,
+            "q2": 17.748561,
+            "q3": 28.03584,
+            "iqr": 20.141797,
+            "mean": 77.35548585714285,
+            "std_dev": 153.26997618619566,
+            "normal_gaps_count": 6,
+            "outlier_count": 1,
+            "total_gaps": 7,
+            "final_threshold": 30
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:10:08.737690+00:00",
+          "end_time": "2025-11-07T07:10:08.737690+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T07:17:40.612379+00:00",
+          "end_time": "2025-11-07T07:18:16.505497+00:00",
+          "duration_seconds": 35,
+          "event_count": 5,
+          "unique_apps": 3,
+          "has_failures": true,
+          "failure_count": 1
+        },
+        {
+          "cluster_id": "CLUSTER_002",
+          "start_time": "2025-11-07T07:18:52.477530+00:00",
+          "end_time": "2025-11-07T07:19:10.226091+00:00",
+          "duration_seconds": 17,
+          "event_count": 2,
+          "unique_apps": 2,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Navi Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.143.131.254",
+          "timestamp": "2025-11-07T07:10:08.7376906Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure Sponsorships",
+          "app_id": "dc995b03-9027-4d58-a1f0-5217b056a724",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        },
+        {
+          "app_name": "Office365 Shell WCSS-Client",
+          "app_id": "89bee1f7-5e6e-4d8a-9f3d-ecd601259da7",
+          "resource": "Office365 Shell WCSS-Server",
+          "access_count": 3
+        },
+        {
+          "app_name": "Microsoft 365 Security and Compliance Center",
+          "app_id": "80ccca67-54bd-44ab-8625-4b79c4dc7775",
+          "resource": "Windows Azure Active Directory",
+          "access_count": 3
+        },
+        {
+          "app_name": "Microsoft Account Controls V2",
+          "app_id": "7eadcef8-456d-4611-9480-4fff72b8b9e2",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 4,
+      "authentication_summary": {
+        "methods": [
+          "Password",
+          "Single Sign-On"
+        ],
+        "total_mfa": 1,
+        "total_single_factor": 7,
+        "failed_attempts": 1
+      },
+      "failure_analysis": {
+        "total_failures": 1,
+        "success_rate": 87.5,
+        "failure_reasons": [
+          {
+            "reason": "Strong Authentication is required.",
+            "count": 1,
+            "severity": "INFO",
+            "result_codes": [
+              "50074"
+            ]
+          }
+        ],
+        "critical_failures": 0,
+        "warning_failures": 0,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T07:18:16.5054974Z",
+            "app": "Microsoft 365 Security and Compliance Center",
+            "reason": "Strong Authentication is required.",
+            "result_code": "50074",
+            "location": "Navi Mumbai, IN",
+            "ip_address": "14.143.131.254",
+            "auth_method": "Single Sign-On"
+          }
+        ],
+        "failure_categories": {
+          "authentication_failures": 1,
+          "session_failures": 0,
+          "access_denied": 0,
+          "user_errors": 0,
+          "other": 0
+        }
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Predominantly single-factor authentication"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:10:08.7376906Z",
+          "app": "Azure Sponsorships",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Password"
+        },
+        {
+          "timestamp": "2025-11-07T07:17:40.6123791Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:17:47.9883761Z",
+          "app": "Microsoft 365 Security and Compliance Center",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:18:08.0880233Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:18:08.0934084Z",
+          "app": "Microsoft Account Controls V2",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:18:16.5054974Z",
+          "app": "Microsoft 365 Security and Compliance Center",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u274c Failed: Strong Authentication is required.",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:18:52.4775307Z",
+          "app": "Microsoft 365 Security and Compliance Center",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:19:10.2260915Z",
+          "app": "Office365 Shell WCSS-Client",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\ud83d\udea8 [LOW RISK] Weak Authentication Methods - Chandrakant Vishwakarma (1 failures/8 events)",
+      "alert_summary": "Success rate: 87.5% | 4 applications | 3 activity sessions"
+    },
+    {
+      "user_principal_name": "f321dd86-a11e-4638-ac4a-3d7a0cd1f172",
+      "user_id": "f321dd86-a11e-4638-ac4a-3d7a0cd1f172",
+      "user_display_name": "f321dd86-a11e-4638-ac4a-3d7a0cd1f172",
+      "user_type": "Member",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:18:16.918218+00:00",
+          "end_time": "2025-11-07T07:18:16.918218+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": true,
+          "failure_count": 1
+        }
+      ],
+      "locations": [],
+      "unique_locations": 0,
+      "applications": [
+        {
+          "app_name": "Microsoft 365 Security and Compliance Center",
+          "app_id": "80ccca67-54bd-44ab-8625-4b79c4dc7775",
+          "resource": "Windows Azure Active Directory",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 1,
+        "failed_attempts": 1
+      },
+      "failure_analysis": {
+        "total_failures": 1,
+        "success_rate": 0.0,
+        "failure_reasons": [
+          {
+            "reason": "Strong Authentication is required.",
+            "count": 1,
+            "severity": "INFO",
+            "result_codes": [
+              "50074"
+            ]
+          }
+        ],
+        "critical_failures": 0,
+        "warning_failures": 0,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T07:18:16.9182182Z",
+            "app": "Microsoft 365 Security and Compliance Center",
+            "reason": "Strong Authentication is required.",
+            "result_code": "50074",
+            "location": "Unknown, Unknown",
+            "ip_address": "14.143.131.254",
+            "auth_method": "Single Sign-On"
+          }
+        ],
+        "failure_categories": {
+          "authentication_failures": 1,
+          "session_failures": 0,
+          "access_denied": 0,
+          "user_errors": 0,
+          "other": 0
+        }
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Predominantly single-factor authentication"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:18:16.9182182Z",
+          "app": "Microsoft 365 Security and Compliance Center",
+          "location": "Unknown, Unknown",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows",
+          "result": "\u274c Failed: Strong Authentication is required.",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\ud83d\udea8 [LOW RISK] Weak Authentication Methods - f321dd86-a11e-4638-ac4a-3d7a0cd1f172 (1 failures/1 events)",
+      "alert_summary": "Success rate: 0.0%"
+    },
+    {
+      "user_principal_name": "02c54d7e-9db4-4ee3-836c-7ba33f274621",
+      "user_id": "02c54d7e-9db4-4ee3-836c-7ba33f274621",
+      "user_display_name": "02c54d7e-9db4-4ee3-836c-7ba33f274621",
+      "user_type": "Member",
+      "total_events": 2,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 4.198221,
+            "q2": 4.198221,
+            "q3": 4.198221,
+            "iqr": 0.0,
+            "mean": 4.198221,
+            "std_dev": 0.0,
+            "normal_gaps_count": 1,
+            "outlier_count": 0,
+            "total_gaps": 1,
+            "final_threshold": 30
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:18:48.081518+00:00",
+          "end_time": "2025-11-07T07:18:52.279739+00:00",
+          "duration_seconds": 4,
+          "event_count": 2,
+          "unique_apps": 1,
+          "has_failures": true,
+          "failure_count": 2
+        }
+      ],
+      "locations": [],
+      "unique_locations": 0,
+      "applications": [
+        {
+          "app_name": "Microsoft 365 Security and Compliance Center",
+          "app_id": "80ccca67-54bd-44ab-8625-4b79c4dc7775",
+          "resource": "Windows Azure Active Directory",
+          "access_count": 2
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Mobile app notification",
+          "Single Sign-On"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 2,
+        "failed_attempts": 2
+      },
+      "failure_analysis": {
+        "total_failures": 2,
+        "success_rate": 0.0,
+        "failure_reasons": [
+          {
+            "reason": "Strong Authentication is required.",
+            "count": 2,
+            "severity": "INFO",
+            "result_codes": [
+              "50074"
+            ]
+          }
+        ],
+        "critical_failures": 0,
+        "warning_failures": 0,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T07:18:48.0815187Z",
+            "app": "Microsoft 365 Security and Compliance Center",
+            "reason": "Strong Authentication is required.",
+            "result_code": "50074",
+            "location": "Unknown, Unknown",
+            "ip_address": "14.143.131.254",
+            "auth_method": "Single Sign-On"
+          },
+          {
+            "timestamp": "2025-11-07T07:18:52.2797396Z",
+            "app": "Microsoft 365 Security and Compliance Center",
+            "reason": "Strong Authentication is required.",
+            "result_code": "50074",
+            "location": "Unknown, Unknown",
+            "ip_address": "14.143.131.254",
+            "auth_method": "Mobile app notification"
+          }
+        ],
+        "failure_categories": {
+          "authentication_failures": 2,
+          "session_failures": 0,
+          "access_denied": 0,
+          "user_errors": 0,
+          "other": 0
+        }
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Predominantly single-factor authentication"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:18:48.0815187Z",
+          "app": "Microsoft 365 Security and Compliance Center",
+          "location": "Unknown, Unknown",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows",
+          "result": "\u274c Failed: Strong Authentication is required.",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:18:52.2797396Z",
+          "app": "Microsoft 365 Security and Compliance Center",
+          "location": "Unknown, Unknown",
+          "ip_address": "14.143.131.254",
+          "browser": "Chrome 142.0.0",
+          "os": "Windows",
+          "result": "\u274c Failed: Strong Authentication is required.",
+          "auth_method": "Mobile app notification"
+        }
+      ],
+      "alert_title": "\ud83d\udea8 [LOW RISK] Weak Authentication Methods - 02c54d7e-9db4-4ee3-836c-7ba33f274621 (2 failures/2 events)",
+      "alert_summary": "Success rate: 0.0%"
+    },
+    {
+      "user_principal_name": "shivam.pandey@yash.com",
+      "user_id": "db9ea9c1-8262-42aa-8633-7e727d1a4e29",
+      "user_display_name": "Shivam Shekhar Pandey",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:22:03.184718+00:00",
+          "end_time": "2025-11-07T07:22:03.184718+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Navi Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.143.131.254",
+          "timestamp": "2025-11-07T07:22:03.184718Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure Portal",
+          "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+          "resource": "Azure Resource Manager",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 1,
+        "total_single_factor": 0,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:22:03.184718Z",
+          "app": "Azure Portal",
+          "location": "Navi Mumbai, IN",
+          "ip_address": "14.143.131.254",
+          "browser": "Edge 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity - Shivam Shekhar Pandey (1 events)",
+      "alert_summary": "Normal activity pattern"
+    },
+    {
+      "user_principal_name": "prakhar.vyas@yashtechnologies841.onmicrosoft.com",
+      "user_id": "83700f8f-ee89-4c7e-baef-57e3d336d98e",
+      "user_display_name": "Prakhar Vyas",
+      "user_type": "Member",
+      "total_events": 3,
+      "total_clusters": 2,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 250.53500925000003,
+            "q2": 482.7570055,
+            "q3": 714.97900175,
+            "iqr": 464.4439924999999,
+            "mean": 482.7570055,
+            "std_dev": 464.44399250000004,
+            "normal_gaps_count": 2,
+            "outlier_count": 0,
+            "total_gaps": 2,
+            "final_threshold": 714.97900175
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:30:53.927205+00:00",
+          "end_time": "2025-11-07T07:31:12.240218+00:00",
+          "duration_seconds": 18,
+          "event_count": 2,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T07:46:59.441216+00:00",
+          "end_time": "2025-11-07T07:46:59.441216+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "14.194.129.210",
+          "timestamp": "2025-11-07T07:30:53.9272056Z"
+        },
+        {
+          "city": "New Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "125.23.93.22",
+          "timestamp": "2025-11-07T07:46:59.4412167Z"
+        }
+      ],
+      "unique_locations": 2,
+      "applications": [
+        {
+          "app_name": "make.powerapps.com",
+          "app_id": "a8f7a65c-f5ba-4859-b2d6-df772c264e9d",
+          "resource": "PowerApps Service",
+          "access_count": 2
+        },
+        {
+          "app_name": "PowerApps - apps.powerapps.com",
+          "app_id": "3e62f81e-590b-425b-9531-cad6683656cf",
+          "resource": "Microsoft People Cards Service",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 2,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 0,
+        "total_single_factor": 3,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Predominantly single-factor authentication"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:30:53.9272056Z",
+          "app": "make.powerapps.com",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:31:12.2402187Z",
+          "app": "make.powerapps.com",
+          "location": "Mumbai, IN",
+          "ip_address": "14.194.129.210",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:46:59.4412167Z",
+          "app": "PowerApps - apps.powerapps.com",
+          "location": "New Delhi, IN",
+          "ip_address": "125.23.93.22",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Weak Authentication Methods - Prakhar Vyas (3 events)",
+      "alert_summary": "2 locations"
+    },
+    {
+      "user_principal_name": "deshpande.shubham@yash.com",
+      "user_id": "ebb44c9f-eb34-4ab9-8631-f9b71f430b01",
+      "user_display_name": "Shubham Pradip Deshpande",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:43:10.668790+00:00",
+          "end_time": "2025-11-07T07:43:10.668790+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 0,
+          "has_failures": true,
+          "failure_count": 1
+        }
+      ],
+      "locations": [
+        {
+          "city": "Kothrud",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "203.199.133.30",
+          "timestamp": "2025-11-07T07:43:10.6687908Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [],
+      "unique_apps": 0,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 1,
+        "total_single_factor": 0,
+        "failed_attempts": 1
+      },
+      "failure_analysis": {
+        "total_failures": 1,
+        "success_rate": 0.0,
+        "failure_reasons": [
+          {
+            "reason": "Due to a configuration change made by your administrator, or because you moved to a new location, you must enroll in multi-factor authentication to access the tenant.",
+            "count": 1,
+            "severity": "INFO",
+            "result_codes": [
+              "50072"
+            ]
+          }
+        ],
+        "critical_failures": 0,
+        "warning_failures": 0,
+        "failed_event_timeline": [
+          {
+            "timestamp": "2025-11-07T07:43:10.6687908Z",
+            "app": "Unknown",
+            "reason": "Due to a configuration change made by your administrator, or because you moved to a new location, you must enroll in multi-factor authentication to access the tenant.",
+            "result_code": "50072",
+            "location": "Kothrud, IN",
+            "ip_address": "203.199.133.30",
+            "auth_method": "Single Sign-On"
+          }
+        ],
+        "failure_categories": {
+          "authentication_failures": 1,
+          "session_failures": 0,
+          "access_denied": 0,
+          "user_errors": 0,
+          "other": 0
+        }
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:43:10.6687908Z",
+          "app": "Unknown",
+          "location": "Kothrud, IN",
+          "ip_address": "203.199.133.30",
+          "browser": "Chrome 141.0.0",
+          "os": "Windows10",
+          "result": "\u274c Failed: Due to a configuration change made by your administrator, or because you moved to a new location, you must enroll in multi-factor authentication to access the tenant.",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\ud83d\udea8 [LOW RISK] Cross-Tenant Guest Activity - Shubham Pradip Deshpande (1 failures/1 events)",
+      "alert_summary": "Success rate: 0.0%"
+    },
+    {
+      "user_principal_name": "yash.rebbawar@yash.com",
+      "user_id": "8e93542b-9b1e-428c-b0ba-1a8d4df2cb23",
+      "user_display_name": "Yash Suresh Rebbawar",
+      "user_type": "Guest",
+      "total_events": 1,
+      "total_clusters": 1,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "default",
+            "reason": "insufficient_events"
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:46:34.391142+00:00",
+          "end_time": "2025-11-07T07:46:34.391142+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Pune Airport",
+          "state": "Maharashtra",
+          "country": "IN",
+          "ip_address": "223.233.85.112",
+          "timestamp": "2025-11-07T07:46:34.391142Z"
+        }
+      ],
+      "unique_locations": 1,
+      "applications": [
+        {
+          "app_name": "Azure Portal",
+          "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+          "resource": "Azure Resource Manager",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 1,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 1,
+        "total_single_factor": 0,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:46:34.391142Z",
+          "app": "Azure Portal",
+          "location": "Pune Airport, IN",
+          "ip_address": "223.233.85.112",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity - Yash Suresh Rebbawar (1 events)",
+      "alert_summary": "Normal activity pattern"
+    },
+    {
+      "user_principal_name": "koushik.kv@yash.com",
+      "user_id": "3c5d2d2b-9342-4729-a4ff-d628a3dafe8a",
+      "user_display_name": "Koushik  K V",
+      "user_type": "Guest",
+      "total_events": 4,
+      "total_clusters": 2,
+      "clusters": [
+        {
+          "clustering_metadata": {
+            "method": "iqr_outlier_detection",
+            "q1": 158.344324,
+            "q2": 308.538597,
+            "q3": 357.0871595,
+            "iqr": 198.74283549999998,
+            "mean": 240.77479000000002,
+            "std_dev": 169.19941847207,
+            "normal_gaps_count": 3,
+            "outlier_count": 0,
+            "total_gaps": 3,
+            "final_threshold": 357.0871595
+          }
+        },
+        {
+          "cluster_id": "CLUSTER_000",
+          "start_time": "2025-11-07T07:47:52.916028+00:00",
+          "end_time": "2025-11-07T07:47:52.916028+00:00",
+          "duration_seconds": 0,
+          "event_count": 1,
+          "unique_apps": 1,
+          "has_failures": false,
+          "failure_count": 0
+        },
+        {
+          "cluster_id": "CLUSTER_001",
+          "start_time": "2025-11-07T07:54:38.551750+00:00",
+          "end_time": "2025-11-07T07:59:55.240398+00:00",
+          "duration_seconds": 316,
+          "event_count": 3,
+          "unique_apps": 3,
+          "has_failures": false,
+          "failure_count": 0
+        }
+      ],
+      "locations": [
+        {
+          "city": "Karwan",
+          "state": "Telangana",
+          "country": "IN",
+          "ip_address": "2401:4900:4e25:7f6c:40bf:c910:a473:f70a",
+          "timestamp": "2025-11-07T07:47:52.9160289Z"
+        },
+        {
+          "city": "Delhi",
+          "state": "Delhi",
+          "country": "IN",
+          "ip_address": "203.197.238.210",
+          "timestamp": "2025-11-07T07:54:38.5517503Z"
+        }
+      ],
+      "unique_locations": 2,
+      "applications": [
+        {
+          "app_name": "Azure Portal",
+          "app_id": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+          "resource": "Azure Resource Manager",
+          "access_count": 2
+        },
+        {
+          "app_name": "Azure DevOps",
+          "app_id": "499b84ac-1321-427f-aa17-267ca6975798",
+          "resource": "Azure DevOps",
+          "access_count": 1
+        },
+        {
+          "app_name": "Ams-Single-Tenant",
+          "app_id": "0c4f8ab6-fdc0-4a50-826d-e1f69317a988",
+          "resource": "Microsoft Graph",
+          "access_count": 1
+        }
+      ],
+      "unique_apps": 3,
+      "authentication_summary": {
+        "methods": [
+          "Single Sign-On"
+        ],
+        "total_mfa": 2,
+        "total_single_factor": 2,
+        "failed_attempts": 0
+      },
+      "failure_analysis": {
+        "total_failures": 0,
+        "success_rate": 100.0,
+        "failure_reasons": [],
+        "critical_failures": 0,
+        "failed_event_timeline": [],
+        "failure_categories": {}
+      },
+      "behavioral_anomalies": [],
+      "risk_score": 2,
+      "risk_factors": [
+        "Guest user cross-tenant access"
+      ],
+      "timeline": [
+        {
+          "timestamp": "2025-11-07T07:47:52.9160289Z",
+          "app": "Azure Portal",
+          "location": "Karwan, IN",
+          "ip_address": "2401:4900:4e25:7f6c:40bf:c910:a473:f70a",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:54:38.5517503Z",
+          "app": "Azure Portal",
+          "location": "Delhi, IN",
+          "ip_address": "203.197.238.210",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:54:46.7018014Z",
+          "app": "Azure DevOps",
+          "location": "Delhi, IN",
+          "ip_address": "203.197.238.210",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        },
+        {
+          "timestamp": "2025-11-07T07:59:55.2403981Z",
+          "app": "Ams-Single-Tenant",
+          "location": "Delhi, IN",
+          "ip_address": "203.197.238.210",
+          "browser": "Edge 142.0.0",
+          "os": "Windows10",
+          "result": "\u2705 Success",
+          "auth_method": "Single Sign-On"
+        }
+      ],
+      "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity - Koushik  K V (4 events)",
+      "alert_summary": "2 locations"
+    }
+  ]
+}

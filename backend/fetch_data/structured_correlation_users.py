@@ -184,7 +184,7 @@ def extract_complete_event_data(signin_log: dict) -> EventDetails:
     """Extract all available data from a sign-in log entry - FIXED"""
 
     auth_method = extract_authentication_method(signin_log)
-    
+
     location_details = signin_log.get("LocationDetails", {})
     device_detail = signin_log.get("DeviceDetail", {})
 
@@ -194,7 +194,7 @@ def extract_complete_event_data(signin_log: dict) -> EventDetails:
     city = safe_get(location_details, "city", None)
     state = safe_get(location_details, "state", None)
     country = safe_get(location_details, "countryOrRegion", "Unknown")
-    
+
     # Extract device info
     os_info = safe_get(device_detail, "operatingSystem", None)
     browser_info = safe_get(device_detail, "browser", None)
@@ -228,6 +228,71 @@ def extract_complete_event_data(signin_log: dict) -> EventDetails:
 # ============================================================================
 # INTELLIGENT TIME GAP ANALYSIS - USING OUTLIER DETECTION
 # ============================================================================
+
+
+def process_cleaned_user_data(json_path: str, output_folder: str = None):
+    """
+    Process a single cleaned user data file and generate reports
+
+    Args:
+        json_path: Path to cleaned JSON file
+        output_folder: Folder to save reports (defaults to same folder as input)
+
+    Returns:
+        Tuple of (markdown_path, json_path) or (None, None) if failed
+    """
+
+    if not os.path.exists(json_path):
+        print(f"❌ File not found: {json_path}")
+        return None, None
+
+    print(f"📊 Processing: {os.path.basename(json_path)}")
+
+    # Load data
+    log_data = load_json(json_path)
+    if not log_data:
+        return None, None
+
+    signin_count = len(log_data.get("SigninLogs", []))
+    print(f"   ✅ Loaded {signin_count} sign-in events")
+
+    # Group events by user
+    print("   📊 Grouping events by user...")
+    user_events = group_events_by_user(log_data)
+    print(f"   ✅ Found {len(user_events)} unique users")
+
+    # Create activity summaries
+    print("   📊 Creating activity summaries...")
+    user_groups = {}
+    for upn, events in user_events.items():
+        summary = create_user_activity_summary(upn, events)
+        if summary:
+            user_groups[upn] = summary
+    print(f"   ✅ Analyzed {len(user_groups)} users")
+
+    if not user_groups:
+        print("   ⚠️  No user groups created")
+        return None, None
+
+    # Determine output folder
+    if output_folder is None:
+        output_folder = os.path.dirname(json_path)
+
+    # Generate output filenames
+    base_name = os.path.basename(json_path).replace(".json", "").replace("cleaned_", "")
+    md_output = os.path.join(output_folder, f"correlation_analysis_{base_name}.md")
+    json_output = os.path.join(output_folder, f"correlation_analysis_{base_name}.json")
+
+    # Generate reports
+    print("   📝 Generating reports...")
+    try:
+        generate_markdown_report(user_groups, md_output)
+        generate_json_report(user_groups, json_output)
+        print(f"   ✅ Reports generated successfully")
+        return md_output, json_output
+    except Exception as e:
+        print(f"   ❌ Error generating reports: {e}")
+        return None, None
 
 
 def calculate_intelligent_time_gap(events: List[EventDetails]) -> Tuple[int, Dict]:
