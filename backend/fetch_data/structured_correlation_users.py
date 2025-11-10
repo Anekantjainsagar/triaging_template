@@ -46,12 +46,16 @@ class RateLimiter:
         # Tracking
         self.total_requests = 0
         self.total_wait_time = 0
+        self.rate_limit_exceeded = False  # Flag to switch to fallback
         
     def wait_if_needed(self):
         """
         Check rate limits and wait if necessary
         Returns the time waited in seconds
         """
+        if self.rate_limit_exceeded:
+            return 0  # Skip waiting if we've already exceeded limits
+            
         with self.lock:
             current_time = time.time()
             wait_time = 0
@@ -64,11 +68,11 @@ class RateLimiter:
             while self.day_requests and current_time - self.day_requests[0] > 86400:
                 self.day_requests.popleft()
             
-            # Check per-minute limit
-            if len(self.minute_requests) >= self.requests_per_minute:
+            # Check per-minute limit - with conservative buffer
+            if len(self.minute_requests) >= self.requests_per_minute - 2:  # Leave 2 request buffer
                 # Need to wait until oldest request is 60 seconds old
                 oldest_request = self.minute_requests[0]
-                wait_time = 60 - (current_time - oldest_request)
+                wait_time = 60 - (current_time - oldest_request) + 2  # Add 2s buffer
                 
                 if wait_time > 0:
                     print(f"   ⏳ Rate limit: Waiting {wait_time:.1f}s (RPM limit)")
@@ -78,15 +82,10 @@ class RateLimiter:
             
             # Check per-day limit
             if len(self.day_requests) >= self.requests_per_day:
-                # Need to wait until we're under daily limit
-                oldest_request = self.day_requests[0]
-                wait_time = 86400 - (current_time - oldest_request)
-                
-                if wait_time > 0:
-                    print(f"   ⏳ Rate limit: Daily quota reached. Waiting {wait_time/3600:.1f}h")
-                    time.sleep(wait_time)
-                    current_time = time.time()
-                    self.total_wait_time += wait_time
+                # Mark as exceeded and stop using Gemini
+                self.rate_limit_exceeded = True
+                print(f"   ⚠️ Daily quota reached. Switching to fallback for remaining requests.")
+                return 0
             
             # Record this request
             self.minute_requests.append(current_time)
@@ -104,23 +103,44 @@ class RateLimiter:
                 "requests_last_minute": len(self.minute_requests),
                 "requests_today": len(self.day_requests),
                 "rpm_limit": self.requests_per_minute,
-                "rpd_limit": self.requests_per_day
+                "rpd_limit": self.requests_per_day,
+                "rate_limit_exceeded": self.rate_limit_exceeded
             }
 
 # Configure Gemini API with rate limiting
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_CHAT", "llama2")
+
 gemini_rate_limiter = RateLimiter(
     requests_per_minute=15,  # Free tier: 15, Paid tier: 1000
     requests_per_day=1500    # Free tier: 1500, Paid tier: 50000
 )
 
+# Try to configure Gemini
+gemini_model = None
 if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
-    gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
-    print("✅ Gemini API configured with rate limiting (15 RPM, 1500 RPD)")
-else:
-    gemini_model = None
-    print("⚠️ Warning: GOOGLE_API_KEY not found. Alert descriptions will use fallback mode.")
+    try:
+        genai.configure(api_key=GOOGLE_API_KEY)
+        gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        print("✅ Gemini API configured with rate limiting (15 RPM, 1500 RPD)")
+    except Exception as e:
+        print(f"⚠️ Failed to configure Gemini: {e}")
+        gemini_model = None
+
+# Check if Ollama is available
+ollama_available = False
+try:
+    import requests
+    response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=2)
+    if response.status_code == 200:
+        ollama_available = True
+        print(f"✅ Ollama available at {OLLAMA_BASE_URL} (model: {OLLAMA_MODEL})")
+except:
+    ollama_available = False
+
+if not gemini_model and not ollama_available:
+    print("⚠️ Warning: Neither Gemini nor Ollama configured. Alert descriptions will use fallback mode.")
 
 # ============================================================================
 # ENHANCED USER GROUPING & CORRELATION MODELS
@@ -339,10 +359,65 @@ def extract_complete_event_data(signin_log: dict) -> EventDetails:
 # ============================================================================
 
 
+def generate_alert_description_with_ollama(group: "UserActivityGroup") -> str:
+    """
+    Generate alert description using Ollama
+    
+    Args:
+        group: UserActivityGroup object
+        
+    Returns:
+        Alert description string
+    """
+    try:
+        import requests
+        
+        # Prepare context
+        context = f"""You are a security analyst. Generate a clear 2-3 sentence description of this security incident.
+
+USER: {group.user_display_name} ({group.user_principal_name})
+RISK SCORE: {group.risk_score}/10
+EVENTS: {group.total_events}
+FAILURES: {group.failure_analysis.get('total_failures', 0)}
+SUCCESS RATE: {group.failure_analysis.get('success_rate', 100)}%
+LOCATIONS: {group.unique_locations}
+APPS: {group.unique_apps}
+
+KEY ISSUES: {', '.join(group.risk_factors[:3])}
+
+Generate only 2-3 sentences explaining what happened and why it's concerning. Use simple language."""
+
+        response = requests.post(
+            f"{OLLAMA_BASE_URL}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": context,
+                "stream": False,
+                "options": {
+                    "temperature": 0.3,
+                    "num_predict": 150
+                }
+            },
+            timeout=300
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            description = result.get("response", "").strip()
+            
+            if len(description) >= 50:
+                return description
+                
+    except Exception as e:
+        print(f"   ⚠️ Ollama error: {str(e)[:100]}")
+    
+    return generate_fallback_alert_description(group)
+
+
 def generate_alert_description_with_llm(group: "UserActivityGroup") -> str:
     """
-    Generate a detailed, easy-to-understand alert description using Gemini LLM
-    With rate limiting and retry logic
+    Generate a detailed, easy-to-understand alert description using LLM
+    Tries Gemini first, falls back to Ollama, then to template-based fallback
 
     Args:
         group: UserActivityGroup object with all activity details
@@ -351,21 +426,21 @@ def generate_alert_description_with_llm(group: "UserActivityGroup") -> str:
         2-3 sentence alert description in plain language
     """
 
-    # If Gemini is not configured, use fallback
-    if not gemini_model:
-        return generate_fallback_alert_description(group)
-
-    max_retries = 3
-    retry_count = 0
-
-    while retry_count < max_retries:
+    # Check if we should skip Gemini due to rate limit exhaustion
+    if gemini_model and not gemini_rate_limiter.rate_limit_exceeded:
         try:
             # Apply rate limiting
             gemini_rate_limiter.wait_if_needed()
+            
+            # Check again after waiting
+            if gemini_rate_limiter.rate_limit_exceeded:
+                print(f"   ⚠️ Gemini quota exceeded, switching to {'Ollama' if ollama_available else 'fallback'}")
+                if ollama_available:
+                    return generate_alert_description_with_ollama(group)
+                return generate_fallback_alert_description(group)
 
             # Prepare context for LLM
-            context = f"""
-You are a security analyst explaining a potential security incident to a non-technical manager. 
+            context = f"""You are a security analyst explaining a potential security incident to a non-technical manager. 
 Generate a clear, concise 2-3 sentence description that explains what happened and why it's concerning.
 
 USER DETAILS:
@@ -395,70 +470,45 @@ Generate a 2-3 sentence description that:
 2. Mentions the key risk factors (failures, locations, or behavior)
 3. Uses simple, non-technical language
 4. Does NOT use bullet points or lists
-5. Focuses on the most concerning aspects
-
-Example good descriptions:
-- "User attempted to sign in 15 times with incorrect credentials from 3 different countries within 2 hours, suggesting a possible account compromise attempt."
-- "Unusual access pattern detected with user signing into 8 different applications from multiple geographic locations with predominantly single-factor authentication."
-- "Multiple critical authentication failures detected from unfamiliar locations, indicating potential unauthorized access attempts."
-"""
+5. Focuses on the most concerning aspects"""
 
             # Generate description using Gemini
             response = gemini_model.generate_content(
                 context,
                 generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,  # Lower temperature for more consistent output
-                    max_output_tokens=150,  # Limit to 2-3 sentences
+                    temperature=0.3,
+                    max_output_tokens=150,
                 ),
             )
 
             description = response.text.strip()
 
-            # Basic validation - ensure it's not too long or too short
-            if len(description) < 50 or len(description) > 500:
-                return generate_fallback_alert_description(group)
-
-            return description
+            # Basic validation
+            if len(description) >= 50 and len(description) <= 500:
+                return description
 
         except Exception as e:
             error_msg = str(e).lower()
-            retry_count += 1
-
-            # Check for rate limit errors
-            if "429" in error_msg or "quota" in error_msg or "rate limit" in error_msg:
-                if retry_count < max_retries:
-                    wait_time = 60 * retry_count  # Exponential backoff: 60s, 120s, 180s
-                    print(
-                        f"   ⚠️ Rate limit hit. Waiting {wait_time}s before retry {retry_count}/{max_retries}"
-                    )
-                    time.sleep(wait_time)
-                    continue
-                else:
-                    print(
-                        f"   ⚠️ Rate limit exceeded after {max_retries} retries. Using fallback."
-                    )
-                    return generate_fallback_alert_description(group)
-
-            # Check for other API errors
-            elif "api" in error_msg or "invalid" in error_msg:
-                print(
-                    f"   ⚠️ API error on attempt {retry_count}/{max_retries}: {str(e)[:100]}"
-                )
-                if retry_count < max_retries:
-                    time.sleep(5)  # Brief wait before retry
-                    continue
-                else:
-                    print(
-                        f"   ⚠️ API error after {max_retries} retries. Using fallback."
-                    )
-                    return generate_fallback_alert_description(group)
-
-            # For other errors, use fallback immediately
-            else:
-                print(f"   ⚠️ Error generating LLM description: {str(e)[:100]}")
+            
+            # Check for rate limit errors - switch to fallback immediately
+            if "429" in error_msg or "quota" in error_msg or "rate limit" in error_msg or "resource_exhausted" in error_msg:
+                print(f"   ⚠️ Gemini rate limit hit. Switching to {'Ollama' if ollama_available else 'fallback'}")
+                gemini_rate_limiter.rate_limit_exceeded = True
+                if ollama_available:
+                    return generate_alert_description_with_ollama(group)
                 return generate_fallback_alert_description(group)
+            
+            # For other errors, try Ollama or fallback
+            print(f"   ⚠️ Gemini error: {str(e)[:100]}")
+            if ollama_available:
+                return generate_alert_description_with_ollama(group)
+            return generate_fallback_alert_description(group)
 
-    # If we exhausted retries, use fallback
+    # If Gemini is not available or rate limit exceeded, use Ollama
+    if ollama_available:
+        return generate_alert_description_with_ollama(group)
+    
+    # Final fallback
     return generate_fallback_alert_description(group)
 
 
@@ -472,17 +522,17 @@ def generate_fallback_alert_description(group: "UserActivityGroup") -> str:
     Returns:
         Alert description string
     """
-    
+
     user_name = group.user_display_name
     failures = group.failure_analysis.get('total_failures', 0)
     success_rate = group.failure_analysis.get('success_rate', 100)
     locations = group.unique_locations
     apps = group.unique_apps
     clusters = group.total_clusters
-    
+
     # Build description based on primary risk factors
     sentences = []
-    
+
     # Sentence 1: Primary concern
     if failures > 5:
         sentences.append(
@@ -508,7 +558,7 @@ def generate_fallback_alert_description(group: "UserActivityGroup") -> str:
         sentences.append(
             f"User {user_name} exhibited activity patterns that deviated from normal baseline behavior."
         )
-    
+
     # Sentence 2: Supporting details
     if group.failure_analysis.get('critical_failures', 0) > 0:
         sentences.append(
@@ -520,11 +570,11 @@ def generate_fallback_alert_description(group: "UserActivityGroup") -> str:
         sentences.append(f"Analysis shows {primary_risk.lower()}.")
     elif group.behavioral_anomalies:
         sentences.append(f"Detected {group.behavioral_anomalies[0].lower()}.")
-    
+
     # Sentence 3: Recommendation (optional, only if high risk)
     if group.risk_score >= 7:
         sentences.append("Immediate investigation is recommended to verify account security.")
-    
+
     return " ".join(sentences[:3])  # Return max 3 sentences
 
 
