@@ -215,6 +215,10 @@ def query_table_data(table_name, start_time, end_time):
         print(f"  ✗ Exception querying {table_name}: {str(e)}")
         return []
 
+"""
+REPLACE the fetch_sentinel_data function in get_tables_sentinel.py with this FIXED version
+"""
+
 
 def fetch_sentinel_data(
     start_date,
@@ -298,23 +302,42 @@ def fetch_sentinel_data(
             base_folder, f"sentinel_logs_{interval_label.replace(':', '-')}"
         )
 
+        # Generate expected filenames
+        timestamp = start_time.strftime("%Y%m%d_%H%M")
+        end_timestamp = end_time.strftime("%H%M")
+
+        # Expected file patterns for each category
+        expected_files = {
+            "user_data": f"sentinel_user_data_{timestamp}_{end_timestamp}.json",
+            "platformoperations": f"sentinel_platform_operations_{timestamp}_{end_timestamp}.json",
+            "endpointsecurity": f"sentinel_endpoint_security_{timestamp}_{end_timestamp}.json",
+        }
+
         # Skip if exists and skip flag is set
         if skip_if_exists and os.path.exists(folder_name):
             print(f"⏭️  Skipping (folder exists): {folder_name}")
 
-            # Check for existing files
+            # Check for existing files and build the path map
             existing_files = {}
-            for category in TABLE_CATEGORIES.keys():
-                timestamp = start_time.strftime("%Y%m%d_%H%M")
-                filename = f"sentinel_{category.lower()}_{timestamp}_{end_time.strftime('%H%M')}.json"
+            for key, filename in expected_files.items():
                 filepath = os.path.join(folder_name, filename)
                 if os.path.exists(filepath):
-                    existing_files[category.lower().replace("_", "")] = filepath
+                    existing_files[key] = filepath
+                    if key == "user_data":
+                        print(f"   ✓ Found user_data file: {filename}")
 
-            if existing_files:
+            # Only add to output_paths if we found at least the user_data file
+            if "user_data" in existing_files:
                 output_paths[folder_name] = existing_files
-            continue
+            else:
+                # User data file doesn't exist, need to fetch
+                print(f"   ⚠️  User data file not found, will fetch data...")
+                skip_if_exists = False  # Force fetch for this interval
 
+            if "user_data" in existing_files:
+                continue  # Skip to next interval
+
+        # Create folder if it doesn't exist
         os.makedirs(folder_name, exist_ok=True)
         print(f"📁 Created folder: {folder_name}")
 
@@ -346,14 +369,13 @@ def fetch_sentinel_data(
             print(f"    Total records in {category}: {category_records}")
 
         # Save to separate JSON files
-        timestamp = start_time.strftime("%Y%m%d_%H%M")
         interval_files = {}
 
         for category, data in category_data.items():
             if data:
                 output_filename = os.path.join(
                     folder_name,
-                    f"sentinel_{category.lower()}_{timestamp}_{end_time.strftime('%H%M')}.json",
+                    f"sentinel_{category.lower()}_{timestamp}_{end_timestamp}.json",
                 )
 
                 with open(output_filename, "w", encoding="utf-8") as f:
@@ -365,7 +387,9 @@ def fetch_sentinel_data(
                 # Track user data file specifically
                 if category == "User_Data":
                     interval_files["user_data"] = output_filename
+                    print(f"    📌 Marked as user_data file")
 
+                # Use consistent key naming (lowercase, no underscores)
                 interval_files[category.lower().replace("_", "")] = output_filename
 
         output_paths[folder_name] = interval_files
@@ -374,5 +398,12 @@ def fetch_sentinel_data(
     print("\n" + "=" * 60)
     print("✅ Data fetching complete!")
     print("=" * 60)
+
+    # Debug: Print what was found
+    print(f"\n📊 Files tracked:")
+    for folder, files in output_paths.items():
+        print(f"  {os.path.basename(folder)}:")
+        for key, filepath in files.items():
+            print(f"    - {key}: {os.path.basename(filepath)}")
 
     return output_paths

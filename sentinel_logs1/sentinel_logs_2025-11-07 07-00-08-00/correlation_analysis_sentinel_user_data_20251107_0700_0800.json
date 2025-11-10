@@ -1,14 +1,16 @@
 {
   "report_metadata": {
-    "generated_at": "2025-11-10T08:30:01.666327",
-    "report_type": "Advanced Security Correlation Analysis v5.0 - Fixed Edition",
+    "generated_at": "2025-11-10T08:50:54.152411",
+    "report_type": "Advanced Security Correlation Analysis v5.1 - AI-Enhanced Edition",
     "total_users": 20,
     "total_events": 48,
+    "ai_enhanced": true,
     "improvements": [
       "Intelligent time gap detection using outlier analysis",
       "Proper ResultDescription extraction for failures",
       "Enhanced Unknown data handling",
-      "Frequent activity grouping (not hardcoded thresholds)"
+      "Frequent activity grouping (not hardcoded thresholds)",
+      "AI-generated alert descriptions for better clarity"
     ]
   },
   "summary": {
@@ -137,8 +139,8 @@
       "unique_apps": 5,
       "authentication_summary": {
         "methods": [
-          "Password",
-          "Single Sign-On"
+          "Single Sign-On",
+          "Password"
         ],
         "total_mfa": 12,
         "total_single_factor": 0,
@@ -309,7 +311,8 @@
         }
       ],
       "alert_title": "\ud83d\udea8 [MEDIUM RISK] Suspicious Rapid Activity - Chandrakant Vishwakarma (1 failures/12 events)",
-      "alert_summary": "Success rate: 91.67% | 5 applications | 5 activity sessions"
+      "alert_summary": "Success rate: 91.67% | 5 applications | 5 activity sessions",
+      "alert_description": "User Chandrakant Vishwakarma showed 5 distinct activity sessions with varied patterns, suggesting possible irregular access behavior. Analysis shows multiple activity clusters: 5."
     }
   ],
   "low_priority_events": [
@@ -419,7 +422,8 @@
         }
       ],
       "alert_title": "\ud83d\udea8 [LOW RISK] Critical Authentication Failures - Aarushi Trivedi (1 failures/1 events)",
-      "alert_summary": "Success rate: 0.0%"
+      "alert_summary": "Success rate: 0.0%",
+      "alert_description": "User Aarushi Trivedi exhibited activity patterns that deviated from normal baseline behavior. The activity includes 1 critical authentication failures requiring immediate attention."
     },
     {
       "user_principal_name": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
@@ -518,7 +522,8 @@
         }
       ],
       "alert_title": "\ud83d\udea8 [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - 451fa0fb-e092-49d6-8d49-4f0e63f88458 (1 failures/1 events)",
-      "alert_summary": "Success rate: 0.0%"
+      "alert_summary": "Success rate: 0.0%",
+      "alert_description": "User 451fa0fb-e092-49d6-8d49-4f0e63f88458 exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "swaraj.sontakke@yash.com",
@@ -599,7 +604,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Swaraj Arvind Sontakke (1 events)",
-      "alert_summary": "Normal activity pattern"
+      "alert_summary": "Normal activity pattern",
+      "alert_description": "User Swaraj Arvind Sontakke exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "aarushi.trivedi@yash.com",
@@ -680,7 +686,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Aarushi  Trivedi (1 events)",
-      "alert_summary": "Normal activity pattern"
+      "alert_summary": "Normal activity pattern",
+      "alert_description": "User Aarushi  Trivedi exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "abhishek.parihar@aaseya.com",
@@ -761,7 +768,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Abhishek Parihar (1 events)",
-      "alert_summary": "Normal activity pattern"
+      "alert_summary": "Normal activity pattern",
+      "alert_description": "User Abhishek Parihar exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "ajinkya.bhagwat@yash.com",
@@ -884,7 +892,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Salunke Ajinkya  Bhagwat (2 events)",
-      "alert_summary": "2 locations"
+      "alert_summary": "2 locations",
+      "alert_description": "User Salunke Ajinkya  Bhagwat exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "chetan.garad@yash.com",
@@ -1004,7 +1013,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Chetan Rajendra Garad (3 events)",
-      "alert_summary": "Normal activity pattern"
+      "alert_summary": "Normal activity pattern",
+      "alert_description": "User Chetan Rajendra Garad exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "prakhar.kabra@yash.com",
@@ -1085,7 +1095,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Prakhar  Kabra (1 events)",
-      "alert_summary": "Normal activity pattern"
+      "alert_summary": "Normal activity pattern",
+      "alert_description": "User Prakhar  Kabra exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "lokesh.sapre@yash.com",
@@ -1166,7 +1177,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Lokesh Sapre (1 events)",
-      "alert_summary": "Normal activity pattern"
+      "alert_summary": "Normal activity pattern",
+      "alert_description": "User Lokesh Sapre exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "palak.patel@yash.com",
@@ -1247,7 +1259,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Palak  Patel (1 events)",
-      "alert_summary": "Normal activity pattern"
+      "alert_summary": "Normal activity pattern",
+      "alert_description": "User Palak  Patel exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "saikrishna.s@yash.com",
@@ -1373,7 +1386,8 @@
         }
       ],
       "alert_title": "\ud83d\udea8 [LOW RISK] Cross-Tenant Guest Activity - Saikrishna Siddabathuni (1 failures/2 events)",
-      "alert_summary": "Success rate: 50.0%"
+      "alert_summary": "Success rate: 50.0%",
+      "alert_description": "User Saikrishna Siddabathuni exhibited activity patterns that deviated from normal baseline behavior. Analysis shows guest user cross-tenant access."
     },
     {
       "user_principal_name": "chandrakantvish@yashtechnologies841.onmicrosoft.com",
@@ -1468,8 +1482,8 @@
       "unique_apps": 4,
       "authentication_summary": {
         "methods": [
-          "Password",
-          "Single Sign-On"
+          "Single Sign-On",
+          "Password"
         ],
         "total_mfa": 1,
         "total_single_factor": 7,
@@ -1597,7 +1611,8 @@
         }
       ],
       "alert_title": "\ud83d\udea8 [LOW RISK] Weak Authentication Methods - Chandrakant Vishwakarma (1 failures/8 events)",
-      "alert_summary": "Success rate: 87.5% | 4 applications | 3 activity sessions"
+      "alert_summary": "Success rate: 87.5% | 4 applications | 3 activity sessions",
+      "alert_description": "User Chandrakant Vishwakarma exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "f321dd86-a11e-4638-ac4a-3d7a0cd1f172",
@@ -1695,7 +1710,8 @@
         }
       ],
       "alert_title": "\ud83d\udea8 [LOW RISK] Weak Authentication Methods - f321dd86-a11e-4638-ac4a-3d7a0cd1f172 (1 failures/1 events)",
-      "alert_summary": "Success rate: 0.0%"
+      "alert_summary": "Success rate: 0.0%",
+      "alert_description": "User f321dd86-a11e-4638-ac4a-3d7a0cd1f172 exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "02c54d7e-9db4-4ee3-836c-7ba33f274621",
@@ -1822,7 +1838,8 @@
         }
       ],
       "alert_title": "\ud83d\udea8 [LOW RISK] Weak Authentication Methods - 02c54d7e-9db4-4ee3-836c-7ba33f274621 (2 failures/2 events)",
-      "alert_summary": "Success rate: 0.0%"
+      "alert_summary": "Success rate: 0.0%",
+      "alert_description": "User 02c54d7e-9db4-4ee3-836c-7ba33f274621 exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "shivam.pandey@yash.com",
@@ -1902,7 +1919,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity - Shivam Shekhar Pandey (1 events)",
-      "alert_summary": "Normal activity pattern"
+      "alert_summary": "Normal activity pattern",
+      "alert_description": "User Shivam Shekhar Pandey exhibited activity patterns that deviated from normal baseline behavior. Analysis shows guest user cross-tenant access."
     },
     {
       "user_principal_name": "prakhar.vyas@yashtechnologies841.onmicrosoft.com",
@@ -2034,7 +2052,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Weak Authentication Methods - Prakhar Vyas (3 events)",
-      "alert_summary": "2 locations"
+      "alert_summary": "2 locations",
+      "alert_description": "User Prakhar Vyas exhibited activity patterns that deviated from normal baseline behavior. Analysis shows predominantly single-factor authentication."
     },
     {
       "user_principal_name": "deshpande.shubham@yash.com",
@@ -2133,7 +2152,8 @@
         }
       ],
       "alert_title": "\ud83d\udea8 [LOW RISK] Cross-Tenant Guest Activity - Shubham Pradip Deshpande (1 failures/1 events)",
-      "alert_summary": "Success rate: 0.0%"
+      "alert_summary": "Success rate: 0.0%",
+      "alert_description": "User Shubham Pradip Deshpande exhibited activity patterns that deviated from normal baseline behavior. Analysis shows guest user cross-tenant access."
     },
     {
       "user_principal_name": "yash.rebbawar@yash.com",
@@ -2213,7 +2233,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity - Yash Suresh Rebbawar (1 events)",
-      "alert_summary": "Normal activity pattern"
+      "alert_summary": "Normal activity pattern",
+      "alert_description": "User Yash Suresh Rebbawar exhibited activity patterns that deviated from normal baseline behavior. Analysis shows guest user cross-tenant access."
     },
     {
       "user_principal_name": "koushik.kv@yash.com",
@@ -2361,7 +2382,8 @@
         }
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity - Koushik  K V (4 events)",
-      "alert_summary": "2 locations"
+      "alert_summary": "2 locations",
+      "alert_description": "User Koushik  K V exhibited activity patterns that deviated from normal baseline behavior. Analysis shows guest user cross-tenant access."
     }
   ]
 }

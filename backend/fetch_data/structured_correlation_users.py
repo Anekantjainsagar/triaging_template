@@ -1,6 +1,8 @@
 import json
 import os
 import re
+import time
+from threading import Lock
 from dotenv import load_dotenv
 from typing import List, Optional, Dict, Tuple
 from datetime import datetime, timedelta
@@ -8,10 +10,117 @@ from pydantic import BaseModel, Field
 from collections import defaultdict
 import statistics
 import numpy as np
+import google.generativeai as genai
+
 
 os.environ["CREWAI_TELEMETRY"] = "false"
 load_dotenv()
 
+
+class RateLimiter:
+    """
+    Rate limiter for Gemini API calls
+    Implements token bucket algorithm with request tracking
+    """
+    
+    def __init__(self, requests_per_minute=15, requests_per_day=1500):
+        """
+        Initialize rate limiter
+        
+        Args:
+            requests_per_minute: Max requests per minute (Gemini free tier: 15 RPM)
+            requests_per_day: Max requests per day (Gemini free tier: 1500 RPD)
+        """
+        self.requests_per_minute = requests_per_minute
+        self.requests_per_day = requests_per_day
+        
+        
+        # Track recent requests (timestamp of each request)
+        from collections import deque
+        self.minute_requests = deque()
+        self.day_requests = deque()
+        
+        # Thread-safe lock
+        self.lock = Lock()
+        
+        # Tracking
+        self.total_requests = 0
+        self.total_wait_time = 0
+        
+    def wait_if_needed(self):
+        """
+        Check rate limits and wait if necessary
+        Returns the time waited in seconds
+        """
+        with self.lock:
+            current_time = time.time()
+            wait_time = 0
+            
+            # Clean up old requests (older than 1 minute)
+            while self.minute_requests and current_time - self.minute_requests[0] > 60:
+                self.minute_requests.popleft()
+            
+            # Clean up old requests (older than 24 hours)
+            while self.day_requests and current_time - self.day_requests[0] > 86400:
+                self.day_requests.popleft()
+            
+            # Check per-minute limit
+            if len(self.minute_requests) >= self.requests_per_minute:
+                # Need to wait until oldest request is 60 seconds old
+                oldest_request = self.minute_requests[0]
+                wait_time = 60 - (current_time - oldest_request)
+                
+                if wait_time > 0:
+                    print(f"   ⏳ Rate limit: Waiting {wait_time:.1f}s (RPM limit)")
+                    time.sleep(wait_time)
+                    current_time = time.time()
+                    self.total_wait_time += wait_time
+            
+            # Check per-day limit
+            if len(self.day_requests) >= self.requests_per_day:
+                # Need to wait until we're under daily limit
+                oldest_request = self.day_requests[0]
+                wait_time = 86400 - (current_time - oldest_request)
+                
+                if wait_time > 0:
+                    print(f"   ⏳ Rate limit: Daily quota reached. Waiting {wait_time/3600:.1f}h")
+                    time.sleep(wait_time)
+                    current_time = time.time()
+                    self.total_wait_time += wait_time
+            
+            # Record this request
+            self.minute_requests.append(current_time)
+            self.day_requests.append(current_time)
+            self.total_requests += 1
+            
+            return wait_time
+    
+    def get_stats(self):
+        """Get rate limiter statistics"""
+        with self.lock:
+            return {
+                "total_requests": self.total_requests,
+                "total_wait_time": self.total_wait_time,
+                "requests_last_minute": len(self.minute_requests),
+                "requests_today": len(self.day_requests),
+                "rpm_limit": self.requests_per_minute,
+                "rpd_limit": self.requests_per_day
+            }
+
+# Configure Gemini API with rate limiting
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+gemini_rate_limiter = RateLimiter(
+    requests_per_minute=15,  # Free tier: 15, Paid tier: 1000
+    requests_per_day=1500    # Free tier: 1500, Paid tier: 50000
+)
+
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+    print("✅ Gemini API configured with rate limiting (15 RPM, 1500 RPD)")
+else:
+    gemini_model = None
+    print("⚠️ Warning: GOOGLE_API_KEY not found. Alert descriptions will use fallback mode.")
 
 # ============================================================================
 # ENHANCED USER GROUPING & CORRELATION MODELS
@@ -228,6 +337,195 @@ def extract_complete_event_data(signin_log: dict) -> EventDetails:
 # ============================================================================
 # INTELLIGENT TIME GAP ANALYSIS - USING OUTLIER DETECTION
 # ============================================================================
+
+
+def generate_alert_description_with_llm(group: "UserActivityGroup") -> str:
+    """
+    Generate a detailed, easy-to-understand alert description using Gemini LLM
+    With rate limiting and retry logic
+
+    Args:
+        group: UserActivityGroup object with all activity details
+
+    Returns:
+        2-3 sentence alert description in plain language
+    """
+
+    # If Gemini is not configured, use fallback
+    if not gemini_model:
+        return generate_fallback_alert_description(group)
+
+    max_retries = 3
+    retry_count = 0
+
+    while retry_count < max_retries:
+        try:
+            # Apply rate limiting
+            gemini_rate_limiter.wait_if_needed()
+
+            # Prepare context for LLM
+            context = f"""
+You are a security analyst explaining a potential security incident to a non-technical manager. 
+Generate a clear, concise 2-3 sentence description that explains what happened and why it's concerning.
+
+USER DETAILS:
+- Name: {group.user_display_name}
+- Email: {group.user_principal_name}
+- User Type: {group.user_type}
+- Total Events: {group.total_events}
+- Risk Score: {group.risk_score}/10
+
+SECURITY FINDINGS:
+- Risk Factors: {', '.join(group.risk_factors[:5]) if group.risk_factors else 'None detected'}
+- Total Failures: {group.failure_analysis.get('total_failures', 0)}
+- Success Rate: {group.failure_analysis.get('success_rate', 100)}%
+- Critical Failures: {group.failure_analysis.get('critical_failures', 0)}
+- Unique Locations: {group.unique_locations}
+- Applications Accessed: {group.unique_apps}
+- Activity Clusters: {group.total_clusters}
+
+FAILURE DETAILS:
+{', '.join([f"{f['reason']} ({f['count']}x)" for f in group.failure_analysis.get('failure_reasons', [])[:3]])}
+
+BEHAVIORAL ANOMALIES:
+{', '.join(group.behavioral_anomalies[:3]) if group.behavioral_anomalies else 'None detected'}
+
+Generate a 2-3 sentence description that:
+1. Explains what unusual activity was detected
+2. Mentions the key risk factors (failures, locations, or behavior)
+3. Uses simple, non-technical language
+4. Does NOT use bullet points or lists
+5. Focuses on the most concerning aspects
+
+Example good descriptions:
+- "User attempted to sign in 15 times with incorrect credentials from 3 different countries within 2 hours, suggesting a possible account compromise attempt."
+- "Unusual access pattern detected with user signing into 8 different applications from multiple geographic locations with predominantly single-factor authentication."
+- "Multiple critical authentication failures detected from unfamiliar locations, indicating potential unauthorized access attempts."
+"""
+
+            # Generate description using Gemini
+            response = gemini_model.generate_content(
+                context,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.3,  # Lower temperature for more consistent output
+                    max_output_tokens=150,  # Limit to 2-3 sentences
+                ),
+            )
+
+            description = response.text.strip()
+
+            # Basic validation - ensure it's not too long or too short
+            if len(description) < 50 or len(description) > 500:
+                return generate_fallback_alert_description(group)
+
+            return description
+
+        except Exception as e:
+            error_msg = str(e).lower()
+            retry_count += 1
+
+            # Check for rate limit errors
+            if "429" in error_msg or "quota" in error_msg or "rate limit" in error_msg:
+                if retry_count < max_retries:
+                    wait_time = 60 * retry_count  # Exponential backoff: 60s, 120s, 180s
+                    print(
+                        f"   ⚠️ Rate limit hit. Waiting {wait_time}s before retry {retry_count}/{max_retries}"
+                    )
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    print(
+                        f"   ⚠️ Rate limit exceeded after {max_retries} retries. Using fallback."
+                    )
+                    return generate_fallback_alert_description(group)
+
+            # Check for other API errors
+            elif "api" in error_msg or "invalid" in error_msg:
+                print(
+                    f"   ⚠️ API error on attempt {retry_count}/{max_retries}: {str(e)[:100]}"
+                )
+                if retry_count < max_retries:
+                    time.sleep(5)  # Brief wait before retry
+                    continue
+                else:
+                    print(
+                        f"   ⚠️ API error after {max_retries} retries. Using fallback."
+                    )
+                    return generate_fallback_alert_description(group)
+
+            # For other errors, use fallback immediately
+            else:
+                print(f"   ⚠️ Error generating LLM description: {str(e)[:100]}")
+                return generate_fallback_alert_description(group)
+
+    # If we exhausted retries, use fallback
+    return generate_fallback_alert_description(group)
+
+
+def generate_fallback_alert_description(group: "UserActivityGroup") -> str:
+    """
+    Fallback method to generate alert description when LLM is unavailable
+    
+    Args:
+        group: UserActivityGroup object
+        
+    Returns:
+        Alert description string
+    """
+    
+    user_name = group.user_display_name
+    failures = group.failure_analysis.get('total_failures', 0)
+    success_rate = group.failure_analysis.get('success_rate', 100)
+    locations = group.unique_locations
+    apps = group.unique_apps
+    clusters = group.total_clusters
+    
+    # Build description based on primary risk factors
+    sentences = []
+    
+    # Sentence 1: Primary concern
+    if failures > 5:
+        sentences.append(
+            f"User {user_name} experienced {failures} authentication failures "
+            f"with a {success_rate}% success rate, indicating potential credential issues or attack attempts."
+        )
+    elif locations > 2:
+        sentences.append(
+            f"User {user_name} accessed systems from {locations} different geographic locations "
+            f"during the monitored period, which may indicate unusual travel or account sharing."
+        )
+    elif apps > 7:
+        sentences.append(
+            f"User {user_name} accessed {apps} different applications in rapid succession, "
+            f"which deviates from typical usage patterns."
+        )
+    elif clusters > 3:
+        sentences.append(
+            f"User {user_name} showed {clusters} distinct activity sessions with varied patterns, "
+            f"suggesting possible irregular access behavior."
+        )
+    else:
+        sentences.append(
+            f"User {user_name} exhibited activity patterns that deviated from normal baseline behavior."
+        )
+    
+    # Sentence 2: Supporting details
+    if group.failure_analysis.get('critical_failures', 0) > 0:
+        sentences.append(
+            f"The activity includes {group.failure_analysis['critical_failures']} critical authentication failures "
+            f"requiring immediate attention."
+        )
+    elif group.risk_factors:
+        primary_risk = group.risk_factors[0]
+        sentences.append(f"Analysis shows {primary_risk.lower()}.")
+    elif group.behavioral_anomalies:
+        sentences.append(f"Detected {group.behavioral_anomalies[0].lower()}.")
+    
+    # Sentence 3: Recommendation (optional, only if high risk)
+    if group.risk_score >= 7:
+        sentences.append("Immediate investigation is recommended to verify account security.")
+    
+    return " ".join(sentences[:3])  # Return max 3 sentences
 
 
 def process_cleaned_user_data(json_path: str, output_folder: str = None):
@@ -595,14 +893,17 @@ def analyze_failures(events: List[EventDetails]) -> Dict:
 # RISK SCORING - UPDATED VERSION
 # ============================================================================
 
-
 def calculate_user_risk_score(
     upn: str, events: List[EventDetails], clusters: List[EventCluster]
 ) -> Tuple[int, List[str]]:
-    """Enhanced risk scoring with failure consideration"""
+    """Enhanced risk scoring with failure consideration - FIXED VERSION"""
 
     risk_score = 1
     risk_factors = []
+
+    # Ensure we have events to analyze
+    if not events:
+        return 1, ["Insufficient data for risk assessment"]
 
     # Factor 1: Cluster-based anomalies
     if len(clusters) > 3:
@@ -660,7 +961,7 @@ def calculate_user_risk_score(
         1 for e in events if "multi" in e.authentication_requirement.lower()
     )
 
-    if single_factor > multi_factor * 2:
+    if single_factor > multi_factor * 2 and single_factor > 0:
         risk_score += 1
         risk_factors.append("Predominantly single-factor authentication")
 
@@ -687,11 +988,17 @@ def calculate_user_risk_score(
         risk_score += 1
         risk_factors.append(f"Location changes between clusters: {location_changes}")
 
+    # IMPORTANT FIX: Ensure we always have at least one risk factor
+    if not risk_factors:
+        if risk_score > 1:
+            risk_factors.append("Anomalous user behavior detected")
+        else:
+            risk_factors.append("Normal user activity pattern")
+
     # Cap risk score
     risk_score = min(risk_score, 10)
 
     return risk_score, risk_factors
-
 
 # ============================================================================
 # ACTIVITY GROUP CREATION
@@ -760,26 +1067,26 @@ def generate_alert_title(group: UserActivityGroup) -> str:
 
 def generate_alert_summary(group: UserActivityGroup) -> str:
     """Generate a brief alert summary in Sentinel style"""
-    
+
     summary_parts = []
-    
+
     # Failure info
     if group.failure_analysis.get("total_failures", 0) > 0:
         success_rate = group.failure_analysis.get("success_rate", 0)
         summary_parts.append(f"Success rate: {success_rate}%")
-    
+
     # Location info
     if group.unique_locations > 1:
         summary_parts.append(f"{group.unique_locations} locations")
-    
+
     # App access
     if group.unique_apps > 3:
         summary_parts.append(f"{group.unique_apps} applications")
-    
+
     # Cluster info
     if group.total_clusters > 2:
         summary_parts.append(f"{group.total_clusters} activity sessions")
-    
+
     return " | ".join(summary_parts) if summary_parts else "Normal activity pattern"
 
 
@@ -794,7 +1101,7 @@ def create_user_activity_summary(
     # Use intelligent clustering
     clusters, gap_metadata = cluster_user_events_intelligent(events)
 
-    # Risk assessment
+    # Risk assessment (FIXED VERSION THAT ALWAYS RETURNS RISK FACTORS)
     risk_score, risk_factors = calculate_user_risk_score(upn, events, clusters)
 
     # Location analysis (exclude Unknown)
@@ -805,13 +1112,15 @@ def create_user_activity_summary(
             loc_key = f"{event.location_city}|{event.ip_address}"
             if loc_key not in seen_locs:
                 seen_locs.add(loc_key)
-                locations.append({
-                    "city": event.location_city,
-                    "state": event.location_state,
-                    "country": event.location_country,
-                    "ip_address": event.ip_address,
-                    "timestamp": event.timestamp,
-                })
+                locations.append(
+                    {
+                        "city": event.location_city,
+                        "state": event.location_state,
+                        "country": event.location_country,
+                        "ip_address": event.ip_address,
+                        "timestamp": event.timestamp,
+                    }
+                )
 
     # Application analysis
     applications = []
@@ -824,19 +1133,24 @@ def create_user_activity_summary(
         app_events = [e for e in events if e.app_id == app_id]
         if app_events:
             first_app = app_events[0]
-            applications.append({
-                "app_name": first_app.app_display_name,
-                "app_id": app_id,
-                "resource": first_app.resource_display_name,
-                "access_count": count,
-            })
+            applications.append(
+                {
+                    "app_name": first_app.app_display_name,
+                    "app_id": app_id,
+                    "resource": first_app.resource_display_name,
+                    "access_count": count,
+                }
+            )
 
     # Authentication analysis
-    auth_methods = list(set(
-        e.authentication_method for e in events 
-        if e.authentication_method != "Unknown"
-    ))
-    
+    auth_methods = list(
+        set(
+            e.authentication_method
+            for e in events
+            if e.authentication_method != "Unknown"
+        )
+    )
+
     auth_summary = {
         "methods": auth_methods,
         "total_mfa": sum(
@@ -848,45 +1162,47 @@ def create_user_activity_summary(
         "failed_attempts": sum(1 for e in events if not e.is_success),
     }
 
-    # Failure analysis (NOW PROPERLY USES ResultDescription)
+    # Failure analysis
     failure_analysis = analyze_failures(events)
 
     # Add gap analysis metadata to cluster details
     cluster_details = []
     for c in clusters:
-        cluster_details.append({
-            "cluster_id": c.cluster_id,
-            "start_time": c.start_time,
-            "end_time": c.end_time,
-            "duration_seconds": c.duration_seconds,
-            "event_count": c.event_count,
-            "unique_apps": c.unique_apps,
-            "has_failures": c.has_failures,
-            "failure_count": c.failure_count,
-        })
-    
-    # Add gap analysis metadata
+        cluster_details.append(
+            {
+                "cluster_id": c.cluster_id,
+                "start_time": c.start_time,
+                "end_time": c.end_time,
+                "duration_seconds": c.duration_seconds,
+                "event_count": c.event_count,
+                "unique_apps": c.unique_apps,
+                "has_failures": c.has_failures,
+                "failure_count": c.failure_count,
+            }
+        )
+
     if gap_metadata:
-        cluster_details.insert(0, {
-            "clustering_metadata": gap_metadata
-        })
+        cluster_details.insert(0, {"clustering_metadata": gap_metadata})
 
     # Timeline
     timeline = []
     for e in events:
-        timeline.append({
-            "timestamp": e.timestamp,
-            "app": e.app_display_name,
-            "location": f"{e.location_city or 'Unknown'}, {e.location_country}",
-            "ip_address": e.ip_address,
-            "browser": e.browser or "Unknown",
-            "os": e.operating_system or "Unknown",
-            "result": (
-                "✅ Success" if e.is_success 
-                else f"❌ Failed: {e.failure_reason or e.result_description}"
-            ),
-            "auth_method": e.authentication_method,
-        })
+        timeline.append(
+            {
+                "timestamp": e.timestamp,
+                "app": e.app_display_name,
+                "location": f"{e.location_city or 'Unknown'}, {e.location_country}",
+                "ip_address": e.ip_address,
+                "browser": e.browser or "Unknown",
+                "os": e.operating_system or "Unknown",
+                "result": (
+                    "✅ Success"
+                    if e.is_success
+                    else f"❌ Failed: {e.failure_reason or e.result_description}"
+                ),
+                "auth_method": e.authentication_method,
+            }
+        )
 
     # Behavioral anomalies
     anomalies = []
@@ -906,22 +1222,21 @@ def create_user_activity_summary(
         anomalies.append(
             f"Multiple distinct activity sessions: {len(clusters)} clusters"
         )
-        
+
     unique_apps = len(applications)
     if unique_apps > 5:
         anomalies.append(f"Access to {unique_apps} applications (unusually high)")
-    
-    # Check for rapid failures
+
     rapid_failures = sum(
-        1 for c in clusters 
-        if c.failure_count > 2 and c.duration_seconds < 180
+        1 for c in clusters if c.failure_count > 2 and c.duration_seconds < 180
     )
     if rapid_failures > 0:
         anomalies.append(f"Rapid failure clusters detected: {rapid_failures}")
 
     first_event = events[0]
 
-    return UserActivityGroup(
+    # Create the group object
+    group = UserActivityGroup(
         user_principal_name=upn,
         user_id=first_event.user_id,
         user_display_name=first_event.user_display_name,
@@ -941,6 +1256,8 @@ def create_user_activity_summary(
         timeline=timeline,
     )
 
+    return group
+
 
 # ============================================================================
 # DATA GROUPING
@@ -951,9 +1268,9 @@ def group_events_by_user(log_data: dict) -> Dict[str, List[EventDetails]]:
     """Group all sign-in events by user"""
 
     user_groups: Dict[str, List[EventDetails]] = defaultdict(list)
-    
+
     parse_errors = 0
-    
+
     for signin_log in log_data.get("SigninLogs", []):
         try:
             event = extract_complete_event_data(signin_log)
@@ -982,18 +1299,36 @@ def group_events_by_user(log_data: dict) -> Dict[str, List[EventDetails]]:
 
 
 def generate_json_report(user_groups: Dict[str, UserActivityGroup], output_path: str):
-    """Generate comprehensive JSON report"""
+    """Generate comprehensive JSON report with LLM-generated descriptions"""
 
     high_risk = []
     medium_risk = []
     low_risk = []
 
-    for upn, group in user_groups.items():
+    print("   🤖 Generating AI-powered alert descriptions...")
+
+    # Track start time for progress
+    start_time = time.time()
+    total_users = len(user_groups)
+
+    for idx, (upn, group) in enumerate(user_groups.items(), 1):
+        # Show progress
+        if idx % 5 == 0 or idx == total_users:
+            elapsed = time.time() - start_time
+            rate = idx / elapsed if elapsed > 0 else 0
+            eta = (total_users - idx) / rate if rate > 0 else 0
+            print(
+                f"   📊 Progress: {idx}/{total_users} users ({idx/total_users*100:.1f}%) - ETA: {eta:.0f}s"
+            )
+
         group_dict = group.model_dump()
-        
+
         # Add alert title and summary
-        group_dict['alert_title'] = generate_alert_title(group)
-        group_dict['alert_summary'] = generate_alert_summary(group)
+        group_dict["alert_title"] = generate_alert_title(group)
+        group_dict["alert_summary"] = generate_alert_summary(group)
+
+        # Generate LLM-powered description (with rate limiting)
+        group_dict["alert_description"] = generate_alert_description_with_llm(group)
 
         if group.risk_score >= 7:
             high_risk.append(group_dict)
@@ -1002,18 +1337,25 @@ def generate_json_report(user_groups: Dict[str, UserActivityGroup], output_path:
         else:
             low_risk.append(group_dict)
 
+    # Get rate limiter stats
+    rate_stats = gemini_rate_limiter.get_stats() if gemini_model else {}
+
     report = {
         "report_metadata": {
             "generated_at": datetime.now().isoformat(),
-            "report_type": "Advanced Security Correlation Analysis v5.0 - Fixed Edition",
+            "report_type": "Advanced Security Correlation Analysis v5.1 - AI-Enhanced Edition",
             "total_users": len(user_groups),
             "total_events": sum(g.total_events for g in user_groups.values()),
+            "ai_enhanced": True if gemini_model else False,
+            "generation_time_seconds": time.time() - start_time,
+            "api_stats": rate_stats if rate_stats else None,
             "improvements": [
                 "Intelligent time gap detection using outlier analysis",
                 "Proper ResultDescription extraction for failures",
                 "Enhanced Unknown data handling",
-                "Frequent activity grouping (not hardcoded thresholds)"
-            ]
+                "Frequent activity grouping (not hardcoded thresholds)",
+                "AI-generated alert descriptions with rate limiting",
+            ],
         },
         "summary": {
             "high_risk_count": len(high_risk),
@@ -1034,26 +1376,39 @@ def generate_json_report(user_groups: Dict[str, UserActivityGroup], output_path:
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, default=str)
 
-    print(f"✅ JSON report saved to {output_path}")
+    # Print rate limiter stats
+    if rate_stats:
+        print(f"\n   📊 API Usage Statistics:")
+        print(f"      • Total API calls: {rate_stats['total_requests']}")
+        print(f"      • Total wait time: {rate_stats['total_wait_time']:.1f}s")
+        print(
+            f"      • Requests in last minute: {rate_stats['requests_last_minute']}/{rate_stats['rpm_limit']}"
+        )
+        print(
+            f"      • Requests today: {rate_stats['requests_today']}/{rate_stats['rpd_limit']}"
+        )
+
+    print(f"   ✅ JSON report saved to {output_path}")
 
 
 def generate_markdown_report(
     user_groups: Dict[str, UserActivityGroup], output_path: str
 ):
-    """Generate comprehensive markdown report"""
+    """Generate comprehensive markdown report with AI descriptions"""
 
-    md_report = f"""# 🔒 Advanced Security Correlation Analysis Report v5.0 - Fixed Edition
+    md_report = f"""# 🔒 Advanced Security Correlation Analysis Report v5.1 - AI-Enhanced Edition
 
 **Generated:** {datetime.now().isoformat()}  
-**Report Type:** Intelligent Cluster-Based User Activity Correlation with Enhanced Failure Analysis  
+**Report Type:** Intelligent Cluster-Based User Activity Correlation with AI-Powered Descriptions  
 **Total Users:** {len(user_groups)}  
 **Total Events:** {sum(g.total_events for g in user_groups.values())}  
 
-## 🔧 Improvements in v5.0
-- ✅ **Intelligent Time Gap Detection**: No hardcoded thresholds - uses statistical outlier analysis
-- ✅ **Proper Failure Extraction**: ResultDescription now correctly parsed from all sign-in logs
-- ✅ **Enhanced Unknown Data Handling**: Better fallback mechanisms for missing data
-- ✅ **Frequent Activity Grouping**: Dynamic clustering based on user's actual behavior patterns
+## 🔧 Improvements in v5.1
+- ✅ **Intelligent Time Gap Detection**: Statistical outlier analysis
+- ✅ **Proper Failure Extraction**: ResultDescription correctly parsed
+- ✅ **Enhanced Unknown Data Handling**: Better fallback mechanisms
+- ✅ **AI-Powered Descriptions**: Easy-to-understand alert explanations using Gemini
+- ✅ **Fixed Risk Factors**: Always provides meaningful risk indicators
 
 ---
 
@@ -1076,37 +1431,40 @@ def generate_markdown_report(
 
 """
 
-    # Show top 5 alerts across all risk levels
+    # Show top 5 alerts with AI descriptions
     all_groups = sorted(
-        user_groups.values(), 
-        key=lambda g: (g.risk_score, g.failure_analysis.get('critical_failures', 0)), 
-        reverse=True
+        user_groups.values(),
+        key=lambda g: (g.risk_score, g.failure_analysis.get("critical_failures", 0)),
+        reverse=True,
     )[:5]
-    
+
+    print("   🤖 Generating AI descriptions for top alerts...")
+
     for idx, group in enumerate(all_groups, 1):
         alert_title = generate_alert_title(group)
-        alert_summary = generate_alert_summary(group)
-        
+        alert_description = generate_alert_description_with_llm(group)
+
         md_report += f"""
 **{idx}. {alert_title}**
-- {alert_summary}
-- Top Risk Factor: {group.risk_factors[0] if group.risk_factors else 'N/A'}
+
+{alert_description}
+
+---
 """
 
     md_report += f"""
-
----
 
 ## 🔴 CRITICAL PRIORITY - Risk Score 7-10
 
 """
 
     for group in sorted(high_risk, key=lambda g: g.risk_score, reverse=True)[:10]:
-        
-        # Generate alert title
+
+        # Generate alert components
         alert_title = generate_alert_title(group)
         alert_summary = generate_alert_summary(group)
-        
+        alert_description = generate_alert_description_with_llm(group)
+
         # Get clustering metadata if available
         clustering_info = ""
         if group.clusters and isinstance(group.clusters[0], dict):
@@ -1118,8 +1476,10 @@ def generate_markdown_report(
 - Time Gap Threshold: `{meta.get('final_threshold', 'N/A')}` seconds
 - Total Time Gaps Analyzed: `{meta.get('total_gaps', 'N/A')}`
 """
-                if 'normal_gaps_count' in meta:
-                    clustering_info += f"- Normal Activity Gaps: `{meta['normal_gaps_count']}`\n"
+                if "normal_gaps_count" in meta:
+                    clustering_info += (
+                        f"- Normal Activity Gaps: `{meta['normal_gaps_count']}`\n"
+                    )
                     clustering_info += f"- Outlier Gaps: `{meta['outlier_count']}`\n"
 
         md_report += f"""
@@ -1127,13 +1487,23 @@ def generate_markdown_report(
 
 **Alert Summary:** {alert_summary}
 
+**📝 Detailed Description:**  
+_{alert_description}_
+
 **User Details:** {group.user_display_name} ({group.user_principal_name}) | Type: {group.user_type}
 
 {clustering_info}
 
 #### 🎯 Key Risk Factors
-{chr(10).join(f"- {factor}" for factor in group.risk_factors[:5])}
+"""
+        # Ensure risk_factors is not empty
+        if group.risk_factors:
+            for factor in group.risk_factors[:5]:
+                md_report += f"- {factor}\n"
+        else:
+            md_report += "- Normal activity pattern observed\n"
 
+        md_report += f"""
 #### ❌ Detailed Failure Analysis
 - **Total Failures:** {group.failure_analysis['total_failures']}
 - **Success Rate:** {group.failure_analysis['success_rate']}%
@@ -1142,30 +1512,33 @@ def generate_markdown_report(
 
 **Failure Categories:**
 """
-        
+
         # Show failure categories
-        if 'failure_categories' in group.failure_analysis:
-            for cat, count in group.failure_analysis['failure_categories'].items():
+        if "failure_categories" in group.failure_analysis:
+            for cat, count in group.failure_analysis["failure_categories"].items():
                 if count > 0:
                     md_report += f"- {cat.replace('_', ' ').title()}: {count}\n"
 
         md_report += "\n**Top Failure Reasons:**\n"
         for failure in group.failure_analysis["failure_reasons"][:5]:
-            severity_emoji = {
-                "CRITICAL": "🔴",
-                "WARNING": "🟡",
-                "INFO": "ℹ️"
-            }.get(failure['severity'], "⚪")
+            severity_emoji = {"CRITICAL": "🔴", "WARNING": "🟡", "INFO": "ℹ️"}.get(
+                failure["severity"], "⚪"
+            )
             md_report += f"- {severity_emoji} **{failure['reason']}** (Count: {failure['count']}, Severity: {failure['severity']})\n"
 
         md_report += f"""
 #### 📍 Geographic Activity ({group.unique_locations} unique locations)
 """
-        for loc in group.locations[:5]:
-            city_state = f"{loc['city']}"
-            if loc.get('state'):
-                city_state += f", {loc['state']}"
-            md_report += f"- {city_state} ({loc['country']}) - IP: `{loc['ip_address']}`\n"
+        if group.locations:
+            for loc in group.locations[:5]:
+                city_state = f"{loc['city']}"
+                if loc.get("state"):
+                    city_state += f", {loc['state']}"
+                md_report += (
+                    f"- {city_state} ({loc['country']}) - IP: `{loc['ip_address']}`\n"
+                )
+        else:
+            md_report += "- No location data available\n"
 
         md_report += f"""
 #### 💻 Applications Accessed ({group.unique_apps})
@@ -1173,8 +1546,10 @@ def generate_markdown_report(
         for app in sorted(
             group.applications, key=lambda x: x["access_count"], reverse=True
         )[:5]:
-            resource = f" → {app['resource']}" if app.get('resource') else ""
-            md_report += f"- **{app['app_name']}**{resource} - {app['access_count']} times\n"
+            resource = f" → {app['resource']}" if app.get("resource") else ""
+            md_report += (
+                f"- **{app['app_name']}**{resource} - {app['access_count']} times\n"
+            )
 
         md_report += f"""
 #### 🔐 Authentication Summary
@@ -1185,25 +1560,38 @@ def generate_markdown_report(
 #### 📅 Activity Clusters ({group.total_clusters})
 """
         # Skip first entry if it's metadata
-        cluster_start_idx = 1 if (group.clusters and isinstance(group.clusters[0], dict) and "clustering_metadata" in group.clusters[0]) else 0
-        
-        for cluster in group.clusters[cluster_start_idx:cluster_start_idx+5]:
-            if isinstance(cluster, dict) and 'cluster_id' in cluster:
-                duration_min = cluster['duration_seconds'] / 60
-                failure_indicator = f", ❌ {cluster['failure_count']} failures" if cluster['failure_count'] > 0 else ""
+        cluster_start_idx = (
+            1
+            if (
+                group.clusters
+                and isinstance(group.clusters[0], dict)
+                and "clustering_metadata" in group.clusters[0]
+            )
+            else 0
+        )
+
+        for cluster in group.clusters[cluster_start_idx : cluster_start_idx + 5]:
+            if isinstance(cluster, dict) and "cluster_id" in cluster:
+                duration_min = cluster["duration_seconds"] / 60
+                failure_indicator = (
+                    f", ❌ {cluster['failure_count']} failures"
+                    if cluster["failure_count"] > 0
+                    else ""
+                )
                 md_report += f"- **{cluster['cluster_id']}**: {cluster['event_count']} events over {duration_min:.1f} minutes{failure_indicator}\n"
 
         # Show recent failed events
-        if group.failure_analysis['failed_event_timeline']:
+        if group.failure_analysis["failed_event_timeline"]:
             md_report += f"""
 #### ⚠️ Recent Failed Events
 """
-            for fail_event in group.failure_analysis['failed_event_timeline'][:3]:
+            for fail_event in group.failure_analysis["failed_event_timeline"][:3]:
                 md_report += f"- `{fail_event['timestamp']}` - **{fail_event['app']}** - {fail_event['reason']}\n"
                 md_report += f"  - Location: {fail_event['location']}, IP: `{fail_event['ip_address']}`\n"
 
         md_report += "\n---\n"
 
+    # Continue with medium and low priority sections (keep existing code)
     md_report += f"""
 
 ## 🟡 MEDIUM PRIORITY - Risk Score 5-6
@@ -1213,17 +1601,16 @@ def generate_markdown_report(
     for group in sorted(medium_risk, key=lambda g: g.risk_score, reverse=True)[:10]:
         alert_title = generate_alert_title(group)
         alert_summary = generate_alert_summary(group)
-        
-        failure_info = ""
-        if group.failure_analysis['total_failures'] > 0:
-            failure_info = f" | Failures: {group.failure_analysis['total_failures']} ({group.failure_analysis['success_rate']}% success)"
-        
+        alert_description = generate_alert_description_with_llm(group)
+
         md_report += f"""
 ### {alert_title}
 
 **Alert Summary:** {alert_summary}
 
-**Risk Factors:** {', '.join(group.risk_factors[:3])}
+**📝 Description:** _{alert_description}_
+
+**Risk Factors:** {', '.join(group.risk_factors[:3]) if group.risk_factors else 'Normal activity pattern'}
 
 **Behavioral Anomalies:** {', '.join(group.behavioral_anomalies[:2]) if group.behavioral_anomalies else 'None detected'}
 
@@ -1252,7 +1639,7 @@ def generate_markdown_report(
 - **Total Sign-in Events:** {sum(g.total_events for g in user_groups.values())}
 - **Total Activity Clusters:** {sum(g.total_clusters for g in user_groups.values())}
 - **Total Failures:** {sum(g.failure_analysis['total_failures'] for g in user_groups.values())}
-- **Average Success Rate:** {round(sum(g.failure_analysis['success_rate'] for g in user_groups.values()) / len(user_groups), 2)}%
+- **Average Success Rate:** {round(sum(g.failure_analysis['success_rate'] for g in user_groups.values()) / len(user_groups), 2) if user_groups else 0}%
 
 ### Risk Distribution
 - High Risk (7-10): {len(high_risk)} users
@@ -1261,15 +1648,15 @@ def generate_markdown_report(
 
 ---
 
-**Report Generated By:** Advanced Security Correlation Engine v5.0 (Fixed Edition)  
+**Report Generated By:** Advanced Security Correlation Engine v5.1 (AI-Enhanced Edition)  
 **Analysis Date:** {datetime.now().isoformat()}  
-**Key Features:** Intelligent clustering, Enhanced failure analysis, Better Unknown data handling
+**Key Features:** Intelligent clustering, AI-powered descriptions, Enhanced failure analysis, Fixed risk factors
 """
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(md_report)
 
-    print(f"✅ Markdown report saved to {output_path}")
+    print(f"   ✅ Markdown report saved to {output_path}")
 
 
 # ============================================================================

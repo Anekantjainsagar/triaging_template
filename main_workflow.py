@@ -212,10 +212,10 @@ def main():
     config = {
         "start_date": "2025-11-07",  # YYYY-MM-DD
         "end_date": "2025-11-07",  # YYYY-MM-DD
-        "start_hour": 5,  # 0-23
+        "start_hour": 6,  # 0-23
         "end_hour": 8,  # 0-23
         "interval_minutes": 60,  # Minutes per interval
-        "base_output_dir": "sentinel_logs1",  # Output directory
+        "base_output_dir": "sentinel_logs2",  # Output directory
         "skip_fetch": True,  # Set True to skip fetching if files exist
         "skip_clean": True,  # Set True to skip cleaning if files exist
     }
