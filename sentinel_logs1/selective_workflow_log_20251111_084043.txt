@@ -1,0 +1,20 @@
+[2025-11-11 08:40:42] [HEADER] ================================================================================
+[2025-11-11 08:40:42] [HEADER] 🎯 SELECTIVE AZURE SENTINEL LOG ANALYSIS
+[2025-11-11 08:40:42] [HEADER] ================================================================================
+[2025-11-11 08:40:42] [INFO] Configuration: 2025-11-07 to 2025-11-07, 6:00 - 7:00, 60min intervals
+[2025-11-11 08:40:42] [INFO] Process User Data: False
+[2025-11-11 08:40:42] [INFO] Process Endpoint Security: True
+[2025-11-11 08:40:42] [SUCCESS] ✅ Using existing data from 2 intervals
+[2025-11-11 08:40:42] [HEADER] 
+================================================================================
+[2025-11-11 08:40:42] [HEADER] PROCESSING ENDPOINT SECURITY FILES
+[2025-11-11 08:40:42] [HEADER] ================================================================================
+[2025-11-11 08:40:42] [INFO] 🔒 Cleaning: sentinel_logs1\sentinel_logs_2025-11-07 06-00-07-00\sentinel_endpoint_security_20251107_0600_0700.json
+[2025-11-11 08:40:42] [SUCCESS] ✅ Cleaned successfully: sentinel_logs1\sentinel_logs_2025-11-07 06-00-07-00\cleaned_sentinel_endpoint_security_20251107_0600_0700.json
+[2025-11-11 08:40:42] [INFO] 🔒 Cleaning: sentinel_logs1\sentinel_logs_2025-11-07 07-00-08-00\sentinel_endpoint_security_20251107_0700_0800.json
+[2025-11-11 08:40:43] [SUCCESS] ✅ Cleaned successfully: sentinel_logs1\sentinel_logs_2025-11-07 07-00-08-00\cleaned_sentinel_endpoint_security_20251107_0700_0800.json
+[2025-11-11 08:40:43] [SUCCESS] ✅ Endpoint security processing complete: 2 files cleaned
+[2025-11-11 08:40:43] [HEADER] 
+================================================================================
+[2025-11-11 08:40:43] [HEADER] 🎉 SELECTIVE WORKFLOW COMPLETED
+[2025-11-11 08:40:43] [HEADER] ================================================================================

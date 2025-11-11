@@ -1,21 +1,15 @@
-"""
-Main Workflow Orchestrator for Azure Sentinel Log Analysis
-Handles: Data Extraction → Cleaning → Correlation Analysis
-"""
-
 import os
-import json
 from datetime import datetime
-from typing import Dict, List, Tuple
 
 # Import functions from other modules
 from backend.fetch_data.clean_logs import clean_user_data_file
 from backend.fetch_data.get_tables_sentinel import fetch_sentinel_data
 from backend.fetch_data.structured_correlation_users import process_cleaned_user_data
+from backend.fetch_data.endpoint.clean_endpoint_logs import clean_endpoint_security_file
 
 
-class SentinelWorkflowOrchestrator:
-    """Orchestrates the complete workflow for Sentinel log analysis"""
+class SelectiveWorkflowOrchestrator:
+    """Orchestrates selective workflow for Sentinel log analysis"""
 
     def __init__(self, base_output_dir: str = "sentinel_logs1"):
         self.base_output_dir = base_output_dir
@@ -29,83 +23,134 @@ class SentinelWorkflowOrchestrator:
         print(log_entry)
         self.workflow_log.append(log_entry)
 
-    def run_workflow(
+    def run_selective_workflow(
         self,
-        start_date: str,  # Format: "YYYY-MM-DD"
-        end_date: str,  # Format: "YYYY-MM-DD"
-        start_hour: int,  # Starting hour (0-23)
-        end_hour: int,  # Ending hour (0-23)
-        interval_minutes: int = 60,  # Interval in minutes
-        skip_fetch: bool = False,  # Skip data fetching if files exist
-        skip_clean: bool = False,  # Skip cleaning if cleaned files exist
+        start_date: str,
+        end_date: str,
+        start_hour: int,
+        end_hour: int,
+        interval_minutes: int = 60,
+        process_user_data: bool = True,
+        process_endpoint_security: bool = False,
+        skip_fetch: bool = False,
+        skip_clean: bool = False,
     ):
         """
-        Main workflow execution
+        Selective workflow execution
 
         Args:
-            start_date: Start date in "YYYY-MM-DD" format
-            end_date: End date in "YYYY-MM-DD" format
-            start_hour: Starting hour (0-23)
-            end_hour: Ending hour (0-23)
-            interval_minutes: Time interval in minutes (default: 60)
-            skip_fetch: Skip fetching if data exists (default: False)
-            skip_clean: Skip cleaning if cleaned data exists (default: False)
+            process_user_data: Process user data files
+            process_endpoint_security: Process endpoint security files
         """
         self.log_step("=" * 80, "HEADER")
-        self.log_step("🚀 AZURE SENTINEL LOG ANALYSIS WORKFLOW", "HEADER")
+        self.log_step("🎯 SELECTIVE AZURE SENTINEL LOG ANALYSIS", "HEADER")
         self.log_step("=" * 80, "HEADER")
         self.log_step(
             f"Configuration: {start_date} to {end_date}, "
             f"{start_hour}:00 - {end_hour}:00, {interval_minutes}min intervals"
         )
+        self.log_step(f"Process User Data: {process_user_data}")
+        self.log_step(f"Process Endpoint Security: {process_endpoint_security}")
 
         # Parse dates
         start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
         end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
 
-        # Step 1: Fetch data from Sentinel
+        # Step 1: Fetch data from Sentinel (if needed)
+        if not skip_fetch:
+            self.log_step("\n" + "=" * 80, "HEADER")
+            self.log_step("STEP 1: FETCHING DATA FROM AZURE SENTINEL", "HEADER")
+            self.log_step("=" * 80, "HEADER")
+
+            try:
+                fetched_paths = fetch_sentinel_data(
+                    start_date=start_dt,
+                    end_date=end_dt,
+                    start_hour=start_hour,
+                    end_hour=end_hour,
+                    interval_minutes=interval_minutes,
+                    base_folder=self.base_output_dir,
+                    skip_if_exists=skip_fetch,
+                )
+                self.log_step(
+                    f"✅ Data fetching complete. Processed {len(fetched_paths)} intervals",
+                    "SUCCESS",
+                )
+            except Exception as e:
+                self.log_step(f"❌ Data fetching failed: {e}", "ERROR")
+                return
+        else:
+            # Use existing files
+            fetched_paths = self.discover_existing_intervals()
+            self.log_step(
+                f"✅ Using existing data from {len(fetched_paths)} intervals", "SUCCESS"
+            )
+
+        results = {}
+
+        # Step 2: Clean files based on selection
+        if process_user_data:
+            user_results = self.process_user_data(fetched_paths, skip_clean)
+            results["user_data"] = user_results
+
+        if process_endpoint_security:
+            endpoint_results = self.process_endpoint_security(fetched_paths, skip_clean)
+            results["endpoint_security"] = endpoint_results
+
+        # Final Summary
         self.log_step("\n" + "=" * 80, "HEADER")
-        self.log_step("STEP 1: FETCHING DATA FROM AZURE SENTINEL", "HEADER")
+        self.log_step("🎉 SELECTIVE WORKFLOW COMPLETED", "HEADER")
         self.log_step("=" * 80, "HEADER")
 
-        try:
-            fetched_paths = fetch_sentinel_data(
-                start_date=start_dt,
-                end_date=end_dt,
-                start_hour=start_hour,
-                end_hour=end_hour,
-                interval_minutes=interval_minutes,
-                base_folder=self.base_output_dir,
-                skip_if_exists=skip_fetch,
-            )
-            self.log_step(
-                f"✅ Data fetching complete. Processed {len(fetched_paths)} intervals",
-                "SUCCESS",
-            )
-        except Exception as e:
-            self.log_step(f"❌ Data fetching failed: {e}", "ERROR")
-            return
+        # Save workflow log
+        self.save_workflow_log()
 
-        # Step 2: Clean User Data files
+        return results
+
+    def discover_existing_intervals(self):
+        """Discover existing interval folders"""
+        intervals = {}
+        if os.path.exists(self.base_output_dir):
+            for item in os.listdir(self.base_output_dir):
+                item_path = os.path.join(self.base_output_dir, item)
+                if os.path.isdir(item_path) and item.startswith("sentinel_logs_"):
+                    intervals[item_path] = self.discover_files_in_interval(item_path)
+        return intervals
+
+    def discover_files_in_interval(self, interval_path):
+        """Discover files in an interval folder"""
+        files = {}
+        if os.path.exists(interval_path):
+            for file in os.listdir(interval_path):
+                if file.endswith(".json"):
+                    file_path = os.path.join(interval_path, file)
+                    if "user_data" in file:
+                        files["user_data"] = file_path
+                    elif "endpoint_security" in file:
+                        files["endpointsecurity"] = file_path
+                    elif "platform_operations" in file:
+                        files["platformoperations"] = file_path
+        return files
+
+    def process_user_data(self, fetched_paths, skip_clean):
+        """Process user data files"""
         self.log_step("\n" + "=" * 80, "HEADER")
-        self.log_step("STEP 2: CLEANING USER DATA FILES", "HEADER")
+        self.log_step("PROCESSING USER DATA FILES", "HEADER")
         self.log_step("=" * 80, "HEADER")
 
         cleaned_paths = []
+        correlation_results = []
+
         for interval_folder, files in fetched_paths.items():
             user_data_file = files.get("user_data")
 
-            if not user_data_file:
+            if not user_data_file or not os.path.exists(user_data_file):
                 self.log_step(
                     f"⚠️  No user data file found in {interval_folder}", "WARNING"
                 )
                 continue
 
-            if not os.path.exists(user_data_file):
-                self.log_step(f"⚠️  File not found: {user_data_file}", "WARNING")
-                continue
-
-            # Check if already cleaned
+            # Clean user data
             cleaned_filename = os.path.join(
                 interval_folder, f"cleaned_{os.path.basename(user_data_file)}"
             )
@@ -114,40 +159,25 @@ class SentinelWorkflowOrchestrator:
                 self.log_step(
                     f"⏭️  Skipping (already cleaned): {cleaned_filename}", "INFO"
                 )
-                cleaned_paths.append((interval_folder, cleaned_filename))
-                continue
-
-            try:
-                self.log_step(f"🧹 Cleaning: {user_data_file}", "INFO")
-                cleaned_file = clean_user_data_file(
-                    user_data_file, output_path=cleaned_filename
-                )
-
-                if cleaned_file:
-                    cleaned_paths.append((interval_folder, cleaned_file))
-                    self.log_step(
-                        f"✅ Cleaned successfully: {cleaned_filename}", "SUCCESS"
+                cleaned_file = cleaned_filename
+            else:
+                try:
+                    self.log_step(f"🧹 Cleaning: {user_data_file}", "INFO")
+                    cleaned_file = clean_user_data_file(
+                        user_data_file, output_path=cleaned_filename
                     )
-                else:
-                    self.log_step(f"❌ Cleaning failed: {user_data_file}", "ERROR")
+                    if not cleaned_file:
+                        self.log_step(f"❌ Cleaning failed: {user_data_file}", "ERROR")
+                        continue
+                except Exception as e:
+                    self.log_step(f"❌ Error cleaning {user_data_file}: {e}", "ERROR")
+                    continue
 
-            except Exception as e:
-                self.log_step(f"❌ Error cleaning {user_data_file}: {e}", "ERROR")
+            cleaned_paths.append((interval_folder, cleaned_file))
 
-        self.log_step(
-            f"\n✅ Cleaning complete. Processed {len(cleaned_paths)} files", "SUCCESS"
-        )
-
-        # Step 3: Run Correlation Analysis
-        self.log_step("\n" + "=" * 80, "HEADER")
-        self.log_step("STEP 3: RUNNING CORRELATION ANALYSIS", "HEADER")
-        self.log_step("=" * 80, "HEADER")
-
-        correlation_results = []
-        for interval_folder, cleaned_file in cleaned_paths:
+            # Run correlation analysis
             try:
                 self.log_step(f"📊 Analyzing: {cleaned_file}", "INFO")
-
                 md_output, json_output = process_cleaned_user_data(
                     cleaned_file, output_folder=interval_folder
                 )
@@ -170,84 +200,134 @@ class SentinelWorkflowOrchestrator:
             except Exception as e:
                 self.log_step(f"❌ Error analyzing {cleaned_file}: {e}", "ERROR")
 
-        # Final Summary
+        self.log_step(
+            f"✅ User data processing complete: {len(cleaned_paths)} files cleaned, {len(correlation_results)} analyzed",
+            "SUCCESS",
+        )
+
+        return {"cleaned": cleaned_paths, "analyzed": correlation_results}
+
+    def process_endpoint_security(self, fetched_paths, skip_clean):
+        """Process endpoint security files - FIXED VERSION"""
         self.log_step("\n" + "=" * 80, "HEADER")
-        self.log_step("🎉 WORKFLOW COMPLETED SUCCESSFULLY", "HEADER")
+        self.log_step("PROCESSING ENDPOINT SECURITY FILES", "HEADER")
         self.log_step("=" * 80, "HEADER")
 
-        self.log_step(f"\n📊 SUMMARY:", "INFO")
-        self.log_step(f"  • Intervals Processed: {len(fetched_paths)}", "INFO")
-        self.log_step(f"  • Files Cleaned: {len(cleaned_paths)}", "INFO")
-        self.log_step(f"  • Correlations Analyzed: {len(correlation_results)}", "INFO")
+        cleaned_paths = []
 
-        # Save workflow log
-        self.save_workflow_log()
+        for interval_folder, files in fetched_paths.items():
+            endpoint_file = files.get("endpointsecurity")
 
+            if not endpoint_file or not os.path.exists(endpoint_file):
+                self.log_step(f"⚠️  No endpoint security file found in {interval_folder}", "WARNING")
+                continue
+
+            # Clean endpoint security data - FIXED: Always generate output path
+            cleaned_filename = os.path.join(
+                interval_folder, f"cleaned_{os.path.basename(endpoint_file)}"
+            )
+
+            if skip_clean and os.path.exists(cleaned_filename):
+                self.log_step(f"⏭️  Skipping (already cleaned): {cleaned_filename}", "INFO")
+                cleaned_paths.append((interval_folder, cleaned_filename))
+            else:
+                try:
+                    self.log_step(f"🔒 Cleaning: {endpoint_file}", "INFO")
+                    # Explicitly pass the output path to avoid the variable scope issue
+                    cleaned_file = clean_endpoint_security_file(
+                        endpoint_file, 
+                        output_path=cleaned_filename  # Explicitly pass output path
+                    )
+
+                    if cleaned_file and os.path.exists(cleaned_file):
+                        cleaned_paths.append((interval_folder, cleaned_file))
+                        self.log_step(f"✅ Cleaned successfully: {cleaned_filename}", "SUCCESS")
+                    else:
+                        self.log_step(f"❌ Cleaning failed: {endpoint_file}", "ERROR")
+
+                except Exception as e:
+                    self.log_step(f"❌ Error cleaning {endpoint_file}: {e}", "ERROR")
+                    import traceback
+                    self.log_step(f"DEBUG: {traceback.format_exc()}", "DEBUG")
+
+        self.log_step(f"✅ Endpoint security processing complete: {len(cleaned_paths)} files cleaned", "SUCCESS")
+        
         return {
-            "fetched": fetched_paths,
-            "cleaned": cleaned_paths,
-            "analyzed": correlation_results,
+            "cleaned": cleaned_paths
         }
 
     def save_workflow_log(self):
         """Save workflow log to file"""
         log_file = os.path.join(
             self.base_output_dir,
-            f"workflow_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+            f"selective_workflow_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
         )
 
         with open(log_file, "w", encoding="utf-8") as f:
             f.write("\n".join(self.workflow_log))
 
-        print(f"\n📝 Workflow log saved to: {log_file}")
+        print(f"\n📝 Selective workflow log saved to: {log_file}")
 
 
 def main():
-    """Main execution with example configuration"""
+    """Main execution with selective configuration"""
 
     # ============================================================================
-    # CONFIGURATION - CUSTOMIZE HERE
+    # SELECTIVE CONFIGURATION - CHOOSE WHAT TO PROCESS
     # ============================================================================
 
     config = {
-        "start_date": "2025-10-29",  # YYYY-MM-DD
-        "end_date": "2025-10-29",  # YYYY-MM-DD
-        "start_hour": 12,  # 0-23
-        "end_hour": 13,  # 0-23
-        "interval_minutes": 60,  # Minutes per interval
-        "base_output_dir": "sentinel_logs_test",  # Output directory
-        "skip_fetch": True,  # Set True to skip fetching if files exist
-        "skip_clean": True,  # Set True to skip cleaning if files exist
+        "start_date": "2025-11-07",
+        "end_date": "2025-11-07",
+        "start_hour": 6,
+        "end_hour": 7,
+        "interval_minutes": 60,
+        "base_output_dir": "sentinel_logs1",
+        "skip_fetch": True,  # Use existing files
+        "skip_clean": True,  # Set to True if files already cleaned
+        # SELECT WHAT TO PROCESS:
+        "process_user_data": False,  # Set to True to process user data
+        "process_endpoint_security": True,  # Set to True to process endpoint security
     }
 
     # ============================================================================
-    # RUN WORKFLOW
+    # RUN SELECTIVE WORKFLOW
     # ============================================================================
 
-    orchestrator = SentinelWorkflowOrchestrator(
+    orchestrator = SelectiveWorkflowOrchestrator(
         base_output_dir=config["base_output_dir"]
     )
 
-    results = orchestrator.run_workflow(
+    results = orchestrator.run_selective_workflow(
         start_date=config["start_date"],
         end_date=config["end_date"],
         start_hour=config["start_hour"],
         end_hour=config["end_hour"],
         interval_minutes=config["interval_minutes"],
+        process_user_data=config["process_user_data"],
+        process_endpoint_security=config["process_endpoint_security"],
         skip_fetch=config["skip_fetch"],
         skip_clean=config["skip_clean"],
     )
 
-    # Optional: Print detailed results
+    # Print results summary
     if results:
         print("\n" + "=" * 80)
-        print("📁 OUTPUT FILES GENERATED:")
+        print("📊 SELECTIVE PROCESSING RESULTS:")
         print("=" * 80)
 
-        for result in results.get("analyzed", []):
-            print(f"\n📂 {os.path.basename(result['interval'])}:")
-            print(f"  • Markdown Report: {os.path.basename(result['markdown'])}")
-            print(f"  • JSON Report: {os.path.basename(result['json'])}")
+        if "user_data" in results:
+            user_data = results["user_data"]
+            print(f"\n👤 USER DATA PROCESSING:")
+            print(f"  • Files cleaned: {len(user_data.get('cleaned', []))}")
+            print(f"  • Analyses completed: {len(user_data.get('analyzed', []))}")
+
+        if "endpoint_security" in results:
+            endpoint_data = results["endpoint_security"]
+            print(f"\n🔒 ENDPOINT SECURITY PROCESSING:")
+            print(f"  • Files cleaned: {len(endpoint_data.get('cleaned', []))}")
+
+        print(f"\n📁 Output directory: {config['base_output_dir']}")
 
 
 if __name__ == "__main__":
