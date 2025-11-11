@@ -27,7 +27,6 @@ def safe_api_call(model, prompt, delay=3, max_retries=3):
 
             time.sleep(delay)
             response = model.generate_content(prompt)
-            # print(response)
             return response.text
 
         except Exception as e:
@@ -86,11 +85,89 @@ def extract_report_metadata(json_data, model):
         return f"Error extracting metadata: {str(e)[:200]}"
 
 
+def parse_alert_to_json(alert_text):
+    """Parse a single alert markdown text into structured JSON"""
+    alert_data = {
+        "alert_id": "",
+        "title": "",
+        "severity": "",
+        "category": "",
+        "mitre_attack": "",
+        "description": "",
+        "evidence": {},
+        "risk_assessment": "",
+    }
+
+    try:
+        # Extract alert ID and title
+        title_match = re.search(r"### ALERT-(\d+): (.+)", alert_text)
+        if title_match:
+            alert_data["alert_id"] = f"ALERT-{title_match.group(1)}"
+            alert_data["title"] = title_match.group(2).strip()
+
+        # Extract severity
+        severity_match = re.search(r"\*\*Severity:\*\* ([^\n]+)", alert_text)
+        if severity_match:
+            severity_text = severity_match.group(1).strip()
+            if "🔴" in severity_text or "HIGH" in severity_text:
+                alert_data["severity"] = "HIGH"
+            elif "🟡" in severity_text or "MEDIUM" in severity_text:
+                alert_data["severity"] = "MEDIUM"
+            elif "🟢" in severity_text or "LOW" in severity_text:
+                alert_data["severity"] = "LOW"
+
+        # Extract category
+        category_match = re.search(r"\*\*Category:\*\* (.+)", alert_text)
+        if category_match:
+            alert_data["category"] = category_match.group(1).strip()
+
+        # Extract MITRE ATT&CK
+        mitre_match = re.search(r"\*\*MITRE ATT&CK:\*\* (.+)", alert_text)
+        if mitre_match:
+            alert_data["mitre_attack"] = mitre_match.group(1).strip()
+
+        # Extract description
+        desc_match = re.search(
+            r"\*\*Description:\*\*\s*(.+?)(?=\*\*Evidence:\*\*)", alert_text, re.DOTALL
+        )
+        if desc_match:
+            alert_data["description"] = desc_match.group(1).strip()
+
+        # Extract evidence fields
+        evidence_section = re.search(
+            r"\*\*Evidence:\*\*(.+?)(?=\*\*Risk Assessment:\*\*)", alert_text, re.DOTALL
+        )
+        if evidence_section:
+            evidence_text = evidence_section.group(1)
+            # Extract timestamp
+            timestamp_match = re.search(r"- \*\*Timestamp:\*\* (.+)", evidence_text)
+            if timestamp_match:
+                alert_data["evidence"]["timestamp"] = timestamp_match.group(1).strip()
+
+            # Extract other evidence fields
+            other_fields = re.findall(r"- \*\*([^:]+):\*\* (.+)", evidence_text)
+            for field, value in other_fields:
+                if field.lower() != "timestamp":
+                    alert_data["evidence"][field.strip()] = value.strip()
+
+        # Extract risk assessment
+        risk_match = re.search(
+            r"\*\*Risk Assessment:\*\*\s*(.+?)(?=---|$)", alert_text, re.DOTALL
+        )
+        if risk_match:
+            alert_data["risk_assessment"] = risk_match.group(1).strip()
+
+    except Exception as e:
+        print(f"    ⚠️  Error parsing alert: {str(e)[:100]}")
+
+    return alert_data
+
+
 def analyze_table_for_alerts(table_name, table_data, model, alert_start_number):
     """Analyze a single table and generate alerts"""
 
     if not table_data or len(table_data) == 0:
-        return None, alert_start_number
+        return None, alert_start_number, []
 
     prompt = f"""
     You are a security analyst. Analyze this specific security event table and generate relevant security alerts.
@@ -141,44 +218,26 @@ def analyze_table_for_alerts(table_name, table_data, model, alert_start_number):
         content = content.strip()
 
         if "NO_ALERTS" in content:
-            return None, alert_start_number
+            return None, alert_start_number, []
+
+        # Parse alerts into JSON
+        alert_sections = re.split(r"(?=### ALERT-)", content)
+        parsed_alerts = []
+
+        for section in alert_sections:
+            if section.strip() and "### ALERT-" in section:
+                alert_json = parse_alert_to_json(section)
+                if alert_json["alert_id"]:
+                    parsed_alerts.append(alert_json)
 
         # Count how many alerts were generated
-        alert_count = content.count("### ALERT-")
+        alert_count = len(parsed_alerts)
 
-        return content, alert_start_number + alert_count
+        return content, alert_start_number + alert_count, parsed_alerts
 
     except Exception as e:
         print(f"    ❌ Error: {str(e)[:100]}")
-        return None, alert_start_number
-
-
-def generate_event_timeline(json_data, model):
-    """Generate timeline from all events"""
-
-    timeline_prompt = f"""
-    Create a chronological event timeline from this security data.
-    
-    Data: {json.dumps(json_data, indent=2)[:20000]}
-    
-    Generate a timeline in this EXACT format:
-    
-    ```
-    HH:MM:SS - [Brief description of event type and key detail]
-    HH:MM:SS - [Brief description of event type and key detail]
-    ```
-    
-    - Include 8-12 most significant events
-    - Use actual timestamps from the data
-    - Keep descriptions concise (max 80 characters)
-    - Order chronologically
-    - Focus on security-relevant events
-    """
-
-    try:
-        return safe_api_call(model, timeline_prompt, delay=3)
-    except Exception as e:
-        return f"Timeline generation failed: {str(e)[:200]}"
+        return None, alert_start_number, []
 
 
 def generate_complete_report(json_data):
@@ -191,6 +250,7 @@ def generate_complete_report(json_data):
 
     print("📊 Analyzing security events table by table...")
     all_alerts = []
+    all_alerts_json = []
     alert_number = 1
 
     # Define table processing order
@@ -212,13 +272,14 @@ def generate_complete_report(json_data):
             table_data = json_data[table_name]
             print(f"  → Analyzing {table_name} ({len(table_data)} events)...")
 
-            alerts, alert_number = analyze_table_for_alerts(
+            alerts, alert_number, alerts_json = analyze_table_for_alerts(
                 table_name, table_data, model, alert_number
             )
 
             if alerts:
                 all_alerts.append(alerts)
-                print(f"    ✓ Generated alerts")
+                all_alerts_json.extend(alerts_json)
+                print(f"    ✓ Generated {len(alerts_json)} alert(s)")
             else:
                 print(f"    ⊘ No alerts generated")
 
@@ -226,10 +287,6 @@ def generate_complete_report(json_data):
     combined_alerts = (
         "\n\n".join(all_alerts) if all_alerts else "No security alerts generated."
     )
-
-    print("⏱️ Generating event timeline...")
-    timeline = generate_event_timeline(json_data, model)
-
 
     print("📝 Assembling final report...")
 
@@ -240,7 +297,7 @@ def generate_complete_report(json_data):
     METADATA:
     {metadata}
     
-    ALERTS GENERATED: {len(all_alerts)}
+    ALERTS GENERATED: {len(all_alerts_json)}
     
     Generate in this EXACT format:
     
@@ -255,7 +312,7 @@ def generate_complete_report(json_data):
     try:
         exec_summary = safe_api_call(model, exec_summary_prompt, delay=3)
     except:
-        exec_summary = f"**Total Events Analyzed:** [See metadata]\n**Alerts Generated:** {len(all_alerts)}"
+        exec_summary = f"**Total Events Analyzed:** [See metadata]\n**Alerts Generated:** {len(all_alerts_json)}"
 
     # Parse metadata for report header
     device_name_prompt = f"""
@@ -279,8 +336,38 @@ def generate_complete_report(json_data):
         device_name = "Unknown Device"
         time_range = "Unknown Time Range"
 
-    # Assemble final report
-    report = f"""# Security Analysis Report
+    # Calculate severity distribution
+    severity_counts = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
+    for alert in all_alerts_json:
+        severity = alert.get("severity", "LOW")
+        severity_counts[severity] = severity_counts.get(severity, 0) + 1
+
+    highest_severity = "LOW"
+    if severity_counts["HIGH"] > 0:
+        highest_severity = "HIGH"
+    elif severity_counts["MEDIUM"] > 0:
+        highest_severity = "MEDIUM"
+
+    # Create JSON structure
+    report_json = {
+        "report_metadata": {
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "analysis_period": time_range,
+            "device": device_name,
+            "total_events_analyzed": sum(
+                len(v) if isinstance(v, list) else 0 for v in json_data.values()
+            ),
+            "alerts_generated": len(all_alerts_json),
+            "highest_severity": highest_severity,
+            "severity_distribution": severity_counts,
+        },
+        "executive_summary": exec_summary,
+        "security_alerts": all_alerts_json,
+        "raw_metadata": metadata,
+    }
+
+    # Assemble final markdown report
+    report_md = f"""# Security Analysis Report
 **Generated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 **Analysis Period:** {time_range}
 **Device:** {device_name}
@@ -299,18 +386,12 @@ def generate_complete_report(json_data):
 
 ---
 
-## 📊 Event Timeline
-
-{timeline}
-
----
-
 **Report End**
 
 *This analysis was generated by AI-powered security log analyzer. Always validate findings with manual investigation and consult with security team for critical decisions.*
 """
 
-    return report
+    return report_md, report_json
 
 
 # Usage example
@@ -319,7 +400,7 @@ if __name__ == "__main__":
     print("=" * 60)
 
     # Load your JSON data
-    json_file_path = "sentinel_logs1\sentinel_logs_2025-11-07 06-00-07-00\cleaned_sentinel_endpoint_security_20251107_0600_0700.json"
+    json_file_path = "sentinel_logs1/sentinel_logs_2025-11-07 06-00-07-00/cleaned_sentinel_endpoint_security_20251107_0600_0700.json"
 
     print(f"📁 Loading data from: {json_file_path}")
     with open(json_file_path, "r", encoding="utf-8") as f:
@@ -331,17 +412,28 @@ if __name__ == "__main__":
     print()
 
     # Generate complete report
-    report = generate_complete_report(security_data)
+    report_md, report_json = generate_complete_report(security_data)
 
-    # Save to file with UTF-8 encoding for emoji support
-    output_file = "endpoint_analysis_report.md"
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(report)
+    # Save markdown report
+    output_file_md = "endpoint_analysis_report.md"
+    with open(output_file_md, "w", encoding="utf-8") as f:
+        f.write(report_md)
+
+    # Save JSON report
+    output_file_json = "endpoint_analysis_report.json"
+    with open(output_file_json, "w", encoding="utf-8") as f:
+        json.dump(report_json, f, indent=2, ensure_ascii=False)
 
     print()
     print("=" * 60)
-    print(f"✅ Report generated successfully: {output_file}")
+    print(f"✅ Markdown report generated: {output_file_md}")
+    print(f"✅ JSON report generated: {output_file_json}")
     print()
-    print("Preview:")
+    print("Markdown Preview:")
     print("-" * 60)
-    print(report[:500] + "...")
+    print(report_md[:500] + "...")
+    print()
+    print("JSON Structure:")
+    print("-" * 60)
+    print(f"Total Alerts: {len(report_json['security_alerts'])}")
+    print(f"Highest Severity: {report_json['report_metadata']['highest_severity']}")
