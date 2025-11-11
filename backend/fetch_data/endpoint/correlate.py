@@ -86,7 +86,7 @@ def extract_report_metadata(json_data, model):
 
 
 def parse_alert_to_json(alert_text):
-    """Parse a single alert markdown text into structured JSON"""
+    """Parse a single alert markdown text into structured JSON with improved key components extraction"""
     alert_data = {
         "alert_id": "",
         "title": "",
@@ -133,29 +133,78 @@ def parse_alert_to_json(alert_text):
         if desc_match:
             alert_data["description"] = desc_match.group(1).strip()
 
-        # Extract evidence fields
+        # Extract evidence fields - improved to handle multiple formats
         evidence_section = re.search(
             r"\*\*Evidence:\*\*(.+?)(?=\*\*Risk Assessment:\*\*)", alert_text, re.DOTALL
         )
         if evidence_section:
             evidence_text = evidence_section.group(1)
+
             # Extract timestamp
-            timestamp_match = re.search(r"- \*\*Timestamp:\*\* (.+)", evidence_text)
+            timestamp_match = re.search(
+                r"- \*\*Timestamp:\*\* (.+?)(?:\n|$)", evidence_text
+            )
             if timestamp_match:
                 alert_data["evidence"]["timestamp"] = timestamp_match.group(1).strip()
 
-            # Extract other evidence fields
-            other_fields = re.findall(r"- \*\*([^:]+):\*\* (.+)", evidence_text)
-            for field, value in other_fields:
-                if field.lower() != "timestamp":
-                    alert_data["evidence"][field.strip()] = value.strip()
+            # Extract all bold fields (format: **FieldName:** value)
+            field_matches = re.findall(r"- \*\*([^:]+):\*\* ([^\n]+)", evidence_text)
+            for field, value in field_matches:
+                field_clean = field.strip()
+                if field_clean.lower() != "timestamp":
+                    alert_data["evidence"][field_clean] = value.strip()
 
-        # Extract risk assessment
+        # Extract Risk Assessment
         risk_match = re.search(
-            r"\*\*Risk Assessment:\*\*\s*(.+?)(?=---|$)", alert_text, re.DOTALL
+            r"\*\*Risk Assessment:\*\*\s*(.+?)(?=---|###|$)", alert_text, re.DOTALL
         )
         if risk_match:
             alert_data["risk_assessment"] = risk_match.group(1).strip()
+
+        # Extract Key Components - IMPROVED to handle multiple formats
+        key_components = []
+
+        # Format 1: Bullet points under "Key Components:"
+        kc_section = re.search(
+            r"- \*\*Key Components:\*\*(.+?)(?=\n\n|\*\*|---|\n- \*\*|$)",
+            alert_text,
+            re.DOTALL,
+        )
+        if kc_section:
+            kc_text = kc_section.group(1)
+            # Extract bullet points
+            bullets = re.findall(r"^\s*- (.+?)$", kc_text, re.MULTILINE)
+            key_components.extend(bullets)
+
+        # Format 2: Indented bullets under "**Key Components:**"
+        kc_section2 = re.search(
+            r"\*\*Key Components:\*\*\s*\n((?:\s{2,}[-•] .+?\n?)+)",
+            alert_text,
+            re.MULTILINE,
+        )
+        if kc_section2:
+            kc_text = kc_section2.group(1)
+            bullets = re.findall(r"[-•]\s*(.+)", kc_text)
+            key_components.extend(bullets)
+
+        # Format 3: Lines starting with dash in the evidence section
+        if not key_components:
+            # Look for patterns like "- ComponentName: value"
+            component_lines = re.findall(
+                r"^\s*- \*\*([^:]+):\*\* (.+?)$", alert_text, re.MULTILINE
+            )
+            for comp_name, comp_value in component_lines:
+                if comp_name.lower() not in [
+                    "timestamp",
+                    "action type",
+                    "device name",
+                    "devicename",
+                ]:
+                    key_components.append(f"{comp_name}: {comp_value}")
+
+        # Store key components in evidence if found
+        if key_components:
+            alert_data["evidence"]["Key Components"] = key_components
 
     except Exception as e:
         print(f"    ⚠️  Error parsing alert: {str(e)[:100]}")

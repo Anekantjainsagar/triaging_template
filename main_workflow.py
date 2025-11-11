@@ -4,13 +4,12 @@ from datetime import datetime
 # Import functions from other modules
 from backend.fetch_data.clean_logs import clean_user_data_file
 from backend.fetch_data.get_tables_sentinel import fetch_sentinel_data
+from backend.fetch_data.endpoint.correlate import generate_complete_report
 from backend.fetch_data.structured_correlation_users import process_cleaned_user_data
 from backend.fetch_data.endpoint.clean_endpoint_logs import clean_endpoint_security_file
 
 
 class SelectiveWorkflowOrchestrator:
-    """Orchestrates selective workflow for Sentinel log analysis"""
-
     def __init__(self, base_output_dir: str = "sentinel_logs1"):
         self.base_output_dir = base_output_dir
         self.workflow_log = []
@@ -34,6 +33,7 @@ class SelectiveWorkflowOrchestrator:
         process_endpoint_security: bool = False,
         skip_fetch: bool = False,
         skip_clean: bool = False,
+        skip_correlation: bool = False,  # NEW: Skip correlation if already exists
     ):
         """
         Selective workflow execution
@@ -51,6 +51,9 @@ class SelectiveWorkflowOrchestrator:
         )
         self.log_step(f"Process User Data: {process_user_data}")
         self.log_step(f"Process Endpoint Security: {process_endpoint_security}")
+        self.log_step(f"Skip Fetch: {skip_fetch}")
+        self.log_step(f"Skip Clean: {skip_clean}")
+        self.log_step(f"Skip Correlation: {skip_correlation}")  # NEW
 
         # Parse dates
         start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -90,11 +93,15 @@ class SelectiveWorkflowOrchestrator:
 
         # Step 2: Clean files based on selection
         if process_user_data:
-            user_results = self.process_user_data(fetched_paths, skip_clean)
+            user_results = self.process_user_data(
+                fetched_paths, skip_clean, skip_correlation
+            )
             results["user_data"] = user_results
 
         if process_endpoint_security:
-            endpoint_results = self.process_endpoint_security(fetched_paths, skip_clean)
+            endpoint_results = self.process_endpoint_security(
+                fetched_paths, skip_clean, skip_correlation
+            )
             results["endpoint_security"] = endpoint_results
 
         # Final Summary
@@ -122,17 +129,48 @@ class SelectiveWorkflowOrchestrator:
         files = {}
         if os.path.exists(interval_path):
             for file in os.listdir(interval_path):
-                if file.endswith(".json"):
-                    file_path = os.path.join(interval_path, file)
+                file_path = os.path.join(interval_path, file)
+
+                # Discover raw JSON files
+                if (
+                    file.endswith(".json")
+                    and not file.startswith("cleaned_")
+                    and not file.startswith("correlation_")
+                    and not file.startswith("endpoint_correlation_")
+                ):
                     if "user_data" in file:
                         files["user_data"] = file_path
                     elif "endpoint_security" in file:
                         files["endpointsecurity"] = file_path
                     elif "platform_operations" in file:
                         files["platformoperations"] = file_path
+
+                # Discover cleaned files
+                elif file.startswith("cleaned_") and file.endswith(".json"):
+                    if "user_data" in file:
+                        files["cleaned_user_data"] = file_path
+                    elif "endpoint_security" in file:
+                        files["cleaned_endpoint_security"] = file_path
+
+                # Discover correlation files (markdown)
+                elif file.startswith("correlation_analysis_") and file.endswith(".md"):
+                    files["user_correlation_md"] = file_path
+                elif file.startswith("endpoint_correlation_") and file.endswith(".md"):
+                    files["endpoint_correlation_md"] = file_path
+
+                # Discover correlation files (JSON)
+                elif file.startswith("correlation_analysis_") and file.endswith(
+                    ".json"
+                ):
+                    files["user_correlation_json"] = file_path
+                elif file.startswith("endpoint_correlation_") and file.endswith(
+                    ".json"
+                ):
+                    files["endpoint_correlation_json"] = file_path
+
         return files
 
-    def process_user_data(self, fetched_paths, skip_clean):
+    def process_user_data(self, fetched_paths, skip_clean, skip_correlation=False):
         """Process user data files"""
         self.log_step("\n" + "=" * 80, "HEADER")
         self.log_step("PROCESSING USER DATA FILES", "HEADER")
@@ -157,7 +195,7 @@ class SelectiveWorkflowOrchestrator:
 
             if skip_clean and os.path.exists(cleaned_filename):
                 self.log_step(
-                    f"⏭️  Skipping (already cleaned): {cleaned_filename}", "INFO"
+                    f"⏭️  Skipping clean (already cleaned): {cleaned_filename}", "INFO"
                 )
                 cleaned_file = cleaned_filename
             else:
@@ -174,6 +212,37 @@ class SelectiveWorkflowOrchestrator:
                     continue
 
             cleaned_paths.append((interval_folder, cleaned_file))
+
+            # Check if correlation already exists
+            base_name = (
+                os.path.basename(cleaned_file)
+                .replace("cleaned_", "")
+                .replace(".json", "")
+            )
+            md_output = os.path.join(
+                interval_folder, f"correlation_analysis_{base_name}.md"
+            )
+            json_output = os.path.join(
+                interval_folder, f"correlation_analysis_{base_name}.json"
+            )
+
+            if (
+                skip_correlation
+                and os.path.exists(md_output)
+                and os.path.exists(json_output)
+            ):
+                self.log_step(
+                    f"⏭️  Skipping correlation (already exists): {os.path.basename(md_output)}",
+                    "INFO",
+                )
+                correlation_results.append(
+                    {
+                        "interval": interval_folder,
+                        "markdown": md_output,
+                        "json": json_output,
+                    }
+                )
+                continue
 
             # Run correlation analysis
             try:
@@ -207,54 +276,160 @@ class SelectiveWorkflowOrchestrator:
 
         return {"cleaned": cleaned_paths, "analyzed": correlation_results}
 
-    def process_endpoint_security(self, fetched_paths, skip_clean):
-        """Process endpoint security files - FIXED VERSION"""
+    def process_endpoint_security(
+        self, fetched_paths, skip_clean, skip_correlation=False
+    ):
+        """Process endpoint security files with correlation analysis"""
         self.log_step("\n" + "=" * 80, "HEADER")
         self.log_step("PROCESSING ENDPOINT SECURITY FILES", "HEADER")
         self.log_step("=" * 80, "HEADER")
 
         cleaned_paths = []
+        correlation_results = []
 
         for interval_folder, files in fetched_paths.items():
             endpoint_file = files.get("endpointsecurity")
 
             if not endpoint_file or not os.path.exists(endpoint_file):
-                self.log_step(f"⚠️  No endpoint security file found in {interval_folder}", "WARNING")
+                self.log_step(
+                    f"⚠️  No endpoint security file found in {interval_folder}",
+                    "WARNING",
+                )
                 continue
 
-            # Clean endpoint security data - FIXED: Always generate output path
+            # Clean endpoint security data
             cleaned_filename = os.path.join(
                 interval_folder, f"cleaned_{os.path.basename(endpoint_file)}"
             )
 
             if skip_clean and os.path.exists(cleaned_filename):
-                self.log_step(f"⏭️  Skipping (already cleaned): {cleaned_filename}", "INFO")
-                cleaned_paths.append((interval_folder, cleaned_filename))
+                self.log_step(
+                    f"⏭️  Skipping clean (already cleaned): {cleaned_filename}", "INFO"
+                )
+                cleaned_file = cleaned_filename
             else:
                 try:
                     self.log_step(f"🔒 Cleaning: {endpoint_file}", "INFO")
-                    # Explicitly pass the output path to avoid the variable scope issue
                     cleaned_file = clean_endpoint_security_file(
-                        endpoint_file, 
-                        output_path=cleaned_filename  # Explicitly pass output path
+                        endpoint_file, output_path=cleaned_filename
                     )
 
                     if cleaned_file and os.path.exists(cleaned_file):
-                        cleaned_paths.append((interval_folder, cleaned_file))
-                        self.log_step(f"✅ Cleaned successfully: {cleaned_filename}", "SUCCESS")
+                        self.log_step(
+                            f"✅ Cleaned successfully: {cleaned_filename}", "SUCCESS"
+                        )
                     else:
                         self.log_step(f"❌ Cleaning failed: {endpoint_file}", "ERROR")
+                        continue
 
                 except Exception as e:
                     self.log_step(f"❌ Error cleaning {endpoint_file}: {e}", "ERROR")
                     import traceback
-                    self.log_step(f"DEBUG: {traceback.format_exc()}", "DEBUG")
 
-        self.log_step(f"✅ Endpoint security processing complete: {len(cleaned_paths)} files cleaned", "SUCCESS")
-        
-        return {
-            "cleaned": cleaned_paths
-        }
+                    self.log_step(f"DEBUG: {traceback.format_exc()}", "DEBUG")
+                    continue
+
+            cleaned_paths.append((interval_folder, cleaned_file))
+
+            # Check if correlation already exists
+            base_name = (
+                os.path.basename(cleaned_file)
+                .replace("cleaned_", "")
+                .replace(".json", "")
+            )
+            md_output = os.path.join(
+                interval_folder, f"endpoint_correlation_{base_name}.md"
+            )
+            json_output = os.path.join(
+                interval_folder, f"endpoint_correlation_{base_name}.json"
+            )
+
+            if (
+                skip_correlation
+                and os.path.exists(md_output)
+                and os.path.exists(json_output)
+            ):
+                self.log_step(
+                    f"⏭️  Skipping correlation (already exists): {os.path.basename(md_output)}",
+                    "INFO",
+                )
+
+                # Load existing results to get alert count
+                try:
+                    import json
+
+                    with open(json_output, "r", encoding="utf-8") as f:
+                        report_json = json.load(f)
+
+                    correlation_results.append(
+                        {
+                            "interval": interval_folder,
+                            "markdown": md_output,
+                            "json": json_output,
+                            "alerts_generated": len(
+                                report_json.get("security_alerts", [])
+                            ),
+                        }
+                    )
+
+                    self.log_step(
+                        f"✅ Found existing correlation: {len(report_json.get('security_alerts', []))} alerts",
+                        "INFO",
+                    )
+                except Exception as e:
+                    self.log_step(
+                        f"⚠️  Could not load existing correlation: {e}", "WARNING"
+                    )
+
+                continue
+
+            # Run correlation analysis
+            try:
+                self.log_step(f"🔗 Correlating: {cleaned_file}", "INFO")
+
+                # Load cleaned data
+                import json
+
+                with open(cleaned_file, "r", encoding="utf-8") as f:
+                    endpoint_data = json.load(f)
+
+                # Generate correlation report
+                report_md, report_json = generate_complete_report(endpoint_data)
+
+                # Write markdown report
+                with open(md_output, "w", encoding="utf-8") as f:
+                    f.write(report_md)
+
+                # Write JSON report
+                with open(json_output, "w", encoding="utf-8") as f:
+                    json.dump(report_json, f, indent=2, ensure_ascii=False)
+
+                correlation_results.append(
+                    {
+                        "interval": interval_folder,
+                        "markdown": md_output,
+                        "json": json_output,
+                        "alerts_generated": len(report_json.get("security_alerts", [])),
+                    }
+                )
+
+                self.log_step(
+                    f"✅ Correlation complete: {len(report_json.get('security_alerts', []))} alerts generated",
+                    "SUCCESS",
+                )
+
+            except Exception as e:
+                self.log_step(f"❌ Error correlating {cleaned_file}: {e}", "ERROR")
+                import traceback
+
+                self.log_step(f"DEBUG: {traceback.format_exc()}", "DEBUG")
+
+        self.log_step(
+            f"✅ Endpoint security processing complete: {len(cleaned_paths)} files cleaned, {len(correlation_results)} correlated",
+            "SUCCESS",
+        )
+
+        return {"cleaned": cleaned_paths, "correlated": correlation_results}
 
     def save_workflow_log(self):
         """Save workflow log to file"""
@@ -285,6 +460,7 @@ def main():
         "base_output_dir": "sentinel_logs1",
         "skip_fetch": True,  # Use existing files
         "skip_clean": True,  # Set to True if files already cleaned
+        "skip_correlation": False,  # NEW: Set to True to skip correlation if already done
         # SELECT WHAT TO PROCESS:
         "process_user_data": False,  # Set to True to process user data
         "process_endpoint_security": True,  # Set to True to process endpoint security
@@ -308,6 +484,7 @@ def main():
         process_endpoint_security=config["process_endpoint_security"],
         skip_fetch=config["skip_fetch"],
         skip_clean=config["skip_clean"],
+        skip_correlation=config.get("skip_correlation", False),  # NEW
     )
 
     # Print results summary
@@ -326,6 +503,16 @@ def main():
             endpoint_data = results["endpoint_security"]
             print(f"\n🔒 ENDPOINT SECURITY PROCESSING:")
             print(f"  • Files cleaned: {len(endpoint_data.get('cleaned', []))}")
+            print(
+                f"  • Correlations completed: {len(endpoint_data.get('correlated', []))}"
+            )
+
+            # Show alert summary
+            if endpoint_data.get("correlated"):
+                total_alerts = sum(
+                    r.get("alerts_generated", 0) for r in endpoint_data["correlated"]
+                )
+                print(f"  • Total alerts generated: {total_alerts}")
 
         print(f"\n📁 Output directory: {config['base_output_dir']}")
 
