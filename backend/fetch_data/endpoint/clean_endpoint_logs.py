@@ -1,12 +1,10 @@
-import json
 import os
-from datetime import datetime
-from typing import Dict, List, Optional
+import json
 
 
 def clean_endpoint_security_file(input_file_path: str, output_path: str = None) -> str:
     """
-    Clean a single endpoint security data file
+    Clean a single endpoint security data file with table-specific column removal
 
     Args:
         input_file_path: Path to the input JSON file
@@ -29,19 +27,266 @@ def clean_endpoint_security_file(input_file_path: str, output_path: str = None) 
         print(f"🔒 Cleaning Endpoint Security: {os.path.basename(input_file_path)}")
         print(f"{'='*60}")
 
-        # Define columns to remove from endpoint security tables
-        endpoint_columns_to_remove = [
-            "TenantId",
-            "SourceSystem",
-            "ResourceId",
-            "MG",
-            "ManagementGroupName",
-            "Type",
-            "_ResourceId",
-            "SubscriptionId",
-            "Task",
-            "ReportId",
-        ]
+        # Define table-specific columns to remove
+        table_columns_to_remove = {
+            # Common columns to remove from all tables
+            "common_columns": [
+                "TenantId",
+                "SourceSystem",
+                "ResourceId",
+                "MG",
+                "Type",
+                "_ResourceId",
+                "SubscriptionId",
+                "AppGuardContainerId",
+                "AccountObjectId",
+                "InitiatingProcessAccountObjectId",
+            ],
+            # DeviceEvents specific columns
+            "DeviceEvents": [
+                "InitiatingProcessAccountDomain",
+                "InitiatingProcessAccountUpn",
+                "InitiatingProcessLogonId",
+                "InitiatingProcessMD5",
+                "InitiatingProcessParentFileName",
+                "InitiatingProcessParentId",
+                "InitiatingProcessSHA1",
+                "InitiatingProcessSHA256",
+                "LocalPort",
+                "LogonId",
+                "MD5",
+                # "ProcessTokenElevation",
+                # "RegistryKey",
+                # "RegistryValueData",
+                # "RegistryValueName",
+                # "RemoteDeviceName",
+                # "RemoteIP",
+                # "RemotePort",
+                # "RemoteUrl",
+                # "SHA1",
+                # "FileSize",
+                # "InitiatingProcessFileSize",
+                # "InitiatingProcessParentCreationTime",
+                # "InitiatingProcessVersionInfoCompanyName",
+                # "InitiatingProcessVersionInfoFileDescription",
+                # "InitiatingProcessVersionInfoInternalFileName",
+                # "InitiatingProcessVersionInfoOriginalFileName",
+                # "InitiatingProcessVersionInfoProductName",
+                # "InitiatingProcessVersionInfoProductVersion",
+                # "ProcessCreationTime",
+                # "CreatedProcessSessionId",
+                # "IsProcessRemoteSession",
+                # "ProcessRemoteSessionDeviceName",
+                # "ProcessRemoteSessionIP",
+                # "InitiatingProcessSessionId",
+                # "IsInitiatingProcessRemoteSession",
+                # "InitiatingProcessRemoteSessionDeviceName",
+                # "InitiatingProcessRemoteSessionIP",
+            ],
+            # DeviceFileEvents specific columns
+        #     "DeviceFileEvents": [
+        #         "AccountDomain",
+        #         "AccountName",
+        #         "AccountSid",
+        #         "FileOriginIP",
+        #         "FileOriginReferrerUrl",
+        #         "FileOriginUrl",
+        #         "InitiatingProcessAccountDomain",
+        #         "InitiatingProcessAccountName",
+        #         "InitiatingProcessAccountSid",
+        #         "InitiatingProcessAccountUpn",
+        #         "InitiatingProcessIntegrityLevel",
+        #         "InitiatingProcessMD5",
+        #         "InitiatingProcessParentFileName",
+        #         "InitiatingProcessParentId",
+        #         "InitiatingProcessSHA1",
+        #         "InitiatingProcessSHA256",
+        #         "InitiatingProcessTokenElevation",
+        #         "IsAzureInfoProtectionApplied",
+        #         "MD5",
+        #         "PreviousFileName",
+        #         "PreviousFolderPath",
+        #         "RequestAccountDomain",
+        #         "RequestAccountName",
+        #         "RequestAccountSid",
+        #         "RequestProtocol",
+        #         "RequestSourceIP",
+        #         "RequestSourcePort",
+        #         "SHA1",
+        #         "SensitivityLabel",
+        #         "SensitivitySubLabel",
+        #         "ShareName",
+        #         "InitiatingProcessParentCreationTime",
+        #         "InitiatingProcessFileSize",
+        #         "InitiatingProcessVersionInfoCompanyName",
+        #         "InitiatingProcessVersionInfoFileDescription",
+        #         "InitiatingProcessVersionInfoInternalFileName",
+        #         "InitiatingProcessVersionInfoOriginalFileName",
+        #         "InitiatingProcessVersionInfoProductName",
+        #         "InitiatingProcessVersionInfoProductVersion",
+        #         "InitiatingProcessSessionId",
+        #         "IsInitiatingProcessRemoteSession",
+        #         "InitiatingProcessRemoteSessionDeviceName",
+        #         "InitiatingProcessRemoteSessionIP",
+        #     ],
+        #     # DeviceFileCertificateInfo specific columns
+        #     "DeviceFileCertificateInfo": [
+        #         # Remove empty or mostly empty certificate info columns
+        #     ],
+        #     # DeviceImageLoadEvents specific columns
+        #     "DeviceImageLoadEvents": [
+        #         # Remove empty image load event columns
+        #     ],
+        #     # DeviceInfo specific columns
+        #     "DeviceInfo": [
+        #         "AdditionalFields",
+        #         "DeviceObjectId",
+        #         "LoggedOnUsers",
+        #         "PublicIP",
+        #         "RegistryDeviceTag",
+        #         "AadDeviceId",
+        #         "DeviceSubtype",
+        #         "MergedDeviceIds",
+        #         "MergedToDeviceId",
+        #         "Model",
+        #         "Vendor",
+        #         "IsExcluded",
+        #         "ExclusionReason",
+        #         "AssetValue",
+        #         "ExposureLevel",
+        #         "IsInternetFacing",
+        #         "DeviceManualTags",
+        #         "DeviceDynamicTags",
+        #         "AwsResourceName",
+        #         "GcpFullResourceName",
+        #         "HardwareUuid",
+        #         "HostDeviceId",
+        #         "IsTransient",
+        #         "MitigationStatus",
+        #         "OsBuildRevision",
+        #         "RestrictedDeviceSecurityOperations",
+        #     ],
+        #     # DeviceLogonEvents specific columns
+        #     "DeviceLogonEvents": [
+        #         "AccountDomain",
+        #         "AccountName",
+        #         "AccountSid",
+        #         "FailureReason",
+        #         "InitiatingProcessAccountDomain",
+        #         "InitiatingProcessAccountName",
+        #         "InitiatingProcessAccountSid",
+        #         "InitiatingProcessAccountUpn",
+        #         "InitiatingProcessIntegrityLevel",
+        #         "InitiatingProcessMD5",
+        #         "InitiatingProcessParentFileName",
+        #         "InitiatingProcessParentId",
+        #         "InitiatingProcessSHA1",
+        #         "InitiatingProcessSHA256",
+        #         "InitiatingProcessTokenElevation",
+        #         "IsLocalAdmin",
+        #         "Protocol",
+        #         "RemoteDeviceName",
+        #         "RemoteIP",
+        #         "RemoteIPType",
+        #         "RemotePort",
+        #         "InitiatingProcessParentCreationTime",
+        #         "InitiatingProcessFileSize",
+        #         "InitiatingProcessVersionInfoCompanyName",
+        #         "InitiatingProcessVersionInfoFileDescription",
+        #         "InitiatingProcessVersionInfoInternalFileName",
+        #         "InitiatingProcessVersionInfoOriginalFileName",
+        #         "InitiatingProcessVersionInfoProductName",
+        #         "InitiatingProcessVersionInfoProductVersion",
+        #         "InitiatingProcessSessionId",
+        #         "IsInitiatingProcessRemoteSession",
+        #         "InitiatingProcessRemoteSessionDeviceName",
+        #         "InitiatingProcessRemoteSessionIP",
+        #     ],
+        #     # DeviceNetworkEvents specific columns
+        #     "DeviceNetworkEvents": [
+        #         "InitiatingProcessAccountDomain",
+        #         "InitiatingProcessAccountName",
+        #         "InitiatingProcessAccountSid",
+        #         "InitiatingProcessAccountUpn",
+        #         "InitiatingProcessIntegrityLevel",
+        #         "InitiatingProcessMD5",
+        #         "InitiatingProcessParentFileName",
+        #         "InitiatingProcessParentId",
+        #         "InitiatingProcessSHA1",
+        #         "InitiatingProcessSHA256",
+        #         "InitiatingProcessTokenElevation",
+        #         "InitiatingProcessFileSize",
+        #         "InitiatingProcessVersionInfoCompanyName",
+        #         "InitiatingProcessVersionInfoProductName",
+        #         "InitiatingProcessVersionInfoProductVersion",
+        #         "InitiatingProcessVersionInfoInternalFileName",
+        #         "InitiatingProcessVersionInfoOriginalFileName",
+        #         "InitiatingProcessVersionInfoFileDescription",
+        #         "InitiatingProcessParentCreationTime",
+        #         "InitiatingProcessSessionId",
+        #         "IsInitiatingProcessRemoteSession",
+        #         "InitiatingProcessRemoteSessionDeviceName",
+        #         "InitiatingProcessRemoteSessionIP",
+        #         "RemoteUrl",
+        #     ],
+            # DeviceNetworkInfo specific columns
+            "DeviceNetworkInfo": [
+                "TunnelType",
+                "NetworkAdapterVendor",
+            ],
+        #     # DeviceProcessEvents specific columns
+        #     "DeviceProcessEvents": [
+        #         "AccountDomain",
+        #         "AccountName",
+        #         "AccountObjectId",
+        #         "AccountSid",
+        #         "AccountUpn",
+        #         "InitiatingProcessAccountDomain",
+        #         "InitiatingProcessAccountName",
+        #         "InitiatingProcessAccountSid",
+        #         "InitiatingProcessAccountUpn",
+        #         "InitiatingProcessIntegrityLevel",
+        #         "InitiatingProcessLogonId",
+        #         "InitiatingProcessMD5",
+        #         "InitiatingProcessParentFileName",
+        #         "InitiatingProcessParentId",
+        #         "InitiatingProcessSHA1",
+        #         "InitiatingProcessSHA256",
+        #         "InitiatingProcessTokenElevation",
+        #         "InitiatingProcessFileSize",
+        #         "InitiatingProcessVersionInfoCompanyName",
+        #         "InitiatingProcessVersionInfoProductName",
+        #         "InitiatingProcessVersionInfoProductVersion",
+        #         "InitiatingProcessVersionInfoInternalFileName",
+        #         "InitiatingProcessVersionInfoOriginalFileName",
+        #         "InitiatingProcessVersionInfoFileDescription",
+        #         "LogonId",
+        #         "MD5",
+        #         "ProcessIntegrityLevel",
+        #         "ProcessTokenElevation",
+        #         "ProcessVersionInfoCompanyName",
+        #         "ProcessVersionInfoProductName",
+        #         "ProcessVersionInfoProductVersion",
+        #         "ProcessVersionInfoInternalFileName",
+        #         "ProcessVersionInfoOriginalFileName",
+        #         "ProcessVersionInfoFileDescription",
+        #         "InitiatingProcessSignerType",
+        #         "InitiatingProcessSignatureStatus",
+        #         "InitiatingProcessParentCreationTime",
+        #         "CreatedProcessSessionId",
+        #         "IsProcessRemoteSession",
+        #         "ProcessRemoteSessionDeviceName",
+        #         "ProcessRemoteSessionIP",
+        #         "InitiatingProcessSessionId",
+        #         "IsInitiatingProcessRemoteSession",
+        #         "InitiatingProcessRemoteSessionDeviceName",
+        #         "InitiatingProcessRemoteSessionIP",
+        #     ],
+            # DeviceRegistryEvents specific columns
+            "DeviceRegistryEvents": [
+                # Remove empty registry event columns
+            ],
+        }
 
         cleaned_data = {}
         total_original_records = 0
@@ -57,19 +302,29 @@ def clean_endpoint_security_file(input_file_path: str, output_path: str = None) 
             print(f"📊 Processing {table_name}: {len(table_data)} records")
             total_original_records += len(table_data)
 
+            # Get columns to remove for this specific table
+            table_specific_columns = table_columns_to_remove.get(table_name, [])
+            common_columns = table_columns_to_remove["common_columns"]
+            all_columns_to_remove = common_columns + table_specific_columns
+
             cleaned_table = []
             for record in table_data:
-                # Remove specified columns
-                cleaned_record = {
-                    k: v
-                    for k, v in record.items()
-                    if k not in endpoint_columns_to_remove
-                }
-                cleaned_table.append(cleaned_record)
-                total_cleaned_records += 1
+                # Remove specified columns and empty values
+                cleaned_record = {}
+                for key, value in record.items():
+                    if key not in all_columns_to_remove:
+                        # Only include non-empty values
+                        if value not in [None, "", [], {}]:
+                            cleaned_record[key] = value
+
+                if cleaned_record:  # Only add non-empty records
+                    cleaned_table.append(cleaned_record)
+                    total_cleaned_records += 1
 
             cleaned_data[table_name] = cleaned_table
             print(f"   ✅ Cleaned {table_name}: {len(cleaned_table)} records")
+            if all_columns_to_remove:
+                print(f"   🗑️  Removed columns: {len(all_columns_to_remove)}")
 
         # Generate output filename if not provided
         if output_path is None:
@@ -78,9 +333,7 @@ def clean_endpoint_security_file(input_file_path: str, output_path: str = None) 
             output_filename = f"cleaned_{input_filename}"
             output_file_path = os.path.join(input_dir, output_filename)
         else:
-            output_file_path = (
-                output_path  # Add this line to handle when output_path is provided
-            )
+            output_file_path = output_path
 
         # Save cleaned data
         with open(output_file_path, "w", encoding="utf-8") as file:
@@ -98,6 +351,13 @@ def clean_endpoint_security_file(input_file_path: str, output_path: str = None) 
         print(f"   Cleaned:  {cleaned_size:,} bytes")
         print(f"   Reduction: {reduction:.1f}%")
         print(f"   Total records processed: {total_cleaned_records}")
+
+        # Show table-specific statistics
+        print(f"\n📋 Table Summary:")
+        for table_name, table_data in cleaned_data.items():
+            if isinstance(table_data, list):
+                print(f"   {table_name}: {len(table_data)} records")
+
         print(f"{'='*60}\n")
 
         return output_file_path

@@ -87,6 +87,97 @@ def fetch_incident_details(incident_id):
         st.error(f"Error fetching incident details: {str(e)}")
         return None
 
+def format_entity_display(entity):
+    kind = entity.get("kind", "Unknown")
+    props = entity.get("properties", {})
+
+    if kind == "Account":
+        account_name = props.get("accountName", "")
+        upn_suffix = props.get("upnSuffix", "")
+        friendly_name = props.get("friendlyName", "")
+
+        # Format as accountName@upnSuffix
+        if account_name and upn_suffix:
+            primary = f"{account_name}@{upn_suffix}"
+        elif account_name:
+            primary = account_name
+        else:
+            primary = friendly_name or "Unknown Account"
+
+        # Add friendly name if different
+        if friendly_name and friendly_name != account_name:
+            return f"👤 **{primary}** (Friendly: {friendly_name})"
+        else:
+            return f"👤 **{primary}**"
+
+    elif kind == "Ip":
+        address = props.get("address", "Unknown IP")
+        location = props.get("location", {})
+        country = location.get("countryName", "") if location else ""
+
+        if country:
+            return f"🌐 **{address}** ({country})"
+        else:
+            return f"🌐 **{address}**"
+
+    elif kind == "Host":
+        hostname = props.get("hostName") or props.get("netBiosName") or "Unknown Host"
+        os = props.get("oSFamily", "")
+
+        if os:
+            return f"💻 **{hostname}** (OS: {os})"
+        else:
+            return f"💻 **{hostname}**"
+
+    elif kind == "Url":
+        url = props.get("url", "Unknown URL")
+        return f"🔗 **{url}**"
+
+    elif kind == "File":
+        filename = props.get("name") or props.get("fileName") or "Unknown File"
+        file_hash = props.get("fileHashValue", "")
+
+        if file_hash:
+            return f"📄 **{filename}** (Hash: {file_hash[:16]}...)"
+        else:
+            return f"📄 **{filename}**"
+
+    elif kind == "Process":
+        process_name = props.get("processName") or props.get(
+            "commandLine", "Unknown Process"
+        )
+        process_id = props.get("processId", "")
+
+        if process_id:
+            return f"⚙️ **{process_name}** (PID: {process_id})"
+        else:
+            return f"⚙️ **{process_name}**"
+
+    elif kind == "MailMessage":
+        sender = props.get("sender", "Unknown Sender")
+        recipient = props.get("recipient", "Unknown Recipient")
+        subject = props.get("subject", "No Subject")
+
+        mail_info = f"📧 **From:** {sender}"
+        if recipient:
+            mail_info += f" | **To:** {recipient}"
+        mail_info += f" | **Subject:** {subject}"
+        return mail_info
+
+    elif kind == "CloudApplication":
+        app_name = props.get("name") or props.get("displayName") or "Unknown App"
+        return f"☁️ **{app_name}**"
+
+    else:
+        # Generic display for unknown entity types
+        name = (
+            props.get("name")
+            or props.get("displayName")
+            or props.get("friendlyName")
+            or f"Unknown {kind}"
+        )
+        return f"📋 **{name}**"
+
 
 def fetch_incidents_from_azure(timespan_days=90, status_filters=None):
     """Fetch incidents directly from Azure with filters"""
