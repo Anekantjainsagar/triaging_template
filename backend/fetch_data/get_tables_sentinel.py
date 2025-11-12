@@ -94,13 +94,6 @@ def generate_time_intervals(
 
 # Define table categories
 TABLE_CATEGORIES = {
-    "Platform_Operations": [
-        "AzureDiagnostics",
-        "Operation",
-        "SentinelAudit",
-        "SentinelHealth",
-        "Usage",
-    ],
     "Endpoint_Security": [
         "DeviceEvents",
         "DeviceFileEvents",
@@ -214,10 +207,6 @@ def query_table_data(table_name, start_time, end_time):
     except Exception as e:
         print(f"  ✗ Exception querying {table_name}: {str(e)}")
         return []
-
-"""
-REPLACE the fetch_sentinel_data function in get_tables_sentinel.py with this FIXED version
-"""
 
 
 def fetch_sentinel_data(

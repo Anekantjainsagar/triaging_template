@@ -1,11 +1,11 @@
 {
   "report_metadata": {
-    "generated_at": "2025-11-10T15:29:43.846257",
+    "generated_at": "2025-11-12T08:41:00.833821",
     "report_type": "Advanced Security Correlation Analysis v5.1 - AI-Enhanced Edition",
     "total_users": 27,
     "total_events": 47,
     "ai_enhanced": true,
-    "generation_time_seconds": 146.22307872772217,
+    "generation_time_seconds": 145.59857749938965,
     "api_stats": {
       "total_requests": 33,
       "total_wait_time": 0,
@@ -169,7 +169,7 @@
       ],
       "alert_title": "\ud83d\udea8 [MEDIUM RISK] Critical Authentication Failures & Cross-Tenant Guest Activity - Lalit Paliwal (1 failures/2 events)",
       "alert_summary": "Success rate: 50.0%",
-      "alert_description": "We observed a critical failed login attempt by a guest user, Lalit Paliwal, trying to access an application. This is concerning because it involved a guest account attempting to access resources across different parts of our system, and their account relies on less secure single-factor authentication, which increases the risk of unauthorized access."
+      "alert_description": "We observed a critical authentication failure involving Lalit Paliwal, a guest user, attempting to access our systems. This is concerning because a guest user experienced a critical failure while trying to access resources across different parts of our environment, which could signal an unauthorized access attempt or a security misconfiguration."
     }
   ],
   "low_priority_events": [
@@ -322,7 +322,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Geographically Distributed Access & Cross-Tenant Guest Activity - Prabhat Sutar (4 events)",
       "alert_summary": "3 locations",
-      "alert_description": "We've detected unusual activity from Prabhat Sutar, a guest user, who accessed our systems from three different geographical locations and also engaged in cross-tenant access. This pattern is concerning because such diverse access by a guest user could indicate a compromised account or unauthorized activity, even though all attempts were successful."
+      "alert_description": "We've detected unusual activity from Prabhat Sutar, a guest user, who accessed our systems from three different geographic locations. This is concerning because it could signal that their account has been compromised or is being used for unauthorized cross-tenant access, posing a potential security risk."
     },
     {
       "user_principal_name": "gupta.pooja@yashtechnologies841.onmicrosoft.com",
@@ -469,7 +469,7 @@
       ],
       "alert_title": "\ud83d\udea8 [LOW RISK] Critical Authentication Failures - Pooja Gupta (2 failures/2 events)",
       "alert_summary": "Success rate: 0.0%",
-      "alert_description": "We detected two failed login attempts by an unknown user, Pooja Gupta, trying to access one of our applications. This is concerning because these critical authentication failures suggest someone without an account is attempting to gain unauthorized access to our systems."
+      "alert_description": "We detected two critical failed login attempts for an account named Pooja Gupta, which does not exist within our system. This is concerning as it suggests an unauthorized individual may be attempting to gain access to our applications from a single location."
     },
     {
       "user_principal_name": "raviraj.jadhav@yash.com",
@@ -586,7 +586,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Raviraj Ramesh Jadhav (2 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We've identified that a guest user, Raviraj, successfully accessed two of our applications. This is concerning because it involved cross-tenant access by a guest account, which is inherently riskier, and their authentication relied on a less secure single-factor method."
+      "alert_description": "We've observed that Raviraj, a guest user, successfully accessed two of our applications. The concern is that this cross-system access by a guest user, likely protected only by a single password, presents a potential security vulnerability if their credentials were ever compromised."
     },
     {
       "user_principal_name": "rohan.karekar@yash.com",
@@ -668,7 +668,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Rohan Karekar (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We detected that a guest user, Rohan Karekar, successfully accessed resources that are typically separate from their usual permissions. This is concerning because Rohan is a guest user who was able to access these resources using only a single password, which increases the risk of unauthorized access to sensitive information."
+      "alert_description": "We detected a guest user, Rohan Karekar, successfully accessing one of our applications. The concern stems from this guest user reaching across our systems from an external tenant and only requiring a single password for access, which makes it more vulnerable to potential compromise."
     },
     {
       "user_principal_name": "manisha.thete@yash.com",
@@ -750,7 +750,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Manisha Anil Thete (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We've detected that a guest user, Manisha Thete, successfully accessed one of our applications. While the access was successful, it's concerning because it involved a guest from another organization accessing our systems, and their access likely relied only on a password, which isn't as secure as requiring a second verification step."
+      "alert_description": "We've noted that a guest user, Manisha Thete, successfully accessed an application. The main concern is that this access involved resources outside our immediate control and was secured only by a single password, which increases the risk of unauthorized access if that password were ever compromised."
     },
     {
       "user_principal_name": "lakhan.patidar@yash.com",
@@ -832,7 +832,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Lakhan  Patidar (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We've identified that a guest user, Lakhan Patidar, successfully accessed one of our applications. This is concerning because the access was granted using only a single password, and it involved cross-tenant access, which could potentially expose our resources to unauthorized external parties."
+      "alert_description": "We've identified that a guest user, Lakhan Patidar, successfully accessed our systems using only a single password, and this access extended to resources typically separate from their primary area. This is concerning because it highlights a potential weakness where a simple password could grant a guest user broader access than intended, increasing our risk of unauthorized data exposure."
     },
     {
       "user_principal_name": "prakhar.vyas@yash.com",
@@ -914,7 +914,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Prakhar  Vyas (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We observed a guest user, Prakhar Vyas, successfully accessing one of our applications from outside our primary system. This is concerning because this access was granted using only a single password, highlighting a potential vulnerability where guest users can access resources across different parts of our environment."
+      "alert_description": "We detected a guest user, Prakhar Vyas, successfully accessing one of our applications from an external tenant. This is concerning because relying on single-factor authentication for guest access across tenants makes it easier for unauthorized individuals to potentially gain access to our systems."
     },
     {
       "user_principal_name": "ajinkya.bhagwat@yash.com",
@@ -1079,7 +1079,7 @@
       ],
       "alert_title": "\ud83d\udea8 [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Salunke Ajinkya  Bhagwat (1 failures/4 events)",
       "alert_summary": "Success rate: 75.0% | 2 locations",
-      "alert_description": "We detected unusual activity where a guest user, Salunke Ajinkya Bhagwat, successfully accessed our systems from two different locations, despite one minor sign-in interruption. This is concerning because it highlights a guest user with cross-tenant access, primarily protected by single-factor authentication, which increases the risk of unauthorized entry."
+      "alert_description": "We've observed unusual sign-in activity from a guest user, Salunke Ajinkya Bhagwat, who accessed an application from two different locations. This is concerning because guest users accessing our resources from multiple locations, especially with predominantly single-factor authentication, increases the risk of unauthorized access to our systems."
     },
     {
       "user_principal_name": "prajvi.jain@yash.com",
@@ -1196,7 +1196,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Prajvi Jain (2 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We've observed a guest user, Prajvi Jain, successfully accessing two different applications across our system. This is concerning because their access relies solely on a single password, which significantly increases the risk of unauthorized access if that password were ever compromised."
+      "alert_description": "We've detected that a guest user, Prajvi Jain, successfully accessed two of our applications. This is concerning because guest users accessing resources across different parts of our system, especially with only a single password for authentication, presents a potential vulnerability that could be exploited."
     },
     {
       "user_principal_name": "ishita.porwal@yash.com",
@@ -1278,7 +1278,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Ishita  Porwal (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We detected a guest user, Ishita Porwal, successfully accessing one of our applications. This is concerning because allowing guest users cross-tenant access with only a single password for authentication significantly increases our risk of unauthorized access or data exposure."
+      "alert_description": "We've detected that a guest user, Ishita Porwal, successfully accessed one of our applications from an external tenant. This is concerning because guest access, especially when secured only by a single password, significantly increases our risk of unauthorized data exposure or system compromise."
     },
     {
       "user_principal_name": "yukta.nagle@yash.com",
@@ -1360,7 +1360,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Yukta Nagle (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We detected a guest user, Yukta Nagle, successfully accessing one of our applications. This is concerning because guest accounts accessing resources across different parts of our system, especially when only protected by a single password, increases our overall security risk."
+      "alert_description": "We've identified that a guest user, Yukta Nagle, successfully accessed an application within our environment. The primary concern is that this access involved a guest user potentially crossing into different parts of our system, and it was secured only by a single password, which increases the risk of unauthorized access."
     },
     {
       "user_principal_name": "palak.patel@yash.com",
@@ -1442,7 +1442,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Palak  Patel (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We've identified that a guest user, Palak Patel, successfully accessed one of our applications. This is concerning because it involved a guest user accessing our systems from another tenant, and their access was secured only by a single password, which isn't as robust as multi-factor authentication."
+      "alert_description": "We've identified that a guest user, Palak Patel, successfully accessed an application in a way that crossed our internal system boundaries. This is concerning because guest accounts with single-factor authentication pose a higher risk for unauthorized access and potential data exposure when operating across different parts of our environment."
     },
     {
       "user_principal_name": "shrikant.bhosale@yash.com",
@@ -1524,7 +1524,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Bhosale  Shrikant Shrirang (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We detected a guest user, Shrikant Bhosale, successfully accessing one of our applications. This is concerning because it involved a guest user from another organization accessing our internal resources, and their access was only protected by a single password, which makes it easier for unauthorized access."
+      "alert_description": "We've identified that a guest user, Shrikant Bhosale, successfully accessed one of our applications. This is concerning because guest access, particularly when it involves crossing into different parts of our system and relies only on a single password, makes us more vulnerable to potential security breaches."
     },
     {
       "user_principal_name": "lakshmi.damaraju@yash.com",
@@ -1606,7 +1606,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Venkata Sailakshmisoundarya Bharathi Damaraju (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We've identified that a guest user, Venkata Sailakshmisoundarya Bharathi Damaraju, successfully accessed one of our applications. This is concerning because it involved cross-tenant access by a guest account, which often relies on less secure single-factor authentication, potentially increasing our exposure to unauthorized access."
+      "alert_description": "We've detected a guest user, Venkata Sailakshmisoundarya Bharathi Damaraju, successfully accessing one of our applications. This activity is concerning because it involved a guest account performing cross-tenant access using only single-factor authentication, which significantly increases our exposure to potential unauthorized access if their credentials were ever compromised."
     },
     {
       "user_principal_name": "poornima.rathaur@yash.com",
@@ -1688,7 +1688,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Poornima Rathaur (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We've identified that a guest user, Poornima Rathaur, successfully accessed one of our applications. The primary concern is that this access relied solely on a single password, making our system more vulnerable if that password were ever compromised, especially since it involves cross-tenant access from an external organization."
+      "alert_description": "We detected a guest user, Poornima Rathaur, successfully accessing one of our applications from another organization's environment. This is concerning because the access relied only on a single password, which significantly increases our risk if that credential were ever compromised."
     },
     {
       "user_principal_name": "himanshu.koshti@yash.com",
@@ -1770,7 +1770,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Himanshu  Koshti (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We observed a guest user, Himanshu Koshti, successfully accessing one of our applications. The concern is that this access originated from their company's system and relied only on a single password, which creates a potential vulnerability for our data if their account were ever compromised."
+      "alert_description": "We've identified that a guest user, Himanshu Koshti, successfully accessed one of our applications from an external tenant. This is concerning because allowing guest access, especially when only a single password is required for authentication, significantly increases the risk of unauthorized access to our internal systems and data."
     },
     {
       "user_principal_name": "harsh.choudhary@yash.com",
@@ -1852,7 +1852,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - Harsh Vardhan  Choudhary (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We've observed a guest user, Harsh Vardhan Choudhary, successfully accessing one of our applications using only a single password. This is concerning because guest accounts with just one layer of security, especially when accessing our systems from outside our direct control, increase the risk of unauthorized access if their account is ever compromised."
+      "alert_description": "We've identified that a guest user, Harsh Vardhan Choudhary, successfully accessed our systems from another organization. This is concerning because this type of cross-tenant access, especially when secured only by a single password, creates a potential security vulnerability for our data."
     },
     {
       "user_principal_name": "451fa0fb-e092-49d6-8d49-4f0e63f88458",
@@ -1981,7 +1981,7 @@
       ],
       "alert_title": "\ud83d\udea8 [LOW RISK] Cross-Tenant Guest Activity & Weak Authentication Methods - 451fa0fb-e092-49d6-8d49-4f0e63f88458 (2 failures/2 events)",
       "alert_summary": "Success rate: 0.0%",
-      "alert_description": "We detected two failed attempts by a guest user to access one of our applications, which were blocked because stronger authentication was required. This is concerning because the guest account currently relies on a single password for access, creating a potential vulnerability for unauthorized entry into our systems."
+      "alert_description": "We detected a guest user attempting to access one of our applications twice, but both attempts failed because they didn't provide the required strong authentication. This is concerning because it highlights a guest user trying to access our systems from another tenant, relying on less secure single-factor authentication, which could pose a risk if our stronger security measures hadn't stopped them."
     },
     {
       "user_principal_name": "tanay.dwivedi@yash.com",
@@ -2062,7 +2062,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity - Tanay  Dwivedi (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We've identified that a guest user, Tanay Dwivedi, successfully accessed resources that appear to belong to a different part of our organization or a partner. This \"cross-tenant access\" is concerning because it means a guest might have gained unauthorized access to information or systems they shouldn't have been able to reach, posing a potential data security risk."
+      "alert_description": "We've identified that a guest user, Tanay Dwivedi, successfully accessed resources in an area of our system that should have been restricted to them. This \"cross-tenant access\" is concerning because it indicates a potential security misconfiguration that could allow unauthorized external users to view or interact with sensitive company data."
     },
     {
       "user_principal_name": "himanshu.s@yashtechnologies841.onmicrosoft.com",
@@ -2229,7 +2229,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Weak Authentication Methods - Himanshu S (6 events)",
       "alert_summary": "2 locations | 3 activity sessions",
-      "alert_description": "We've observed Himanshu S accessing an application from two distinct locations. This is concerning because their account primarily relies on only a password for verification, which makes it easier for an unauthorized person to gain access if that password is ever compromised."
+      "alert_description": "We've observed Himanshu S accessing our systems from two different locations, which, while not flagged as an anomaly, highlights a potential risk. This is concerning because their account predominantly uses single-factor authentication, making it more vulnerable to unauthorized access if credentials are compromised."
     },
     {
       "user_principal_name": "prakhar.vyas@yashtechnologies841.onmicrosoft.com",
@@ -2362,7 +2362,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Weak Authentication Methods - Prakhar Vyas (3 events)",
       "alert_summary": "2 locations",
-      "alert_description": "We've detected that Prakhar Vyas's account recently accessed our systems from two different locations, which is unusual for his typical activity. This is concerning because his account primarily relies on a single password for access, meaning if that password were compromised, an unauthorized person could easily gain entry from any location."
+      "alert_description": "We've detected unusual activity on Prakhar Vyas's account, as he successfully accessed our systems from two distinct geographic locations. This raises a flag because his account primarily uses only a single password for verification, which increases the risk if his credentials were ever stolen."
     },
     {
       "user_principal_name": "sanket.upadhyay@yash.com",
@@ -2443,7 +2443,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity - Sanket  Upadhyay (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We've detected that a guest user, Sanket Upadhyay, successfully accessed resources in a different tenant environment than they were authorized for. This is concerning because guest users should be restricted to their designated areas, and such unauthorized access could potentially expose our internal data."
+      "alert_description": "We've detected that a guest user, Sanket Upadhyay, successfully accessed resources in a way that suggests they crossed into an unauthorized area of our systems. This \"cross-tenant access\" is concerning because it means they may have gained access to information or applications they shouldn't have, even if it was a single instance."
     },
     {
       "user_principal_name": "srikanth.kunapareddy@yashtechnologies841.onmicrosoft.com",
@@ -2524,7 +2524,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Weak Authentication Methods - Srikanth Kunapareddy (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "While Srikanth's recent login to an application showed no unusual activity or failures, the primary concern is that this access relied solely on a password. This single-factor authentication significantly increases the risk of account compromise should that password ever be stolen."
+      "alert_description": "We observed Srikanth successfully accessing an application, which on its own isn't unusual. However, the primary concern is that this access relied solely on a single password, making the account more vulnerable to potential compromise if that password were ever stolen."
     },
     {
       "user_principal_name": "sam.malviya@yashtechnologies841.onmicrosoft.com",
@@ -2647,7 +2647,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Weak Authentication Methods - Sam Malviya (2 events)",
       "alert_summary": "2 locations",
-      "alert_description": "We've detected unusual activity on Sam Malviya's account, showing access to two different applications from two distinct geographic locations within a very short timeframe. This rapid change in access points is concerning, especially since the account primarily relies on single-factor authentication, making it more susceptible to unauthorized access if this activity isn't legitimate."
+      "alert_description": "We've detected unusual activity on Sam Malviya's account, showing access from two different geographic locations for just two login events. This is concerning because Sam's account primarily uses a single password for authentication, making it more vulnerable if one of these accesses was unauthorized."
     },
     {
       "user_principal_name": "ravi.nuthakki@yash.com",
@@ -2728,7 +2728,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Cross-Tenant Guest Activity - Ravi Kiran Nuthakki (1 events)",
       "alert_summary": "Normal activity pattern",
-      "alert_description": "We detected that a guest user, Ravi Kiran Nuthakki, successfully accessed resources in a different part of our system than they were authorized for. This \"cross-tenant access\" is concerning because guest accounts should be strictly limited to their intended areas, and any access beyond that could potentially expose sensitive information."
+      "alert_description": "We detected that a guest user, Ravi Kiran Nuthakki, successfully accessed resources in a different tenant than our primary environment. This is concerning because guest users should not have cross-tenant access, which could potentially expose sensitive information or violate our security policies."
     },
     {
       "user_principal_name": "urvashi.upadhyay@yashtechnologies841.onmicrosoft.com",
@@ -2851,7 +2851,7 @@
       ],
       "alert_title": "\u26a0\ufe0f [LOW RISK] Abnormal User Behavior - Urvashi Upadhyay (2 events)",
       "alert_summary": "2 locations",
-      "alert_description": "We observed Urvashi Upadhyay accessed company applications from two different locations recently. However, all activity was successful, aligns with her normal patterns, and our systems currently assess this as very low risk with a score of 1/10, indicating no immediate concern."
+      "alert_description": "We've noted Urvashi Upadhyay's account accessed company applications from two different locations for only two events, which is an unusual geographic spread. While all access was successful with no failures or behavioral anomalies, we monitor such multi-location activity to ensure it aligns with expected user behavior and isn't indicative of a compromised account."
     }
   ]
 }
