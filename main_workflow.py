@@ -458,11 +458,11 @@ def main():
         "end_hour": 7,
         "interval_minutes": 20,
         "base_output_dir": "sentinel_logs2",
-        "skip_fetch": False,  # Use existing files
-        "skip_clean": False,  # Set to True if files already cleaned
+        "skip_fetch": True,  # Use existing files
+        "skip_clean": True,  # Set to True if files already cleaned
         "skip_correlation": False,  # NEW: Set to True to skip correlation if already done
         # SELECT WHAT TO PROCESS:
-        "process_user_data": True,  # Set to True to process user data
+        "process_user_data": False,  # Set to True to process user data
         "process_endpoint_security": True,  # Set to True to process endpoint security
     }
 

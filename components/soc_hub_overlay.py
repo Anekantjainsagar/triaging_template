@@ -381,9 +381,7 @@ def display_soc_hub_overlay():
             unsafe_allow_html=True,
         )
     with col2:
-        if st.button(
-            "⬅️ Back", key="back_soc_hub", type="primary", use_container_width=True
-        ):
+        if st.button("⬅️ Back", key="back_soc_hub", type="primary", width="stretch"):
             st.session_state.show_soc_hub = False
             st.rerun()
 
@@ -514,7 +512,7 @@ def display_soc_hub_overlay():
                     file_name=cached_filename,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
-                    use_container_width=True,
+                    width="stretch",
                 )
                 st.info(
                     "💡 Switch to the **🔮 Predictions & MITRE** tab to continue analysis"

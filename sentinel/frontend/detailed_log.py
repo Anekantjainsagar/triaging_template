@@ -69,9 +69,7 @@ def logs_display():
             unsafe_allow_html=True,
         )
     with col2:
-        if st.button(
-            "⬅️ Back to List", key="back_top", type="primary", use_container_width=True
-        ):
+        if st.button("⬅️ Back to List", key="back_top", type="primary", width="stretch"):
             st.session_state.show_details = False
             st.rerun()
 
@@ -612,7 +610,7 @@ def logs_display():
             "⬅️ Back to List",
             key="back_bottom",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         ):
             st.session_state.show_details = False
             st.rerun()
@@ -622,7 +620,7 @@ def logs_display():
             "🚀 Analyze in SOC Hub",
             key="analyze_soc_hub",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         ):
             # Prepare alert data for SOC Hub
             alert_data = prepare_alert_from_log(log_data, error_info)

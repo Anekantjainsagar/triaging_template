@@ -1,5 +1,5 @@
 # Security Analysis Report
-**Generated:** 2025-11-12 09:00:36
+**Generated:** 2025-11-12 11:38:54
 **Analysis Period:** 2025-11-07 06:40 - 06:46 UTC
 **Device:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 
@@ -7,365 +7,454 @@
 
 ## 🎯 Executive Summary
 
-**Total Events Analyzed:** 4
-**Alerts Generated:** 16
+**Total Events Analyzed:** 3
+**Alerts Generated:** 20
 **Highest Severity:** HIGH
 **Devices Monitored:** 1
 
-Within a 6-minute window, a single device generated 16 alerts from only 4 monitored DeviceEvents. This unusually high alert-to-event ratio suggests significant security activity or misconfiguration on the primary device, warranting immediate investigation.
+Within a brief 6-minute window, three 'ScriptContent' events on a single device generated an unusually high volume of 20 alerts. This significant alert-to-event ratio suggests potential suspicious activity or misconfiguration related to script execution. Immediate investigation is recommended to understand the nature of these events and address any security implications.
 
 ---
 
 ## 🚨 Security Alerts
 
-### ALERT-001: System Activity Data Collection (sysstat sa1)
+### ALERT-001: Routine System Activity Collection (sysstat sa1)
 **Severity:** 🟢 LOW
 **Category:** System Monitoring
-**MITRE ATT&CK:** T1070.003 - Indicator Removal on Host: Clear Trails
+**MITRE ATT&CK:** N/A
 
 **Description:**
-A standard `sysstat` utility, `sa1`, was executed to collect system activity data. This is a routine operation for performance monitoring and historical logging on Linux systems, typically managed by cron jobs or systemd timers.
+A standard system utility, `sa1` from the `sysstat` package, was executed to collect and store system activity data. This is a common and expected process for performance monitoring and diagnostic purposes on Linux systems. The event indicates normal system operation and maintenance.
+
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:40:09.38102Z
 - **Action Type:** ScriptContent
 - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 - **Key Components:**
-  - Script Path: `/usr/lib/sysstat/sa1`
+  - Script: `/usr/lib/sysstat/sa1`
   - Purpose: Collect and store binary data in system activity data file.
 
 **Risk Assessment:**
-This event represents a normal and expected system operation for collecting performance metrics. There is no immediate security risk, but continuous monitoring ensures no abuse of system utilities.
+This event represents routine system monitoring activity and does not indicate any security risk. It is a benign operation performed by a legitimate system utility.
 
 ---
 
-### ALERT-002: JAR Manifest Data Collection Script Execution
+### ALERT-002: JAR File Manifest Information Gathering
 **Severity:** 🟢 LOW
-**Category:** System Reconnaissance / Software Inventory
-**MITRE ATT&CK:** T1518.001 - Software Discovery
+**Category:** Information Gathering
+**MITRE ATT&CK:** T1592.001 (Gather Victim Host Information: Software), T1083 (File and Directory Discovery)
 
 **Description:**
-A Python script named `get_jar_data_list.py` was executed to search for JAR files in specific paths (e.g., `/usr/sap/`) and extract manifest information like implementation versions and vendors. This activity is consistent with a security tool performing asset inventory or vulnerability scanning.
+A Python script (`get_jar_data_list.py`) was executed to scan for and collect manifest data from JAR files, specifically targeting SAP application paths. This activity is consistent with asset inventory, vulnerability scanning, or compliance checks, likely performed by a security agent or authorized monitoring tool.
+
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:46:37.049669Z
 - **Action Type:** ScriptContent
 - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 - **Key Components:**
-  - Script Name: `get_jar_data_list.py`
-  - Jar Search Path: `/usr/sap/*/*/j2ee/cluster/apps/sap.com/devserver_metadataupload_ear/servlet_jsp/developmentserver/root/WEB-INF/lib/devserver_metadataupload_war.jar`
-  - Manifest Keys Collected: `implementation-version`, `implementation-vendor`
+  - Script: `get_jar_data_list.py`
+  - Target Path: `/usr/sap/*/*/j2ee/cluster/apps/sap.com/devserver_metadataupload_ear/servlet_jsp/developmentserver/root/WEB-INF/lib/devserver_metadataupload_war.jar`
+  - Collected Keys: `implementation-version`, `implementation-vendor`
 
 **Risk Assessment:**
-This event is indicative of legitimate system reconnaissance by a security or monitoring agent. While it involves inspecting system files, the content and targets suggest a benign purpose. No immediate security risk.
+While information gathering can be a precursor to malicious activity, given the `wazuh1` hostname and the nature of the script, this is most likely a legitimate security or IT operations script performing inventory. The risk is assessed as low, but it's noted as an information gathering activity.
 
 ---
 
-### ALERT-003: Python Package Discovery Script Execution
+### ALERT-003: Python Package and Environment Discovery
 **Severity:** 🟢 LOW
-**Category:** System Reconnaissance / Software Inventory
-**MITRE ATT&CK:** T1518.001 - Software Discovery
+**Category:** Information Gathering
+**MITRE ATT&CK:** T1592.001 (Gather Victim Host Information: Software), T1083 (File and Directory Discovery)
 
 **Description:**
-A Python script named `find_python_package.py` was executed to discover installed Python packages and their metadata within specified directories (e.g., `/home/user/envs`, `/opt/venvs`, `/usr/local/lib`). This is a common operation for software inventory, compliance, or vulnerability scanning tools.
+A Python script (`find_python_package.py`) was executed to discover installed Python packages and their metadata across various environments, including virtual environments and global site-packages. This is a common task for inventory management, dependency auditing, or vulnerability assessment.
+
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:46:37.247243Z
 - **Action Type:** ScriptContent
 - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 - **Key Components:**
-  - Script Name: `find_python_package.py`
-  - Search Directories: `/home/user/envs,/opt/venvs`
-  - Global Directories: `/usr/local/lib,/tmp/venv/lib`
+  - Script: `find_python_package.py`
+  - Functionality: Identifies Python virtual environments (`pyvenv.cfg`) and scans site-packages for package metadata.
+  - Search Scope: `/home/user/envs,/opt/venvs` and `/usr/local/lib,/tmp/venv/lib`
 
 **Risk Assessment:**
-This activity appears to be part of a legitimate system audit or security scan to identify installed Python environments and packages. No immediate security risk is identified based on the script's functionality.
+Similar to the JAR file scan, this event indicates routine information gathering activity. Its presence on a `wazuh` host suggests it's part of a legitimate security or monitoring workflow. No immediate threat is identified, but it's classified as information gathering.
 
 ---
 
-### ALERT-004: Log4j Vulnerability/Mitigation Scan Script Execution
+### ALERT-004: Log4j Vulnerability Mitigation Scan
 **Severity:** 🟢 LOW
-**Category:** Vulnerability Scanning / Security Monitoring
-**MITRE ATT&CK:** T1518.001 - Software Discovery, T1083 - File and Directory Discovery
+**Category:** Vulnerability Management / Security Configuration Assessment
+**MITRE ATT&CK:** T1083 (File and Directory Discovery), T1003 (OS Credential Dumping) - *Note: While the script does not dump credentials, it's performing detailed file system analysis often seen in post-exploitation scenarios by defenders.*
 
 **Description:**
-A Python script named `open_files.py` was executed, specifically configured to look for `log4j` related components and mitigation markers (`/var/opt/microsoft/mdatp/wdavedr/log4jMitigationApplied`). The script filters by process names (`java,javaw`), environment variables (`LOG4J_FORMAT_MSG_NO_LOOKUPS=true`), and collects directory listings for specific Log4j classes. This strongly indicates an EDR solution (like Microsoft Defender for Endpoint, implied by `mdatp`) performing a targeted scan for Log4j vulnerabilities.
+A highly specialized Python script (`open_files.py`) designed for Log4j vulnerability detection and mitigation was executed. The script specifically checks for Log4j indicators (`JndiLookup.class`), filters by process names (`java`, `javaw`), and checks for a mitigation marker file associated with Microsoft Defender for Endpoint. This is a defensive security operation to assess or verify the Log4j vulnerability status.
+
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:46:38.168331Z
 - **Action Type:** ScriptContent
 - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 - **Key Components:**
-  - Script Name: `open_files.py`
-  - Scan ID: `log4j_handlersV2`
-  - Filter Name: `log4j,LOG4J,spring-core`
+  - Script: `open_files.py`
+  - Purpose: `log4j_handlersV2` mitigation, filter by `LOG4J_FORMAT_MSG_NO_LOOKUPS=true`
+  - Manifest Path: `META-INF/maven/org.apache.logging.log4j/log4j-core/pom.properties`
   - Marker Path: `/var/opt/microsoft/mdatp/wdavedr/log4jMitigationApplied`
-  - Collect Dirlist: `/log4j/core/lookup/JndiLookup.class,log4j-,spring-core-`
+  - Collect Dirlist: `/log4j/core/lookup/JndiLookup.class`
 
 **Risk Assessment:**
-This is a proactive and legitimate security operation by a deployed EDR agent to assess the system's exposure and mitigation status regarding Log4j vulnerabilities. This activity improves the security posture and does not pose a direct threat.
+This event is a clear indication of a defensive security measure being actively performed on the system. It signifies a security agent (likely Microsoft Defender for Endpoint, given the path) scanning for specific indicators of the Log4j vulnerability. This is a positive security hygiene activity and does not pose a direct threat.
 
 ---
 
-### ALERT-005: sysstat sa1 Helper Script Execution
+### ALERT-005: Scheduled System Activity Collection (sysstat sa1 helper)
 **Severity:** 🟢 LOW
 **Category:** System Monitoring
-**MITRE ATT&CK:** T1070.003 - Indicator Removal on Host: Clear Trails
+**MITRE ATT&CK:** N/A
 
 **Description:**
-A helper script for `sysstat`'s `sa1` utility was executed. This script manages the execution of `sa1` based on systemd presence and configuration defined in `/etc/default/sysstat`. This is part of the standard system activity data collection process.
+A helper script for the `sysstat` utility (`sa1`) was executed, likely via a cron job, to initiate system activity data collection. This script checks system configurations (e.g., `systemd` usage, `ENABLED` flag in `/etc/default/sysstat`) before calling the main `sa1` utility. This is a standard and expected background process for maintaining system performance logs.
+
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:55:01.964973Z
 - **Action Type:** ScriptContent
 - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 - **Key Components:**
-  - Script Path: `/etc/cron.d/sysstat.sa1` (inferred from common deployment)
-  - Purpose: Helper script for `/usr/lib/sysstat/sa1` execution.
-  - Configuration Check: Reads `/etc/default/sysstat` for `ENABLED` flag.
+  - Script: `/usr/lib/sysstat/sa1` (executed by a helper script)
+  - Context: `Debian sa1 helper which is run from cron.d job`
+  - Configuration File: `/etc/default/sysstat`
 
 **Risk Assessment:**
-This event is a normal and expected system operation for managing `sysstat` data collection. It contributes to system observability and does not indicate any malicious activity.
+This event represents routine, scheduled system maintenance and monitoring. It is a benign operation performed by legitimate system components and does not indicate any security risk.
 
-### ALERT-006: Routine File Deletions by Wazuh-Indexer Process
+### ALERT-006: Wazuh Indexer (OpenSearch) Deleting Lucene Index Segment Files (Normal Operation)
+**Severity:** 🟢 LOW
+**Category:** System Activity / Application Operation
+**MITRE ATT&CK:** N/A
+
+**Description:**
+The Wazuh Indexer (OpenSearch) process, running as the `wazuh-indexer` user, was observed deleting multiple Lucene index segment files within its designated data directories. This activity is a routine operation for OpenSearch, typically occurring during index optimization, segment merging, or data retention policies.
+While file deletions can sometimes indicate suspicious activity, in this context, it appears to be part of the normal functioning and maintenance of the indexing service.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:55:04.4718Z (Latest observed event)
+- **Action Type:** FileDeleted
+- **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **Key Components:**
+  - **Initiating Process Name:** java
+  - **Initiating Process Account:** wazuh-indexer (PosixUserId: 998)
+  - **Affected File Pattern:** `_XXX_Lucene912_0.doc` (e.g., `_146_Lucene912_0.doc`, `_cg_Lucene912_0.doc`)
+  - **Affected Folder Path:** `/var/lib/wazuh-indexer/nodes/0/indices/.../0/index/`
+  - **Initiating Process Command Line:** `/usr/share/wazuh-indexer/jdk/bin/java ... org.opensearch.bootstrap.OpenSearch ...`
+
+**Risk Assessment:**
+This event represents normal and expected behavior for a Wazuh Indexer (OpenSearch) instance. The deletions are performed by the legitimate application process on its own data files, indicating operational maintenance rather than a security threat. No immediate action is required, but continued monitoring for anomalous patterns or deletions in unexpected locations is recommended.
+
+### ALERT-007: Routine `dash` shell process creation
+**Severity:** 🟢 LOW
+**Category:** System Activity
+**MITRE ATT&CK:** T1059.004 - Command and Scripting Interpreter: Unix Shell
+
+**Description:**
+A `dash` shell process was observed being created on the system, initiated by another `dash` shell. This typically represents a normal operating system function, such as executing a shell script or an interactive shell session. The process is running as root.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:45:01.892722Z
+- **Action Type:** ProcessCreated
+- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **Key Components:**
+  - **Process FileName:** dash
+  - **Process FolderPath:** /usr/bin/dash
+  - **InitiatingProcessFileName:** dash
+  - **InitiatingProcessParentFileName:** dash
+  - **InitiatingProcessPosixUserOwner:** root
+  - **LogonId:** 0 (root user)
+
+**Risk Assessment:** This event appears to be a standard and expected operating system function. No immediate security risk is identified, classifying it as routine activity.
+
+---
+
+### ALERT-008: Microsoft Defender for Endpoint (MDE) Script Executing to Gather JAR Data
+**Severity:** 🟢 LOW
+**Category:** Endpoint Security Monitoring
+**MITRE ATT&CK:** T1059.006 - Command and Scripting Interpreter: Python
+
+**Description:**
+A Python script (`get_jar_data_list.py`), part of Microsoft Defender for Endpoint (MDE), was executed as the root user. The script is configured to collect manifest keys and search for JAR files within SAP application directories. This indicates a routine inventory or monitoring task performed by the endpoint security solution.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:46:36.992885Z
+- **Action Type:** ProcessCreated
+- **AccountName:** root
+- **ProcessCommandLine:** /bin/python3 /opt/microsoft/mdatp/conf/scripts/get_jar_data_list.py --ScriptName get_jar_data_list.py --collect-manifest-keys implementation-version --jar-search-path /usr/sap/*/*/j2ee/cluster/apps/sap.com/devserver_metadataupload_ear/servlet_jsp/developmentserver/root/WEB-INF/lib/devserver_metadataupload_war.jar
+- **Key Components:**
+  - **Process FileName:** python3.10
+  - **Process FolderPath:** /usr/bin/python3.10
+  - **InitiatingProcessAccountName:** root
+  - **Source Path:** /opt/microsoft/mdatp/conf/scripts/
+
+**Risk Assessment:** This is a legitimate and expected operation by the Microsoft Defender for Endpoint agent to perform system inventory or security posture assessment, specifically targeting SAP installations. No immediate security risk is identified.
+
+---
+
+### ALERT-009: Microsoft Defender for Endpoint (MDE) Script Executing to Find Python Packages
+**Severity:** 🟢 LOW
+**Category:** Endpoint Security Monitoring
+**MITRE ATT&CK:** T1059.006 - Command and Scripting Interpreter: Python
+
+**Description:**
+A Python script (`find_python_package.py`), part of Microsoft Defender for Endpoint (MDE), was executed as the root user. The script's command line indicates it is searching for a specific Python package named 'langflow'. This is a routine inventory or monitoring task performed by the endpoint security solution.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:46:37.190819Z
+- **Action Type:** ProcessCreated
+- **AccountName:** root
+- **ProcessCommandLine:** /bin/python3 /opt/microsoft/mdatp/conf/scripts/find_python_package.py --ScriptName find_python_package.py --package langflow
+- **Key Components:**
+  - **Process FileName:** python3.10
+  - **Process FolderPath:** /usr/bin/python3.10
+  - **InitiatingProcessAccountName:** root
+  - **Source Path:** /opt/microsoft/mdatp/conf/scripts/
+
+**Risk Assessment:** This is a legitimate and expected operation by the Microsoft Defender for Endpoint agent to perform system inventory or security posture assessment. No immediate security risk is identified.
+
+---
+
+### ALERT-010: Microsoft Defender for Endpoint (MDE) Querying Installed Debian Packages with osqueryi
+**Severity:** 🟢 LOW
+**Category:** Endpoint Security Monitoring
+**MITRE ATT&CK:** T1082 - System Information Discovery
+
+**Description:**
+The `osqueryi` utility, which is integrated with Microsoft Defender for Endpoint (MDE), was executed as the root user. The command line shows it's performing a query to list installed Debian packages. This is a common and legitimate activity for system inventory and security monitoring.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:46:37.714545Z
+- **Action Type:** ProcessCreated
+- **AccountName:** root
+- **ProcessCommandLine:** /opt/microsoft/mdatp/sbin/osqueryi --config_plugin=filesystem --config_path=/dev/null --pidfile=/dev/null --disable_database --json 'SELECT name,version,maintainer,source from deb_packages WHERE status LIKE "install%" ORDER BY name, maintainer;'
+- **Key Components:**
+  - **Process FileName:** osqueryi
+  - **Process FolderPath:** /opt/microsoft/mdatp/sbin/osqueryi
+  - **InitiatingProcessAccountName:** root
+
+**Risk Assessment:** This is a legitimate and expected operation by the Microsoft Defender for Endpoint agent to collect system configuration and installed software inventory. No immediate security risk is identified.
+
+---
+
+### ALERT-011: Microsoft Defender for Endpoint (MDE) Executing `ps` for Process Statistics
+**Severity:** 🟢 LOW
+**Category:** Endpoint Security Monitoring
+**MITRE ATT&CK:** T1057 - Process Discovery
+
+**Description:**
+The standard `ps` utility was executed as the root user with arguments to list all running processes and display specific statistics (command, PID, CPU, memory, RSS, elapsed time) without headers. This is a common system monitoring activity, likely performed by Microsoft Defender for Endpoint (MDE) for process discovery and resource usage tracking.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:46:38.901492Z
+- **Action Type:** ProcessCreated
+- **AccountName:** root
+- **ProcessCommandLine:** /bin/ps -A -o comm,pid,pcpu,pmem,rss,etimes --no-headers
+- **Key Components:**
+  - **Process FileName:** ps
+  - **Process FolderPath:** /usr/bin/ps
+  - **InitiatingProcessAccountName:** root
+
+**Risk Assessment:** This is a legitimate and expected operation by the Microsoft Defender for Endpoint agent for system process monitoring. No immediate security risk is identified.
+
+---
+
+### ALERT-012: Microsoft Defender for Endpoint (MDE) Initiating `lsof` for Java Process Inspection
+**Severity:** 🟢 LOW
+**Category:** Endpoint Security Monitoring
+**MITRE ATT&CK:** T1083 - File and Directory Discovery
+
+**Description:**
+A `dash` shell process, likely initiated by a Microsoft Defender for Endpoint (MDE) Python script, executed the `lsof` utility as root. The `lsof` command was used to list open files and network connections specifically associated with `java` and `javaw` processes. This is a common diagnostic and monitoring command, especially on systems running Java applications.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:46:38.297778Z (initial `dash` process)
+- **Action Type:** ProcessCreated
+- **AccountName:** root
+- **InitiatingProcessFileName (of `dash`):** dash
+- **InitiatingProcessParentFileName (of `dash`):** python3.10
+- **ProcessCommandLine (for `dash`):** /bin/sh -c "lsof -a -c java -c javaw 2>/dev/null"
+- **Process FileName (for `lsof`):** lsof
+- **Process CommandLine (for `lsof`):** lsof -a -c java -c javaw
+- **FolderPath:** /usr/bin/lsof
+
+**Risk Assessment:** This is a legitimate and expected operation by the Microsoft Defender for Endpoint agent for system monitoring and diagnostic purposes, particularly relevant for environments with Java applications. No immediate security risk is identified.
+
+---
+
+### ALERT-013: Routine Root Logon by Cron Process
 **Severity:** 🟢 LOW
 **Category:** System Activity
 **MITRE ATT&CK:** N/A
 
 **Description:**
-Multiple Lucene index segment files (`.doc` extension) were deleted by the `java` process associated with the `wazuh-indexer` service on a Wazuh indexer node. These deletions occurred within the standard OpenSearch/Wazuh-indexer data directory. This activity is considered normal and expected behavior for a search and analytics engine managing its data indices, which involves creating, merging, and deleting segments for optimization and data lifecycle.
-
-**Evidence:**
-- **Timestamp:** 2025-11-07T06:40:04.393268Z
-- **Action Type:** FileDeleted
-- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
-- **Key Components:**
-  - **Initiating Process:** `/usr/share/wazuh-indexer/jdk/bin/java`
-  - **Initiating Account:** `wazuh-indexer` (PosixUserId: 998)
-  - **Deleted File Pattern:** `_XXX_Lucene912_0.doc` files
-  - **Folder Path Pattern:** `/var/lib/wazuh-indexer/nodes/0/indices/*/index/`
-
-**Risk Assessment:**
-These events represent routine maintenance and optimization activities performed by the Wazuh-indexer application. The deletions are consistent with the normal operation of Lucene-based indices, where old segments are removed after being merged. Therefore, this activity poses no immediate security risk and is considered benign.
-
-### ALERT-007: EDR Agent Performing System Reconnaissance (Expected Behavior)
-**Severity:** 🟢 LOW
-**Category:** System Monitoring / EDR Activity
-**MITRE ATT&CK:** T1082 - System Information Discovery, T1057 - Process Discovery
-
-**Description:**
-Multiple processes, including Python scripts, `osqueryi`, `ps`, and `lsof`, were observed executing as the `root` user with the `mdatp` effective group on device `wazuh1`. These commands are consistent with system information gathering and monitoring activities performed by a security solution like Microsoft Defender for Endpoint. This is considered normal and expected behavior for an EDR agent.
-
-**Evidence:**
-- **Timestamp:** 2025-11-07T06:46:36.992885Z (Earliest related event)
-- **Action Type:** ProcessCreated
-- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
-- **AccountName:** root
-- **Key Components:**
-  - **Processes Observed:** python3.10, osqueryi, ps, lsof
-  - **InitiatingProcessPosixEffectiveGroup:** mdatp (PosixGroupId: 997)
-  - **Example ProcessCommandLine:** `/bin/python3 /opt/microsoft/mdatp/conf/scripts/get_jar_data_list.py ...`, `/opt/microsoft/mdatp/sbin/osqueryi ...`, `/bin/ps -A -o comm,pid,...`, `lsof -a -c java -c javaw`
-
-**Risk Assessment:**
-This activity appears to be benign and expected behavior from a legitimate EDR agent (Microsoft Defender for Endpoint) performing routine system monitoring and reconnaissance. The elevated privileges are necessary for these tasks. Therefore, the immediate risk is low.
-
----
-
-### ALERT-008: Process Replacement/Mutation Detected (Executable Substitution)
-**Severity:** 🟡 MEDIUM
-**Category:** Process Tampering / Evasion
-**MITRE ATT&CK:** T1055 - Process Injection (related), T1036.003 - Masquerading: Rename System Utilities (conceptually related)
-
-**Description:**
-A `dash` shell process was observed being immediately replaced by an `lsof` process while maintaining the *same ProcessId* (e.g., PID 415044 and 415059). This indicates process replacement (likely via the `exec` system call), where the original `dash` executable was substituted for `lsof`. While a legitimate system operation, this technique can be abused by malicious actors to evade process monitoring by security tools or to masquerade as trusted processes.
-
-**Evidence:**
-- **Timestamp:** 2025-11-07T06:46:38.297778Z (dash created with PID 415044)
-- **Action Type:** ProcessCreated
-- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
-- **ProcessId (first instance):** 415044
-- **Key Components:**
-  - **InitiatingProcessFileName:** dash (PID 415044) executing `/bin/sh -c "lsof ..."`
-  - **ProcessId:** 415044, **FileName:** lsof (immediately after `dash` with same PID)
-  - **InitiatingProcessCreationTime (dash):** 2025-11-07T06:46:38.296951Z
-  - **ProcessCreationTime (lsof, same PID):** 2025-11-07T06:46:38.29932Z
-  - **Second Instance of Pattern:** ProcessId 415059 (dash replaced by lsof at 2025-11-07T06:46:39.28427Z / 2025-11-07T06:46:39.284641Z)
-
-**Risk Assessment:**
-This behavior, while employed by the `mdatp` agent for potentially legitimate purposes (e.g., resource efficiency by replacing an ephemeral shell process), represents a significant technique for evasion. Malicious use of process replacement could allow an attacker to bypass security controls. It warrants monitoring and understanding of approved usage within the environment. Medium severity due to the potential for abuse of the technique.
-
----
-
-### ALERT-009: Executables with Unknown Signature Status
-**Severity:** 🟢 LOW
-**Category:** System Integrity / Configuration Anomaly
-**MITRE ATT&CK:** N/A
-
-**Description:**
-Multiple system utilities and scripts, including `dash`, `python3.10`, `osqueryi`, `lsof`, and `ps`, executed as `root` on `wazuh1` were reported with an "Unknown" signature status. While this is a common characteristic in many Linux environments where code signing is not widely implemented or verified, it highlights a lack of cryptographic integrity validation for these executables. This absence of verification could potentially mask tampering or unauthorized modifications if a robust integrity solution is not in place.
-
-**Evidence:**
-- **Timestamp:** 2025-11-07T06:45:01.892722Z (Earliest event showing this status)
-- **Action Type:** ProcessCreated
-- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
-- **Key Components:**
-  - **InitiatingProcessSignerType:** Unknown (consistent across all relevant events)
-  - **InitiatingProcessSignatureStatus:** Unknown (consistent across all relevant events)
-  - **Affected Binaries:** `/usr/bin/dash`, `/usr/bin/python3.10`, `/opt/microsoft/mdatp/sbin/osqueryi`, `/usr/bin/lsof`, `/usr/bin/ps`
-
-**Risk Assessment:**
-In a typical Linux environment, "Unknown" signature status for common utilities is often expected and represents a low immediate risk. However, in environments with strict integrity policies or for critical binaries, this could be a security gap. It's a noteworthy configuration or detection detail that should be considered for a comprehensive integrity monitoring program.
-
-### ALERT-010: Normal System Activity: Root Account Local Logon via Cron Daemon
-**Severity:** 🟢 LOW
-**Category:** System Activity / User Activity Monitoring
-**MITRE ATT&CK:** N/A
-
-**Description:**
-These events indicate successful local logons by the `root` account, initiated by the `cron` daemon. This is typical behavior for a Linux system, where `cron` executes scheduled tasks as the `root` user. The repeated occurrences approximately 10 minutes apart suggest regularly scheduled cron jobs.
-
+A successful local logon by the 'root' account was observed on a device, initiated by the 'cron' scheduling daemon. This activity is typical for a Linux system where scheduled tasks often run with elevated privileges under the 'root' user.
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:45:01.943018Z
 - **Action Type:** LogonSuccess
-- **Account Name:** root
-- **Initiating Process:** cron
-- **Initiating Process Command Line:** /usr/sbin/cron -f -P
-- **Logon Type:** Local
+- **AccountName:** root
+- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 - **Key Components:**
-  - `PosixUserId`: 0 (root user ID)
-  - `InitiatingProcessParentFileName`: cron (PID 611)
-  - `InitiatingProcessFileName`: cron (daemon spawning itself)
+  - Initiating Process: /usr/sbin/cron
+  - Command Line: /usr/sbin/cron -f -P
+  - Logon Type: Local
 
 **Risk Assessment:**
-This activity is considered benign and represents routine system operations. While `root` account activity is always sensitive and should be monitored, in this specific context, it signifies expected cron job execution rather than a direct security threat.
+This event represents standard operating procedure for a Linux server running scheduled tasks. While root activity is always monitored, this specific pattern of 'cron' initiating a local root logon is expected and does not indicate malicious activity.
 
-### ALERT-011: Anomalous User Login Detected on Azure VM
-**Severity:** 🔴 HIGH
-**Category:** Identity and Access Management
-**MITRE ATT&CK:** T1078 - Valid Accounts
+### ALERT-014: Device in Unassigned Security Group
+**Severity:** 🟡 MEDIUM
+**Category:** Security Hygiene / Configuration Management
+**MITRE ATT&CK:** N/A
 
 **Description:**
-A device in Azure, identified as 'wazuh1', reported a logged-on user with the generic and highly unusual username "LOGIN". This atypical username could indicate an attempted obfuscation of user identity, a system misconfiguration, or a potentially malicious login attempt bypassing standard user account conventions. This behavior warrants immediate investigation to determine the true identity and intent behind this login.
+A device identified as a "Wazuh" server (a security monitoring tool) is currently assigned to the "UnassignedGroup". This indicates a potential gap in security policy application, monitoring, or patching strategies, as devices not properly grouped may miss critical security controls or fall outside regular oversight.
 
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:46:02.9561661Z
-- **Action Type:** Device Info Update (LoggedOnUsers)
 - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **MachineGroup:** UnassignedGroup
 - **Key Components:**
-  - **LoggedOnUser:** LOGIN
-  - **DeviceId:** 875524232b2377b606ca585f2a6692b5be921b94
-  - **Cloud Platform:** Azure
-  - **OSPlatform:** Linux
+  - DeviceId: 875524232b2377b606ca585f2a6692b5be921b94
+  - AzureResourceId: /subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/SentinelSOC/providers/Microsoft.Compute/virtualMachines/Wazuh1
 
 **Risk Assessment:**
-This is a high-risk event as an attacker might utilize generic or non-standard usernames to evade detection or to indicate a compromised system. Given the system's identity as 'wazuh1' (potentially a security tool or server), any compromise or unusual activity is particularly critical.
+This configuration poses a medium risk. A critical security component like a Wazuh server in an unassigned group may not be receiving appropriate security policies, updates, or oversight, increasing its vulnerability to compromise and potentially impacting the overall security posture.
 
 ---
 
-### ALERT-012: Device Assigned to Unassigned Management Group
+### ALERT-015: Azure Linux VM with Public IP and "Workstation" Device Type Mismatch
+**Severity:** 🟡 MEDIUM
+**Category:** Network Security / Asset Management
+**MITRE ATT&CK:** T1190 - Exploit Public-Facing Application
+
+**Description:**
+An Azure Linux virtual machine, identified as a "Wazuh" server, has been detected with a public IP address, significantly increasing its attack surface. Additionally, this server is misclassified as a "Workstation" within the security information system, which could lead to incorrect policy enforcement, inappropriate monitoring, or a skewed risk assessment.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:46:02.9561661Z
+- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **PublicIP:** 52.186.168.241
+- **DeviceType:** Workstation
+- **Key Components:**
+  - OSPlatform: Linux
+  - AzureResourceId: /subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/SentinelSOC/providers/Microsoft.Compute/virtualMachines/Wazuh1
+
+**Risk Assessment:**
+The presence of a public IP exposes the device to external threats, and the misclassification as a "Workstation" could prevent it from receiving server-appropriate security controls and monitoring. This combination presents a medium risk, as vulnerabilities could be exploited without proper protective measures.
+
+---
+
+### ALERT-016: Azure Linux VM Domain Joined to Traditional AD, Not Azure AD Joined
+**Severity:** 🟢 LOW
+**Category:** Identity & Access Management / Cloud Configuration
+**MITRE ATT&CK:** N/A
+
+**Description:**
+An Azure Linux virtual machine, serving as a Wazuh server, is reported as "Domain Joined" to a traditional Active Directory environment but is explicitly not Azure AD Joined. While a valid configuration for hybrid environments, this setup deviates from a purely cloud-native identity management approach, potentially complicating unified identity and access management or requiring additional synchronization overhead.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:46:02.9561661Z
+- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **JoinType:** Domain Joined
+- **IsAzureADJoined:** false
+- **Key Components:**
+  - OSPlatform: Linux
+  - CloudPlatforms: [Azure]
+
+**Risk Assessment:**
+This event presents a low risk. It highlights a specific identity configuration choice in a hybrid cloud environment that should align with organizational strategy. Lack of alignment or oversight could lead to inconsistencies in access controls, but it is not inherently malicious.
+
+---
+
+### ALERT-017: Generic 'LOGIN' User Account Detected on Wazuh Server
+**Severity:** 🟢 LOW
+**Category:** User Account Management / Security Hygiene
+**MITRE ATT&CK:** N/A
+
+**Description:**
+A generic username, "LOGIN", has been reported as the currently logged-on user on the Wazuh server. While this could legitimately be a service account or a placeholder, the use of generic user names can hinder accountability and make auditing significantly more challenging compared to named user accounts, potentially obscuring malicious activity.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:46:02.9561661Z
+- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **LoggedOnUsers:** [{"UserName": "LOGIN"}]
+- **Key Components:**
+  - DeviceId: 875524232b2377b606ca585f2a6692b5be921b94
+
+**Risk Assessment:**
+This is a low-risk event primarily concerning security hygiene and auditability. If the 'LOGIN' account is not a documented and properly managed service account, it could potentially be exploited or used to mask unauthorized access without clear attribution.
+
+### ALERT-018: General Device Network Information Reported (Normal Operation)
+**Severity:** 🟢 LOW
+**Category:** System Information Gathering
+**MITRE ATT&CK:** T1592 - Gather Victim Host Information (Reporting)
+
+**Description:**
+This alert signifies the routine reporting of network interface information for a device. It details the active network adapters, their status, and assigned IP addresses, confirming that system telemetry for network configuration is being collected. This event reflects normal operational monitoring.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:46:02.9561661Z
+- **Action Type:** Device Network Information Report
+- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **Key Components:**
+  - Network Adapters: lo, eth0, enP28238s1
+  - Adapter Status: All "Up"
+  - IP Addresses Observed: 172.22.0.4, fe80::222:48ff:fe2e:a86c
+
+**Risk Assessment:**
+This event represents standard system telemetry and does not pose an immediate security risk. It provides a baseline for monitoring network changes and ensuring proper connectivity of the device.
+
+---
+
+### ALERT-019: Device Assigned to 'UnassignedGroup'
 **Severity:** 🟡 MEDIUM
 **Category:** Asset Management / Configuration Management
 **MITRE ATT&CK:** N/A
 
 **Description:**
-An Azure-hosted Linux device, named 'wazuh1', has been reported as belonging to the "UnassignedGroup". Devices in unassigned groups often lack appropriate security policies, consistent monitoring, and robust patch management, which significantly increases their vulnerability to attacks. This represents a critical security hygiene gap that must be addressed to ensure proper security controls are applied.
+The device `wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net` is identified as being part of the "UnassignedGroup" based on its network information report. This indicates a potential gap in asset classification and management, which can lead to inadequate application of security policies, monitoring, and patch management.
 
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:46:02.9561661Z
-- **Action Type:** Device Info Update
+- **Action Type:** Device Network Information Report
 - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 - **Key Components:**
-  - **MachineGroup:** UnassignedGroup
-  - **OSPlatform:** Linux
-  - **Cloud Platform:** Azure
-  - **AzureResourceId:** /subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/SentinelSOC/providers/Microsoft.Compute/virtualMachines/Wazuh1
+  - MachineGroup: UnassignedGroup
+  - DeviceId: 875524232b2377b606ca585f2a6692b5be921b94
 
 **Risk Assessment:**
-The lack of proper group assignment prevents the consistent application of security best practices, potentially leaving this device exposed to known vulnerabilities. This is exacerbated by the device having a public IP address and the highly suspicious login activity observed.
+A device lacking proper group assignment may not adhere to organizational security standards, increasing its vulnerability to attacks and potentially hindering timely incident response. This presents a moderate risk to the overall security posture.
 
 ---
 
-### ALERT-013: Publicly Accessible VM in Unassigned Group with Anomalous Login
+### ALERT-020: Duplicate MAC Address Reported on Multiple Network Adapters for Same Device
 **Severity:** 🔴 HIGH
-**Category:** Network Exposure / Compromise
-**MITRE ATT&CK:** T1133 - External Remote Services
+**Category:** Network Anomaly / Configuration Error / Potential Spoofing
+**MITRE ATT&CK:** T1033 - System Owner/User Discovery (Indicates a potential configuration issue or attempt to obfuscate host details)
 
 **Description:**
-A Linux virtual machine, identified as 'wazuh1' and hosted in Azure, is publicly accessible via IP '52.186.168.241'. This device is critically part of the "UnassignedGroup" and has reported an anomalous "LOGIN" username. The perilous combination of direct internet exposure, lack of proper management group assignment, and suspicious login activity significantly elevates the risk of immediate or ongoing compromise.
+The device `wazuh1` is reporting the same MAC address (`00-22-48-2E-A8-6C`) across two distinct active network adapters, `eth0` and `enP28238s1`. This is an unusual configuration that can lead to severe network communication conflicts and instability. It could indicate a misconfiguration or, in a malicious context, an attempt at MAC spoofing or evasion within the device's internal network stack.
 
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:46:02.9561661Z
-- **Action Type:** Device Info Update
+- **Action Type:** Device Network Information Report
 - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 - **Key Components:**
-  - **PublicIP:** 52.186.168.241
-  - **MachineGroup:** UnassignedGroup
-  - **LoggedOnUsers:** [{"UserName": "LOGIN"}]
-  - **Cloud Platform:** Azure
+  - DeviceId: 875524232b2377b606ca585f2a6692b5be921b94
+  - Duplicate MAC Address: 00-22-48-2E-A8-6C
+  - Affected Network Adapters: eth0, enP28238s1
+  - Associated IP (eth0): 172.22.0.4
 
 **Risk Assessment:**
-This is a critical security concern requiring immediate attention. A publicly exposed system that is unmanaged and shows signs of unusual activity is a prime target for attackers and indicates a high likelihood of compromise or active malicious reconnaissance. The system should be isolated and thoroughly investigated.
+Duplicate MAC addresses on distinct interfaces within the same device create network ambiguity and can be exploited for network-layer attacks, lead to service disruption, or indicate a compromised system attempting to masquerade. This event warrants immediate high-priority investigation.
 
 ---
-
-### ALERT-014: Misclassification of Azure Linux VM as Workstation
-**Severity:** 🟢 LOW
-**Category:** Asset Management / Configuration Management
-**MITRE ATT&CK:** N/A
-
-**Description:**
-An Azure-hosted Linux VM, named 'wazuh1', is classified as a "Workstation" by the device information system. Given the 'wazuh1' naming convention, this machine likely serves a server-like function (e.g., a Wazuh SIEM server or agent). Misclassification can lead to inappropriate or insufficient security policies, resource allocation, or monitoring being applied, potentially leaving server-specific vulnerabilities unaddressed or providing an attacker a lower assumed priority for compromise.
-
-**Evidence:**
-- **Timestamp:** 2025-11-07T06:46:02.9561661Z
-- **Action Type:** Device Info Update
-- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
-- **Key Components:**
-  - **DeviceType:** Workstation
-  - **OSPlatform:** Linux
-  - **AzureResourceId:** /subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/SentinelSOC/providers/Microsoft.Compute/virtualMachines/Wazuh1
-
-**Risk Assessment:**
-While not an immediate threat, this misclassification represents a configuration drift or oversight in asset management. It could subtly degrade the overall security posture by applying workstation-centric controls to a server, potentially missing critical server-specific security requirements or leading to inadequate monitoring. It should be corrected to ensure proper policy enforcement and asset tracking.
-
----
-
-### ALERT-015: Device Discovered in Unassigned Machine Group
-**Severity:** 🟢 LOW
-**Category:** Asset Management / Configuration Anomaly
-**MITRE ATT&CK:** N/A
-
-**Description:**
-A device identified as `wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net` has been reported as belonging to the "UnassignedGroup". This indicates a potential lack of proper asset classification and management, which can lead to devices operating outside established security policies, monitoring, or patch management cycles. Unassigned devices pose an inherent risk as they may not be adequately secured or tracked.
-
-**Evidence:**
-- **Timestamp:** 2025-11-07T06:46:02.9561661Z
-- **Action Type:** Device Network Information Update
-- **DeviceId:** 875524232b2377b606ca585f2a6692b5be921b94
-- **Key Components:**
-  - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
-  - **MachineGroup:** UnassignedGroup
-
-**Risk Assessment:**
-While not a direct security breach, the presence of an unassigned device increases the overall attack surface and operational risk. It could indicate a new, unmanaged asset, or a misconfiguration within the asset management system, warranting investigation to ensure compliance and proper security posture.
-
----
-
-### ALERT-016: Duplicate MAC and IPv6 Link-Local Addresses Detected on Multiple Network Adapters
-**Severity:** 🟡 MEDIUM
-**Category:** Network Configuration / Anomaly Detection
-**MITRE ATT&CK:** T1016 - System Network Configuration Discovery (Context of detecting an unusual configuration)
-
-**Description:**
-The device `wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net` is reporting the exact same MAC address (`00-22-48-2E-A8-6C`) and IPv6 link-local address (`fe80::222:48ff:fe2e:a86c`) for two distinct network adapters, `eth0` and `enP28238s1`. This configuration is highly unusual and can lead to network conflicts, instability, or be indicative of a sophisticated form of MAC address spoofing, misconfiguration (e.g., incorrect bridging/bonding setup), or a reporting error by the monitoring agent.
-
-**Evidence:**
-- **Timestamp:** 2025-11-07T06:46:02.9561661Z
-- **Action Type:** Device Network Information Update
-- **DeviceId:** 875524232b2377b606ca585f2a6692b5be921b94
-- **Key Components:**
-  - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
-  - **Duplicate MAC Address:** 00-22-48-2E-A8-6C
-  - **Duplicate IPv6 Link-Local Address:** fe80::222:48ff:fe2e:a86c
-  - **Network Adapters Involved:** eth0, enP28238s1
-
-**Risk Assessment:**
-This event carries a medium risk as duplicate MAC addresses within a broadcast domain can cause network performance issues and could potentially be exploited in certain attack scenarios (e.g., ARP poisoning). Investigation is required to determine if this is an intentional, expected configuration (like bridging or bonding not adequately distinguished by the sensor) or a critical misconfiguration that needs immediate remediation.
 
 ---
 

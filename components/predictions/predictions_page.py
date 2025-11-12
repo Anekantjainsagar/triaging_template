@@ -161,7 +161,7 @@ def display_entity_analysis_full(username: str, complete_analysis: dict):
                 file_name=f"complete_analysis_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                 mime="application/json",
                 key=f"download_full_{username}",
-                use_container_width=True,
+                width="stretch",
             )
 
         with col2:
@@ -216,7 +216,7 @@ SUMMARY:
                 file_name=f"executive_summary_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                 mime="text/plain",
                 key=f"download_summary_{username}",
-                use_container_width=True,
+                width="stretch",
             )
 
         with col3:
@@ -233,7 +233,7 @@ SUMMARY:
                         file_name=f"mitre_layer_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                         mime="application/json",
                         key=f"download_mitre_{username}",
-                        use_container_width=True,
+                        width="stretch",
                     )
 
         # Display sub-technique coverage summary

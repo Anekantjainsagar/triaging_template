@@ -161,7 +161,7 @@ def display_ip_analysis_full(ip_address: str, ip_analysis: dict):
                 file_name=f"ip_analysis_{ip_address.replace('.', '_').replace(':', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                 mime="application/json",
                 key=f"download_ip_full_{ip_address}",
-                use_container_width=True,
+                width="stretch",
             )
 
         with col2:
@@ -194,7 +194,7 @@ PRIORITY: {exec_summary.get('investigation_priority', 'N/A')}
                 file_name=f"ip_summary_{ip_address.replace('.', '_').replace(':', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                 mime="text/plain",
                 key=f"download_ip_summary_{ip_address}",
-                use_container_width=True,
+                width="stretch",
             )
 
         with col3:
@@ -207,7 +207,7 @@ PRIORITY: {exec_summary.get('investigation_priority', 'N/A')}
                     file_name=f"ip_threat_intel_{ip_address.replace('.', '_').replace(':', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                     mime="application/json",
                     key=f"download_ip_intel_{ip_address}",
-                    use_container_width=True,
+                    width="stretch",
                 )
 
 

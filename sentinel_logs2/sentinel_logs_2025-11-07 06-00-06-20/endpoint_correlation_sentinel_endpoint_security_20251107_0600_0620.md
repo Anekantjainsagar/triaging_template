@@ -1,5 +1,5 @@
 # Security Analysis Report
-**Generated:** 2025-11-12 08:54:36
+**Generated:** 2025-11-12 11:33:38
 **Analysis Period:** 2025-11-07 06:00 - 06:05 UTC
 **Device:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 
@@ -9,256 +9,278 @@
 
 **Total Events Analyzed:** 3
 **Alerts Generated:** 12
-**Highest Severity:** MEDIUM
+**Highest Severity:** Undetermined
 **Devices Monitored:** 1
 
-Analysis of `wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net` identified 3 device file events within a 5-minute timeframe, generating 12 alerts. This high alert-to-event ratio indicates unusual or potentially suspicious file activity, warranting immediate investigation into the nature and impact of these events.
+During a brief 5-minute monitoring window, a single device, wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net, generated 12 alerts from only 3 total DeviceFileEvents. This high alert-to-event ratio suggests significant activity or potential concerns related to file system events on the monitored system during the specified timeframe.
 
 ---
 
 ## 🚨 Security Alerts
 
-### ALERT-001: Routine Lucene Index File Deletion by Wazuh Indexer
+### ALERT-001: Wazuh Indexer Routine Lucene Segment File Deletion
 **Severity:** 🟢 LOW
-**Category:** System Activity - Routine File Management
+**Category:** System Activity / Application Behavior
 **MITRE ATT&CK:** N/A
 
 **Description:**
-Multiple file deletion events were observed on the `wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net` device. The `wazuh-indexer` user, via the `java` process, is deleting files with names like `_13w_Lucene912_0.doc` within its `/var/lib/wazuh-indexer/nodes/0/indices/` directory. This activity is consistent with the normal operation of the Wazuh Indexer (OpenSearch/Lucene), which periodically cleans up old index segments.
+The Wazuh Indexer service, identified by the `java` process running under the `wazuh-indexer` account, was observed performing multiple file deletions. These deleted files, named with a `_Lucene912_0.doc` pattern, are consistent with Lucene segment files within the indexer's data directories, indicating normal application maintenance like segment merging or cleanup.
 
 **Evidence:**
-- **Timestamp:** 2025-11-07T06:00:04.166496Z (first observed event)
+- **Timestamp:** 2025-11-07T06:00:04.166496Z
 - **Action Type:** FileDeleted
 - **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 - **Key Components:**
-  - **Initiating Process:** `/usr/share/wazuh-indexer/jdk/bin/java` (PID 591)
-  - **Initiating Account:** wazuh-indexer (PosixUserId 998)
-  - **Deleted File Path Pattern:** `/var/lib/wazuh-indexer/nodes/0/indices/*/0/index/_*.doc` (e.g., `/var/lib/wazuh-indexer/nodes/0/indices/Lw5HBE_UStujzUMyPgj9hA/0/index/_13w_Lucene912_0.doc`)
-  - **Command Line:** `/usr/share/wazuh-indexer/jdk/bin/java ... org.opensearch.bootstrap.OpenSearch ...` (confirms OpenSearch/Wazuh-indexer process)
+  - **Initiating Process Name:** java
+  - **Initiating Process Path:** /usr/share/wazuh-indexer/jdk/bin/java
+  - **Initiating Process ID:** 591
+  - **Initiating Account Name:** wazuh-indexer (PosixUserId: 998)
+  - **Target Folder Pattern:** `/var/lib/wazuh-indexer/nodes/0/indices/*/0/index/`
+  - **File Name Pattern:** `_XXX_Lucene912_0.doc`
 
 **Risk Assessment:**
-This activity represents routine index management by the Wazuh Indexer service. While file deletions can sometimes indicate malicious activity, in this context, the process, user, and file paths are all expected for a healthy OpenSearch/Lucene cluster. No immediate security risk is identified, and this alert is primarily for documentation and baseline understanding.
+This activity is considered normal and expected behavior for the Wazuh Indexer application. It indicates routine index management operations rather than malicious activity, posing a negligible security risk.
 
-### ALERT-002: Snapd Initiating Systemctl Commands (Normal Operation)
+### ALERT-002: Snapd Querying Systemd Services
 **Severity:** 🟢 LOW
-**Category:** System Activity
+**Category:** Process Activity
 **MITRE ATT&CK:** T1057 - Process Discovery
 
 **Description:**
-The `snapd` daemon, part of the Snap packaging system, was observed executing `systemctl` commands to query the status and properties of various `snap.lxd` services. This activity is typical for a Linux system managing Snap packages and LXD containers, indicating routine service monitoring and management.
+A series of `systemctl show` commands were initiated by the `snapd` service on `wazuh1`. This activity is indicative of `snapd` querying the status of various snap-related services (LXD in this case), which is a normal operational behavior for the Snap package manager.
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:01:10.853901Z
 - **Action Type:** ProcessCreated
 - **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 - **Key Components:**
-  - **Initiating Process:** /snap/snapd/25577/usr/lib/snapd/snapd
-  - **Created Process:** /usr/bin/systemctl
-  - **Command Line Examples:** `systemctl show --property=Id,ActiveState,UnitFileState,Type,Names,NeedDaemonReload snap.lxd.activate.service`, `systemctl show --property=Id,ActiveState,UnitFileState,Names snap.lxd.daemon.unix.socket`
-  - **Account Name:** root
+  - **Initiating Process:** /usr/lib/snapd/snapd (PID: 414289, 414291, 414293, 414295, 414297)
+  - **Executed Process:** /usr/bin/systemctl
+  - **Command Lines:** `systemctl show --property=Id,ActiveState,UnitFileState,Type,Names,NeedDaemonReload snap.lxd.activate.service`, `systemctl show --property=Id,ActiveState,UnitFileState,Type,Names,NeedDaemonReload snap.lxd.daemon.service`, etc.
+
 **Risk Assessment:**
-This event represents normal and expected system operation and does not indicate any immediate security risk. It provides valuable visibility into the routine management of Snap services.
+This event represents standard system operation. The `snapd` process legitimately queries systemd units for installed snap packages. No immediate security risk is identified, but monitoring these interactions can help detect abnormal behavior if `snapd` itself were compromised or misused.
 
 ---
 
-### ALERT-003: Routine System Monitoring and Scheduled Task Execution (Normal Operation)
+### ALERT-003: Disk Space Monitoring (df command)
 **Severity:** 🟢 LOW
-**Category:** System Activity
-**MITRE ATT&CK:** T1057 - Process Discovery, T1083 - File and Directory Discovery, T1049 - System Network Configuration Discovery, T1053.003 - Scheduled Task/Job: Cron
+**Category:** System Monitoring
+**MITRE ATT&CK:** T1083 - File and Directory Discovery
 
 **Description:**
-Multiple routine system commands, including `df`, `netstat` (via `sort` and `sed`), `sadc`, and `run-parts`, were executed on the system. These commands were primarily initiated by `systemd` or `cron` through `dash` shells, indicating standard system monitoring, resource usage checks, and the execution of hourly scheduled maintenance tasks.
+A `df -P` command was executed by a `dash` shell script, likely as part of routine system monitoring. The initiating process's working directory (`/var/ossec`) and primary group (`wazuh`) suggest this activity is related to the Wazuh agent performing system health checks.
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:02:19.44219Z
 - **Action Type:** ProcessCreated
 - **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
 - **Key Components:**
-  - **Initiating Processes:** /usr/bin/dash, /usr/lib/systemd/systemd, /usr/sbin/cron
-  - **Created Processes:** /usr/bin/df, /usr/bin/sort, /usr/lib/sysstat/sadc, /usr/bin/run-parts
-  - **Command Line Examples:** `sh -c "df -P"`, `netstat -tulpn | sed 's/...`, `/usr/lib/sysstat/sadc -F -L -S DISK 1 1 /var/log/sysstat`, `/bin/sh -c "   cd / && run-parts --report /etc/cron.hourly"`
-  - **Account Name:** root
+  - **Initiating Process:** /usr/bin/dash (PID: 414304)
+  - **Initiating Command Line:** `sh -c "df -P"`
+  - **Executed Process:** /usr/bin/df
+  - **Initiating Process CWD:** /var/ossec
+
 **Risk Assessment:**
-These events are part of expected system administration and monitoring practices, often performed by a security agent or built-in system tools. No immediate security threat is identified, but monitoring these privileged operations helps detect anomalous behavior or deviations.
+This is a common and expected operation for system monitoring tools. While `df` can be used by an attacker for reconnaissance, in this context, it appears to be legitimate activity by a security agent. The risk is considered very low.
 
 ---
 
-### ALERT-004: Routine Privileged Account Logon by Cron
+### ALERT-004: Network Connection Monitoring (netstat & sort commands)
 **Severity:** 🟢 LOW
-**Category:** Account Management
-**MITRE ATT&CK:** T1078.003 - Local Accounts
+**Category:** System Monitoring
+**MITRE ATT&CK:** T1049 - System Network Connections Discovery
+
 **Description:**
-A successful local logon was detected for the highly privileged 'root' account on device `wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net`. The logon was initiated by the 'cron' process, which is a standard system utility for scheduling tasks. This activity appears to be routine system maintenance, but all privileged account logons are noteworthy for monitoring.
+A `netstat -tulpn` command, piped through `sed` and `sort`, was executed via a `dash` shell. This command sequence is typically used to list and format network connections and listening ports, often for system monitoring purposes. The `wazuh` group associated with the initiating process further suggests a monitoring agent activity.
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:02:19.454221Z
+- **Action Type:** ProcessCreated
+- **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **Key Components:**
+  - **Initiating Process:** /usr/bin/dash (PID: 414310)
+  - **Initiating Command Line:** `sh -c "netstat -tulpn | sed 's/\\([[:alnum:]]\\+\\)\\ \\+[[:digit:]]\\+\\ \\+[[:digit:]]\\+\\ \\+\\(.*\\):\\([[:digit:]]*\\)\\ \\+\\([0-9\\.\\:\\*]\\+\\).\\+\\ \\([[:digit:]]*\\/[[:alnum:]\\-]*\\).*/\\1 \\2 == \\3 == \\4 \\5/' | sort -k 4 -g | sed 's/ == \\(.*\\) ==/:\\1/' | sed 1,2d"`
+  - **Executed Process:** /usr/bin/sort
+  - **Initiating Process CWD:** /var/ossec
+
+**Risk Assessment:**
+This is a routine system monitoring command executed by a trusted agent. Although `netstat` can be used by attackers for network reconnaissance, this event shows expected behavior from a known monitoring tool. The risk is assessed as low.
+
+---
+
+### ALERT-005: System Activity Data Collection (sadc command)
+**Severity:** 🟢 LOW
+**Category:** System Monitoring
+**MITRE ATT&CK:** N/A (Informational/System Administration)
+
+**Description:**
+The `sadc` (System Activity Data Collector) command from the `sysstat` package was executed by a `dash` shell, which was initiated by `systemd`. This process collects system activity data (specifically disk I/O in this instance) and writes it to `/var/log/sysstat`. This is a normal part of performance monitoring on Linux systems.
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:10:06.178684Z (for dash) / 2025-11-07T06:10:06.179947Z (for sadc)
+- **Action Type:** ProcessCreated
+- **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **Key Components:**
+  - **Parent Process:** /usr/lib/systemd/systemd (PID: 414380 for `dash` parent)
+  - **Initiating Process:** /usr/bin/dash (PID: 414380, later PID: 414380 initiating `sadc` itself)
+  - **Executed Process:** /usr/lib/sysstat/sadc (PID: 414380)
+  - **Command Line:** `/usr/lib/sysstat/sadc -F -L -S DISK 1 1 /var/log/sysstat`
+
+**Risk Assessment:**
+This activity is a normal and expected component of system performance monitoring. The command execution chain (`systemd` -> `dash` -> `sadc`) is typical for scheduled system utilities. No security risk is identified.
+
+---
+
+### ALERT-006: Scheduled Hourly Cron Jobs Execution
+**Severity:** 🟢 LOW
+**Category:** Scheduled Tasks
+**MITRE ATT&CK:** T1053.003 - Scheduled Task/Job: Cron
+
+**Description:**
+The system's `cron` daemon initiated a `dash` shell to execute hourly cron jobs via the `run-parts` utility (`/etc/cron.hourly`). This is a standard mechanism for running periodic system maintenance scripts and updates. The process chain `cron` -> `dash` -> `run-parts` is normal.
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:17:01.821514Z (for first dash) / 2025-11-07T06:17:01.822446Z (for second dash) / 2025-11-07T06:17:01.822651Z (for run-parts)
+- **Action Type:** ProcessCreated
+- **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **Key Components:**
+  - **Parent Process:** /usr/sbin/cron (PID: 414454 for `dash` parent)
+  - **Initiating Process:** /usr/bin/dash (PID: 414454, 414455)
+  - **Executed Process:** /usr/bin/run-parts (PID: 414455)
+  - **Command Lines:** `/bin/sh -c "   cd / && run-parts --report /etc/cron.hourly"`, `run-parts --report /etc/cron.hourly`
+
+**Risk Assessment:**
+This event reflects routine system automation for hourly tasks defined in `/etc/cron.hourly`. While cron jobs can be abused by attackers for persistence, this specific execution chain is expected. The risk is considered low.
+
+---
+
+### ALERT-007: Routine System Logon by Cron Process
+**Severity:** 🟢 LOW
+**Category:** System Activity / Scheduled Tasks
+**MITRE ATT&CK:** T1053.003 - Scheduled Task/Job: Cron
+
+**Description:**
+Multiple successful local logons for the 'root' account were observed on the device, initiated by the system's 'cron' daemon. This pattern of activity is consistent with the routine execution of scheduled system tasks, where cron jobs run under privileged accounts to perform maintenance or other automated functions.
+
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:05:01.846819Z
 - **Action Type:** LogonSuccess
-- **AccountName:** root
-- **LogonType:** Local
+- **Account Name:** root
+- **Logon Type:** Local
+- **Key Components:**
+  - Initiating Process: /usr/sbin/cron
+  - Device Name: wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+  - Terminal: cron
+
+**Risk Assessment:**
+This event represents expected and routine system behavior. The cron daemon executing tasks as the root user is a fundamental part of Linux system operations and does not indicate an immediate security threat. No further action is typically required unless this activity deviates significantly from established baselines or occurs in conjunction with other suspicious events.
+
+### ALERT-008: Generic User "LOGIN" Detected on Critical Endpoint
+**Severity:** 🟡 MEDIUM
+**Category:** User Account Anomaly
+**MITRE ATT&CK:** T1078 (Valid Accounts)
+
+**Description:**
+A generic username "LOGIN" was observed as the logged-on user on a domain-joined Linux endpoint (Wazuh1) with a public IP address. This could indicate a default system account, a misconfiguration in user reporting, or a generic service account, which might mask actual user activity or complicate auditing. Investigation is needed to determine the true identity and purpose of this session.
+
+**Evidence:**
+- **Timestamp:** 2025-11-07T06:05:12.0251394Z
+- **Action Type:** Device Info Update (implied)
+- **DeviceId:** 875524232b2377b606ca585f2a6692b5be921b94
 - **Key Components:**
   - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
-  - **InitiatingProcessFileName:** cron
-  - **InitiatingProcessCommandLine:** /usr/sbin/cron -f -P
-**Risk Assessment:**
-This event represents a normal, expected system operation. The risk is low as it indicates routine scheduled tasks running with root privileges. However, continuous monitoring of such events is crucial to detect any anomalies or unauthorized use of privileged accounts.
-
----
-
-### ALERT-005: Suspicious Generic Username "LOGIN" Detected on Security Server
-**Severity:** 🟡 MEDIUM
-**Category:** Authentication & Authorization
-**MITRE ATT&CK:** T1078 - Valid Accounts
-
-**Description:** A device identified as a Wazuh server, a critical security monitoring system, reported a logged-on user with the highly generic username "LOGIN". This could indicate a default/placeholder account that has not been properly secured, a misconfiguration in user reporting, or a potential attempt to use an anonymous or generic account to evade detection or exploit the system.
-**Evidence:**
-- **Timestamp:** 2025-11-07T06:05:12.0251394Z
-- **Action Type:** DeviceInfo Report (Login Event)
-- **DeviceId:** 875524232b2377b606ca585f2a6692b5be921b94
-- **Key Components:**
-  - **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
   - **LoggedOnUser:** LOGIN
-
-**Risk Assessment:** The presence of a user named "LOGIN" on a critical security asset is highly suspicious. If this is a misconfiguration, it needs to be corrected to ensure proper user accountability. If it represents unauthorized access using a generic account, it poses a significant risk to the integrity and confidentiality of the security monitoring system itself.
-
----
-
-### ALERT-006: Critical Security Asset in "UnassignedGroup"
-**Severity:** 🟡 MEDIUM
-**Category:** Asset Management / Configuration Management
-**MITRE ATT&CK:** N/A
-
-**Description:** A critical security infrastructure component, specifically an Azure-hosted Wazuh server, has been identified in an "UnassignedGroup". This indicates a significant lapse in asset management and categorization, potentially leading to inadequate security policy application, incorrect monitoring profiles, and failure to apply necessary controls for high-value assets.
-**Evidence:**
-- **Timestamp:** 2025-11-07T06:05:12.0251394Z
-- **Action Type:** DeviceInfo Report (Asset Grouping)
-- **DeviceId:** 875524232b2377b606ca585f2a6692b5be921b94
-- **Key Components:**
-  - **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
-  - **MachineGroup:** UnassignedGroup
-  - **AzureResourceId:** /subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/SentinelSOC/providers/Microsoft.Compute/virtualMachines/Wazuh1
-
-**Risk Assessment:** Mismanaged critical assets can be overlooked in vulnerability scanning, patching, and policy enforcement, making them prime targets for attackers. This misconfiguration increases the attack surface and reduces the overall security posture of the security operations environment.
-
----
-
-### ALERT-007: Misclassification of Security Server as "Workstation"
-**Severity:** 🟡 MEDIUM
-**Category:** Asset Management / Configuration Management
-**MITRE ATT&CK:** N/A
-
-**Description:** A device identified as a Wazuh server, a key component of the security monitoring infrastructure, is incorrectly classified as a "Workstation" rather than a "Server". This misclassification can lead to inappropriate security baselines being applied (e.g., less stringent policies than a server requires), inaccurate reporting, and a skewed understanding of the environment's asset inventory.
-**Evidence:**
-- **Timestamp:** 2025-11-07T06:05:12.0251394Z
-- **Action Type:** DeviceInfo Report (Device Classification)
-- **DeviceId:** 875524232b2377b606ca585f2a6692b5be921b94
-- **Key Components:**
-  - **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
-  - **DeviceType:** Workstation
-  - **DeviceCategory:** Endpoint
   - **OSPlatform:** Linux
-
-**Risk Assessment:** Inaccurate device typing for critical systems like security servers prevents the application of appropriate security controls and monitoring tailored for server roles. This significantly elevates the risk of compromise due to inadequate protection.
-
----
-
-### ALERT-008: Inconsistent Domain Join Status for Linux Server
-**Severity:** 🟢 LOW
-**Category:** Configuration Management / Identity & Access Management
-**MITRE ATT&CK:** N/A
-
-**Description:** A Linux-based Wazuh server, explicitly reported as not Azure AD Joined, is nonetheless reported with a "Domain Joined" status. This inconsistency could indicate a misconfiguration in the domain joining process, an error in how the device information is being reported, or an unusual hybrid domain join scenario. Clarification is needed to ensure proper identity and access management for this critical asset.
-**Evidence:**
-- **Timestamp:** 2025-11-07T06:05:12.0251394Z
-- **Action Type:** DeviceInfo Report (Domain Join Status)
-- **DeviceId:** 875524232b2377b606ca585f2a6692b5be921b94
-- **Key Components:**
-  - **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
-  - **OSPlatform:** Linux
-  - **IsAzureADJoined:** false
   - **JoinType:** Domain Joined
 
-**Risk Assessment:** An unclear or incorrect domain join status can lead to vulnerabilities in authentication and authorization mechanisms. This could potentially allow unauthorized access or indicate a failure in enforcing organizational identity policies on a critical security system.
+**Risk Assessment:**
+The use of generic accounts can hinder proper accountability and make it difficult to trace malicious activities back to a specific user. This increases the risk of undetected lateral movement or persistent access, especially on an endpoint exposed to the internet.
 
 ---
 
-### ALERT-009: Exposure of Security Server to Public IP
+### ALERT-009: Endpoint Unassigned to a Management Group
 **Severity:** 🟢 LOW
-**Category:** Network Security / Perimeter Defense
-**MITRE ATT&CK:** T1133 - External Remote Services
+**Category:** Configuration Mismanagement
+**MITRE ATT&CK:** N/A
 
-**Description:** A critical Wazuh security server deployed in Azure is reported with a public IP address. While a public IP is not inherently malicious, it signifies direct exposure to the internet. This configuration necessitates rigorous network security group (NSG) rules and firewall policies to restrict inbound access exclusively to necessary ports and trusted source IPs, minimizing the attack surface.
+**Description:**
+The Linux endpoint "Wazuh1" has been detected in the "UnassignedGroup," indicating it is not part of a defined management group. This lack of proper group assignment can lead to inconsistent application of security policies, patching schedules, and monitoring configurations, potentially leaving the device more vulnerable to security threats.
+
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:05:12.0251394Z
-- **Action Type:** DeviceInfo Report (Network Configuration)
+- **Action Type:** Device Info Update (implied)
 - **DeviceId:** 875524232b2377b606ca585f2a6692b5be921b94
 - **Key Components:**
-  - **Device Name:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+  - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+  - **MachineGroup:** UnassignedGroup
   - **PublicIP:** 52.186.168.241
-  - **AzureResourceId:** /subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/SentinelSOC/providers/Microsoft.Compute/virtualMachines/Wazuh1
 
-**Risk Assessment:** Exposing a critical security server to the public internet without comprehensive and tightly controlled network access rules dramatically increases the risk of reconnaissance, brute-force attacks, and direct exploitation by malicious actors. This configuration demands immediate review of associated network security controls.
+**Risk Assessment:**
+Devices outside of defined management groups are prone to misconfiguration and may not receive essential security updates or protective measures, increasing their attack surface. While not an immediate threat, it represents a significant security hygiene gap that could be exploited.
 
 ---
 
-### ALERT-010: Device in Unassigned Management Group
-**Severity:** 🟢 LOW
-**Category:** Configuration Management
+### ALERT-010: Domain-Joined Linux Workstation with Public IP Exposure
+**Severity:** 🟡 MEDIUM
+**Category:** Network Exposure Anomaly
 **MITRE ATT&CK:** N/A
 
 **Description:**
-The device 'wazuh1' has been identified as belonging to the "UnassignedGroup" machine group across all reported network interfaces. This indicates a potential oversight in device management, policy enforcement, and security baseline application for this host. It could lead to the device operating outside of defined organizational security standards.
+A Linux device classified as a "Workstation" and joined to a domain is reporting a public IP address (52.186.168.241). While cloud-hosted VMs often have public IPs, a "workstation" type device being directly exposed to the internet, especially when domain-joined, represents an elevated attack surface and potential misconfiguration. This needs to be reviewed to ensure appropriate network segmentation and access controls are in place.
 
 **Evidence:**
 - **Timestamp:** 2025-11-07T06:05:12.0251394Z
-- **Action Type:** Device Network Information Report
-- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **Action Type:** Device Info Update (implied)
+- **DeviceId:** 875524232b2377b606ca585f2a6692b5be921b94
 - **Key Components:**
-  - MachineGroup: UnassignedGroup
-  - DeviceId: 875524232b2377b606ca585f2a6692b5be921b94
+  - **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+  - **DeviceType:** Workstation
+  - **OSPlatform:** Linux
+  - **JoinType:** Domain Joined
+  - **PublicIP:** 52.186.168.241
 
 **Risk Assessment:**
-Devices not assigned to an appropriate management group may lack consistent security configurations, regular patching, or centralized monitoring, increasing their vulnerability to attacks. This requires administrative attention to ensure proper policy application.
+Direct internet exposure for a domain-joined workstation significantly increases the risk of targeted attacks, brute-force attempts, and exploitation of vulnerabilities. If this exposure is unintentional or improperly secured, it could provide a direct pathway for attackers into the internal network.
 
 ---
 
-### ALERT-011: Network Adapter with Undefined Type
-**Severity:** 🟢 LOW
-**Category:** Asset Management / Inventory
-**MITRE ATT&CK:** N/A
+### ALERT-011: Duplicate MAC Address Detected on Multiple Active Network Adapters
+**Severity:** 🔴 HIGH
+**Category:** Network Anomaly / Identity Spoofing
+**MITRE ATT&CK:** T1573.001 (Protocol Spoofing)
 
 **Description:**
-Multiple network adapters (e.g., 'enP28238s1', 'eth0', 'lo') on device 'wazuh1' are reporting their `NetworkAdapterType` as "Unknown". While common in some virtualized or specialized environments, this lack of specific classification can hinder accurate asset inventory, vulnerability assessment, and potentially obscure non-standard or unauthorized hardware/software components.
+The device `wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net` reported two distinct active network adapters (`enP28238s1` and `eth0`) with the exact same MAC address (`00-22-48-2E-A8-6C`) at the same timestamp. This is a highly unusual configuration that could indicate MAC address spoofing, a critical network misconfiguration, or an attempt to bypass network access controls or security mechanisms.
 
 **Evidence:**
-- **Timestamp:** 2025-11-07T06:05:12.0251394Z
-- **Action Type:** Device Network Information Report
-- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **Timestamp:** `2025-11-07T06:05:12.0251394Z`
+- **Action Type:** Network Adapter Configuration Report
+- **DeviceId:** `875524232b2377b606ca585f2a6692b5be921b94`
 - **Key Components:**
-  - NetworkAdapterName: enP28238s1, eth0, lo
-  - NetworkAdapterType: Unknown
-  - DeviceId: 875524232b2377b606ca585f2a6692b5be921b94
+  - Network Adapter 1: `enP28238s1` (Status: Up)
+  - Network Adapter 2: `eth0` (Status: Up)
+  - Common MAC Address: `00-22-48-2E-A8-6C`
+  - IP Address on `eth0`: `172.22.0.4`
 
 **Risk Assessment:**
-An "Unknown" adapter type prevents a complete and accurate understanding of the device's network capabilities and potential exposure. While often benign, it can complicate security auditing and serve as a blind spot in identifying unusual network configurations.
+A duplicate MAC address can cause severe network instability, lead to communication failures, and is a common technique used by attackers for reconnaissance, identity spoofing, or bypassing MAC-based network access controls. Immediate investigation is required to determine the root cause, verify if this is a benign reporting error, a misconfiguration, or a malicious act, and remediate as necessary.
 
 ---
 
-### ALERT-012: Routine Network Interface Configuration Reported
-**Severity:** 🟢 LOW
-**Category:** System Activity
+### ALERT-012: Unspecified Network Adapter Types Detected
+**Severity:** 🟡 MEDIUM
+**Category:** System Visibility / Configuration Anomaly
 **MITRE ATT&CK:** N/A
 
 **Description:**
-A routine report on the network interfaces for device 'wazuh1' indicates standard configurations, including a loopback interface ('lo') with a null MAC address and active physical/virtual adapters ('enP28238s1', 'eth0') with expected private (172.22.0.4) and link-local IPv6 (fe80::) addresses. No immediate anomalies or suspicious network configurations were identified beyond standard operational details.
+The network information report for device `wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net` consistently lists the `NetworkAdapterType` as "Unknown" for all reported adapters, including the standard loopback interface (`lo`) and active physical/virtual interfaces (`enP28238s1`, `eth0`). This lack of specific adapter type information significantly reduces visibility into the system's network topology and could obscure the presence of unusual or unauthorized network interfaces.
 
 **Evidence:**
-- **Timestamp:** 2025-11-07T06:05:12.0251394Z
-- **Action Type:** Device Network Information Report
-- **DeviceName:** wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net
+- **Timestamp:** `2025-11-07T06:05:12.0251394Z`
+- **Action Type:** Network Adapter Configuration Report
+- **DeviceId:** `875524232b2377b606ca585f2a6692b5be921b94`
 - **Key Components:**
-  - Network Adapters: lo, enP28238s1, eth0 (all status 'Up')
-  - IP Addresses: 172.22.0.4, fe80::222:48ff:fe2e:a86c
-  - MAC Addresses: 00-22-48-2E-A8-6C, 00-00-00-00-00-00
+  - Affected Network Adapters: `enP28238s1`, `lo`, `eth0`
+  - Reported NetworkAdapterType: `Unknown` for all listed adapters
 
 **Risk Assessment:**
-This event represents normal system operation and network configuration reporting, providing a baseline for detecting future deviations. The direct risk from this event is minimal, as it aligns with expected behavior for a server in an internal cloud environment.
+While this could be a limitation of the reporting agent or a benign configuration, the consistent reporting of "Unknown" adapter types impedes proper asset management, security posture assessment, and incident response capabilities. It could potentially mask the existence of unusual network hardware or virtual interfaces that might be used for malicious purposes. Further investigation into the reporting agent's capabilities and the device's actual network interface configuration is recommended to ensure full visibility.
 
 ---
 
