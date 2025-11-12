@@ -1,0 +1,4425 @@
+{
+  "IdentityInfo": [],
+  "SigninLogs": [
+    {
+      "TimeGenerated": "2025-11-12T05:02:14.868438Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Tanmay Ganesh Kapse",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:00:52.8885226+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:00:52.8885226+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:00:52.8885226Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}"
+      },
+      "Id": "43bc7799-6d16-47e7-ad89-d4c4d3424800",
+      "IPAddress": "2401:4900:ad30:5efe:e9bc:acaa:c9e8:669d",
+      "LocationDetails": {
+        "city": "Bibvewadi",
+        "state": "Maharashtra",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 18.471799850463867,
+          "longitude": 73.86710357666016
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "43bc7799-6d16-47e7-ad89-d4c4d3424800",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0",
+      "UserDisplayName": "Tanmay Ganesh Kapse",
+      "UserId": "87926013-801b-452c-b1a5-fd380cb0c450",
+      "UserPrincipalName": "tanmay.kapse@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "mXe8QxZt50etidTE00JIAA",
+      "SessionId": "009ce429-669c-a8c2-ee55-310a94ac525a",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "bharti airtel limited"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:03:22.0591676Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Athrva Tomar",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:01:51.3756026+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:01:51.3756026+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "MfaAndChangePassword"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:01:51.3756026Z",
+      "DeviceDetail": {
+        "deviceId": "",
+        "operatingSystem": "Windows10",
+        "browser": "Chrome 142.0.0"
+      },
+      "Id": "41f65c89-7beb-451b-b96b-6b49bf762e00",
+      "IPAddress": "49.249.104.218",
+      "LocationDetails": {
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 23.022499084472656,
+          "longitude": 72.57140350341797
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "41f65c89-7beb-451b-b96b-6b49bf762e00",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "UserDisplayName": "Athrva Tomar",
+      "UserId": "584f0d50-10b1-4861-b2d9-ccc74e7067c4",
+      "UserPrincipalName": "athrva.tomar@yashtechnologies841.onmicrosoft.com",
+      "UserType": "Member",
+      "UniqueTokenIdentifier": "iVz2Qet7G0W5a2tJv3YuAA",
+      "SessionId": "009ce429-b7e1-5b7e-463c-58bcc048e974",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Chrome",
+        "ISP": "tata teleservices limited -gsm division"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:03:47.2538692Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Athrva Tomar",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:01:22.5744512+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:01:22.5744512+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "MfaAndChangePassword"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:01:22.5744512Z",
+      "DeviceDetail": {
+        "deviceId": "",
+        "operatingSystem": "Windows10",
+        "browser": "Chrome 142.0.0"
+      },
+      "Id": "32e34f00-5e0d-4fd0-bf8b-91977f596200",
+      "IPAddress": "49.249.104.218",
+      "LocationDetails": {
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 23.022499084472656,
+          "longitude": 72.57140350341797
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "32e34f00-5e0d-4fd0-bf8b-91977f596200",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "UserDisplayName": "Athrva Tomar",
+      "UserId": "584f0d50-10b1-4861-b2d9-ccc74e7067c4",
+      "UserPrincipalName": "athrva.tomar@yashtechnologies841.onmicrosoft.com",
+      "UserType": "Member",
+      "UniqueTokenIdentifier": "AE_jMg1e0E-_i5GXf1liAA",
+      "SessionId": "009ce429-b7e1-5b7e-463c-58bcc048e974",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Chrome",
+        "ISP": "tata teleservices limited -gsm division"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:06:52.3576519Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Ravi Kiran Nuthakki",
+      "AppDisplayName": "Ams-Single-Tenant",
+      "AppId": "0c4f8ab6-fdc0-4a50-826d-e1f69317a988",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:04:07.7134417+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "singleFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlyInterrupted",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:04:07.7134417Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Chrome 142.0.0",
+        "displayName": "{PII Removed}"
+      },
+      "Id": "a44950d1-4f59-4de6-893c-e4623b155b00",
+      "IPAddress": "124.123.128.158",
+      "LocationDetails": {
+        "city": "Patnam",
+        "state": "Andhra Pradesh",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 14.232970237731934,
+          "longitude": 78.09442901611328
+        }
+      },
+      "MfaDetail": null,
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "a44950d1-4f59-4de6-893c-e4623b155b00",
+      "ResourceDisplayName": "Microsoft Graph",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "UserDisplayName": "Ravi Kiran Nuthakki",
+      "UserId": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+      "UserPrincipalName": "ravi.nuthakki@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "0VBJpFlP5k2JPORiOxVbAA",
+      "SessionId": "0099d6e9-7302-dac0-85d3-3a3dc714991d",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Chrome",
+        "ISP": "mehdi patnam zone (dhcp)"
+      },
+      "ActivityInsights": {
+        "App": "Ams-Single-Tenant",
+        "Resource": "Microsoft Graph",
+        "FirstTimeUserConnectedViaISP": "False",
+        "ISPUncommonlyUsedAmongPeers": "True",
+        "FirstTimeUserConnectedViaBrowser": "False",
+        "BrowserUncommonlyUsedAmongPeers": "True"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:12:32.7415774Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "50074",
+      "ResultSignature": "FAILURE",
+      "ResultDescription": "Strong Authentication is required.",
+      "Identity": "Ravi Kiran Nuthakki",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:10:07.6244336+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:10:07.6244336+00:00",
+          "succeeded": false,
+          "authenticationStepResultDetail": "MFA required in Azure AD",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "failure",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlyInterrupted",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:10:07.6244336Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Chrome 142.0.0",
+        "displayName": "{PII Removed}"
+      },
+      "Id": "6bb6d5d6-19ec-4859-9603-b931ee185800",
+      "IPAddress": "124.123.128.158",
+      "LocationDetails": {
+        "city": "Patnam",
+        "state": "Andhra Pradesh",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 14.232970237731934,
+          "longitude": 78.09442901611328
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "6bb6d5d6-19ec-4859-9603-b931ee185800",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "UserDisplayName": "Ravi Kiran Nuthakki",
+      "UserId": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+      "UserPrincipalName": "ravi.nuthakki@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "1tW2a-wZWUiWA7kx7hhYAA",
+      "SessionId": "0099d6e9-7302-dac0-85d3-3a3dc714991d",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Chrome",
+        "ISP": "mehdi patnam zone (dhcp)"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager",
+        "FirstTimeUserConnectedViaISP": "False",
+        "ISPUncommonlyUsedAmongPeers": "True",
+        "FirstTimeUserConnectedViaBrowser": "False",
+        "BrowserUncommonlyUsedAmongPeers": "True"
+      },
+      "ActionType": "User did not pass the MFA challenge",
+      "ActivityType": "FailedLogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:12:33.864281Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "50074",
+      "ResultSignature": "FAILURE",
+      "ResultDescription": "Strong Authentication is required.",
+      "Identity": "Ravi Kiran Nuthakki",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:10:07.6244336+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:10:07.6244336+00:00",
+          "authenticationMethod": "OATH verification code",
+          "succeeded": false,
+          "authenticationStepResultDetail": "MFA required in Azure AD",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "failure",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlyInterrupted",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:10:07.6244336Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Chrome 142.0.0",
+        "displayName": "{PII Removed}"
+      },
+      "Id": "6bb6d5d6-19ec-4859-9603-b931ee185800",
+      "IPAddress": "124.123.128.158",
+      "LocationDetails": {
+        "city": "Patnam",
+        "state": "Andhra Pradesh",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 14.232970237731934,
+          "longitude": 78.09442901611328
+        }
+      },
+      "MfaDetail": {
+        "authMethod": "OATH verification code"
+      },
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "6bb6d5d6-19ec-4859-9603-b931ee185800",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "UserDisplayName": "Ravi Kiran Nuthakki",
+      "UserId": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+      "UserPrincipalName": "ravi.nuthakki@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "1tW2a-wZWUiWA7kx7hhYAA",
+      "SessionId": "0099d6e9-7302-dac0-85d3-3a3dc714991d",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Chrome",
+        "ISP": "mehdi patnam zone (dhcp)"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager",
+        "FirstTimeUserConnectedViaBrowser": "True",
+        "BrowserUncommonlyUsedInTenant": "False"
+      },
+      "ActionType": "User did not pass the MFA challenge",
+      "ActivityType": "FailedLogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:12:45.7157384Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "500121",
+      "ResultSignature": "FAILURE",
+      "ResultDescription": "Authentication failed during strong authentication request.",
+      "Identity": "Ravi Kiran Nuthakki",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:10:07.6244336+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:10:07.6244336+00:00",
+          "authenticationMethod": "OATH verification code",
+          "succeeded": false,
+          "authenticationStepResultDetail": "MFA denied; invalid verification code",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "failure",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlyInterrupted",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:10:07.6244336Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Chrome 142.0.0",
+        "displayName": "{PII Removed}"
+      },
+      "Id": "6bb6d5d6-19ec-4859-9603-b931ee185800",
+      "IPAddress": "124.123.128.158",
+      "LocationDetails": {
+        "city": "Patnam",
+        "state": "Andhra Pradesh",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 14.232970237731934,
+          "longitude": 78.09442901611328
+        }
+      },
+      "MfaDetail": {
+        "authMethod": "OATH verification code"
+      },
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "6bb6d5d6-19ec-4859-9603-b931ee185800",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "UserDisplayName": "Ravi Kiran Nuthakki",
+      "UserId": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+      "UserPrincipalName": "ravi.nuthakki@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "1tW2a-wZWUiWA7kx7hhYAA",
+      "SessionId": "0099d6e9-7302-dac0-85d3-3a3dc714991d",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Chrome",
+        "ISP": "mehdi patnam zone (dhcp)"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager",
+        "FirstTimeUserConnectedViaISP": "False",
+        "ISPUncommonlyUsedAmongPeers": "True",
+        "FirstTimeUserConnectedViaBrowser": "False",
+        "BrowserUncommonlyUsedAmongPeers": "True"
+      },
+      "ActionType": "Other",
+      "ActivityType": "FailedLogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:13:00.2231825Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Akarsh  Puranik",
+      "AppDisplayName": "Azure DevOps",
+      "AppId": "499b84ac-1321-427f-aa17-267ca6975798",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:11:46.5419817+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "singleFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlyInterrupted",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:11:46.5419817Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 141.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "d05e6a49-a3ba-4518-a724-349682210f00",
+      "IPAddress": "14.143.131.254",
+      "LocationDetails": {
+        "city": "Navi Mumbai",
+        "state": "Maharashtra",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 19.159900665283203,
+          "longitude": 72.99919891357422
+        }
+      },
+      "MfaDetail": null,
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "d05e6a49-a3ba-4518-a724-349682210f00",
+      "ResourceDisplayName": "Azure DevOps",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0 OS/10.0.26100",
+      "UserDisplayName": "Akarsh  Puranik",
+      "UserId": "558aa84d-9ca8-4f2a-91be-2ca511ceb54b",
+      "UserPrincipalName": "akarsh.puranik@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "SWpe0LqjGEWnJDSWgiEPAA",
+      "SessionId": "008cb789-1329-53ab-f743-e38c48a042f2",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "internet service provider"
+      },
+      "ActivityInsights": {
+        "App": "Azure DevOps",
+        "Resource": "Azure DevOps"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:13:03.7457752Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "500121",
+      "ResultSignature": "FAILURE",
+      "ResultDescription": "Authentication failed during strong authentication request.",
+      "Identity": "Ravi Kiran Nuthakki",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:10:07.6244336+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:10:07.6244336+00:00",
+          "authenticationMethod": "OATH verification code",
+          "succeeded": false,
+          "authenticationStepResultDetail": "MFA denied; invalid verification code",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "failure",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlyInterrupted",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:10:07.6244336Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Chrome 142.0.0",
+        "displayName": "{PII Removed}"
+      },
+      "Id": "6bb6d5d6-19ec-4859-9603-b931ee185800",
+      "IPAddress": "124.123.128.158",
+      "LocationDetails": {
+        "city": "Patnam",
+        "state": "Andhra Pradesh",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 14.232970237731934,
+          "longitude": 78.09442901611328
+        }
+      },
+      "MfaDetail": {
+        "authMethod": "OATH verification code"
+      },
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "6bb6d5d6-19ec-4859-9603-b931ee185800",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "UserDisplayName": "Ravi Kiran Nuthakki",
+      "UserId": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+      "UserPrincipalName": "ravi.nuthakki@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "1tW2a-wZWUiWA7kx7hhYAA",
+      "SessionId": "0099d6e9-7302-dac0-85d3-3a3dc714991d",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Chrome",
+        "ISP": "mehdi patnam zone (dhcp)"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager",
+        "FirstTimeUserConnectedViaISP": "False",
+        "ISPUncommonlyUsedAmongPeers": "True",
+        "FirstTimeUserConnectedViaBrowser": "False",
+        "BrowserUncommonlyUsedAmongPeers": "True"
+      },
+      "ActionType": "Other",
+      "ActivityType": "FailedLogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:14:49.8461908Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Ravi Kiran Nuthakki",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:12:38.2953279+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:12:38.2953279Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "156730ae-f357-41ac-8442-544f10c40c00",
+      "IPAddress": "124.123.128.158",
+      "LocationDetails": {
+        "city": "Patnam",
+        "state": "Andhra Pradesh",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 14.232970237731934,
+          "longitude": 78.09442901611328
+        }
+      },
+      "MfaDetail": null,
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "156730ae-f357-41ac-8442-544f10c40c00",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0",
+      "UserDisplayName": "Ravi Kiran Nuthakki",
+      "UserId": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+      "UserPrincipalName": "ravi.nuthakki@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "rjBnFVfzrEGEQlRPEMQMAA",
+      "SessionId": "009988c9-c829-5919-c2df-7d7e02ed88f4",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "mehdi patnam zone (dhcp)"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager",
+        "FirstTimeUserConnectedViaISP": "False",
+        "ISPUncommonlyUsedAmongPeers": "True"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:14:49.9581875Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "kshitij trivedi",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:13:50.9904783+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:13:50.9904783+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "MfaAndChangePassword"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:13:50.9904783Z",
+      "DeviceDetail": {
+        "deviceId": "",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0"
+      },
+      "Id": "cceb9167-8be9-465a-930d-ef3a56c53800",
+      "IPAddress": "14.194.129.210",
+      "LocationDetails": {
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 19.076000213623047,
+          "longitude": 72.87770080566406
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "cceb9167-8be9-465a-930d-ef3a56c53800",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0",
+      "UserDisplayName": "kshitij trivedi",
+      "UserId": "f624e509-aada-4803-8a98-a58fe74d9779",
+      "UserPrincipalName": "kshitij.trivedi@yashtechnologies841.onmicrosoft.com",
+      "UserType": "Member",
+      "UniqueTokenIdentifier": "Z5HrzOmLWkaTDe86VsU4AA",
+      "SessionId": "00a96749-c8a9-9ccc-85fa-89bcb6f5cec6",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:15:00.8995289Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "kshitij trivedi",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:13:55.4173728+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:13:55.4173728+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "MfaAndChangePassword"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:13:55.4173728Z",
+      "DeviceDetail": {
+        "deviceId": "",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0"
+      },
+      "Id": "975c2a2f-dd58-4eb8-aa56-d391a35b3900",
+      "IPAddress": "125.23.93.22",
+      "LocationDetails": {
+        "city": "New Delhi",
+        "state": "Delhi",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 28.618200302124023,
+          "longitude": 77.22329711914062
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "975c2a2f-dd58-4eb8-aa56-d391a35b3900",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0 OS/10.0.26200",
+      "UserDisplayName": "kshitij trivedi",
+      "UserId": "f624e509-aada-4803-8a98-a58fe74d9779",
+      "UserPrincipalName": "kshitij.trivedi@yashtechnologies841.onmicrosoft.com",
+      "UserType": "Member",
+      "UniqueTokenIdentifier": "Lypcl1jduE6qVtORo1s5AA",
+      "SessionId": "00a96749-c8a9-9ccc-85fa-89bcb6f5cec6",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "bharti infotel ltd."
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:18:58.4915084Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Aarushi Trivedi",
+      "AppDisplayName": "Microsoft Power BI",
+      "AppId": "871c010f-5e61-4fb1-83ac-98610a7e9110",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:17:04.4509951+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "singleFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "MfaAndChangePassword"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:17:04.4509951Z",
+      "DeviceDetail": {
+        "deviceId": "",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0"
+      },
+      "Id": "b9d29b76-4f7a-4ce3-a5f0-509849980e00",
+      "IPAddress": "14.194.129.210",
+      "LocationDetails": {
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 19.076000213623047,
+          "longitude": 72.87770080566406
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "b9d29b76-4f7a-4ce3-a5f0-509849980e00",
+      "ResourceDisplayName": "Power BI Service",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0",
+      "UserDisplayName": "Aarushi Trivedi",
+      "UserId": "bf6a5922-4e52-450b-aa13-29792fe354e3",
+      "UserPrincipalName": "aarushi.trivedi@yashtechnologies841.onmicrosoft.com",
+      "UserType": "Member",
+      "UniqueTokenIdentifier": "dpvSuXpP40yl8FCYSZgOAA",
+      "SessionId": "008ba619-a54f-1d73-ccba-1ce2ff5fb842",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge"
+      },
+      "ActivityInsights": {
+        "App": "Microsoft Power BI",
+        "Resource": "Power BI Service"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:19:42.3057521Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Aarushi Trivedi",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:17:04.5681246+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:17:04.5681246+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "MfaAndChangePassword"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:17:04.5681246Z",
+      "DeviceDetail": {
+        "deviceId": "",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0"
+      },
+      "Id": "706d043f-9eb5-46a4-a6c3-b2eb46891000",
+      "IPAddress": "125.23.93.22",
+      "LocationDetails": {
+        "city": "New Delhi",
+        "state": "Delhi",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 28.618200302124023,
+          "longitude": 77.22329711914062
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "706d043f-9eb5-46a4-a6c3-b2eb46891000",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0",
+      "UserDisplayName": "Aarushi Trivedi",
+      "UserId": "bf6a5922-4e52-450b-aa13-29792fe354e3",
+      "UserPrincipalName": "aarushi.trivedi@yashtechnologies841.onmicrosoft.com",
+      "UserType": "Member",
+      "UniqueTokenIdentifier": "PwRtcLWepEamw7LrRokQAA",
+      "SessionId": "008ba619-a54f-1d73-ccba-1ce2ff5fb842",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "bharti infotel ltd."
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:19:57.5752816Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Uday  Sharma",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:18:23.6493922+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:18:23.6493922+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:18:23.6493922Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 141.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "4eb6285c-c15b-42d3-98fd-cc33bdc61000",
+      "IPAddress": "125.23.93.22",
+      "LocationDetails": {
+        "city": "New Delhi",
+        "state": "Delhi",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 28.618200302124023,
+          "longitude": 77.22329711914062
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "4eb6285c-c15b-42d3-98fd-cc33bdc61000",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0 OS/10.0.22621",
+      "UserDisplayName": "Uday  Sharma",
+      "UserId": "be4948de-7f30-4b44-9cc5-53e8bf1b4837",
+      "UserPrincipalName": "uday.sharma@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "XCi2TlvB00KY_cwzvcYQAA",
+      "SessionId": "00a98e59-eb8c-5856-6df0-e9363d05c7fc",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "bharti infotel ltd."
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:21:32.7077628Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Uday  Sharma",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:19:49.1000594+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:19:49.1000594+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:19:49.1000594Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 141.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "d1183274-39aa-470e-90d2-12026d443f00",
+      "IPAddress": "14.194.129.210",
+      "LocationDetails": {
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 19.076000213623047,
+          "longitude": 72.87770080566406
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "d1183274-39aa-470e-90d2-12026d443f00",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0 OS/10.0.22621",
+      "UserDisplayName": "Uday  Sharma",
+      "UserId": "be4948de-7f30-4b44-9cc5-53e8bf1b4837",
+      "UserPrincipalName": "uday.sharma@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "dDIY0ao5DkeQ0hICbUQ_AA",
+      "SessionId": "00a98e59-eb8c-5856-6df0-e9363d05c7fc",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:21:41.552302Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Sanket  Upadhyay",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:19:33.1918075+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:19:33.1918075+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:19:33.1918075Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Chrome 141.0.0",
+        "displayName": "{PII Removed}"
+      },
+      "Id": "49340ada-d18f-40b4-8717-d8431e170f00",
+      "IPAddress": "2409:40c4:30a7:2972:54aa:c2d0:b2b3:359c",
+      "LocationDetails": {
+        "city": "Chhind",
+        "state": "Madhya Pradesh",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 22.057437896728516,
+          "longitude": 78.93817138671875
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "49340ada-d18f-40b4-8717-d8431e170f00",
+      "ResourceDisplayName": "Azure Portal",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+      "UserDisplayName": "Sanket  Upadhyay",
+      "UserId": "a6e6fe28-3d1f-4ddd-ace2-b27394e82dab",
+      "UserPrincipalName": "sanket.upadhyay@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "2go0SY_RtECHF9hDHhcPAA",
+      "SessionId": "00a855d9-e26d-dffe-079e-d9ff31782dd9",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Chrome",
+        "ISP": "reliance jio infocomm limited"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Portal",
+        "FirstTimeUserAccessedResource": "True",
+        "ResourceUncommonlyAccessedInTenant": "False"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:23:19.0866904Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Ravi Kiran Nuthakki",
+      "AppDisplayName": "Ams-Single-Tenant",
+      "AppId": "0c4f8ab6-fdc0-4a50-826d-e1f69317a988",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:20:21.9311863+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "singleFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:20:21.9311863Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "d4cf8d50-0999-4094-a146-962ce2ff0f00",
+      "IPAddress": "124.123.128.158",
+      "LocationDetails": {
+        "city": "Patnam",
+        "state": "Andhra Pradesh",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 14.232970237731934,
+          "longitude": 78.09442901611328
+        }
+      },
+      "MfaDetail": null,
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "d4cf8d50-0999-4094-a146-962ce2ff0f00",
+      "ResourceDisplayName": "Microsoft Graph",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0 OS/10.0.26100",
+      "UserDisplayName": "Ravi Kiran Nuthakki",
+      "UserId": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+      "UserPrincipalName": "ravi.nuthakki@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "UI3P1JkJlEChRpYs4v8PAA",
+      "SessionId": "009988c9-c829-5919-c2df-7d7e02ed88f4",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "mehdi patnam zone (dhcp)"
+      },
+      "ActivityInsights": {
+        "App": "Ams-Single-Tenant",
+        "Resource": "Microsoft Graph",
+        "FirstTimeUserConnectedViaISP": "False",
+        "ISPUncommonlyUsedAmongPeers": "True"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:23:21.1603194Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Uday  Sharma",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:21:05.7360624+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:21:05.7360624+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:21:05.7360624Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 141.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "cdc82746-1693-417e-8610-30bfcd824000",
+      "IPAddress": "14.194.129.210",
+      "LocationDetails": {
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 19.076000213623047,
+          "longitude": 72.87770080566406
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "cdc82746-1693-417e-8610-30bfcd824000",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0 OS/10.0.22621",
+      "UserDisplayName": "Uday  Sharma",
+      "UserId": "be4948de-7f30-4b44-9cc5-53e8bf1b4837",
+      "UserPrincipalName": "uday.sharma@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "RifIzZMWfkGGEDC_zYJAAA",
+      "SessionId": "00a98e59-eb8c-5856-6df0-e9363d05c7fc",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:24:11.9634018Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Mukesh Balasubramanian",
+      "AppDisplayName": "Azure DevOps",
+      "AppId": "499b84ac-1321-427f-aa17-267ca6975798",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:22:18.009813+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "singleFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:22:18.009813Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "3169e50e-182b-4c4f-aca6-f1cbfabb1300",
+      "IPAddress": "2001:4490:4eb9:fadd:a9c9:d4fd:6fc6:6c4",
+      "LocationDetails": {
+        "city": "Pondicherry",
+        "state": "Puducherry",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 11.913900375366213,
+          "longitude": 79.81449890136719
+        }
+      },
+      "MfaDetail": null,
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "3169e50e-182b-4c4f-aca6-f1cbfabb1300",
+      "ResourceDisplayName": "Azure DevOps",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0 OS/10.0.26200",
+      "UserDisplayName": "Mukesh Balasubramanian",
+      "UserId": "11cc6fe8-3740-4080-971a-14deb428de24",
+      "UserPrincipalName": "mukesh.b@aaseya.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "DuVpMSsYT0yspvHL-rsTAA",
+      "SessionId": "596031af-4c83-4a00-9ab1-15089e3ae13d",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "nib (national internet backbone)"
+      },
+      "ActivityInsights": {
+        "App": "Azure DevOps",
+        "Resource": "Azure DevOps"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:25:38.7107476Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "kshitij trivedi",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:23:00.6852537+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:23:00.6852537+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "MfaAndChangePassword"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:23:00.6852537Z",
+      "DeviceDetail": {
+        "deviceId": "",
+        "operatingSystem": "Windows10",
+        "browser": "Chrome 142.0.0"
+      },
+      "Id": "7fb2ce9d-c9b7-4e61-afc3-5db19aff3400",
+      "IPAddress": "125.23.93.22",
+      "LocationDetails": {
+        "city": "New Delhi",
+        "state": "Delhi",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 28.618200302124023,
+          "longitude": 77.22329711914062
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "7fb2ce9d-c9b7-4e61-afc3-5db19aff3400",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "UserDisplayName": "kshitij trivedi",
+      "UserId": "f624e509-aada-4803-8a98-a58fe74d9779",
+      "UserPrincipalName": "kshitij.trivedi@yashtechnologies841.onmicrosoft.com",
+      "UserType": "Member",
+      "UniqueTokenIdentifier": "nc6yf7fJYU6vw12xmv80AA",
+      "SessionId": "00a96749-89e7-5119-1126-9ab2db619c0d",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Chrome",
+        "ISP": "bharti infotel ltd."
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:27:13.5034769Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "kshitij trivedi",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:25:39.1042291+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:25:39.1042291+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "MFA requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "MfaAndChangePassword"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:25:39.1042291Z",
+      "DeviceDetail": {
+        "deviceId": "",
+        "operatingSystem": "Windows10",
+        "browser": "Chrome 142.0.0"
+      },
+      "Id": "16985f41-7616-43b4-b466-7da290e33500",
+      "IPAddress": "14.194.129.210",
+      "LocationDetails": {
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 19.076000213623047,
+          "longitude": 72.87770080566406
+        }
+      },
+      "MfaDetail": {},
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "16985f41-7616-43b4-b466-7da290e33500",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "UserDisplayName": "kshitij trivedi",
+      "UserId": "f624e509-aada-4803-8a98-a58fe74d9779",
+      "UserPrincipalName": "kshitij.trivedi@yashtechnologies841.onmicrosoft.com",
+      "UserType": "Member",
+      "UniqueTokenIdentifier": "QV-YFhZ2tEO0Zn2ikOM1AA",
+      "SessionId": "00a96749-89e7-5119-1126-9ab2db619c0d",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1002
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Chrome"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:28:27.9836647Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Ravi Kiran Nuthakki",
+      "AppDisplayName": "Ams-Single-Tenant",
+      "AppId": "0c4f8ab6-fdc0-4a50-826d-e1f69317a988",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:27:56.0186868+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "singleFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:27:56.0186868Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "ba0afb1d-e881-44cf-8619-f9809eb11000",
+      "IPAddress": "124.123.128.158",
+      "LocationDetails": {
+        "city": "Patnam",
+        "state": "Andhra Pradesh",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 14.232970237731934,
+          "longitude": 78.09442901611328
+        }
+      },
+      "MfaDetail": null,
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "ba0afb1d-e881-44cf-8619-f9809eb11000",
+      "ResourceDisplayName": "Microsoft Graph",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0 OS/10.0.26100",
+      "UserDisplayName": "Ravi Kiran Nuthakki",
+      "UserId": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+      "UserPrincipalName": "ravi.nuthakki@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "HfsKuoHoz0SGGfmAnrEQAA",
+      "SessionId": "009988c9-c829-5919-c2df-7d7e02ed88f4",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "mehdi patnam zone (dhcp)"
+      },
+      "ActivityInsights": {
+        "App": "Ams-Single-Tenant",
+        "Resource": "Microsoft Graph",
+        "FirstTimeUserConnectedViaISP": "False",
+        "ISPUncommonlyUsedAmongPeers": "True"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:28:33.5744591Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "50074",
+      "ResultSignature": "FAILURE",
+      "ResultDescription": "Strong Authentication is required.",
+      "Identity": "bf82d598-dea7-4d3e-9bb1-8ea22852f615",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "singleFactorAuthentication",
+      "ClientAppUsed": "",
+      "ConditionalAccessPolicies": [],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:26:42.0591666Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}"
+      },
+      "Id": "32dce990-c787-4698-a846-22ed94620000",
+      "IPAddress": "14.194.129.210",
+      "LocationDetails": {
+        "geoCoordinates": {}
+      },
+      "MfaDetail": {
+        "authMethod": "Mobile app notification"
+      },
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "32dce990-c787-4698-a846-22ed94620000",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0 OS/10.0.19045",
+      "UserDisplayName": "bf82d598-dea7-4d3e-9bb1-8ea22852f615",
+      "UserId": "bf82d598-dea7-4d3e-9bb1-8ea22852f615",
+      "UserPrincipalName": "bf82d598-dea7-4d3e-9bb1-8ea22852f615",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "kOncMofHmEaoRiLtlGIAAA",
+      "SessionId": "",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {},
+      "ActivityInsights": {},
+      "ActionType": "",
+      "ActivityType": ""
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:28:40.2251084Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "50074",
+      "ResultSignature": "FAILURE",
+      "ResultDescription": "Strong Authentication is required.",
+      "Identity": "87926013-801b-452c-b1a5-fd380cb0c450",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "singleFactorAuthentication",
+      "ClientAppUsed": "",
+      "ConditionalAccessPolicies": [],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:27:38.6455389Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}"
+      },
+      "Id": "04a09650-d36a-42b5-bd5d-b6f1ea5c1300",
+      "IPAddress": "125.23.93.22",
+      "LocationDetails": {
+        "geoCoordinates": {}
+      },
+      "MfaDetail": {
+        "authMethod": "Mobile app notification"
+      },
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "04a09650-d36a-42b5-bd5d-b6f1ea5c1300",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0 OS/10.0.19045",
+      "UserDisplayName": "87926013-801b-452c-b1a5-fd380cb0c450",
+      "UserId": "87926013-801b-452c-b1a5-fd380cb0c450",
+      "UserPrincipalName": "87926013-801b-452c-b1a5-fd380cb0c450",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "UJagBGrTtUK9Xbbx6lwTAA",
+      "SessionId": "",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {},
+      "ActivityInsights": {},
+      "ActionType": "",
+      "ActivityType": ""
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:28:44.257818Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "50074",
+      "ResultSignature": "FAILURE",
+      "ResultDescription": "Strong Authentication is required.",
+      "Identity": "Vishwajeet Vilas Dange",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:26:09.1624435+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:26:09.1624435+00:00",
+          "authenticationMethod": "Mobile app notification",
+          "succeeded": false,
+          "authenticationStepResultDetail": "Authentication in progress",
+          "authenticationStepRequirement": "Primary authentication"
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "failure",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlyInterrupted",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:26:09.1624435Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "32dce990-c787-4698-a846-22ed94620000",
+      "IPAddress": "125.23.93.22",
+      "LocationDetails": {
+        "city": "New Delhi",
+        "state": "Delhi",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 28.618200302124023,
+          "longitude": 77.22329711914062
+        }
+      },
+      "MfaDetail": {
+        "authMethod": "Mobile app notification"
+      },
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "32dce990-c787-4698-a846-22ed94620000",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0 OS/10.0.19045",
+      "UserDisplayName": "Vishwajeet Vilas Dange",
+      "UserId": "bf82d598-dea7-4d3e-9bb1-8ea22852f615",
+      "UserPrincipalName": "vishwajeet.dange@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "kOncMofHmEaoRiLtlGIAAA",
+      "SessionId": "00a8f219-32e4-fa08-d9a8-2f098a7d9bb9",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "bharti infotel ltd."
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager",
+        "UnusualNumberOfDistinctUsersFailedSignInFromIPAddress": "False",
+        "FirstTimeUserConnectedViaISP": "True",
+        "ISPUncommonlyUsedInTenant": "False"
+      },
+      "ActionType": "User did not pass the MFA challenge",
+      "ActivityType": "FailedLogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:29:03.5413985Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "50074",
+      "ResultSignature": "FAILURE",
+      "ResultDescription": "Strong Authentication is required.",
+      "Identity": "87926013-801b-452c-b1a5-fd380cb0c450",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:27:39+00:00",
+          "authenticationMethod": "Mobile app notification",
+          "succeeded": false,
+          "authenticationStepResultDetail": "Authentication in progress",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 1762925259549,
+          "RequestSequence": 1762925254816
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "singleFactorAuthentication",
+      "ClientAppUsed": "",
+      "ConditionalAccessPolicies": [],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:27:38.6455389Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}"
+      },
+      "Id": "04a09650-d36a-42b5-bd5d-b6f1ea5c1300",
+      "IPAddress": "125.23.93.22",
+      "LocationDetails": {
+        "geoCoordinates": {}
+      },
+      "MfaDetail": {
+        "authMethod": "Mobile app notification"
+      },
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "04a09650-d36a-42b5-bd5d-b6f1ea5c1300",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0 OS/10.0.19045",
+      "UserDisplayName": "87926013-801b-452c-b1a5-fd380cb0c450",
+      "UserId": "87926013-801b-452c-b1a5-fd380cb0c450",
+      "UserPrincipalName": "87926013-801b-452c-b1a5-fd380cb0c450",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "UJagBGrTtUK9Xbbx6lwTAA",
+      "SessionId": "",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {},
+      "ActivityInsights": {},
+      "ActionType": "",
+      "ActivityType": ""
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:29:14.6979013Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Ravi Kiran Nuthakki",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:27:02.5419475+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:27:02.5419475Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "90be21f6-9e6d-4849-aa5a-372088841000",
+      "IPAddress": "124.123.128.158",
+      "LocationDetails": {
+        "city": "Patnam",
+        "state": "Andhra Pradesh",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 14.232970237731934,
+          "longitude": 78.09442901611328
+        }
+      },
+      "MfaDetail": null,
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "90be21f6-9e6d-4849-aa5a-372088841000",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0",
+      "UserDisplayName": "Ravi Kiran Nuthakki",
+      "UserId": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+      "UserPrincipalName": "ravi.nuthakki@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "9iG-kG2eSUiqWjcgiIQQAA",
+      "SessionId": "009988c9-c829-5919-c2df-7d7e02ed88f4",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "mehdi patnam zone (dhcp)"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager",
+        "FirstTimeUserConnectedViaISP": "False",
+        "ISPUncommonlyUsedAmongPeers": "True"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:29:24.2872214Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "50074",
+      "ResultSignature": "FAILURE",
+      "ResultDescription": "Strong Authentication is required.",
+      "Identity": "Tanmay Ganesh Kapse",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:27:33.3056552+00:00",
+          "authenticationMethod": "Password",
+          "authenticationMethodDetail": "Password Hash Sync",
+          "succeeded": true,
+          "authenticationStepResultDetail": "Correct password",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 1
+        },
+        {
+          "authenticationStepDateTime": "2025-11-12T05:27:39+00:00",
+          "authenticationMethod": "Mobile app notification",
+          "succeeded": false,
+          "authenticationStepResultDetail": "Authentication in progress",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 1762925259549,
+          "RequestSequence": 1762925254816
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "failure",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlyInterrupted",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:27:33.3056552Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "04a09650-d36a-42b5-bd5d-b6f1ea5c1300",
+      "IPAddress": "14.194.129.210",
+      "LocationDetails": {
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 19.076000213623047,
+          "longitude": 72.87770080566406
+        }
+      },
+      "MfaDetail": {
+        "authMethod": "Mobile app notification"
+      },
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "04a09650-d36a-42b5-bd5d-b6f1ea5c1300",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0 OS/10.0.19045",
+      "UserDisplayName": "Tanmay Ganesh Kapse",
+      "UserId": "87926013-801b-452c-b1a5-fd380cb0c450",
+      "UserPrincipalName": "tanmay.kapse@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "UJagBGrTtUK9Xbbx6lwTAA",
+      "SessionId": "00a9b569-03ef-2ab2-b4fc-88550221f332",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "unbound",
+        "signInSessionStatusCode": 1008
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager",
+        "UnusualNumberOfDistinctUsersFailedSignInFromIPAddress": "False"
+      },
+      "ActionType": "User did not pass the MFA challenge",
+      "ActivityType": "FailedLogOn"
+    },
+    {
+      "TimeGenerated": "2025-11-12T05:29:49.481018Z",
+      "OperationName": "Sign-in activity",
+      "ResultType": "0",
+      "ResultSignature": "SUCCESS",
+      "ResultDescription": "",
+      "Identity": "Ravi Kiran Nuthakki",
+      "AppDisplayName": "Azure Portal",
+      "AppId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c",
+      "AuthenticationDetails": [
+        {
+          "authenticationStepDateTime": "2025-11-12T05:27:11.1703599+00:00",
+          "authenticationMethod": "Previously satisfied",
+          "succeeded": true,
+          "authenticationStepResultDetail": "First factor requirement satisfied by claim in the token",
+          "authenticationStepRequirement": "Primary authentication",
+          "StatusSequence": 0,
+          "RequestSequence": 0
+        }
+      ],
+      "AuthenticationMethodsUsed": "",
+      "AuthenticationProcessingDetails": [
+        {
+          "key": "Login Hint Present",
+          "value": "True"
+        },
+        {
+          "key": "Legacy TLS (TLS 1.0, 1.1, 3DES)",
+          "value": "False"
+        },
+        {
+          "key": "Is CAE Token",
+          "value": "False"
+        }
+      ],
+      "AuthenticationRequirement": "multiFactorAuthentication",
+      "ClientAppUsed": "Browser",
+      "ConditionalAccessPolicies": [
+        {
+          "id": "SecurityDefaults",
+          "displayName": "Security Defaults",
+          "result": "success",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "a2532f45-35da-4969-bb25-26b46d39fc31",
+          "displayName": "Require multifactor authentication for all users",
+          "result": "reportOnlySuccess",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 0,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "d745d837-0770-48ec-949c-94c62c26fa87",
+          "displayName": "Block device code flow",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32768,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "e09401cc-af23-4494-8956-079d5c34914f",
+          "displayName": "Block legacy authentication",
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 16,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        },
+        {
+          "id": "407a7420-a3e5-4067-89e4-46b193832ecd",
+          "displayName": "Require multifactor authentication for risky sign-ins",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 32,
+          "enforcedGrantControls": [
+            "Mfa"
+          ]
+        },
+        {
+          "id": "29c93c5b-3c5e-4229-ba33-4dbf0fa1acbb",
+          "displayName": "Require password change for high-risk users",
+          "enforcedSessionControls": [
+            "SignInFrequency"
+          ],
+          "result": "reportOnlyNotApplied",
+          "conditionsSatisfied": 3,
+          "conditionsNotSatisfied": 64,
+          "enforcedGrantControls": [
+            "Block"
+          ]
+        }
+      ],
+      "ConditionalAccessStatus": "notApplied",
+      "CreatedDateTime": "2025-11-12T05:27:11.1703599Z",
+      "DeviceDetail": {
+        "deviceId": "{PII Removed}",
+        "operatingSystem": "Windows10",
+        "browser": "Edge 142.0.0",
+        "displayName": "{PII Removed}",
+        "trustType": "Azure AD registered"
+      },
+      "Id": "038d37a7-3159-4b48-8dec-4f13f7110c00",
+      "IPAddress": "124.123.128.158",
+      "LocationDetails": {
+        "city": "Patnam",
+        "state": "Andhra Pradesh",
+        "countryOrRegion": "IN",
+        "geoCoordinates": {
+          "latitude": 14.232970237731934,
+          "longitude": 78.09442901611328
+        }
+      },
+      "MfaDetail": null,
+      "NetworkLocationDetails": [],
+      "OriginalRequestId": "038d37a7-3159-4b48-8dec-4f13f7110c00",
+      "ResourceDisplayName": "Azure Resource Manager",
+      "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0 OS/10.0.26100",
+      "UserDisplayName": "Ravi Kiran Nuthakki",
+      "UserId": "de2e6edb-50d3-4484-a37b-fa55f75c8966",
+      "UserPrincipalName": "ravi.nuthakki@yash.com",
+      "UserType": "Guest",
+      "UniqueTokenIdentifier": "pzeNA1kxSEuN7E8T9xEMAA",
+      "SessionId": "009988c9-c829-5919-c2df-7d7e02ed88f4",
+      "AuthenticationAppPolicyEvaluationDetails": "",
+      "GlobalSecureAccessIpAddress": "",
+      "TokenProtectionStatusDetails": {
+        "signInSessionStatus": "bound",
+        "signInSessionStatusCode": 0
+      },
+      "AppliedConditionalAccessPolicies": "",
+      "DevicesInsights": {
+        "UserAgentFamily": "Edge",
+        "ISP": "mehdi patnam zone (dhcp)"
+      },
+      "ActivityInsights": {
+        "App": "Azure Portal",
+        "Resource": "Azure Resource Manager",
+        "FirstTimeUserConnectedViaISP": "False",
+        "ISPUncommonlyUsedAmongPeers": "True"
+      },
+      "ActionType": "Sign-in",
+      "ActivityType": "LogOn"
+    }
+  ],
+  "UserPeerAnalytics": []
+}

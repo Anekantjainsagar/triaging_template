@@ -1,10 +1,13 @@
 import streamlit as st
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from pathlib import Path
 import pandas as pd
 import pytz
+
+# Import workflow orchestrator
+from main_workflow import SelectiveWorkflowOrchestrator
 
 # Page configuration
 st.set_page_config(
@@ -73,33 +76,6 @@ st.markdown(
         border-radius: 8px;
         text-align: center;
     }
-    .overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.7);
-        z-index: 999;
-        overflow-y: auto;
-    }
-    .overlay-content {
-        background-color: white;
-        margin: 2% auto;
-        padding: 2rem;
-        width: 90%;
-        max-width: 1200px;
-        border-radius: 12px;
-        position: relative;
-    }
-    .close-btn {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        font-size: 2rem;
-        cursor: pointer;
-        color: #999;
-    }
     .detail-section {
         margin-top: 1.5rem;
         padding: 1rem;
@@ -125,9 +101,14 @@ st.markdown(
         display: inline-block;
         width: 100%;
     }
-    
     .stMarkdown p {
         margin-bottom: 0.5rem;
+    }
+    .fetch-section {
+        background-color: #e3f2fd;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
     }
 </style>
 """,
@@ -143,6 +124,8 @@ if "current_page" not in st.session_state:
     st.session_state.current_page = 1
 if "items_per_page" not in st.session_state:
     st.session_state.items_per_page = 50
+if "show_fetch_panel" not in st.session_state:
+    st.session_state.show_fetch_panel = False
 
 
 def paginate_alerts(alerts, page, items_per_page):
@@ -165,7 +148,6 @@ def show_pagination_controls(total_items, current_page, items_per_page, position
         if st.button(
             "⏮ First",
             disabled=(current_page == 1),
-            width="stretch",
             key=f"first_{position}",
         ):
             st.session_state.current_page = 1
@@ -175,7 +157,6 @@ def show_pagination_controls(total_items, current_page, items_per_page, position
         if st.button(
             "◀ Previous",
             disabled=(current_page == 1),
-            width="stretch",
             key=f"prev_{position}",
         ):
             st.session_state.current_page = current_page - 1
@@ -191,7 +172,6 @@ def show_pagination_controls(total_items, current_page, items_per_page, position
         if st.button(
             "Next ▶",
             disabled=(current_page >= total_pages),
-            width="stretch",
             key=f"next_{position}",
         ):
             st.session_state.current_page = current_page + 1
@@ -201,7 +181,6 @@ def show_pagination_controls(total_items, current_page, items_per_page, position
         if st.button(
             "Last ⏭",
             disabled=(current_page >= total_pages),
-            width="stretch",
             key=f"last_{position}",
         ):
             st.session_state.current_page = total_pages
@@ -219,7 +198,6 @@ def show_pagination_controls(total_items, current_page, items_per_page, position
 def convert_zulu_to_ist(timestamp_str):
     """Convert Zulu/UTC timestamp to IST (UTC+5:30)"""
     try:
-        # Handle various timestamp formats
         formats = [
             "%Y-%m-%dT%H:%M:%S.%fZ",
             "%Y-%m-%dT%H:%M:%SZ",
@@ -237,7 +215,6 @@ def convert_zulu_to_ist(timestamp_str):
                 continue
 
         if dt_utc is None:
-            # Try parsing with timezone info
             if "Z" in timestamp_str or "+00:00" in timestamp_str:
                 timestamp_str = timestamp_str.replace("Z", "+00:00")
                 dt_utc = datetime.fromisoformat(
@@ -246,30 +223,15 @@ def convert_zulu_to_ist(timestamp_str):
             else:
                 return timestamp_str
         else:
-            # Make timezone-aware if it isn't
             if dt_utc.tzinfo is None:
                 dt_utc = pytz.UTC.localize(dt_utc)
 
-        # Convert to IST (UTC+5:30)
         ist = pytz.timezone("Asia/Kolkata")
         dt_ist = dt_utc.astimezone(ist)
 
         return dt_ist.strftime("%Y-%m-%d %I:%M:%S %p IST")
     except Exception as e:
         return timestamp_str
-
-
-def get_latest_folder(base_dir):
-    """Get the latest sentinel_logs folder"""
-    if not os.path.exists(base_dir):
-        return None
-
-    folders = [f for f in os.listdir(base_dir) if f.startswith("sentinel_logs_")]
-    if not folders:
-        return None
-
-    folders.sort(reverse=True)
-    return os.path.join(base_dir, folders[0])
 
 
 def load_alerts_from_folder(folder_path):
@@ -288,7 +250,6 @@ def load_alerts_from_folder(folder_path):
             with open(os.path.join(folder_path, file), "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-                # Extract timestamp from filename or metadata
                 timestamp_str = data.get("report_metadata", {}).get("generated_at", "")
                 if not timestamp_str:
                     timestamp_str = (
@@ -297,14 +258,12 @@ def load_alerts_from_folder(folder_path):
                         + file.split("_")[-1].replace(".json", "")
                     )
 
-                # Process all priority events
                 for priority in [
                     "high_priority_events",
                     "medium_priority_events",
                     "low_priority_events",
                 ]:
                     for event in data.get(priority, []):
-                        # Get timestamp from timeline if available
                         event_timestamp = timestamp_str
                         if event.get("timeline") and len(event["timeline"]) > 0:
                             event_timestamp = event["timeline"][0].get(
@@ -361,7 +320,6 @@ def load_alerts_from_folder(folder_path):
                 )
 
                 for alert_data in data.get("security_alerts", []):
-                    # Use evidence timestamp if available
                     alert_timestamp = alert_data.get("evidence", {}).get(
                         "timestamp", report_timestamp
                     )
@@ -418,19 +376,6 @@ def get_available_folders(base_dir):
     return folders
 
 
-def parse_folder_time(folder_name):
-    """Parse time information from folder name"""
-    # Format: sentinel_logs_2025-11-07 06-00-06-20
-    parts = folder_name.replace("sentinel_logs_", "").split(" ")
-    if len(parts) == 2:
-        date_part = parts[0]
-        time_part = parts[1]
-        start_time = time_part[:5].replace("-", ":")
-        end_time = time_part[6:].replace("-", ":")
-        return f"{date_part} {start_time} - {end_time}"
-    return folder_name
-
-
 def get_severity_color(severity):
     """Get color for severity badge"""
     severity_upper = severity.upper()
@@ -442,36 +387,21 @@ def get_severity_color(severity):
         return "severity-low"
 
 
-def get_alert_card_class(severity):
-    """Get CSS class for alert card"""
-    severity_upper = severity.upper()
-    if severity_upper == "HIGH":
-        return "alert-high"
-    elif severity_upper == "MEDIUM":
-        return "alert-medium"
-    else:
-        return "alert-low"
-
-
 def show_alert_detail_modal(alert):
     """Show detailed alert information in a modal dialog"""
-    # Add back button to sidebar
     with st.sidebar:
         st.markdown("## Alert Details")
         if st.button(
             "← Back to Dashboard",
             key="back_button_modal",
-            width="stretch",
             type="primary",
         ):
             st.session_state.show_overlay = False
             st.session_state.selected_alert = None
             st.rerun()
 
-    # Header
     st.markdown(f"## {alert['title']}")
 
-    # Severity and metadata in one row
     st.markdown(
         f"""
         <div style="display: flex; gap: 1rem; align-items: center; margin: 1rem 0; flex-wrap: wrap;">
@@ -486,7 +416,6 @@ def show_alert_detail_modal(alert):
 
     st.markdown("---")
 
-    # Different layouts based on source
     if alert["source"] == "User Data Correlation":
         show_user_activity_detail(alert)
     else:
@@ -518,34 +447,28 @@ def show_user_activity_detail(alert):
         st.write(f"**Single Factor:** {auth_summary.get('total_single_factor', 0)}")
         st.write(f"**Failed Attempts:** {auth_summary.get('failed_attempts', 0)}")
 
-    # Description
     st.markdown("### 📝 Description")
     st.info(alert.get("alert_description", "No description available"))
 
-    # Risk Factors
     if alert.get("risk_factors"):
         st.markdown("### ⚠️ Risk Factors")
         for factor in alert["risk_factors"]:
             st.markdown(f"- {factor}")
 
-    # Locations
     if alert.get("locations"):
         st.markdown("### 🌍 Locations")
         locations_df = pd.DataFrame(alert["locations"])
-        # Convert location timestamps to IST
         if "timestamp" in locations_df.columns:
             locations_df["timestamp_ist"] = locations_df["timestamp"].apply(
                 convert_zulu_to_ist
             )
         st.dataframe(locations_df, width="stretch")
 
-    # Applications
     if alert.get("applications"):
         st.markdown("### 📱 Applications Accessed")
         apps_df = pd.DataFrame(alert["applications"])
         st.dataframe(apps_df, width="stretch")
 
-    # Timeline
     if alert.get("timeline"):
         st.markdown("### 📅 Activity Timeline")
         for item in alert["timeline"]:
@@ -563,32 +486,9 @@ def show_user_activity_detail(alert):
                 unsafe_allow_html=True,
             )
 
-    # Failure Analysis
-    failure_analysis = alert.get("failure_analysis", {})
-    if failure_analysis.get("total_failures", 0) > 0:
-        st.markdown("### ❌ Failure Analysis")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write(f"**Total Failures:** {failure_analysis.get('total_failures', 0)}")
-            st.write(
-                f"**Success Rate:** {failure_analysis.get('success_rate', 0):.2f}%"
-            )
-        with col2:
-            st.write(
-                f"**Critical Failures:** {failure_analysis.get('critical_failures', 0)}"
-            )
-
-        if failure_analysis.get("failure_reasons"):
-            st.markdown("**Failure Reasons:**")
-            for reason in failure_analysis["failure_reasons"]:
-                st.markdown(
-                    f"- {reason.get('reason', 'Unknown')} (Count: {reason.get('count', 0)})"
-                )
-
 
 def show_endpoint_security_detail(alert):
     """Show endpoint security alert details"""
-    # Basic info in one row - compact display
     st.markdown(
         f"""
         <div style="display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 1rem;">
@@ -602,19 +502,15 @@ def show_endpoint_security_detail(alert):
 
     st.markdown("---")
 
-    # Description
     st.markdown("### 📄 Description")
     st.info(alert.get("description", "No description available"))
 
-    # Evidence
     if alert.get("evidence"):
         st.markdown("### 🔍 Evidence")
         evidence = alert["evidence"]
 
-        # Display evidence in a structured way
         for key, value in evidence.items():
             if key == "Key Components":
-                # Handle Key Components specially - filter out asterisks
                 if isinstance(value, list) and value:
                     filtered_components = [
                         item for item in value if item and item != "*"
@@ -628,38 +524,246 @@ def show_endpoint_security_detail(alert):
             if isinstance(value, list) and value:
                 st.markdown(f"**{key}:**")
                 for item in value:
-                    if item and item != "*":  # Skip empty or asterisk items
+                    if item and item != "*":
                         st.markdown(f"- {item}")
-            elif value and value != "*":  # Skip empty or asterisk values
-                # Convert timestamps in evidence to IST
+            elif value and value != "*":
                 if "timestamp" in key.lower() and isinstance(value, str):
                     value_ist = convert_zulu_to_ist(value)
                     st.markdown(f"**{key}:** {value_ist}")
                 else:
                     st.markdown(f"**{key}:** {value}")
 
-    # Risk Assessment
     st.markdown("### ⚠️ Risk Assessment")
     st.warning(alert.get("risk_assessment", "No risk assessment available"))
 
 
+def convert_ist_to_utc(ist_date, ist_hour):
+    """
+    Convert IST date and hour to UTC date and hour
+    IST is UTC+5:30
+
+    Args:
+        ist_date: date object in IST
+        ist_hour: hour (0-23) in IST
+
+    Returns:
+        tuple: (utc_date, utc_hour)
+    """
+    # Create IST datetime
+    ist = pytz.timezone("Asia/Kolkata")
+    ist_datetime = datetime.combine(
+        ist_date, datetime.min.time().replace(hour=ist_hour)
+    )
+    ist_datetime = ist.localize(ist_datetime)
+
+    # Convert to UTC
+    utc_datetime = ist_datetime.astimezone(pytz.UTC)
+
+    return utc_datetime.date(), utc_datetime.hour
+
+
+def show_fetch_panel():
+    """Show data fetching panel with IST to UTC conversion"""
+    st.markdown('<div class="fetch-section">', unsafe_allow_html=True)
+    st.markdown("### 🔄 Fetch New Alert Data")
+
+    # Add timezone info
+    st.info(
+        "ℹ️ Enter times in IST (Indian Standard Time). They will be automatically converted to UTC for fetching."
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        fetch_start_date = st.date_input(
+            "Start Date (IST)", value=date.today(), key="fetch_start_date"
+        )
+        fetch_start_hour = st.number_input(
+            "Start Hour IST (0-23)",
+            min_value=0,
+            max_value=23,
+            value=0,
+            key="fetch_start_hour",
+            help="Enter hour in IST timezone",
+        )
+        fetch_interval = st.number_input(
+            "Interval (minutes)",
+            min_value=1,
+            max_value=1440,
+            value=60,
+            key="fetch_interval",
+        )
+
+    with col2:
+        fetch_end_date = st.date_input(
+            "End Date (IST)", value=date.today(), key="fetch_end_date"
+        )
+        fetch_end_hour = st.number_input(
+            "End Hour IST (0-23)",
+            min_value=0,
+            max_value=23,
+            value=23,
+            key="fetch_end_hour",
+            help="Enter hour in IST timezone",
+        )
+
+    # Show UTC conversion preview
+    if fetch_start_date and fetch_start_hour is not None:
+        utc_start_date, utc_start_hour = convert_ist_to_utc(
+            fetch_start_date, fetch_start_hour
+        )
+        utc_end_date, utc_end_hour = convert_ist_to_utc(fetch_end_date, fetch_end_hour)
+
+        st.markdown("---")
+        st.markdown("#### 🌐 UTC Conversion Preview")
+        col_utc1, col_utc2 = st.columns(2)
+
+        with col_utc1:
+            st.info(f"**Start (UTC):** {utc_start_date} at {utc_start_hour:02d}:00")
+        with col_utc2:
+            st.info(f"**End (UTC):** {utc_end_date} at {utc_end_hour:02d}:00")
+
+    st.markdown("---")
+    st.markdown("#### Processing Options")
+    col3, col4 = st.columns(2)
+
+    with col3:
+        process_user_data = st.checkbox("Process User Data", value=True)
+        skip_fetch = st.checkbox("Skip Fetch (use existing)", value=False)
+
+    with col4:
+        process_endpoint = st.checkbox("Process Endpoint Security", value=True)
+        skip_clean = st.checkbox("Skip Clean (use existing)", value=False)
+
+    skip_correlation = st.checkbox("Skip Correlation (use existing)", value=False)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    col_btn1, col_btn2 = st.columns([1, 4])
+
+    with col_btn1:
+        if st.button("🚀 Fetch & Process", type="primary", width="stretch"):
+            base_dir = st.session_state.get("base_dir", "sentinel_logs1")
+
+            # Validate dates
+            if fetch_end_date < fetch_start_date:
+                st.error("End date must be after start date!")
+                return
+
+            # Convert IST to UTC
+            utc_start_date, utc_start_hour = convert_ist_to_utc(
+                fetch_start_date, fetch_start_hour
+            )
+            utc_end_date, utc_end_hour = convert_ist_to_utc(
+                fetch_end_date, fetch_end_hour
+            )
+
+            # Show conversion info
+            st.info(
+                f"📅 Fetching data from {utc_start_date} {utc_start_hour:02d}:00 UTC to {utc_end_date} {utc_end_hour:02d}:00 UTC"
+            )
+
+            with st.spinner("Processing... This may take a while..."):
+                try:
+                    orchestrator = SelectiveWorkflowOrchestrator(
+                        base_output_dir="sentinel_logs1"
+                    )
+
+                    # Show progress
+                    progress_placeholder = st.empty()
+                    progress_placeholder.info("🔄 Starting workflow...")
+
+                    # Pass UTC times to the orchestrator
+                    results = orchestrator.run_selective_workflow(
+                        start_date=utc_start_date.strftime("%Y-%m-%d"),
+                        end_date=utc_end_date.strftime("%Y-%m-%d"),
+                        start_hour=utc_start_hour,
+                        end_hour=utc_end_hour,
+                        interval_minutes=fetch_interval,
+                        process_user_data=process_user_data,
+                        process_endpoint_security=process_endpoint,
+                        skip_fetch=skip_fetch,
+                        skip_clean=skip_clean,
+                        skip_correlation=skip_correlation,
+                    )
+
+                    progress_placeholder.empty()
+
+                    # Show results summary
+                    st.success("✅ Workflow completed successfully!")
+
+                    if results:
+                        st.markdown("#### Results Summary")
+
+                        if "user_data" in results:
+                            user_data = results["user_data"]
+                            st.info(
+                                f"👤 User Data: {len(user_data.get('cleaned', []))} files cleaned, "
+                                f"{len(user_data.get('analyzed', []))} analyzed"
+                            )
+
+                        if "endpoint_security" in results:
+                            endpoint_data = results["endpoint_security"]
+                            total_alerts = sum(
+                                r.get("alerts_generated", 0)
+                                for r in endpoint_data.get("correlated", [])
+                            )
+                            st.info(
+                                f"🔒 Endpoint Security: {len(endpoint_data.get('cleaned', []))} files cleaned, "
+                                f"{len(endpoint_data.get('correlated', []))} correlated, "
+                                f"{total_alerts} alerts generated"
+                            )
+
+                    # Reload alerts
+                    st.session_state.alerts = load_all_alerts(base_dir)
+                    st.session_state.current_page = 1
+                    st.session_state.show_fetch_panel = False
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"❌ Error during workflow execution: {str(e)}")
+                    st.exception(e)
+
+    with col_btn2:
+        if st.button("Cancel", width="stretch"):
+            st.session_state.show_fetch_panel = False
+            st.rerun()
+
+
 def main():
-    # Show modal if alert is selected - MUST BE FIRST
+    # Show modal if alert is selected
     if st.session_state.get("show_overlay") and st.session_state.get("selected_alert"):
         show_alert_detail_modal(st.session_state.selected_alert)
-        return  # Don't show anything else when modal is open
+        return
 
-    # Only show header if not in overlay mode
+    # Show fetch panel if requested
+    if st.session_state.get("show_fetch_panel"):
+        st.markdown(
+            '<h1 class="main-header">🛡️ Unified Security Alerts Dashboard</h1>',
+            unsafe_allow_html=True,
+        )
+        show_fetch_panel()
+        return
+
     st.markdown(
         '<h1 class="main-header">🛡️ Unified Security Alerts Dashboard</h1>',
         unsafe_allow_html=True,
     )
 
-    # Sidebar for filters only
+    # Sidebar for configuration and filters
     with st.sidebar:
         st.markdown("## 📊 Configuration")
 
-        base_dir = st.text_input("Base Directory", value="sentinel_logs2")
+        base_dir = st.text_input(
+            "Base Directory", value="sentinel_logs1", key="base_dir_input"
+        )
+        if base_dir != st.session_state.get("base_dir"):
+            st.session_state.base_dir = base_dir
+
+        # Fetch data button
+        if st.button("🔄 Fetch New Data", type="primary", width="stretch"):
+            st.session_state.show_fetch_panel = True
+            st.rerun()
 
         # Auto-load alerts on startup
         if "alerts" not in st.session_state:
@@ -667,19 +771,17 @@ def main():
                 with st.spinner("Loading all alerts from all timelines..."):
                     st.session_state.alerts = load_all_alerts(base_dir)
                 if st.session_state.alerts:
-                    st.success(
-                        f"✅ Loaded {len(st.session_state.alerts)} alerts from all timelines!"
-                    )
+                    st.success(f"✅ Loaded {len(st.session_state.alerts)} alerts!")
             else:
                 st.error(f"❌ Directory '{base_dir}' not found")
                 st.session_state.alerts = []
 
         # Manual reload button
-        if st.button("🔄 Reload All Alerts", type="primary"):
+        if st.button("🔃 Reload Alerts", width="stretch"):
             if os.path.exists(base_dir):
                 with st.spinner("Reloading all alerts..."):
                     st.session_state.alerts = load_all_alerts(base_dir)
-                    st.session_state.current_page = 1  # Reset to first page
+                    st.session_state.current_page = 1
                 st.success(f"✅ Loaded {len(st.session_state.alerts)} alerts!")
             else:
                 st.error(f"❌ Directory '{base_dir}' not found")
@@ -687,7 +789,7 @@ def main():
         st.markdown("---")
         st.markdown("### 🔍 Filters")
 
-        # Filters (only show if alerts are loaded)
+        # Filters
         if "alerts" in st.session_state and st.session_state.alerts:
             severity_filter = st.multiselect(
                 "Severity",
@@ -713,29 +815,27 @@ def main():
 
             sort_order = st.radio("Sort Order", ["Ascending", "Descending"])
 
-            # Items per page selector
             st.markdown("---")
             items_per_page = st.selectbox(
                 "Items per page",
                 options=[10, 25, 50, 100],
-                index=2,  # Default to 50
+                index=2,
                 key="items_per_page_selector",
             )
             if items_per_page != st.session_state.items_per_page:
                 st.session_state.items_per_page = items_per_page
-                st.session_state.current_page = 1  # Reset to first page
+                st.session_state.current_page = 1
                 st.rerun()
 
-            # Apply filters
             st.session_state.severity_filter = severity_filter
             st.session_state.source_filter = source_filter
             st.session_state.category_filter = category_filter
             st.session_state.sort_by = sort_by
             st.session_state.sort_order = sort_order
 
-    # Main content area (only shown when no modal)
+    # Main content area
     if "alerts" not in st.session_state or not st.session_state.alerts:
-        st.info("⏳ Loading alerts... Please wait.")
+        st.info("⏳ No alerts loaded. Click '🔄 Fetch New Data' to get started.")
         st.markdown(
             """
         ### 📋 Dashboard Features
@@ -745,6 +845,7 @@ def main():
         - **Smart Filtering**: Filter by severity, source, and category
         - **Detailed Views**: Click any alert to see comprehensive details
         - **Pagination**: Navigate through alerts with easy pagination controls
+        - **Data Fetching**: Fetch new data directly from Azure Sentinel
         """
         )
     else:
@@ -903,6 +1004,17 @@ def main():
             )
         else:
             st.warning("No alerts match the current filters")
+
+    # Footer
+    st.markdown("---")
+    st.markdown(
+        """
+        <div style="text-align: center; color: #666; padding: 1rem;">
+            🛡️ Security Alerts Dashboard | Integrated with Azure Sentinel
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 if __name__ == "__main__":

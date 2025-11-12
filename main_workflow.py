@@ -457,7 +457,7 @@ def main():
         "start_hour": 6,
         "end_hour": 7,
         "interval_minutes": 20,
-        "base_output_dir": "sentinel_logs2",
+        "base_output_dir": "sentinel_logs1",
         "skip_fetch": True,  # Use existing files
         "skip_clean": True,  # Set to True if files already cleaned
         "skip_correlation": False,  # NEW: Set to True to skip correlation if already done

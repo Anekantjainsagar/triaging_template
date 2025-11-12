@@ -1,0 +1,2739 @@
+{
+  "DeviceEvents": [
+    {
+      "ActionType": "ScriptContent",
+      "AdditionalFields": {
+        "ScriptContent": "#!/bin/sh\n# vim:ts=2:et\n# Debian sa1 helper which is run from cron.d job, not to needlessly\n# fill logs (see Bug#499461).\n\nset -e\n\n# Skip in favour of systemd timer\n[ ! -d /run/systemd/system ] || exit 0\n\n# Our configuration file\nDEFAULT=/etc/default/sysstat\n# Default setting, overridden in the above file\nENABLED=false\n\n# Read defaults file\n[ ! -r \"$DEFAULT\" ] || . \"$DEFAULT\"\n\n[ \"$ENABLED\" = \"true\" ] || exit 0\n\nexec /usr/lib/sysstat/sa1 \"$@\"\n"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "InitiatingProcessId": 560827,
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14156,
+      "SHA256": "dbcc108e4c4b56ce676a2e512ffd0dc06fd211dfb606d9fd25764f71ea62f9b0",
+      "Timestamp": "2025-11-12T05:15:01.236074Z",
+      "TimeGenerated": "2025-11-12T05:15:01.236074Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:15:01.180482Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "ActionType": "ScriptContent",
+      "AdditionalFields": {
+        "ScriptContent": "#!/bin/sh\n# /usr/lib/sysstat/sa1\n# (C) 1999-2020 Sebastien Godard (sysstat <at> orange.fr)\n#\n#@(#) sysstat-12.5.2\n#@(#) sa1: Collect and store binary data in system activity data file.\n#\n\n# Set default value for some variables.\n# Used only if ${SYSCONFIG_DIR}/${SYSCONFIG_FILE} doesn't exist!\nHISTORY=0\nSADC_OPTIONS=\"\"\nSA_DIR=/var/log/sysstat\nSYSCONFIG_DIR=/etc/sysstat\nSYSCONFIG_FILE=sysstat\nUMASK=0022\nLONG_NAME=n\n\n[ -r ${SYSCONFIG_DIR}/${SYSCONFIG_FILE} ] && . ${SYSCONFIG_DIR}/${SYSCONFIG_FILE}\n\numask ${UMASK}\n\n# If the user-supplied value for SA_DIR in sysconfig file is not a directory\n# then fall back on default directory. Create this default directory if it doesn't exist.\n[ -d ${SA_DIR} ] || SA_DIR=/var/log/sysstat\n[ -d /var/log/sysstat ] || mkdir /var/log/sysstat\n\nif [ ${HISTORY} -gt 28 ]\nthen\n\tSADC_OPTIONS=\"${SADC_OPTIONS} -D\"\n\tLONG_NAME=y\nfi\n\nENDIR=/usr/lib/sysstat\ncd ${ENDIR}\n[ \"$1\" = \"--boot\" ] && shift && BOOT=y || BOOT=n\n[ \"$1\" = \"--sleep\" ] && shift && SLEEP=y || SLEEP=n\n\nROTATE=n\n[ \"$1\" = \"--rotate\" ] && shift && ROTATE=y && [ \"$1\" = \"iso\" ] && shift && LONG_NAME=y\nif [ \"${ROTATE}\" = \"y\" ]\nthen\n\tif [ \"${LONG_NAME}\" = \"y\" ]\n\tthen\n\t\tDATE=`date --date=yesterday +%Y%m%d`\n\telse\n\t\tDATE=`date --date=yesterday +%d`\n\tfi\n\tSA_DIR=${SA_DIR}/sa${DATE}\nfi\n\nif [ \"${SLEEP}\" = \"y\" ]\nthen\n\texec ${ENDIR}/sadc -F -L ${SADC_OPTIONS} -C \"LINUX SLEEP MODE ($*)\" ${SA_DIR}\nelif [ $# = 0 ] && [ \"${BOOT}\" = \"n\" ]\nthen\n# Note: Stats are written at the end of previous file *and* at the\n# beginning of the new one (when there is a file rotation) only if\n# outfile has not been explicitly specified on the command line...\n\texec ${ENDIR}/sadc -F -L ${SADC_OPTIONS} 1 1 ${SA_DIR}\nelse\n\texec ${ENDIR}/sadc -F -L ${SADC_OPTIONS} $* ${SA_DIR}\nfi\n"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "InitiatingProcessId": 560906,
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14185,
+      "SHA256": "c3dc69bd9576e336b57e0462f414b8da007011b9e03fb3c86e9097dede956b1d",
+      "Timestamp": "2025-11-12T05:20:05.6129Z",
+      "TimeGenerated": "2025-11-12T05:20:05.6129Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:20:05.555932Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "ActionType": "ScriptContent",
+      "AdditionalFields": {
+        "ScriptContent": "#!/bin/sh\n# vim:ts=2:et\n# Debian sa1 helper which is run from cron.d job, not to needlessly\n# fill logs (see Bug#499461).\n\nset -e\n\n# Skip in favour of systemd timer\n[ ! -d /run/systemd/system ] || exit 0\n\n# Our configuration file\nDEFAULT=/etc/default/sysstat\n# Default setting, overridden in the above file\nENABLED=false\n\n# Read defaults file\n[ ! -r \"$DEFAULT\" ] || . \"$DEFAULT\"\n\n[ \"$ENABLED\" = \"true\" ] || exit 0\n\nexec /usr/lib/sysstat/sa1 \"$@\"\n"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "InitiatingProcessId": 561045,
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14278,
+      "SHA256": "dbcc108e4c4b56ce676a2e512ffd0dc06fd211dfb606d9fd25764f71ea62f9b0",
+      "Timestamp": "2025-11-12T05:25:01.269748Z",
+      "TimeGenerated": "2025-11-12T05:25:01.269748Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:25:01.213046Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "ActionType": "ScriptContent",
+      "AdditionalFields": {
+        "ScriptContent": "#!/usr/bin/python3 -Es\n\n# lsb_release command for Debian\n# (C) 2005-10 Chris Lawrence <lawrencc@debian.org>\n\n#    This package is free software; you can redistribute it and/or modify\n#    it under the terms of the GNU General Public License as published by\n#    the Free Software Foundation; version 2 dated June, 1991.\n\n#    This package is distributed in the hope that it will be useful,\n#    but WITHOUT ANY WARRANTY; without even the implied warranty of\n#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n#    GNU General Public License for more details.\n\n#    You should have received a copy of the GNU General Public License\n#    along with this package; if not, write to the Free Software\n#    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA\n#    02110-1301 USA\n\nfrom optparse import OptionParser\nimport sys\nimport os\nimport re\n\nimport lsb_release\n\ndef main():\n    parser = OptionParser()\n    parser.add_option('-v', '--version', dest='version', action='store_true',\n                      default=False,\n                      help=\"show LSB modules this system supports\")\n    parser.add_option('-i', '--id', dest='id', action='store_true',\n                      default=False,\n                      help=\"show distributor ID\")\n    parser.add_option('-d', '--description', dest='description',\n                      default=False, action='store_true',\n                      help=\"show description of this distribution\")\n    parser.add_option('-r', '--release', dest='release',\n                      default=False, action='store_true',\n                      help=\"show release number of this distribution\")\n    parser.add_option('-c', '--codename', dest='codename',\n                      default=False, action='store_true',\n                      help=\"show code name of this distribution\")\n    parser.add_option('-a', '--all', dest='all',\n                      default=False, action='store_true',\n                      help=\"show all of the above information\")\n    parser.add_option('-s', '--short', dest='short',\n                      action='store_true', default=False,\n                      help=\"show requested information in short format\")\n    \n    (options, args) = parser.parse_args()\n    if args:\n        parser.error(\"No arguments are permitted\")\n\n    short = (options.short)\n    none = not (options.all or options.version or options.id or\n                options.description or options.codename or options.release)\n\n    distinfo = lsb_release.get_distro_information()\n\n    if none or options.all or options.version:\n        verinfo = lsb_release.check_modules_installed()\n        if not verinfo:\n            print(\"No LSB modules are available.\", file=sys.stderr)\n        elif short:\n            print(':'.join(verinfo))\n        else:\n            print('LSB Version:\\t' + ':'.join(verinfo))\n\n    if options.id or options.all:\n        if short:\n            print(distinfo.get('ID', 'n/a'))\n        else:\n            print('Distributor ID:\\t%s' % distinfo.get('ID', 'n/a'))\n\n    if options.description or options.all:\n        if short:\n            print(distinfo.get('DESCRIPTION', 'n/a'))\n        else:\n            print('Description:\\t%s' % distinfo.get('DESCRIPTION', 'n/a'))\n\n    if options.release or options.all:\n        if short:\n            print(distinfo.get('RELEASE', 'n/a'))\n        else:\n            print('Release:\\t%s' % distinfo.get('RELEASE', 'n/a'))\n\n    if options.codename or options.all:\n        if short:\n            print(distinfo.get('CODENAME', 'n/a'))\n        else:\n            print('Codename:\\t%s' % distinfo.get('CODENAME', 'n/a'))\n\nif __name__ == '__main__':\n    main()\n"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "InitiatingProcessId": 561066,
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14283,
+      "SHA256": "484b6a9de8b41aa9310a305b64c092e473ee73bead994e52c4271c66df9ba3c8",
+      "Timestamp": "2025-11-12T05:26:50.756002Z",
+      "TimeGenerated": "2025-11-12T05:26:50.756002Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:26:50.699829Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    }
+  ],
+  "DeviceFileEvents": [
+    {
+      "ActionType": "FileDeleted",
+      "AdditionalFields": {
+        "FileType": "Unknown",
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixProcessGroupId": 591,
+        "InitiatingProcessPosixSessionId": 591,
+        "InitiatingProcessPosixFilePermissions": [
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixRealUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "FilePosixPermissions": [
+          "None"
+        ],
+        "InitiatingProcessCurrentWorkingDirectory": "/usr/share/wazuh-indexer"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "_kh_Lucene912_0.doc",
+      "FolderPath": "/var/lib/wazuh-indexer/nodes/0/indices/SL1dDvd8Qwm2qodbCiWj4g/0/index/_kh_Lucene912_0.doc",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "wazuh-indexer",
+      "InitiatingProcessCommandLine": "/usr/share/wazuh-indexer/jdk/bin/java -Xshare:auto -Dopensearch.networkaddress.cache.ttl=60 -Dopensearch.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -XX:+ShowCodeDetailsInExceptionMessages -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dio.netty.allocator.numDirectArenas=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Djava.security.manager=allow -Djava.locale.providers=SPI,COMPAT -Xms1024m -Xmx1024m -XX:+UseG1GC -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=30 -Djava.io.tmpdir=/var/lib/wazuh-indexer/tmp -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/lib/wazuh-indexer -XX:ErrorFile=/var/log/wazuh-indexer/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=/var/log/wazuh-indexer/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Djava.security.manager=allow -Djava.util.concurrent.ForkJoinPool.common.threadFactory=org.opensearch.secure_sm.SecuredForkJoinWorkerThreadFactory -Dclk.tck=100 -Djdk.attach.allowAttachSelf=true -Djava.security.policy=file:///etc/wazuh-indexer/opensearch-performance-analyzer/opensearch_security.policy --add-opens=jdk.attach/sun.tools.attach=ALL-UNNAMED -XX:MaxDirectMemorySize=536870912 -Dopensearch.path.home=/usr/share/wazuh-indexer -Dopensearch.path.conf=/etc/wazuh-indexer -Dopensearch.distribution.type=deb -Dopensearch.bundled_jdk=true -cp /usr/share/wazuh-indexer/lib/* org.opensearch.bootstrap.OpenSearch -p ********** --quiet",
+      "InitiatingProcessFileName": "java",
+      "InitiatingProcessFolderPath": "/usr/share/wazuh-indexer/jdk/bin/java",
+      "InitiatingProcessId": 591,
+      "InitiatingProcessMD5": "ce64829f43dd95f82a2bc2fbff8b32c6",
+      "InitiatingProcessParentFileName": "systemd",
+      "InitiatingProcessParentId": 1,
+      "InitiatingProcessSHA1": "2fb3976f5f71df6a75299a12ec5018192a3a778d",
+      "InitiatingProcessSHA256": "f7241b489ecbb83d037d7d2b45f97425bbf58a512f6e9c4db763e5e003eb6caf",
+      "InitiatingProcessTokenElevation": "None",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14147,
+      "Timestamp": "2025-11-12T05:00:03.793874Z",
+      "TimeGenerated": "2025-11-12T05:00:03.793874Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:11.47Z",
+      "InitiatingProcessCreationTime": "2025-10-25T02:19:22.89Z",
+      "InitiatingProcessFileSize": 10384,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "ActionType": "FileDeleted",
+      "AdditionalFields": {
+        "FileType": "Unknown",
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixProcessGroupId": 591,
+        "InitiatingProcessPosixSessionId": 591,
+        "InitiatingProcessPosixFilePermissions": [
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixRealUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "FilePosixPermissions": [
+          "None"
+        ],
+        "InitiatingProcessCurrentWorkingDirectory": "/usr/share/wazuh-indexer"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "_6g_Lucene912_0.doc",
+      "FolderPath": "/var/lib/wazuh-indexer/nodes/0/indices/W9LApPvvT0WzsiV4l1-Kmw/0/index/_6g_Lucene912_0.doc",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "wazuh-indexer",
+      "InitiatingProcessCommandLine": "/usr/share/wazuh-indexer/jdk/bin/java -Xshare:auto -Dopensearch.networkaddress.cache.ttl=60 -Dopensearch.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -XX:+ShowCodeDetailsInExceptionMessages -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dio.netty.allocator.numDirectArenas=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Djava.security.manager=allow -Djava.locale.providers=SPI,COMPAT -Xms1024m -Xmx1024m -XX:+UseG1GC -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=30 -Djava.io.tmpdir=/var/lib/wazuh-indexer/tmp -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/lib/wazuh-indexer -XX:ErrorFile=/var/log/wazuh-indexer/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=/var/log/wazuh-indexer/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Djava.security.manager=allow -Djava.util.concurrent.ForkJoinPool.common.threadFactory=org.opensearch.secure_sm.SecuredForkJoinWorkerThreadFactory -Dclk.tck=100 -Djdk.attach.allowAttachSelf=true -Djava.security.policy=file:///etc/wazuh-indexer/opensearch-performance-analyzer/opensearch_security.policy --add-opens=jdk.attach/sun.tools.attach=ALL-UNNAMED -XX:MaxDirectMemorySize=536870912 -Dopensearch.path.home=/usr/share/wazuh-indexer -Dopensearch.path.conf=/etc/wazuh-indexer -Dopensearch.distribution.type=deb -Dopensearch.bundled_jdk=true -cp /usr/share/wazuh-indexer/lib/* org.opensearch.bootstrap.OpenSearch -p ********** --quiet",
+      "InitiatingProcessFileName": "java",
+      "InitiatingProcessFolderPath": "/usr/share/wazuh-indexer/jdk/bin/java",
+      "InitiatingProcessId": 591,
+      "InitiatingProcessMD5": "ce64829f43dd95f82a2bc2fbff8b32c6",
+      "InitiatingProcessParentFileName": "systemd",
+      "InitiatingProcessParentId": 1,
+      "InitiatingProcessSHA1": "2fb3976f5f71df6a75299a12ec5018192a3a778d",
+      "InitiatingProcessSHA256": "f7241b489ecbb83d037d7d2b45f97425bbf58a512f6e9c4db763e5e003eb6caf",
+      "InitiatingProcessTokenElevation": "None",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14148,
+      "Timestamp": "2025-11-12T05:00:03.8158Z",
+      "TimeGenerated": "2025-11-12T05:00:03.8158Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:11.47Z",
+      "InitiatingProcessCreationTime": "2025-10-25T02:19:22.89Z",
+      "InitiatingProcessFileSize": 10384,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "ActionType": "FileDeleted",
+      "AdditionalFields": {
+        "FileType": "Unknown",
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixProcessGroupId": 591,
+        "InitiatingProcessPosixSessionId": 591,
+        "InitiatingProcessPosixFilePermissions": [
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixRealUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "FilePosixPermissions": [
+          "None"
+        ],
+        "InitiatingProcessCurrentWorkingDirectory": "/usr/share/wazuh-indexer"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "_ki_Lucene912_0.doc",
+      "FolderPath": "/var/lib/wazuh-indexer/nodes/0/indices/SL1dDvd8Qwm2qodbCiWj4g/0/index/_ki_Lucene912_0.doc",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "wazuh-indexer",
+      "InitiatingProcessCommandLine": "/usr/share/wazuh-indexer/jdk/bin/java -Xshare:auto -Dopensearch.networkaddress.cache.ttl=60 -Dopensearch.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -XX:+ShowCodeDetailsInExceptionMessages -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dio.netty.allocator.numDirectArenas=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Djava.security.manager=allow -Djava.locale.providers=SPI,COMPAT -Xms1024m -Xmx1024m -XX:+UseG1GC -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=30 -Djava.io.tmpdir=/var/lib/wazuh-indexer/tmp -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/lib/wazuh-indexer -XX:ErrorFile=/var/log/wazuh-indexer/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=/var/log/wazuh-indexer/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Djava.security.manager=allow -Djava.util.concurrent.ForkJoinPool.common.threadFactory=org.opensearch.secure_sm.SecuredForkJoinWorkerThreadFactory -Dclk.tck=100 -Djdk.attach.allowAttachSelf=true -Djava.security.policy=file:///etc/wazuh-indexer/opensearch-performance-analyzer/opensearch_security.policy --add-opens=jdk.attach/sun.tools.attach=ALL-UNNAMED -XX:MaxDirectMemorySize=536870912 -Dopensearch.path.home=/usr/share/wazuh-indexer -Dopensearch.path.conf=/etc/wazuh-indexer -Dopensearch.distribution.type=deb -Dopensearch.bundled_jdk=true -cp /usr/share/wazuh-indexer/lib/* org.opensearch.bootstrap.OpenSearch -p ********** --quiet",
+      "InitiatingProcessFileName": "java",
+      "InitiatingProcessFolderPath": "/usr/share/wazuh-indexer/jdk/bin/java",
+      "InitiatingProcessId": 591,
+      "InitiatingProcessMD5": "ce64829f43dd95f82a2bc2fbff8b32c6",
+      "InitiatingProcessParentFileName": "systemd",
+      "InitiatingProcessParentId": 1,
+      "InitiatingProcessSHA1": "2fb3976f5f71df6a75299a12ec5018192a3a778d",
+      "InitiatingProcessSHA256": "f7241b489ecbb83d037d7d2b45f97425bbf58a512f6e9c4db763e5e003eb6caf",
+      "InitiatingProcessTokenElevation": "None",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14151,
+      "Timestamp": "2025-11-12T05:05:03.822904Z",
+      "TimeGenerated": "2025-11-12T05:05:03.822904Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:11.47Z",
+      "InitiatingProcessCreationTime": "2025-10-25T02:19:22.89Z",
+      "InitiatingProcessFileSize": 10384,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "ActionType": "FileDeleted",
+      "AdditionalFields": {
+        "FileType": "Unknown",
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixProcessGroupId": 591,
+        "InitiatingProcessPosixSessionId": 591,
+        "InitiatingProcessPosixFilePermissions": [
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixRealUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "FilePosixPermissions": [
+          "None"
+        ],
+        "InitiatingProcessCurrentWorkingDirectory": "/usr/share/wazuh-indexer"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "_kj_Lucene912_0.doc",
+      "FolderPath": "/var/lib/wazuh-indexer/nodes/0/indices/SL1dDvd8Qwm2qodbCiWj4g/0/index/_kj_Lucene912_0.doc",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "wazuh-indexer",
+      "InitiatingProcessCommandLine": "/usr/share/wazuh-indexer/jdk/bin/java -Xshare:auto -Dopensearch.networkaddress.cache.ttl=60 -Dopensearch.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -XX:+ShowCodeDetailsInExceptionMessages -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dio.netty.allocator.numDirectArenas=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Djava.security.manager=allow -Djava.locale.providers=SPI,COMPAT -Xms1024m -Xmx1024m -XX:+UseG1GC -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=30 -Djava.io.tmpdir=/var/lib/wazuh-indexer/tmp -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/lib/wazuh-indexer -XX:ErrorFile=/var/log/wazuh-indexer/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=/var/log/wazuh-indexer/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Djava.security.manager=allow -Djava.util.concurrent.ForkJoinPool.common.threadFactory=org.opensearch.secure_sm.SecuredForkJoinWorkerThreadFactory -Dclk.tck=100 -Djdk.attach.allowAttachSelf=true -Djava.security.policy=file:///etc/wazuh-indexer/opensearch-performance-analyzer/opensearch_security.policy --add-opens=jdk.attach/sun.tools.attach=ALL-UNNAMED -XX:MaxDirectMemorySize=536870912 -Dopensearch.path.home=/usr/share/wazuh-indexer -Dopensearch.path.conf=/etc/wazuh-indexer -Dopensearch.distribution.type=deb -Dopensearch.bundled_jdk=true -cp /usr/share/wazuh-indexer/lib/* org.opensearch.bootstrap.OpenSearch -p ********** --quiet",
+      "InitiatingProcessFileName": "java",
+      "InitiatingProcessFolderPath": "/usr/share/wazuh-indexer/jdk/bin/java",
+      "InitiatingProcessId": 591,
+      "InitiatingProcessMD5": "ce64829f43dd95f82a2bc2fbff8b32c6",
+      "InitiatingProcessParentFileName": "systemd",
+      "InitiatingProcessParentId": 1,
+      "InitiatingProcessSHA1": "2fb3976f5f71df6a75299a12ec5018192a3a778d",
+      "InitiatingProcessSHA256": "f7241b489ecbb83d037d7d2b45f97425bbf58a512f6e9c4db763e5e003eb6caf",
+      "InitiatingProcessTokenElevation": "None",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14152,
+      "Timestamp": "2025-11-12T05:10:03.841091Z",
+      "TimeGenerated": "2025-11-12T05:10:03.841091Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:11.47Z",
+      "InitiatingProcessCreationTime": "2025-10-25T02:19:22.89Z",
+      "InitiatingProcessFileSize": 10384,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "ActionType": "FileDeleted",
+      "AdditionalFields": {
+        "FileType": "Unknown",
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixProcessGroupId": 591,
+        "InitiatingProcessPosixSessionId": 591,
+        "InitiatingProcessPosixFilePermissions": [
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixRealUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "FilePosixPermissions": [
+          "None"
+        ],
+        "InitiatingProcessCurrentWorkingDirectory": "/usr/share/wazuh-indexer"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "_kk_Lucene912_0.doc",
+      "FolderPath": "/var/lib/wazuh-indexer/nodes/0/indices/SL1dDvd8Qwm2qodbCiWj4g/0/index/_kk_Lucene912_0.doc",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "wazuh-indexer",
+      "InitiatingProcessCommandLine": "/usr/share/wazuh-indexer/jdk/bin/java -Xshare:auto -Dopensearch.networkaddress.cache.ttl=60 -Dopensearch.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -XX:+ShowCodeDetailsInExceptionMessages -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dio.netty.allocator.numDirectArenas=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Djava.security.manager=allow -Djava.locale.providers=SPI,COMPAT -Xms1024m -Xmx1024m -XX:+UseG1GC -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=30 -Djava.io.tmpdir=/var/lib/wazuh-indexer/tmp -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/lib/wazuh-indexer -XX:ErrorFile=/var/log/wazuh-indexer/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=/var/log/wazuh-indexer/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Djava.security.manager=allow -Djava.util.concurrent.ForkJoinPool.common.threadFactory=org.opensearch.secure_sm.SecuredForkJoinWorkerThreadFactory -Dclk.tck=100 -Djdk.attach.allowAttachSelf=true -Djava.security.policy=file:///etc/wazuh-indexer/opensearch-performance-analyzer/opensearch_security.policy --add-opens=jdk.attach/sun.tools.attach=ALL-UNNAMED -XX:MaxDirectMemorySize=536870912 -Dopensearch.path.home=/usr/share/wazuh-indexer -Dopensearch.path.conf=/etc/wazuh-indexer -Dopensearch.distribution.type=deb -Dopensearch.bundled_jdk=true -cp /usr/share/wazuh-indexer/lib/* org.opensearch.bootstrap.OpenSearch -p ********** --quiet",
+      "InitiatingProcessFileName": "java",
+      "InitiatingProcessFolderPath": "/usr/share/wazuh-indexer/jdk/bin/java",
+      "InitiatingProcessId": 591,
+      "InitiatingProcessMD5": "ce64829f43dd95f82a2bc2fbff8b32c6",
+      "InitiatingProcessParentFileName": "systemd",
+      "InitiatingProcessParentId": 1,
+      "InitiatingProcessSHA1": "2fb3976f5f71df6a75299a12ec5018192a3a778d",
+      "InitiatingProcessSHA256": "f7241b489ecbb83d037d7d2b45f97425bbf58a512f6e9c4db763e5e003eb6caf",
+      "InitiatingProcessTokenElevation": "None",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14159,
+      "Timestamp": "2025-11-12T05:15:03.867301Z",
+      "TimeGenerated": "2025-11-12T05:15:03.867301Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:11.47Z",
+      "InitiatingProcessCreationTime": "2025-10-25T02:19:22.89Z",
+      "InitiatingProcessFileSize": 10384,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "ActionType": "FileDeleted",
+      "AdditionalFields": {
+        "FileType": "Unknown",
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixProcessGroupId": 591,
+        "InitiatingProcessPosixSessionId": 591,
+        "InitiatingProcessPosixFilePermissions": [
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixRealUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "FilePosixPermissions": [
+          "None"
+        ],
+        "InitiatingProcessCurrentWorkingDirectory": "/usr/share/wazuh-indexer"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "_kb_Lucene912_0.doc",
+      "FolderPath": "/var/lib/wazuh-indexer/nodes/0/indices/SL1dDvd8Qwm2qodbCiWj4g/0/index/_kb_Lucene912_0.doc",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "wazuh-indexer",
+      "InitiatingProcessCommandLine": "/usr/share/wazuh-indexer/jdk/bin/java -Xshare:auto -Dopensearch.networkaddress.cache.ttl=60 -Dopensearch.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -XX:+ShowCodeDetailsInExceptionMessages -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dio.netty.allocator.numDirectArenas=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Djava.security.manager=allow -Djava.locale.providers=SPI,COMPAT -Xms1024m -Xmx1024m -XX:+UseG1GC -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=30 -Djava.io.tmpdir=/var/lib/wazuh-indexer/tmp -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/lib/wazuh-indexer -XX:ErrorFile=/var/log/wazuh-indexer/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=/var/log/wazuh-indexer/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Djava.security.manager=allow -Djava.util.concurrent.ForkJoinPool.common.threadFactory=org.opensearch.secure_sm.SecuredForkJoinWorkerThreadFactory -Dclk.tck=100 -Djdk.attach.allowAttachSelf=true -Djava.security.policy=file:///etc/wazuh-indexer/opensearch-performance-analyzer/opensearch_security.policy --add-opens=jdk.attach/sun.tools.attach=ALL-UNNAMED -XX:MaxDirectMemorySize=536870912 -Dopensearch.path.home=/usr/share/wazuh-indexer -Dopensearch.path.conf=/etc/wazuh-indexer -Dopensearch.distribution.type=deb -Dopensearch.bundled_jdk=true -cp /usr/share/wazuh-indexer/lib/* org.opensearch.bootstrap.OpenSearch -p ********** --quiet",
+      "InitiatingProcessFileName": "java",
+      "InitiatingProcessFolderPath": "/usr/share/wazuh-indexer/jdk/bin/java",
+      "InitiatingProcessId": 591,
+      "InitiatingProcessMD5": "ce64829f43dd95f82a2bc2fbff8b32c6",
+      "InitiatingProcessParentFileName": "systemd",
+      "InitiatingProcessParentId": 1,
+      "InitiatingProcessSHA1": "2fb3976f5f71df6a75299a12ec5018192a3a778d",
+      "InitiatingProcessSHA256": "f7241b489ecbb83d037d7d2b45f97425bbf58a512f6e9c4db763e5e003eb6caf",
+      "InitiatingProcessTokenElevation": "None",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14160,
+      "Timestamp": "2025-11-12T05:15:03.896862Z",
+      "TimeGenerated": "2025-11-12T05:15:03.896862Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:11.47Z",
+      "InitiatingProcessCreationTime": "2025-10-25T02:19:22.89Z",
+      "InitiatingProcessFileSize": 10384,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "ActionType": "FileDeleted",
+      "AdditionalFields": {
+        "FileType": "Unknown",
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixProcessGroupId": 591,
+        "InitiatingProcessPosixSessionId": 591,
+        "InitiatingProcessPosixFilePermissions": [
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixRealUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "FilePosixPermissions": [
+          "None"
+        ],
+        "InitiatingProcessCurrentWorkingDirectory": "/usr/share/wazuh-indexer"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "_km_Lucene912_0.doc",
+      "FolderPath": "/var/lib/wazuh-indexer/nodes/0/indices/SL1dDvd8Qwm2qodbCiWj4g/0/index/_km_Lucene912_0.doc",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "wazuh-indexer",
+      "InitiatingProcessCommandLine": "/usr/share/wazuh-indexer/jdk/bin/java -Xshare:auto -Dopensearch.networkaddress.cache.ttl=60 -Dopensearch.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -XX:+ShowCodeDetailsInExceptionMessages -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dio.netty.allocator.numDirectArenas=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Djava.security.manager=allow -Djava.locale.providers=SPI,COMPAT -Xms1024m -Xmx1024m -XX:+UseG1GC -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=30 -Djava.io.tmpdir=/var/lib/wazuh-indexer/tmp -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/lib/wazuh-indexer -XX:ErrorFile=/var/log/wazuh-indexer/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=/var/log/wazuh-indexer/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Djava.security.manager=allow -Djava.util.concurrent.ForkJoinPool.common.threadFactory=org.opensearch.secure_sm.SecuredForkJoinWorkerThreadFactory -Dclk.tck=100 -Djdk.attach.allowAttachSelf=true -Djava.security.policy=file:///etc/wazuh-indexer/opensearch-performance-analyzer/opensearch_security.policy --add-opens=jdk.attach/sun.tools.attach=ALL-UNNAMED -XX:MaxDirectMemorySize=536870912 -Dopensearch.path.home=/usr/share/wazuh-indexer -Dopensearch.path.conf=/etc/wazuh-indexer -Dopensearch.distribution.type=deb -Dopensearch.bundled_jdk=true -cp /usr/share/wazuh-indexer/lib/* org.opensearch.bootstrap.OpenSearch -p ********** --quiet",
+      "InitiatingProcessFileName": "java",
+      "InitiatingProcessFolderPath": "/usr/share/wazuh-indexer/jdk/bin/java",
+      "InitiatingProcessId": 591,
+      "InitiatingProcessMD5": "ce64829f43dd95f82a2bc2fbff8b32c6",
+      "InitiatingProcessParentFileName": "systemd",
+      "InitiatingProcessParentId": 1,
+      "InitiatingProcessSHA1": "2fb3976f5f71df6a75299a12ec5018192a3a778d",
+      "InitiatingProcessSHA256": "f7241b489ecbb83d037d7d2b45f97425bbf58a512f6e9c4db763e5e003eb6caf",
+      "InitiatingProcessTokenElevation": "None",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14184,
+      "Timestamp": "2025-11-12T05:20:03.924712Z",
+      "TimeGenerated": "2025-11-12T05:20:03.924712Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:11.47Z",
+      "InitiatingProcessCreationTime": "2025-10-25T02:19:22.89Z",
+      "InitiatingProcessFileSize": 10384,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "ActionType": "FileDeleted",
+      "AdditionalFields": {
+        "FileType": "Unknown",
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixProcessGroupId": 591,
+        "InitiatingProcessPosixSessionId": 591,
+        "InitiatingProcessPosixFilePermissions": [
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "wazuh-indexer",
+          "PosixGroupId": 999
+        },
+        "InitiatingProcessPosixRealUser": {
+          "Name": "wazuh-indexer",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 998,
+          "PrimaryPosixGroup": {
+            "Name": "wazuh-indexer",
+            "PosixGroupId": 999
+          }
+        },
+        "FilePosixPermissions": [
+          "None"
+        ],
+        "InitiatingProcessCurrentWorkingDirectory": "/usr/share/wazuh-indexer"
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "_kn_Lucene912_0.doc",
+      "FolderPath": "/var/lib/wazuh-indexer/nodes/0/indices/SL1dDvd8Qwm2qodbCiWj4g/0/index/_kn_Lucene912_0.doc",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "wazuh-indexer",
+      "InitiatingProcessCommandLine": "/usr/share/wazuh-indexer/jdk/bin/java -Xshare:auto -Dopensearch.networkaddress.cache.ttl=60 -Dopensearch.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -XX:+ShowCodeDetailsInExceptionMessages -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dio.netty.allocator.numDirectArenas=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Djava.security.manager=allow -Djava.locale.providers=SPI,COMPAT -Xms1024m -Xmx1024m -XX:+UseG1GC -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=30 -Djava.io.tmpdir=/var/lib/wazuh-indexer/tmp -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/lib/wazuh-indexer -XX:ErrorFile=/var/log/wazuh-indexer/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=/var/log/wazuh-indexer/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Djava.security.manager=allow -Djava.util.concurrent.ForkJoinPool.common.threadFactory=org.opensearch.secure_sm.SecuredForkJoinWorkerThreadFactory -Dclk.tck=100 -Djdk.attach.allowAttachSelf=true -Djava.security.policy=file:///etc/wazuh-indexer/opensearch-performance-analyzer/opensearch_security.policy --add-opens=jdk.attach/sun.tools.attach=ALL-UNNAMED -XX:MaxDirectMemorySize=536870912 -Dopensearch.path.home=/usr/share/wazuh-indexer -Dopensearch.path.conf=/etc/wazuh-indexer -Dopensearch.distribution.type=deb -Dopensearch.bundled_jdk=true -cp /usr/share/wazuh-indexer/lib/* org.opensearch.bootstrap.OpenSearch -p ********** --quiet",
+      "InitiatingProcessFileName": "java",
+      "InitiatingProcessFolderPath": "/usr/share/wazuh-indexer/jdk/bin/java",
+      "InitiatingProcessId": 591,
+      "InitiatingProcessMD5": "ce64829f43dd95f82a2bc2fbff8b32c6",
+      "InitiatingProcessParentFileName": "systemd",
+      "InitiatingProcessParentId": 1,
+      "InitiatingProcessSHA1": "2fb3976f5f71df6a75299a12ec5018192a3a778d",
+      "InitiatingProcessSHA256": "f7241b489ecbb83d037d7d2b45f97425bbf58a512f6e9c4db763e5e003eb6caf",
+      "InitiatingProcessTokenElevation": "None",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14280,
+      "Timestamp": "2025-11-12T05:25:03.94713Z",
+      "TimeGenerated": "2025-11-12T05:25:03.94713Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:11.47Z",
+      "InitiatingProcessCreationTime": "2025-10-25T02:19:22.89Z",
+      "InitiatingProcessFileSize": 10384,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    }
+  ],
+  "DeviceFileCertificateInfo": [],
+  "DeviceImageLoadEvents": [],
+  "DeviceInfo": [
+    {
+      "ClientVersion": "10.8804.26100.6899",
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "IsAzureADJoined": false,
+      "LoggedOnUsers": [
+        {
+          "UserName": "Dewansh_yash",
+          "DomainName": "MDEPOC4",
+          "Sid": "S-1-5-21-746007155-834547304-144355617-500"
+        }
+      ],
+      "MachineGroup": "Automate",
+      "OSArchitecture": "64-bit",
+      "OSBuild": 26100,
+      "OSPlatform": "Windows11",
+      "OSVersion": "10.0",
+      "PublicIP": "52.233.92.193",
+      "ReportId": 638985208127326000,
+      "TimeGenerated": "2025-11-12T05:10:36.7922336Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z",
+      "DeviceCategory": "Endpoint",
+      "DeviceType": "Workstation",
+      "MergedDeviceIds": [
+        "614c7a37e62a4dcddeb1863055f59a1d9e02a5a5"
+      ],
+      "OnboardingStatus": "Onboarded",
+      "OSDistribution": "Windows11",
+      "OSVersionInfo": "24H2",
+      "SensorHealthState": "Inactive",
+      "IsExcluded": false,
+      "ExposureLevel": "Medium",
+      "IsInternetFacing": false,
+      "AzureResourceId": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/Rogerstest/providers/Microsoft.Compute/virtualMachines/MDEPOC4",
+      "AzureVmId": "4dfd9812-9dba-4134-8bf6-d9054f9056ca",
+      "AzureVmSubscriptionId": "03149062-a982-4abf-b406-7e0d9ca2f1ca",
+      "CloudPlatforms": [
+        "Azure"
+      ],
+      "HardwareUuid": "4dfd9812-9dba-4134-8bf6-d9054f9056ca",
+      "OsBuildRevision": "6899"
+    },
+    {
+      "ClientVersion": "10.8804.26100.6899",
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "IsAzureADJoined": false,
+      "LoggedOnUsers": [
+        {
+          "UserName": "Dewansh_yash",
+          "DomainName": "MDEPOC4",
+          "Sid": "S-1-5-21-746007155-834547304-144355617-500"
+        }
+      ],
+      "MachineGroup": "Automate",
+      "OSArchitecture": "64-bit",
+      "OSBuild": 26100,
+      "OSPlatform": "Windows11",
+      "OSVersion": "10.0",
+      "PublicIP": "52.233.92.193",
+      "ReportId": 638985208211896000,
+      "TimeGenerated": "2025-11-12T05:10:39.6053097Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z",
+      "DeviceCategory": "Endpoint",
+      "DeviceType": "Workstation",
+      "MergedDeviceIds": [
+        "614c7a37e62a4dcddeb1863055f59a1d9e02a5a5"
+      ],
+      "OnboardingStatus": "Onboarded",
+      "OSDistribution": "Windows11",
+      "OSVersionInfo": "24H2",
+      "SensorHealthState": "Inactive",
+      "IsExcluded": false,
+      "ExposureLevel": "Medium",
+      "IsInternetFacing": false,
+      "AzureResourceId": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/Rogerstest/providers/Microsoft.Compute/virtualMachines/MDEPOC4",
+      "AzureVmId": "4dfd9812-9dba-4134-8bf6-d9054f9056ca",
+      "AzureVmSubscriptionId": "03149062-a982-4abf-b406-7e0d9ca2f1ca",
+      "CloudPlatforms": [
+        "Azure"
+      ],
+      "HardwareUuid": "4dfd9812-9dba-4134-8bf6-d9054f9056ca",
+      "OsBuildRevision": "6899"
+    },
+    {
+      "ClientVersion": "1.0",
+      "DeviceId": "f5ebece1ad472b6044d1e4bdba353f64dfd02d5e",
+      "DeviceName": "wazuh",
+      "MachineGroup": "UnassignedGroup",
+      "OSBuild": 0,
+      "ReportId": 638985208908879100,
+      "TimeGenerated": "2025-11-12T05:12:02.0343218Z",
+      "Timestamp": "2025-09-03T02:03:34.276425Z",
+      "DeviceCategory": "Endpoint",
+      "DeviceType": "Unknown",
+      "OnboardingStatus": "Insufficient info",
+      "Vendor": "Microsoft",
+      "IsExcluded": false,
+      "ExposureLevel": "None",
+      "AzureResourceId": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/SentinelSOC/providers/Microsoft.Compute/virtualMachines/Wazuh",
+      "AzureVmId": "a9df9780-13da-4b1a-9d13-ef0441ff62eb",
+      "CloudPlatforms": [
+        "Azure"
+      ],
+      "IsTransient": true
+    },
+    {
+      "ClientVersion": "1.0",
+      "DeviceId": "f5ebece1ad472b6044d1e4bdba353f64dfd02d5e",
+      "DeviceName": "wazuh",
+      "MachineGroup": "UnassignedGroup",
+      "OSBuild": 0,
+      "ReportId": 638985212685648600,
+      "TimeGenerated": "2025-11-12T05:16:49.7279941Z",
+      "Timestamp": "2025-09-03T02:03:34.276425Z",
+      "DeviceCategory": "Endpoint",
+      "DeviceType": "Unknown",
+      "OnboardingStatus": "Insufficient info",
+      "Vendor": "Microsoft",
+      "IsExcluded": false,
+      "ExposureLevel": "None",
+      "AzureResourceId": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/SentinelSOC/providers/Microsoft.Compute/virtualMachines/Wazuh",
+      "AzureVmId": "a9df9780-13da-4b1a-9d13-ef0441ff62eb",
+      "CloudPlatforms": [
+        "Azure"
+      ],
+      "IsTransient": true
+    },
+    {
+      "ClientVersion": "1.0",
+      "DeviceId": "f5ebece1ad472b6044d1e4bdba353f64dfd02d5e",
+      "DeviceName": "wazuh",
+      "MachineGroup": "UnassignedGroup",
+      "OSBuild": 0,
+      "ReportId": 638985216955026700,
+      "TimeGenerated": "2025-11-12T05:24:45.3195388Z",
+      "Timestamp": "2025-09-03T02:03:34.276425Z",
+      "DeviceCategory": "Endpoint",
+      "DeviceType": "Unknown",
+      "OnboardingStatus": "Insufficient info",
+      "Vendor": "Microsoft",
+      "IsExcluded": false,
+      "ExposureLevel": "None",
+      "AzureResourceId": "/subscriptions/03149062-a982-4abf-b406-7e0d9ca2f1ca/resourceGroups/SentinelSOC/providers/Microsoft.Compute/virtualMachines/Wazuh",
+      "AzureVmId": "a9df9780-13da-4b1a-9d13-ef0441ff62eb",
+      "CloudPlatforms": [
+        "Azure"
+      ],
+      "IsTransient": true
+    }
+  ],
+  "DeviceLogonEvents": [
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "LogonSuccess",
+      "AdditionalFields": {
+        "Terminal": "cron",
+        "PosixUserId": 0,
+        "PosixPrimaryGroupName": "root",
+        "PosixPrimaryGroupId": 0,
+        "PosixSecondaryGroups": "[]",
+        "InitiatingAccountName": "root",
+        "InitiatingAccountDomain": "Wazuh1",
+        "InitiatingAccountPosixUserId": 0,
+        "InitiatingAccountPosixGroupName": "root",
+        "InitiatingAccountPosixGroupId": 0
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/sbin/cron -f -P",
+      "InitiatingProcessFileName": "cron",
+      "InitiatingProcessFolderPath": "/usr/sbin/cron",
+      "InitiatingProcessId": 560737,
+      "InitiatingProcessMD5": "b21931de436519534d4d72a76bb8c7da",
+      "InitiatingProcessParentFileName": "cron",
+      "InitiatingProcessParentId": 611,
+      "InitiatingProcessSHA1": "3077c51fa9a742089c5384089a5141f895306e76",
+      "InitiatingProcessSHA256": "ffc30864da514025c073a29d5afc6705ff8bbe4ecfdbc7917dd674e37b7b1b8a",
+      "InitiatingProcessTokenElevation": "None",
+      "LogonId": 560737,
+      "LogonType": "Local",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14150,
+      "Timestamp": "2025-11-12T05:05:01.213825Z",
+      "TimeGenerated": "2025-11-12T05:05:01.213825Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:23Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:05:01.15Z",
+      "InitiatingProcessFileSize": 51792,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "LogonSuccess",
+      "AdditionalFields": {
+        "Terminal": "cron",
+        "PosixUserId": 0,
+        "PosixPrimaryGroupName": "root",
+        "PosixPrimaryGroupId": 0,
+        "PosixSecondaryGroups": "[]",
+        "InitiatingAccountName": "root",
+        "InitiatingAccountDomain": "Wazuh1",
+        "InitiatingAccountPosixUserId": 0,
+        "InitiatingAccountPosixGroupName": "root",
+        "InitiatingAccountPosixGroupId": 0
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/sbin/cron -f -P",
+      "InitiatingProcessFileName": "cron",
+      "InitiatingProcessFolderPath": "/usr/sbin/cron",
+      "InitiatingProcessId": 560821,
+      "InitiatingProcessMD5": "b21931de436519534d4d72a76bb8c7da",
+      "InitiatingProcessParentFileName": "cron",
+      "InitiatingProcessParentId": 611,
+      "InitiatingProcessSHA1": "3077c51fa9a742089c5384089a5141f895306e76",
+      "InitiatingProcessSHA256": "ffc30864da514025c073a29d5afc6705ff8bbe4ecfdbc7917dd674e37b7b1b8a",
+      "InitiatingProcessTokenElevation": "None",
+      "LogonId": 560821,
+      "LogonType": "Local",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14155,
+      "Timestamp": "2025-11-12T05:15:01.229832Z",
+      "TimeGenerated": "2025-11-12T05:15:01.229832Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:23Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:15:01.16Z",
+      "InitiatingProcessFileSize": 51792,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "LogonSuccess",
+      "AdditionalFields": {
+        "Terminal": "cron",
+        "PosixUserId": 0,
+        "PosixPrimaryGroupName": "root",
+        "PosixPrimaryGroupId": 0,
+        "PosixSecondaryGroups": "[]",
+        "InitiatingAccountName": "root",
+        "InitiatingAccountDomain": "Wazuh1",
+        "InitiatingAccountPosixUserId": 0,
+        "InitiatingAccountPosixGroupName": "root",
+        "InitiatingAccountPosixGroupId": 0
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/sbin/cron -f -P",
+      "InitiatingProcessFileName": "cron",
+      "InitiatingProcessFolderPath": "/usr/sbin/cron",
+      "InitiatingProcessId": 560864,
+      "InitiatingProcessMD5": "b21931de436519534d4d72a76bb8c7da",
+      "InitiatingProcessParentFileName": "cron",
+      "InitiatingProcessParentId": 611,
+      "InitiatingProcessSHA1": "3077c51fa9a742089c5384089a5141f895306e76",
+      "InitiatingProcessSHA256": "ffc30864da514025c073a29d5afc6705ff8bbe4ecfdbc7917dd674e37b7b1b8a",
+      "InitiatingProcessTokenElevation": "None",
+      "LogonId": 560864,
+      "LogonType": "Local",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14166,
+      "Timestamp": "2025-11-12T05:17:01.245932Z",
+      "TimeGenerated": "2025-11-12T05:17:01.245932Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:23Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:17:01.18Z",
+      "InitiatingProcessFileSize": 51792,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "LogonSuccess",
+      "AdditionalFields": {
+        "Terminal": "cron",
+        "PosixUserId": 0,
+        "PosixPrimaryGroupName": "root",
+        "PosixPrimaryGroupId": 0,
+        "PosixSecondaryGroups": "[]",
+        "InitiatingAccountName": "root",
+        "InitiatingAccountDomain": "Wazuh1",
+        "InitiatingAccountPosixUserId": 0,
+        "InitiatingAccountPosixGroupName": "root",
+        "InitiatingAccountPosixGroupId": 0
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/sbin/cron -f -P",
+      "InitiatingProcessFileName": "cron",
+      "InitiatingProcessFolderPath": "/usr/sbin/cron",
+      "InitiatingProcessId": 561039,
+      "InitiatingProcessMD5": "b21931de436519534d4d72a76bb8c7da",
+      "InitiatingProcessParentFileName": "cron",
+      "InitiatingProcessParentId": 611,
+      "InitiatingProcessSHA1": "3077c51fa9a742089c5384089a5141f895306e76",
+      "InitiatingProcessSHA256": "ffc30864da514025c073a29d5afc6705ff8bbe4ecfdbc7917dd674e37b7b1b8a",
+      "InitiatingProcessTokenElevation": "None",
+      "LogonId": 561039,
+      "LogonType": "Local",
+      "MachineGroup": "UnassignedGroup",
+      "ReportId": 14277,
+      "Timestamp": "2025-11-12T05:25:01.261461Z",
+      "TimeGenerated": "2025-11-12T05:25:01.261461Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:23Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:25:01.2Z",
+      "InitiatingProcessFileSize": 51792,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0"
+    }
+  ],
+  "DeviceNetworkEvents": [],
+  "DeviceNetworkInfo": [
+    {
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "MacAddress": "00-0D-3A-F5-27-2E",
+      "MachineGroup": "Automate",
+      "NetworkAdapterName": "{D892E97D-AFD1-11F0-A7D5-D19CE00D5AA0}",
+      "NetworkAdapterStatus": "Up",
+      "NetworkAdapterType": "Ethernet",
+      "ReportId": 638985208127326000,
+      "TimeGenerated": "2025-11-12T05:10:35.2464025Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z"
+    },
+    {
+      "ConnectedNetworks": [
+        {
+          "Name": "Network",
+          "Description": "Network",
+          "IsConnectedToInternet": true,
+          "Category": "Public"
+        }
+      ],
+      "DefaultGateways": [
+        "10.1.0.1"
+      ],
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "DnsAddresses": [
+        "168.63.129.16"
+      ],
+      "IPAddresses": [
+        {
+          "IPAddress": "10.1.0.10",
+          "SubnetPrefix": 24,
+          "AddressType": "Private"
+        },
+        {
+          "IPAddress": "fe80::e364:661f:26fe:3e03",
+          "SubnetPrefix": 64,
+          "AddressType": "Private"
+        }
+      ],
+      "IPv4Dhcp": "168.63.129.16",
+      "MacAddress": "00-0D-3A-F5-27-2E",
+      "MachineGroup": "Automate",
+      "NetworkAdapterName": "{3CF82B0C-A3FF-480D-8B24-6F823362ABF9}",
+      "NetworkAdapterStatus": "Up",
+      "NetworkAdapterType": "Ethernet",
+      "ReportId": 638985208127326000,
+      "TimeGenerated": "2025-11-12T05:10:35.2464025Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z"
+    },
+    {
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "MacAddress": "00-0D-3A-F5-27-2E",
+      "MachineGroup": "Automate",
+      "NetworkAdapterName": "{D892E97C-AFD1-11F0-A7D5-D19CE00D5AA0}",
+      "NetworkAdapterStatus": "Up",
+      "NetworkAdapterType": "Ethernet",
+      "ReportId": 638985208127326000,
+      "TimeGenerated": "2025-11-12T05:10:35.2464025Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z"
+    },
+    {
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "MacAddress": "00-0D-3A-F5-27-2E",
+      "MachineGroup": "Automate",
+      "NetworkAdapterName": "{2BD01DE7-8943-4741-8805-B292B925815D}",
+      "NetworkAdapterStatus": "Up",
+      "NetworkAdapterType": "Ethernet",
+      "ReportId": 638985208127326000,
+      "TimeGenerated": "2025-11-12T05:10:35.2464025Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z"
+    },
+    {
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "MacAddress": "00-0D-3A-F5-27-2E",
+      "MachineGroup": "Automate",
+      "NetworkAdapterName": "{D892E97B-AFD1-11F0-A7D5-D19CE00D5AA0}",
+      "NetworkAdapterStatus": "Up",
+      "NetworkAdapterType": "Ethernet",
+      "ReportId": 638985208127326000,
+      "TimeGenerated": "2025-11-12T05:10:35.2464025Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z"
+    },
+    {
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "MacAddress": "00-0D-3A-F5-27-2E",
+      "MachineGroup": "Automate",
+      "NetworkAdapterName": "{D892E97B-AFD1-11F0-A7D5-D19CE00D5AA0}",
+      "NetworkAdapterStatus": "Up",
+      "NetworkAdapterType": "Ethernet",
+      "ReportId": 638985208211896000,
+      "TimeGenerated": "2025-11-12T05:10:38.419572Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z"
+    },
+    {
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "MacAddress": "00-0D-3A-F5-27-2E",
+      "MachineGroup": "Automate",
+      "NetworkAdapterName": "{D892E97D-AFD1-11F0-A7D5-D19CE00D5AA0}",
+      "NetworkAdapterStatus": "Up",
+      "NetworkAdapterType": "Ethernet",
+      "ReportId": 638985208211896000,
+      "TimeGenerated": "2025-11-12T05:10:38.419572Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z"
+    },
+    {
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "MacAddress": "00-0D-3A-F5-27-2E",
+      "MachineGroup": "Automate",
+      "NetworkAdapterName": "{D892E97C-AFD1-11F0-A7D5-D19CE00D5AA0}",
+      "NetworkAdapterStatus": "Up",
+      "NetworkAdapterType": "Ethernet",
+      "ReportId": 638985208211896000,
+      "TimeGenerated": "2025-11-12T05:10:38.419572Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z"
+    },
+    {
+      "ConnectedNetworks": [
+        {
+          "Name": "Network",
+          "Description": "Network",
+          "IsConnectedToInternet": true,
+          "Category": "Public"
+        }
+      ],
+      "DefaultGateways": [
+        "10.1.0.1"
+      ],
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "DnsAddresses": [
+        "168.63.129.16"
+      ],
+      "IPAddresses": [
+        {
+          "IPAddress": "10.1.0.10",
+          "SubnetPrefix": 24,
+          "AddressType": "Private"
+        },
+        {
+          "IPAddress": "fe80::e364:661f:26fe:3e03",
+          "SubnetPrefix": 64,
+          "AddressType": "Private"
+        }
+      ],
+      "IPv4Dhcp": "168.63.129.16",
+      "MacAddress": "00-0D-3A-F5-27-2E",
+      "MachineGroup": "Automate",
+      "NetworkAdapterName": "{3CF82B0C-A3FF-480D-8B24-6F823362ABF9}",
+      "NetworkAdapterStatus": "Up",
+      "NetworkAdapterType": "Ethernet",
+      "ReportId": 638985208211896000,
+      "TimeGenerated": "2025-11-12T05:10:38.419572Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z"
+    },
+    {
+      "DeviceId": "3022f0ec0d5f694ced0f78a342534f5cad75f5d7",
+      "DeviceName": "mdepoc4",
+      "MacAddress": "00-0D-3A-F5-27-2E",
+      "MachineGroup": "Automate",
+      "NetworkAdapterName": "{2BD01DE7-8943-4741-8805-B292B925815D}",
+      "NetworkAdapterStatus": "Up",
+      "NetworkAdapterType": "Ethernet",
+      "ReportId": 638985208211896000,
+      "TimeGenerated": "2025-11-12T05:10:38.419572Z",
+      "Timestamp": "2025-10-31T10:00:04.7275919Z"
+    },
+    {
+      "DeviceId": "f5ebece1ad472b6044d1e4bdba353f64dfd02d5e",
+      "DeviceName": "wazuh",
+      "IPAddresses": [
+        {
+          "IPAddress": "172.21.0.4",
+          "SubnetPrefix": null,
+          "AddressType": "Private"
+        }
+      ],
+      "MacAddress": "7C-1E-52-80-5E-27",
+      "MachineGroup": "UnassignedGroup",
+      "NetworkAdapterStatus": "Unknown",
+      "ReportId": 638985208908879100,
+      "TimeGenerated": "2025-11-12T05:12:04.1060875Z",
+      "Timestamp": "2025-09-03T02:03:34.276425Z"
+    },
+    {
+      "DeviceId": "f5ebece1ad472b6044d1e4bdba353f64dfd02d5e",
+      "DeviceName": "wazuh",
+      "IPAddresses": [
+        {
+          "IPAddress": "172.19.0.4",
+          "SubnetPrefix": null,
+          "AddressType": "Private"
+        }
+      ],
+      "MacAddress": "7C-1E-52-6A-FF-11",
+      "MachineGroup": "UnassignedGroup",
+      "NetworkAdapterStatus": "Unknown",
+      "ReportId": 638985208908879100,
+      "TimeGenerated": "2025-11-12T05:12:04.1060875Z",
+      "Timestamp": "2025-09-03T02:03:34.276425Z"
+    },
+    {
+      "DeviceId": "f5ebece1ad472b6044d1e4bdba353f64dfd02d5e",
+      "DeviceName": "wazuh",
+      "IPAddresses": [
+        {
+          "IPAddress": "172.19.0.4",
+          "SubnetPrefix": null,
+          "AddressType": "Private"
+        }
+      ],
+      "MacAddress": "7C-1E-52-6A-FF-11",
+      "MachineGroup": "UnassignedGroup",
+      "NetworkAdapterStatus": "Unknown",
+      "ReportId": 638985212685648600,
+      "TimeGenerated": "2025-11-12T05:16:51.9762657Z",
+      "Timestamp": "2025-09-03T02:03:34.276425Z"
+    },
+    {
+      "DeviceId": "f5ebece1ad472b6044d1e4bdba353f64dfd02d5e",
+      "DeviceName": "wazuh",
+      "IPAddresses": [
+        {
+          "IPAddress": "172.20.0.4",
+          "SubnetPrefix": null,
+          "AddressType": "Private"
+        }
+      ],
+      "MacAddress": "7C-1E-52-18-74-FD",
+      "MachineGroup": "UnassignedGroup",
+      "NetworkAdapterStatus": "Unknown",
+      "ReportId": 638985212685648600,
+      "TimeGenerated": "2025-11-12T05:16:51.9762657Z",
+      "Timestamp": "2025-09-03T02:03:34.276425Z"
+    },
+    {
+      "DeviceId": "f5ebece1ad472b6044d1e4bdba353f64dfd02d5e",
+      "DeviceName": "wazuh",
+      "IPAddresses": [
+        {
+          "IPAddress": "172.19.0.4",
+          "SubnetPrefix": null,
+          "AddressType": "Private"
+        }
+      ],
+      "MacAddress": "7C-1E-52-6A-FF-11",
+      "MachineGroup": "UnassignedGroup",
+      "NetworkAdapterStatus": "Unknown",
+      "ReportId": 638985216955026700,
+      "TimeGenerated": "2025-11-12T05:24:44.2780356Z",
+      "Timestamp": "2025-09-03T02:03:34.276425Z"
+    },
+    {
+      "DeviceId": "f5ebece1ad472b6044d1e4bdba353f64dfd02d5e",
+      "DeviceName": "wazuh",
+      "IPAddresses": [
+        {
+          "IPAddress": "172.21.0.4",
+          "SubnetPrefix": null,
+          "AddressType": "Private"
+        }
+      ],
+      "MacAddress": "7C-1E-52-80-5E-27",
+      "MachineGroup": "UnassignedGroup",
+      "NetworkAdapterStatus": "Unknown",
+      "ReportId": 638985216955026700,
+      "TimeGenerated": "2025-11-12T05:24:44.2780356Z",
+      "Timestamp": "2025-09-03T02:03:34.276425Z"
+    },
+    {
+      "DeviceId": "f5ebece1ad472b6044d1e4bdba353f64dfd02d5e",
+      "DeviceName": "wazuh",
+      "IPAddresses": [
+        {
+          "IPAddress": "172.20.0.4",
+          "SubnetPrefix": null,
+          "AddressType": "Private"
+        }
+      ],
+      "MacAddress": "7C-1E-52-18-74-FD",
+      "MachineGroup": "UnassignedGroup",
+      "NetworkAdapterStatus": "Unknown",
+      "ReportId": 638985216955026700,
+      "TimeGenerated": "2025-11-12T05:24:44.2780356Z",
+      "Timestamp": "2025-09-03T02:03:34.276425Z"
+    }
+  ],
+  "DeviceProcessEvents": [
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "ProcessCreated",
+      "AdditionalFields": {
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixProcessGroupId": 582,
+        "InitiatingProcessPosixSessionId": 0,
+        "InitiatingProcessPosixRealUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "ProcessPosixProcessGroupId": 582,
+        "ProcessPosixSessionId": 582,
+        "ProcessCurrentWorkingDirectory": "/",
+        "ProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "ProcessPosixFileUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixFileGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        }
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "systemctl",
+      "FolderPath": "/usr/bin/systemctl",
+      "FileSize": 1115760,
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/lib/snapd/snapd",
+      "InitiatingProcessFileName": "snapd",
+      "InitiatingProcessFolderPath": "/snap/snapd/25577/usr/lib/snapd/snapd",
+      "InitiatingProcessId": 560852,
+      "InitiatingProcessLogonId": 0,
+      "InitiatingProcessMD5": "5628a6467253abd00cf0b5687ea0bede",
+      "InitiatingProcessParentFileName": "snapd",
+      "InitiatingProcessParentId": 582,
+      "InitiatingProcessSHA1": "52473b15e04e05d3ac92971a40d9be3ba927e819",
+      "InitiatingProcessSHA256": "94e84208ced6e2f98470982a061338f28b2bef266f9c16e6b46dad1a44f4b1bd",
+      "InitiatingProcessTokenElevation": "None",
+      "InitiatingProcessFileSize": 29900873,
+      "LogonId": 0,
+      "MD5": "7f2f74ee83d939fbbd4de52242cf0e06",
+      "MachineGroup": "UnassignedGroup",
+      "ProcessCommandLine": "systemctl show --property=Id,ActiveState,UnitFileState,Type,Names,NeedDaemonReload snap.lxd.activate.service",
+      "ProcessCreationTime": "2025-11-12T05:16:46.862519Z",
+      "ProcessId": 560852,
+      "ProcessTokenElevation": "None",
+      "InitiatingProcessSignerType": "Unknown",
+      "InitiatingProcessSignatureStatus": "Unknown",
+      "ReportId": 14161,
+      "SHA1": "b29865dceec5029c8d99251686bfacac8a485632",
+      "SHA256": "41834a675dbc3a7fc0169a24e655c5f14d8045bc7094efa65b35d8c69eb3df27",
+      "TimeGenerated": "2025-11-12T05:16:46.862519Z",
+      "Timestamp": "2025-11-12T05:16:46.862519Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:22.84Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:16:46.86Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0",
+      "ProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "ProcessCreated",
+      "AdditionalFields": {
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixProcessGroupId": 582,
+        "InitiatingProcessPosixSessionId": 0,
+        "InitiatingProcessPosixRealUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "ProcessPosixProcessGroupId": 582,
+        "ProcessPosixSessionId": 582,
+        "ProcessCurrentWorkingDirectory": "/",
+        "ProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "ProcessPosixFileUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixFileGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        }
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "systemctl",
+      "FolderPath": "/usr/bin/systemctl",
+      "FileSize": 1115760,
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/lib/snapd/snapd",
+      "InitiatingProcessFileName": "snapd",
+      "InitiatingProcessFolderPath": "/snap/snapd/25577/usr/lib/snapd/snapd",
+      "InitiatingProcessId": 560854,
+      "InitiatingProcessLogonId": 0,
+      "InitiatingProcessMD5": "5628a6467253abd00cf0b5687ea0bede",
+      "InitiatingProcessParentFileName": "snapd",
+      "InitiatingProcessParentId": 582,
+      "InitiatingProcessSHA1": "52473b15e04e05d3ac92971a40d9be3ba927e819",
+      "InitiatingProcessSHA256": "94e84208ced6e2f98470982a061338f28b2bef266f9c16e6b46dad1a44f4b1bd",
+      "InitiatingProcessTokenElevation": "None",
+      "InitiatingProcessFileSize": 29900873,
+      "LogonId": 0,
+      "MD5": "7f2f74ee83d939fbbd4de52242cf0e06",
+      "MachineGroup": "UnassignedGroup",
+      "ProcessCommandLine": "systemctl show --property=Id,ActiveState,UnitFileState,Type,Names,NeedDaemonReload snap.lxd.daemon.service",
+      "ProcessCreationTime": "2025-11-12T05:16:46.87129Z",
+      "ProcessId": 560854,
+      "ProcessTokenElevation": "None",
+      "InitiatingProcessSignerType": "Unknown",
+      "InitiatingProcessSignatureStatus": "Unknown",
+      "ReportId": 14162,
+      "SHA1": "b29865dceec5029c8d99251686bfacac8a485632",
+      "SHA256": "41834a675dbc3a7fc0169a24e655c5f14d8045bc7094efa65b35d8c69eb3df27",
+      "TimeGenerated": "2025-11-12T05:16:46.87129Z",
+      "Timestamp": "2025-11-12T05:16:46.87129Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:22.84Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:16:46.87Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0",
+      "ProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "ProcessCreated",
+      "AdditionalFields": {
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixProcessGroupId": 582,
+        "InitiatingProcessPosixSessionId": 0,
+        "InitiatingProcessPosixRealUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "ProcessPosixProcessGroupId": 582,
+        "ProcessPosixSessionId": 582,
+        "ProcessCurrentWorkingDirectory": "/",
+        "ProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "ProcessPosixFileUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixFileGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        }
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "systemctl",
+      "FolderPath": "/usr/bin/systemctl",
+      "FileSize": 1115760,
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/lib/snapd/snapd",
+      "InitiatingProcessFileName": "snapd",
+      "InitiatingProcessFolderPath": "/snap/snapd/25577/usr/lib/snapd/snapd",
+      "InitiatingProcessId": 560856,
+      "InitiatingProcessLogonId": 0,
+      "InitiatingProcessMD5": "5628a6467253abd00cf0b5687ea0bede",
+      "InitiatingProcessParentFileName": "snapd",
+      "InitiatingProcessParentId": 582,
+      "InitiatingProcessSHA1": "52473b15e04e05d3ac92971a40d9be3ba927e819",
+      "InitiatingProcessSHA256": "94e84208ced6e2f98470982a061338f28b2bef266f9c16e6b46dad1a44f4b1bd",
+      "InitiatingProcessTokenElevation": "None",
+      "InitiatingProcessFileSize": 29900873,
+      "LogonId": 0,
+      "MD5": "7f2f74ee83d939fbbd4de52242cf0e06",
+      "MachineGroup": "UnassignedGroup",
+      "ProcessCommandLine": "systemctl show --property=Id,ActiveState,UnitFileState,Names snap.lxd.daemon.unix.socket",
+      "ProcessCreationTime": "2025-11-12T05:16:46.878377Z",
+      "ProcessId": 560856,
+      "ProcessTokenElevation": "None",
+      "InitiatingProcessSignerType": "Unknown",
+      "InitiatingProcessSignatureStatus": "Unknown",
+      "ReportId": 14163,
+      "SHA1": "b29865dceec5029c8d99251686bfacac8a485632",
+      "SHA256": "41834a675dbc3a7fc0169a24e655c5f14d8045bc7094efa65b35d8c69eb3df27",
+      "TimeGenerated": "2025-11-12T05:16:46.878377Z",
+      "Timestamp": "2025-11-12T05:16:46.878377Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:22.84Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:16:46.87Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0",
+      "ProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "ProcessCreated",
+      "AdditionalFields": {
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixProcessGroupId": 582,
+        "InitiatingProcessPosixSessionId": 0,
+        "InitiatingProcessPosixRealUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "ProcessPosixProcessGroupId": 582,
+        "ProcessPosixSessionId": 582,
+        "ProcessCurrentWorkingDirectory": "/",
+        "ProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "ProcessPosixFileUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixFileGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        }
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "systemctl",
+      "FolderPath": "/usr/bin/systemctl",
+      "FileSize": 1115760,
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/lib/snapd/snapd",
+      "InitiatingProcessFileName": "snapd",
+      "InitiatingProcessFolderPath": "/snap/snapd/25577/usr/lib/snapd/snapd",
+      "InitiatingProcessId": 560858,
+      "InitiatingProcessLogonId": 0,
+      "InitiatingProcessMD5": "5628a6467253abd00cf0b5687ea0bede",
+      "InitiatingProcessParentFileName": "snapd",
+      "InitiatingProcessParentId": 582,
+      "InitiatingProcessSHA1": "52473b15e04e05d3ac92971a40d9be3ba927e819",
+      "InitiatingProcessSHA256": "94e84208ced6e2f98470982a061338f28b2bef266f9c16e6b46dad1a44f4b1bd",
+      "InitiatingProcessTokenElevation": "None",
+      "InitiatingProcessFileSize": 29900873,
+      "LogonId": 0,
+      "MD5": "7f2f74ee83d939fbbd4de52242cf0e06",
+      "MachineGroup": "UnassignedGroup",
+      "ProcessCommandLine": "systemctl show --property=Id,ActiveState,UnitFileState,Type,Names,NeedDaemonReload snap.lxd.user-daemon.service",
+      "ProcessCreationTime": "2025-11-12T05:16:46.885167Z",
+      "ProcessId": 560858,
+      "ProcessTokenElevation": "None",
+      "InitiatingProcessSignerType": "Unknown",
+      "InitiatingProcessSignatureStatus": "Unknown",
+      "ReportId": 14164,
+      "SHA1": "b29865dceec5029c8d99251686bfacac8a485632",
+      "SHA256": "41834a675dbc3a7fc0169a24e655c5f14d8045bc7094efa65b35d8c69eb3df27",
+      "TimeGenerated": "2025-11-12T05:16:46.885167Z",
+      "Timestamp": "2025-11-12T05:16:46.885167Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:22.84Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:16:46.88Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0",
+      "ProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "ProcessCreated",
+      "AdditionalFields": {
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixProcessGroupId": 582,
+        "InitiatingProcessPosixSessionId": 0,
+        "InitiatingProcessPosixRealUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "ProcessPosixProcessGroupId": 582,
+        "ProcessPosixSessionId": 582,
+        "ProcessCurrentWorkingDirectory": "/",
+        "ProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "ProcessPosixFileUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixFileGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        }
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "systemctl",
+      "FolderPath": "/usr/bin/systemctl",
+      "FileSize": 1115760,
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/lib/snapd/snapd",
+      "InitiatingProcessFileName": "snapd",
+      "InitiatingProcessFolderPath": "/snap/snapd/25577/usr/lib/snapd/snapd",
+      "InitiatingProcessId": 560860,
+      "InitiatingProcessLogonId": 0,
+      "InitiatingProcessMD5": "5628a6467253abd00cf0b5687ea0bede",
+      "InitiatingProcessParentFileName": "snapd",
+      "InitiatingProcessParentId": 582,
+      "InitiatingProcessSHA1": "52473b15e04e05d3ac92971a40d9be3ba927e819",
+      "InitiatingProcessSHA256": "94e84208ced6e2f98470982a061338f28b2bef266f9c16e6b46dad1a44f4b1bd",
+      "InitiatingProcessTokenElevation": "None",
+      "InitiatingProcessFileSize": 29900873,
+      "LogonId": 0,
+      "MD5": "7f2f74ee83d939fbbd4de52242cf0e06",
+      "MachineGroup": "UnassignedGroup",
+      "ProcessCommandLine": "systemctl show --property=Id,ActiveState,UnitFileState,Names snap.lxd.user-daemon.unix.socket",
+      "ProcessCreationTime": "2025-11-12T05:16:46.891675Z",
+      "ProcessId": 560860,
+      "ProcessTokenElevation": "None",
+      "InitiatingProcessSignerType": "Unknown",
+      "InitiatingProcessSignatureStatus": "Unknown",
+      "ReportId": 14165,
+      "SHA1": "b29865dceec5029c8d99251686bfacac8a485632",
+      "SHA256": "41834a675dbc3a7fc0169a24e655c5f14d8045bc7094efa65b35d8c69eb3df27",
+      "TimeGenerated": "2025-11-12T05:16:46.891675Z",
+      "Timestamp": "2025-11-12T05:16:46.891675Z",
+      "InitiatingProcessParentCreationTime": "2025-10-25T02:19:22.84Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:16:46.89Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0",
+      "ProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "ProcessCreated",
+      "AdditionalFields": {
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixProcessGroupId": 611,
+        "InitiatingProcessPosixSessionId": 0,
+        "InitiatingProcessPosixRealUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "ProcessPosixProcessGroupId": 560866,
+        "ProcessPosixSessionId": 560866,
+        "ProcessCurrentWorkingDirectory": "/root",
+        "ProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "ProcessPosixFileUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixFileGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        }
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "dash",
+      "FolderPath": "/usr/bin/dash",
+      "FileSize": 125688,
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/sbin/cron -f -P",
+      "InitiatingProcessFileName": "cron",
+      "InitiatingProcessFolderPath": "/usr/sbin/cron",
+      "InitiatingProcessId": 560866,
+      "InitiatingProcessLogonId": 0,
+      "InitiatingProcessMD5": "b21931de436519534d4d72a76bb8c7da",
+      "InitiatingProcessParentFileName": "cron",
+      "InitiatingProcessParentId": 560864,
+      "InitiatingProcessSHA1": "3077c51fa9a742089c5384089a5141f895306e76",
+      "InitiatingProcessSHA256": "ffc30864da514025c073a29d5afc6705ff8bbe4ecfdbc7917dd674e37b7b1b8a",
+      "InitiatingProcessTokenElevation": "None",
+      "InitiatingProcessFileSize": 51792,
+      "LogonId": 0,
+      "MD5": "7409ae3f7b10e059ee70d9079c94b097",
+      "MachineGroup": "UnassignedGroup",
+      "ProcessCommandLine": "/bin/sh -c \"   cd / && run-parts --report /etc/cron.hourly\"",
+      "ProcessCreationTime": "2025-11-12T05:17:01.194705Z",
+      "ProcessId": 560866,
+      "ProcessTokenElevation": "None",
+      "InitiatingProcessSignerType": "Unknown",
+      "InitiatingProcessSignatureStatus": "Unknown",
+      "ReportId": 14167,
+      "SHA1": "42e94914c7800c7063c51d7a17aec3a2069a3769",
+      "SHA256": "4f291296e89b784cd35479fca606f228126e3641f5bcaee68dee36583d7c9483",
+      "TimeGenerated": "2025-11-12T05:17:01.194705Z",
+      "Timestamp": "2025-11-12T05:17:01.194705Z",
+      "InitiatingProcessParentCreationTime": "2025-11-12T05:17:01.18Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:17:01.19Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0",
+      "ProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "ProcessCreated",
+      "AdditionalFields": {
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixProcessGroupId": 560866,
+        "InitiatingProcessPosixSessionId": 560866,
+        "InitiatingProcessCurrentWorkingDirectory": "/root",
+        "InitiatingProcessPosixRealUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "ProcessPosixProcessGroupId": 560866,
+        "ProcessPosixSessionId": 560866,
+        "ProcessCurrentWorkingDirectory": "/root",
+        "ProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "ProcessPosixFileUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixFileGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        }
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "dash",
+      "FolderPath": "/usr/bin/dash",
+      "FileSize": 125688,
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/bin/sh -c \"   cd / && run-parts --report /etc/cron.hourly\"",
+      "InitiatingProcessFileName": "dash",
+      "InitiatingProcessFolderPath": "/usr/bin/dash",
+      "InitiatingProcessId": 560866,
+      "InitiatingProcessLogonId": 0,
+      "InitiatingProcessMD5": "7409ae3f7b10e059ee70d9079c94b097",
+      "InitiatingProcessParentFileName": "cron",
+      "InitiatingProcessParentId": 560866,
+      "InitiatingProcessSHA1": "42e94914c7800c7063c51d7a17aec3a2069a3769",
+      "InitiatingProcessSHA256": "4f291296e89b784cd35479fca606f228126e3641f5bcaee68dee36583d7c9483",
+      "InitiatingProcessTokenElevation": "None",
+      "InitiatingProcessFileSize": 125688,
+      "LogonId": 0,
+      "MD5": "7409ae3f7b10e059ee70d9079c94b097",
+      "MachineGroup": "UnassignedGroup",
+      "ProcessCommandLine": "/bin/sh -c \"   cd / && run-parts --report /etc/cron.hourly\"",
+      "ProcessCreationTime": "2025-11-12T05:17:01.195406Z",
+      "ProcessId": 560867,
+      "ProcessTokenElevation": "None",
+      "InitiatingProcessSignerType": "Unknown",
+      "InitiatingProcessSignatureStatus": "Unknown",
+      "ReportId": 14168,
+      "SHA1": "42e94914c7800c7063c51d7a17aec3a2069a3769",
+      "SHA256": "4f291296e89b784cd35479fca606f228126e3641f5bcaee68dee36583d7c9483",
+      "TimeGenerated": "2025-11-12T05:17:01.195406Z",
+      "Timestamp": "2025-11-12T05:17:01.195406Z",
+      "InitiatingProcessParentCreationTime": "2025-11-12T05:17:01.19Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:17:01.194705Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0",
+      "ProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "ProcessCreated",
+      "AdditionalFields": {
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixProcessGroupId": 560866,
+        "InitiatingProcessPosixSessionId": 560866,
+        "InitiatingProcessCurrentWorkingDirectory": "/root",
+        "InitiatingProcessPosixRealUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "ProcessPosixProcessGroupId": 560866,
+        "ProcessPosixSessionId": 560866,
+        "ProcessCurrentWorkingDirectory": "/",
+        "ProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "ProcessPosixFileUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixFileGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        }
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "run-parts",
+      "FolderPath": "/usr/bin/run-parts",
+      "FileSize": 27176,
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/bin/sh -c \"   cd / && run-parts --report /etc/cron.hourly\"",
+      "InitiatingProcessFileName": "dash",
+      "InitiatingProcessFolderPath": "/usr/bin/dash",
+      "InitiatingProcessId": 560867,
+      "InitiatingProcessLogonId": 0,
+      "InitiatingProcessMD5": "7409ae3f7b10e059ee70d9079c94b097",
+      "InitiatingProcessParentFileName": "dash",
+      "InitiatingProcessParentId": 560866,
+      "InitiatingProcessSHA1": "42e94914c7800c7063c51d7a17aec3a2069a3769",
+      "InitiatingProcessSHA256": "4f291296e89b784cd35479fca606f228126e3641f5bcaee68dee36583d7c9483",
+      "InitiatingProcessTokenElevation": "None",
+      "InitiatingProcessFileSize": 125688,
+      "LogonId": 0,
+      "MD5": "12534bd0d31ee4c333e42a5242fd83d9",
+      "MachineGroup": "UnassignedGroup",
+      "ProcessCommandLine": "run-parts --report /etc/cron.hourly",
+      "ProcessCreationTime": "2025-11-12T05:17:01.195581Z",
+      "ProcessId": 560867,
+      "ProcessTokenElevation": "None",
+      "InitiatingProcessSignerType": "Unknown",
+      "InitiatingProcessSignatureStatus": "Unknown",
+      "ReportId": 14169,
+      "SHA1": "c708a725c690d3bf8145d16ed6a6a2d17e34a0c9",
+      "SHA256": "6662ac8211738cab5e9c8138f92c9f54319a1892ec3da24f47620d46963671a8",
+      "TimeGenerated": "2025-11-12T05:17:01.195581Z",
+      "Timestamp": "2025-11-12T05:17:01.195581Z",
+      "InitiatingProcessParentCreationTime": "2025-11-12T05:17:01.194705Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:17:01.195406Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0",
+      "ProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "ProcessCreated",
+      "AdditionalFields": {
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixProcessGroupId": 589,
+        "InitiatingProcessPosixSessionId": 589,
+        "InitiatingProcessCurrentWorkingDirectory": "/var/lib/waagent/WALinuxAgent-2.15.0.1",
+        "InitiatingProcessPosixRealUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "ProcessPosixProcessGroupId": 589,
+        "ProcessPosixSessionId": 589,
+        "ProcessCurrentWorkingDirectory": "/var/lib/waagent/WALinuxAgent-2.15.0.1",
+        "ProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "ProcessPosixFileUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixFileGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        }
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "python3.10",
+      "FolderPath": "/usr/bin/python3.10",
+      "FileSize": 5937768,
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/bin/python3 -Es /usr/bin/lsb_release -a",
+      "InitiatingProcessFileName": "python3.10",
+      "InitiatingProcessFolderPath": "/usr/bin/python3.10",
+      "InitiatingProcessId": 561066,
+      "InitiatingProcessLogonId": 0,
+      "InitiatingProcessMD5": "68b9b48deb9bcbd89e1f50a6bc122f52",
+      "InitiatingProcessParentFileName": "python3.10",
+      "InitiatingProcessParentId": 561066,
+      "InitiatingProcessSHA1": "79ec3c6435dea9685871a00f389a44735dea17fe",
+      "InitiatingProcessSHA256": "df23391eb5ab66f005be15f792d55766d7ce96198e9e10df2aea72aec8c686ea",
+      "InitiatingProcessTokenElevation": "None",
+      "InitiatingProcessFileSize": 5937768,
+      "LogonId": 0,
+      "MD5": "68b9b48deb9bcbd89e1f50a6bc122f52",
+      "MachineGroup": "UnassignedGroup",
+      "ProcessCommandLine": "/usr/bin/python3 -Es /usr/bin/lsb_release -a",
+      "ProcessCreationTime": "2025-11-12T05:26:51.6Z",
+      "ProcessId": 561069,
+      "ProcessTokenElevation": "None",
+      "InitiatingProcessSignerType": "Unknown",
+      "InitiatingProcessSignatureStatus": "Unknown",
+      "ReportId": 14285,
+      "SHA1": "79ec3c6435dea9685871a00f389a44735dea17fe",
+      "SHA256": "df23391eb5ab66f005be15f792d55766d7ce96198e9e10df2aea72aec8c686ea",
+      "TimeGenerated": "2025-11-12T05:26:51.603728Z",
+      "Timestamp": "2025-11-12T05:26:51.603728Z",
+      "InitiatingProcessParentCreationTime": "2025-11-12T05:26:50.6Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:26:50.699829Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0",
+      "ProcessUniqueId": "0"
+    },
+    {
+      "AccountDomain": "wazuh1",
+      "AccountName": "root",
+      "ActionType": "ProcessCreated",
+      "AdditionalFields": {
+        "InitiatingProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixProcessGroupId": 589,
+        "InitiatingProcessPosixSessionId": 589,
+        "InitiatingProcessCurrentWorkingDirectory": "/var/lib/waagent/WALinuxAgent-2.15.0.1",
+        "InitiatingProcessPosixRealUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveUser": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixEffectiveGroup": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "ProcessPosixProcessGroupId": 589,
+        "ProcessPosixSessionId": 589,
+        "ProcessCurrentWorkingDirectory": "/var/lib/waagent/WALinuxAgent-2.15.0.1",
+        "ProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "ProcessPosixFileUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "ProcessPosixFileGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        },
+        "InitiatingProcessPosixFilePermissions": [
+          "OthersExecute",
+          "OthersRead",
+          "GroupExecute",
+          "GroupRead",
+          "UserExecute",
+          "UserWrite",
+          "UserRead",
+          "UserAll"
+        ],
+        "InitiatingProcessPosixUserOwner": {
+          "Name": "root",
+          "DomainName": "Wazuh1",
+          "LogonId": 0,
+          "PosixUserId": 0,
+          "PrimaryPosixGroup": {
+            "Name": "root",
+            "PosixGroupId": 0
+          }
+        },
+        "InitiatingProcessPosixGroupOwner": {
+          "Name": "root",
+          "PosixGroupId": 0
+        }
+      },
+      "DeviceId": "875524232b2377b606ca585f2a6692b5be921b94",
+      "DeviceName": "wazuh1.x0rsjvjofsvujdf53bjf3swsje.bx.internal.cloudapp.net",
+      "FileName": "dpkg-query",
+      "FolderPath": "/usr/bin/dpkg-query",
+      "FileSize": 141848,
+      "InitiatingProcessAccountDomain": "wazuh1",
+      "InitiatingProcessAccountName": "root",
+      "InitiatingProcessCommandLine": "/usr/bin/python3 -Es /usr/bin/lsb_release -a",
+      "InitiatingProcessFileName": "python3.10",
+      "InitiatingProcessFolderPath": "/usr/bin/python3.10",
+      "InitiatingProcessId": 561069,
+      "InitiatingProcessLogonId": 0,
+      "InitiatingProcessMD5": "68b9b48deb9bcbd89e1f50a6bc122f52",
+      "InitiatingProcessParentFileName": "python3.10",
+      "InitiatingProcessParentId": 561066,
+      "InitiatingProcessSHA1": "79ec3c6435dea9685871a00f389a44735dea17fe",
+      "InitiatingProcessSHA256": "df23391eb5ab66f005be15f792d55766d7ce96198e9e10df2aea72aec8c686ea",
+      "InitiatingProcessTokenElevation": "None",
+      "InitiatingProcessFileSize": 5937768,
+      "LogonId": 0,
+      "MD5": "39eab8491d243f060ea9ce2f215939fa",
+      "MachineGroup": "UnassignedGroup",
+      "ProcessCommandLine": "dpkg-query -f \"${Version} ${Provides}\n\" -W lsb-core lsb-cxx lsb-graphics lsb-desktop lsb-languages lsb-multimedia lsb-printing lsb-security",
+      "ProcessCreationTime": "2025-11-12T05:26:51.699986Z",
+      "ProcessId": 561069,
+      "ProcessTokenElevation": "None",
+      "InitiatingProcessSignerType": "Unknown",
+      "InitiatingProcessSignatureStatus": "Unknown",
+      "ReportId": 14286,
+      "SHA1": "068666f14b449d026b911f6dd5c2bea47d112395",
+      "SHA256": "11b7055ec6ec739838f171182ced296ca75ec2da2d32e4331e9926021d6f8d08",
+      "TimeGenerated": "2025-11-12T05:26:51.699986Z",
+      "Timestamp": "2025-11-12T05:26:51.699986Z",
+      "InitiatingProcessParentCreationTime": "2025-11-12T05:26:50.699829Z",
+      "InitiatingProcessCreationTime": "2025-11-12T05:26:51.6Z",
+      "IsProcessRemoteSession": false,
+      "IsInitiatingProcessRemoteSession": false,
+      "InitiatingProcessUniqueId": "0",
+      "ProcessUniqueId": "0"
+    }
+  ],
+  "DeviceRegistryEvents": []
+}
