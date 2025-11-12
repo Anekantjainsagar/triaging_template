@@ -628,21 +628,30 @@ def _display_enhancement_results(
                     )
 
                     # ✅ KQL QUERY SECTION WITH EXECUTE BUTTON - ENHANCED VERSION
-                    if kql_query and len(kql_query.strip()) > 10:  # Increased minimum length
+                    if (
+                        kql_query and len(kql_query.strip()) > 10
+                    ):  # Increased minimum length
                         st.markdown("##### 🔍 KQL Query")
-                        
+
                         # Display query info
-                        if kql_explanation and str(kql_explanation).strip() not in ["nan", "none", "n/a", ""]:
+                        if kql_explanation and str(kql_explanation).strip() not in [
+                            "nan",
+                            "none",
+                            "n/a",
+                            "",
+                        ]:
                             st.write(kql_explanation)
-                        
+
                         # Show the actual query with syntax highlighting
                         # st.code(kql_query, language="kql")
-                        
+
                         # Debug info - show query details
                         with st.expander("🔧 Query Details", expanded=False):
                             st.write(f"Query length: {len(kql_query)} characters")
-                            st.write(f"Workspace ID configured: {'✅' if os.getenv('LOG_ANALYTICS_WORKSPACE_ID') else '❌'}")
-                        
+                            st.write(
+                                f"Workspace ID configured: {'✅' if os.getenv('LOG_ANALYTICS_WORKSPACE_ID') else '❌'}"
+                            )
+
                         # ✅ EXECUTE BUTTON with enhanced feedback
                         col1, col2, col3 = st.columns([2, 1, 2])
                         with col2:
@@ -650,48 +659,66 @@ def _display_enhancement_results(
                                 "▶️ Execute Query",
                                 key=f"execute_kql_{step_num}",
                                 type="primary",
-                                use_container_width=True
+                                width="stretch",
                             )
-                        
+
                         # Handle execution when button is clicked
                         if execute_clicked:
                             # Validate workspace configuration first
                             if not os.getenv("LOG_ANALYTICS_WORKSPACE_ID"):
-                                st.error("❌ Log Analytics Workspace ID not configured. Please check your environment variables.")
+                                st.error(
+                                    "❌ Log Analytics Workspace ID not configured. Please check your environment variables."
+                                )
                             else:
                                 # Execute the query
-                                success = _execute_kql_query(step_num, rule_number, kql_query)
-                                
+                                success = _execute_kql_query(
+                                    step_num, rule_number, kql_query
+                                )
+
                                 if success:
-                                    st.success("✅ Query executed successfully! Results saved below.")
+                                    st.success(
+                                        "✅ Query executed successfully! Results saved below."
+                                    )
                                 else:
-                                    st.error("❌ Query execution failed. Check the error details above.")
+                                    st.error(
+                                        "❌ Query execution failed. Check the error details above."
+                                    )
 
                         # ✅ OUTPUT SECTION - ALWAYS DISPLAYED WHEN KQL QUERY EXISTS
                         st.markdown("##### 📊 Output")
                         output_key = f"output_step_{step_num}_{rule_number}"
-                        existing_output = st.session_state.step_outputs.get(output_key, "")
-                        
+                        existing_output = st.session_state.step_outputs.get(
+                            output_key, ""
+                        )
+
                         # Enhanced text area with better placeholder
-                        placeholder_text = "KQL query results will appear here after execution..."
+                        placeholder_text = (
+                            "KQL query results will appear here after execution..."
+                        )
                         if existing_output:
-                            placeholder_text = f"Results loaded ({len(existing_output)} characters)"
-                        
+                            placeholder_text = (
+                                f"Results loaded ({len(existing_output)} characters)"
+                            )
+
                         manual_output = st.text_area(
                             "Query Results:",
                             value=existing_output,
                             height=200,
                             key=f"output_input_{step_num}",
                             placeholder=placeholder_text,
-                            on_change=lambda sn=step_num: _save_step_data(sn, rule_number, "output"),
-                            label_visibility="collapsed"
+                            on_change=lambda sn=step_num: _save_step_data(
+                                sn, rule_number, "output"
+                            ),
+                            label_visibility="collapsed",
                         )
-                        
+
                         # Always save the output
                         st.session_state.step_outputs[output_key] = manual_output
-                        
+
                         if manual_output and manual_output != existing_output:
-                            st.success(f"✅ Output updated ({len(manual_output)} characters)")
+                            st.success(
+                                f"✅ Output updated ({len(manual_output)} characters)"
+                            )
 
                     # IP REPUTATION SECTION - ONLY IF NOT KQL QUERY
                     elif is_ip_reputation_step:
@@ -729,9 +756,7 @@ def _display_enhancement_results(
                         st.caption(
                             "Enter multiple IPs (one per line, comma-separated, or space-separated)"
                         )
-                        st.caption(
-                            "✅ Supports: IPv4, IPv6, Private IPs, Public IPs"
-                        )
+                        st.caption("✅ Supports: IPv4, IPv6, Private IPs, Public IPs")
 
                         default_text = "\n".join(default_ips) if default_ips else ""
 
@@ -748,9 +773,7 @@ def _display_enhancement_results(
 
                         with col1:
                             if default_ips:
-                                st.caption(
-                                    f"ℹ️ {len(default_ips)} IP(s) auto-detected"
-                                )
+                                st.caption(f"ℹ️ {len(default_ips)} IP(s) auto-detected")
 
                         with col3:
                             check_button = st.button(
@@ -776,9 +799,7 @@ def _display_enhancement_results(
                                 )
 
                                 if "ip_checker" not in st.session_state:
-                                    st.session_state.ip_checker = (
-                                        IPReputationChecker()
-                                    )
+                                    st.session_state.ip_checker = IPReputationChecker()
 
                                 checker = st.session_state.ip_checker
 
@@ -798,8 +819,7 @@ def _display_enhancement_results(
                                 for ip, result in results.items():
                                     if result.get("formatted_output_excel"):
                                         formatted_output_excel += (
-                                            result["formatted_output_excel"]
-                                            + "\n\n"
+                                            result["formatted_output_excel"] + "\n\n"
                                         )
 
                                 st.session_state.step_outputs[output_key] = (
@@ -867,9 +887,7 @@ def _display_enhancement_results(
                                         continue
 
                                     if result.get("success"):
-                                        risk_level = result.get(
-                                            "risk_level", "UNKNOWN"
-                                        )
+                                        risk_level = result.get("risk_level", "UNKNOWN")
 
                                         if risk_level == "HIGH":
                                             icon = "🔍´"
@@ -916,9 +934,7 @@ def _display_enhancement_results(
                                             )
                                             if result.get("manual_check"):
                                                 st.markdown(
-                                                    result.get(
-                                                        "formatted_output", ""
-                                                    )
+                                                    result.get("formatted_output", "")
                                                 )
 
                                 st.markdown("---")

@@ -453,7 +453,7 @@ def _process_vip_user_check(
             "▶️ Execute Query",
             key=f"exec_vip_kql_{step_num}",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         )
 
     # ===================================================================
@@ -807,7 +807,9 @@ def display_interactive_steps(
 
                     # Initialize session state for this step
                     if vip_input_key not in st.session_state:
-                        st.session_state[vip_input_key] = "ceo@company.com, cfo@company.com, admin@company.com"
+                        st.session_state[vip_input_key] = (
+                            "ceo@company.com, cfo@company.com, admin@company.com"
+                        )
 
                     if vip_processed_key not in st.session_state:
                         st.session_state[vip_processed_key] = False
@@ -843,7 +845,7 @@ def display_interactive_steps(
                                 "🔍 Generate & Process",
                                 key=f"vip_check_step_{step_num}",
                                 type="primary",
-                                use_container_width=True,
+                                width="stretch",
                             )
 
                         if check_button:
@@ -885,7 +887,7 @@ def display_interactive_steps(
                                 if st.button(
                                     "🔄 Change VIP List",
                                     key=f"reset_vip_{step_num}",
-                                    use_container_width=True,
+                                    width="stretch",
                                 ):
                                     st.session_state[vip_processed_key] = False
                                     st.session_state[vip_input_key] = ""
@@ -907,7 +909,7 @@ def display_interactive_steps(
                             "▶️ Execute Query",
                             key=f"execute_kql_{step_num}",
                             type="primary",
-                            use_container_width=True,
+                            width="stretch",
                         )
 
                     if execute_clicked:
@@ -1022,7 +1024,7 @@ def display_interactive_steps(
                             "🔍 Check All IPs",
                             key=f"vt_check_step_{step_num}",
                             type="primary",
-                            use_container_width=True,
+                            width="stretch",
                         )
 
                     if check_button and ip_input:
@@ -1079,7 +1081,7 @@ def display_interactive_steps(
                 if st.button(
                     "📋 Prepare Final Report",
                     type="secondary",
-                    use_container_width=True,
+                    width="stretch",
                     key=f"prepare_report_{rule_number}",
                 ):
                     st.info("💾 Saving all outputs to final report...")
