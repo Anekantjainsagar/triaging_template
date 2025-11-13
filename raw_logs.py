@@ -9,6 +9,10 @@ import pytz
 # Import workflow orchestrator
 from main_workflow import SelectiveWorkflowOrchestrator
 
+# Import SOC Hub components
+from components.soc_hub import display_ai_analysis
+from sentinel.backend import check_api_status
+
 # Page configuration
 st.set_page_config(
     page_title="Security Alerts Dashboard",
@@ -126,6 +130,233 @@ if "items_per_page" not in st.session_state:
     st.session_state.items_per_page = 50
 if "show_fetch_panel" not in st.session_state:
     st.session_state.show_fetch_panel = False
+if "show_soc_analysis" not in st.session_state:
+    st.session_state.show_soc_analysis = False
+if "soc_analysis_data" not in st.session_state:
+    st.session_state.soc_analysis_data = None
+
+
+def convert_raw_alert_to_soc_format(alert):
+    """
+    Convert raw alert data to SOC Hub compatible format
+    """
+    # Determine severity mapping
+    severity_map = {"HIGH": "High", "MEDIUM": "Medium", "LOW": "Low"}
+
+    # Base alert structure
+    soc_alert = {
+        "title": alert.get("title", "Unknown Alert"),
+        "alert_name": alert.get("title", "Unknown Alert"),
+        "description": alert.get(
+            "alert_description",
+            alert.get(
+                "description", alert.get("alert_summary", "No description available")
+            ),
+        ),
+        "severity": severity_map.get(alert.get("severity", "MEDIUM").upper(), "Medium"),
+        "status": "Active",
+        "source": "raw_logs_analysis",
+        "rule_number": alert.get("alert_id", f"RAW_{id(alert)}"),
+    }
+
+    # Add timestamp information
+    timestamp = alert.get("timestamp", "")
+    if timestamp:
+        soc_alert["timeGenerated"] = timestamp
+
+    # Build full_alert structure with properties
+    full_alert = {
+        "properties": {
+            "alertDisplayName": alert.get("title", "Unknown Alert"),
+            "description": soc_alert["description"],
+            "severity": soc_alert["severity"],
+            "status": soc_alert["status"],
+            "timeGenerated": timestamp,
+        }
+    }
+
+    soc_alert["full_alert"] = full_alert
+
+    # Build entities structure based on alert source
+    entities_list = []
+    seen_ips = set()  # Track IPs to avoid duplicates
+
+    if alert.get("source") == "User Data Correlation":
+        # Extract user entities
+        if alert.get("user_principal_name"):
+            user_entity = {
+                "kind": "Account",
+                "properties": {
+                    "accountName": (
+                        alert.get("user_principal_name", "").split("@")[0]
+                        if "@" in alert.get("user_principal_name", "")
+                        else alert.get("user_principal_name", "")
+                    ),
+                    "upnSuffix": (
+                        alert.get("user_principal_name", "").split("@")[1]
+                        if "@" in alert.get("user_principal_name", "")
+                        else ""
+                    ),
+                    "friendlyName": alert.get("user_display_name", ""),
+                    "userPrincipalName": alert.get("user_principal_name", ""),
+                },
+            }
+            entities_list.append(user_entity)
+
+        # Extract location entities with IPs
+        for location in alert.get("locations", []):
+            # Get IP address from location data
+            ip_address = (
+                location.get("ip_address")
+                or location.get("ipAddress")
+                or location.get("ip")
+            )
+
+            if ip_address and ip_address not in seen_ips:
+                seen_ips.add(ip_address)
+
+                # Parse location info
+                location_str = location.get("location", "")
+                location_parts = location_str.split(",") if location_str else []
+
+                ip_entity = {
+                    "kind": "Ip",
+                    "properties": {
+                        "address": ip_address,
+                    },
+                }
+
+                # Add location details if available
+                if location_parts:
+                    ip_entity["properties"]["location"] = {
+                        "city": (
+                            location_parts[0].strip() if len(location_parts) > 0 else ""
+                        ),
+                        "state": (
+                            location_parts[1].strip() if len(location_parts) > 1 else ""
+                        ),
+                        "countryName": (
+                            location_parts[-1].strip()
+                            if len(location_parts) > 0
+                            else ""
+                        ),
+                    }
+
+                entities_list.append(ip_entity)
+
+        # Extract application entities
+        for app in alert.get("applications", []):
+            app_entity = {
+                "kind": "CloudApplication",
+                "properties": {
+                    "name": app.get("app", app.get("application", "Unknown App")),
+                    "displayName": app.get(
+                        "app", app.get("application", "Unknown App")
+                    ),
+                },
+            }
+            entities_list.append(app_entity)
+
+    elif alert.get("source") == "Endpoint Security":
+        # Extract endpoint entities from evidence
+        evidence = alert.get("evidence", {})
+
+        # Host entity
+        if evidence.get("Device Name"):
+            host_entity = {
+                "kind": "Host",
+                "properties": {
+                    "hostName": evidence.get("Device Name"),
+                    "dnsDomain": evidence.get("Device Domain", ""),
+                    "osFamily": (
+                        "Windows"
+                        if "windows" in evidence.get("Device Name", "").lower()
+                        else "Unknown"
+                    ),
+                },
+            }
+            entities_list.append(host_entity)
+
+        # File entity
+        if evidence.get("File Name"):
+            file_entity = {
+                "kind": "File",
+                "properties": {
+                    "fileName": evidence.get("File Name"),
+                    "name": evidence.get("File Name"),
+                    "fileHashValue": evidence.get("File Hash", ""),
+                },
+            }
+            entities_list.append(file_entity)
+
+        # Process entity
+        if evidence.get("Process Name"):
+            process_entity = {
+                "kind": "Process",
+                "properties": {
+                    "processName": evidence.get("Process Name"),
+                    "commandLine": evidence.get("Command Line", ""),
+                    "processId": evidence.get("Process ID", ""),
+                },
+            }
+            entities_list.append(process_entity)
+
+        # URL entity
+        if evidence.get("URL"):
+            url_entity = {"kind": "Url", "properties": {"url": evidence.get("URL")}}
+            entities_list.append(url_entity)
+
+        # IP entities - check multiple possible fields
+        ip_fields = [
+            "Source IP",
+            "Destination IP",
+            "IP Address",
+            "Remote IP",
+            "Client IP",
+        ]
+        for ip_field in ip_fields:
+            if evidence.get(ip_field):
+                ip_address = evidence.get(ip_field)
+                if ip_address and ip_address not in seen_ips:
+                    seen_ips.add(ip_address)
+                    ip_entity = {
+                        "kind": "Ip",
+                        "properties": {"address": ip_address},
+                    }
+                    entities_list.append(ip_entity)
+
+        # Account entity
+        if evidence.get("User"):
+            account_entity = {
+                "kind": "Account",
+                "properties": {
+                    "accountName": evidence.get("User"),
+                    "friendlyName": evidence.get("User"),
+                },
+            }
+            entities_list.append(account_entity)
+
+    # Set entities structure
+    soc_alert["entities"] = {"entities": entities_list}
+
+    # Add MITRE ATT&CK if available
+    if alert.get("mitre_attack"):
+        soc_alert["mitre_attack"] = alert.get("mitre_attack")
+
+    # Add additional context
+    soc_alert["raw_alert_data"] = alert.get("raw_data", {})
+    soc_alert["alert_category"] = alert.get("category", "Unknown")
+    soc_alert["alert_source_type"] = alert.get("source", "Unknown")
+
+    # Add risk information
+    if alert.get("risk_score"):
+        soc_alert["risk_score"] = alert.get("risk_score")
+    if alert.get("risk_factors"):
+        soc_alert["risk_factors"] = alert.get("risk_factors")
+    if alert.get("risk_assessment"):
+        soc_alert["risk_assessment"] = alert.get("risk_assessment")
+
+    return soc_alert
 
 
 def paginate_alerts(alerts, page, items_per_page):
@@ -146,7 +377,7 @@ def show_pagination_controls(total_items, current_page, items_per_page, position
 
     with col1:
         if st.button(
-            "⏮ First",
+            "⮜ First",
             disabled=(current_page == 1),
             key=f"first_{position}",
         ):
@@ -179,7 +410,7 @@ def show_pagination_controls(total_items, current_page, items_per_page, position
 
     with col5:
         if st.button(
-            "Last ⏭",
+            "Last ⭢",
             disabled=(current_page >= total_pages),
             key=f"last_{position}",
         ):
@@ -395,24 +626,68 @@ def show_alert_detail_modal(alert):
             "← Back to Dashboard",
             key="back_button_modal",
             type="primary",
+            use_container_width=True,
         ):
+            st.session_state.show_overlay = False
+            st.session_state.selected_alert = None
+            st.rerun()
+
+        st.markdown("---")
+
+        # Add Analyze in SOC Hub button in sidebar
+        st.markdown("### 🤖 AI Analysis")
+        if st.button(
+            "🚀 Analyze in SOC Hub",
+            key="analyze_soc_sidebar",
+            type="secondary",
+            use_container_width=True,
+            help="Open in SOC Hub for AI-powered analysis",
+        ):
+            # Convert raw alert to SOC format
+            soc_alert_data = convert_raw_alert_to_soc_format(alert)
+
+            # Set session state for SOC analysis
+            st.session_state.soc_analysis_data = soc_alert_data
+            st.session_state.show_soc_analysis = True
             st.session_state.show_overlay = False
             st.session_state.selected_alert = None
             st.rerun()
 
     st.markdown(f"## {alert['title']}")
 
-    st.markdown(
-        f"""
-        <div style="display: flex; gap: 1rem; align-items: center; margin: 1rem 0; flex-wrap: wrap;">
-            <span class="severity-badge {get_severity_color(alert['severity'])}">{alert['severity']}</span>
-            <span style="color: #666;">Category: {alert['category']}</span>
-            <span style="color: #666;">Source: {alert['source']}</span>
-            <span style="color: #666;">Alert ID: {alert['alert_id']}</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Add Analyze button at the top as well
+    col_badge, col_btn = st.columns([3, 1])
+
+    with col_badge:
+        st.markdown(
+            f"""
+            <div style="display: flex; gap: 1rem; align-items: center; margin: 1rem 0; flex-wrap: wrap;">
+                <span class="severity-badge {get_severity_color(alert['severity'])}">{alert['severity']}</span>
+                <span style="color: #666;">Category: {alert['category']}</span>
+                <span style="color: #666;">Source: {alert['source']}</span>
+                <span style="color: #666;">Alert ID: {alert['alert_id']}</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_btn:
+        if st.button(
+            "🤖 Analyze in SOC Hub",
+            key="analyze_soc_top",
+            type="primary",
+            use_container_width=True,
+            help="Open in SOC Hub for AI-powered analysis",
+        ):
+            # Convert raw alert to SOC format
+            soc_alert_data = convert_raw_alert_to_soc_format(alert)
+
+            # Set session state for SOC analysis
+            st.session_state.soc_analysis_data = soc_alert_data
+            st.session_state.show_soc_analysis = True
+            st.session_state.show_overlay = False
+            st.session_state.selected_alert = None
+            st.rerun()
 
     st.markdown("---")
 
@@ -456,29 +731,46 @@ def show_user_activity_detail(alert):
             st.markdown(f"- {factor}")
 
     if alert.get("locations"):
-        st.markdown("### 🌍 Locations")
+        st.markdown("### 🌍 Locations & IP Addresses")
         locations_df = pd.DataFrame(alert["locations"])
+
+        # Add IST timestamp if available
         if "timestamp" in locations_df.columns:
             locations_df["timestamp_ist"] = locations_df["timestamp"].apply(
                 convert_zulu_to_ist
             )
-        st.dataframe(locations_df, width="stretch")
+
+        # Reorder columns to show IP prominently
+        cols = locations_df.columns.tolist()
+        if "ip_address" in cols:
+            cols.remove("ip_address")
+            cols.insert(0, "ip_address")
+            locations_df = locations_df[cols]
+        elif "ipAddress" in cols:
+            cols.remove("ipAddress")
+            cols.insert(0, "ipAddress")
+            locations_df = locations_df[cols]
+
+        st.dataframe(locations_df, use_container_width=True)
 
     if alert.get("applications"):
         st.markdown("### 📱 Applications Accessed")
         apps_df = pd.DataFrame(alert["applications"])
-        st.dataframe(apps_df, width="stretch")
+        st.dataframe(apps_df, use_container_width=True)
 
     if alert.get("timeline"):
         st.markdown("### 📅 Activity Timeline")
         for item in alert["timeline"]:
             timestamp_ist = convert_zulu_to_ist(item.get("timestamp", ""))
+            ip_info = item.get("ip_address", item.get("ipAddress", "N/A"))
+
             st.markdown(
                 f"""
             <div class="timeline-item">
                 <strong>{timestamp_ist}</strong><br>
                 App: {item.get('app', 'N/A')}<br>
                 Location: {item.get('location', 'N/A')}<br>
+                IP Address: {ip_info}<br>
                 Result: {item.get('result', 'N/A')}<br>
                 Auth Method: {item.get('auth_method', 'N/A')}
             </div>
@@ -509,7 +801,30 @@ def show_endpoint_security_detail(alert):
         st.markdown("### 🔍 Evidence")
         evidence = alert["evidence"]
 
+        # Highlight IP addresses at the top
+        ip_fields = [
+            "Source IP",
+            "Destination IP",
+            "IP Address",
+            "Remote IP",
+            "Client IP",
+        ]
+        ip_found = False
+
+        st.markdown("**🌐 Network Information:**")
+        for ip_field in ip_fields:
+            if evidence.get(ip_field):
+                st.markdown(f"- **{ip_field}:** `{evidence.get(ip_field)}`")
+                ip_found = True
+
+        if ip_found:
+            st.markdown("---")
+
         for key, value in evidence.items():
+            # Skip IP fields as they're already shown
+            if key in ip_fields:
+                continue
+
             if key == "Key Components":
                 if isinstance(value, list) and value:
                     filtered_components = [
@@ -642,7 +957,7 @@ def show_fetch_panel():
     col_btn1, col_btn2 = st.columns([1, 4])
 
     with col_btn1:
-        if st.button("🚀 Fetch & Process", type="primary", width="stretch"):
+        if st.button("🚀 Fetch & Process", type="primary", use_container_width=True):
             base_dir = st.session_state.get("base_dir", "sentinel_logs1")
 
             # Validate dates
@@ -725,12 +1040,53 @@ def show_fetch_panel():
                     st.exception(e)
 
     with col_btn2:
-        if st.button("Cancel", width="stretch"):
+        if st.button("Cancel", use_container_width=True):
             st.session_state.show_fetch_panel = False
             st.rerun()
 
 
 def main():
+    # Show SOC Hub analysis if requested
+    if st.session_state.get("show_soc_analysis") and st.session_state.get(
+        "soc_analysis_data"
+    ):
+        # Sidebar for going back
+        with st.sidebar:
+            st.markdown("## 🤖 SOC Hub Analysis")
+            if st.button(
+                "← Back to Alerts Dashboard",
+                key="back_to_dashboard",
+                type="primary",
+                use_container_width=True,
+            ):
+                st.session_state.show_soc_analysis = False
+                st.session_state.soc_analysis_data = None
+                st.rerun()
+
+            st.markdown("---")
+
+            # API Status Check
+            st.markdown("### 📡 Backend Status")
+            is_healthy, health_data = check_api_status()
+
+            if is_healthy:
+                st.success("✅ API Connected")
+                with st.expander("API Info", expanded=False):
+                    st.write(f"**Status:** {health_data.get('status')}")
+                    st.write(
+                        f"**SOC Analyzer:** {'✅' if health_data.get('soc_analyzer_loaded') else '❌'}"
+                    )
+                    st.write(
+                        f"**Alert Analyzer:** {'✅' if health_data.get('alert_analyzer_loaded') else '❌'}"
+                    )
+            else:
+                st.error("❌ API Not Connected")
+                st.caption("AI features require backend API")
+
+        # Display the SOC Hub analysis
+        display_ai_analysis(st.session_state.soc_analysis_data)
+        return
+
     # Show modal if alert is selected
     if st.session_state.get("show_overlay") and st.session_state.get("selected_alert"):
         show_alert_detail_modal(st.session_state.selected_alert)
@@ -761,7 +1117,7 @@ def main():
             st.session_state.base_dir = base_dir
 
         # Fetch data button
-        if st.button("🔄 Fetch New Data", type="primary", width="stretch"):
+        if st.button("🔄 Fetch New Data", type="primary", use_container_width=True):
             st.session_state.show_fetch_panel = True
             st.rerun()
 
@@ -777,7 +1133,7 @@ def main():
                 st.session_state.alerts = []
 
         # Manual reload button
-        if st.button("🔃 Reload Alerts", width="stretch"):
+        if st.button("🔃 Reload Alerts", use_container_width=True):
             if os.path.exists(base_dir):
                 with st.spinner("Reloading all alerts..."):
                     st.session_state.alerts = load_all_alerts(base_dir)
@@ -785,6 +1141,26 @@ def main():
                 st.success(f"✅ Loaded {len(st.session_state.alerts)} alerts!")
             else:
                 st.error(f"❌ Directory '{base_dir}' not found")
+
+        st.markdown("---")
+
+        # API Status Check in sidebar
+        st.markdown("### 📡 Backend Status")
+        is_healthy, health_data = check_api_status()
+
+        if is_healthy:
+            st.success("✅ API Connected")
+            with st.expander("API Info", expanded=False):
+                st.write(f"**Status:** {health_data.get('status')}")
+                st.write(
+                    f"**SOC Analyzer:** {'✅' if health_data.get('soc_analyzer_loaded') else '❌'}"
+                )
+                st.write(
+                    f"**Alert Analyzer:** {'✅' if health_data.get('alert_analyzer_loaded') else '❌'}"
+                )
+        else:
+            st.warning("⚠️ API Not Connected")
+            st.caption("AI analysis features unavailable")
 
         st.markdown("---")
         st.markdown("### 🔍 Filters")
@@ -844,6 +1220,7 @@ def main():
         - **Time Conversion**: Timestamps automatically converted from UTC to IST (UTC+5:30)
         - **Smart Filtering**: Filter by severity, source, and category
         - **Detailed Views**: Click any alert to see comprehensive details
+        - **SOC Hub Analysis**: AI-powered threat analysis with ML predictions
         - **Pagination**: Navigate through alerts with easy pagination controls
         - **Data Fetching**: Fetch new data directly from Azure Sentinel
         """
@@ -956,7 +1333,7 @@ def main():
                 ) * st.session_state.items_per_page + idx
 
                 # Create columns for the alert card
-                col_main, col_button = st.columns([5, 1])
+                col_main, col_btn_view, col_btn_analyze = st.columns([4, 1, 1])
 
                 with col_main:
                     # Create compact alert row with all info
@@ -982,16 +1359,33 @@ def main():
                         unsafe_allow_html=True,
                     )
 
-                with col_button:
-                    # View Details button aligned to the right
+                with col_btn_view:
+                    # View Details button
                     if st.button(
                         "👁️ View",
-                        key=f"alert_{global_idx}_{alert['alert_id']}_{st.session_state.current_page}",
-                        width="stretch",
+                        key=f"view_{global_idx}_{alert['alert_id']}_{st.session_state.current_page}",
+                        use_container_width=True,
                         type="secondary",
                     ):
                         st.session_state.selected_alert = alert
                         st.session_state.show_overlay = True
+                        st.rerun()
+
+                with col_btn_analyze:
+                    # Analyze in SOC Hub button
+                    if st.button(
+                        "🤖 Analyze",
+                        key=f"analyze_{global_idx}_{alert['alert_id']}_{st.session_state.current_page}",
+                        use_container_width=True,
+                        type="primary",
+                        help="Open in SOC Hub for AI-powered analysis",
+                    ):
+                        # Convert raw alert to SOC format
+                        soc_alert_data = convert_raw_alert_to_soc_format(alert)
+
+                        # Set session state for SOC analysis
+                        st.session_state.soc_analysis_data = soc_alert_data
+                        st.session_state.show_soc_analysis = True
                         st.rerun()
 
             # Pagination controls at bottom
@@ -1010,7 +1404,7 @@ def main():
     st.markdown(
         """
         <div style="text-align: center; color: #666; padding: 1rem;">
-            🛡️ Security Alerts Dashboard | Integrated with Azure Sentinel
+            🛡️ Security Alerts Dashboard | Integrated with Azure Sentinel & SOC Hub AI Analysis
         </div>
         """,
         unsafe_allow_html=True,
