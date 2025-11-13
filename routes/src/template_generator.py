@@ -112,9 +112,27 @@ class ImprovedTemplateGenerator:
         from routes.src.new_steps.step_library import InvestigationStepLibrary
 
         step_library = InvestigationStepLibrary()
-        generated_steps = step_library.generate_investigation_steps(profile)
-
-        print(f"   ✅ Generated {len(generated_steps)} investigation steps")
+        
+        # Add retry logic for step generation
+        max_retries = 3
+        generated_steps = []
+        
+        for attempt in range(max_retries):
+            try:
+                generated_steps = step_library.generate_investigation_steps(profile)
+                print(f"   ✅ Generated {len(generated_steps)} investigation steps")
+                break
+            except Exception as e:
+                print(f"   ⚠️ Step generation attempt {attempt + 1} failed: {str(e)[:100]}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+                else:
+                    print(f"   ❌ Using fallback steps due to LLM failure")
+                    # Create basic fallback steps
+                    generated_steps = [
+                        {"step_name": "Manual Investigation", "explanation": "Conduct manual investigation due to service unavailability", "priority": "HIGH"},
+                        {"step_name": "Document Findings", "explanation": "Document all investigation findings", "priority": "MEDIUM"}
+                    ]
 
         # STEP 3: FILTER & MERGE STEPS
         print(f"\n🔄 PHASE 3: Merging with original template...")
@@ -411,13 +429,32 @@ class ImprovedTemplateGenerator:
 
         print("Alert data is coming here")
         print(alert_data)
-        # Generate 6-7 steps directly from analysis
-        generated_steps = step_library.generate_steps_from_manual_analysis(
-            alert_name=alert_name,
-            analysis_text=analysis_text,
-            rule_number=rule_number,
-            alert_data=alert_data,
-        )
+        # Generate 6-7 steps directly from analysis with retry
+        max_retries = 3
+        generated_steps = []
+        
+        for attempt in range(max_retries):
+            try:
+                generated_steps = step_library.generate_steps_from_manual_analysis(
+                    alert_name=alert_name,
+                    analysis_text=analysis_text,
+                    rule_number=rule_number,
+                    alert_data=alert_data,
+                )
+                break
+            except Exception as e:
+                print(f"   ⚠️ Manual analysis attempt {attempt + 1} failed: {str(e)[:100]}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+                else:
+                    print(f"   ❌ Using fallback steps due to LLM failure")
+                    # Create basic fallback steps based on alert name
+                    generated_steps = [
+                        {"step_name": "Verify Alert Details", "explanation": "Review and verify the alert details and affected systems", "priority": "HIGH"},
+                        {"step_name": "Check User Activity", "explanation": "Investigate user authentication and activity patterns", "priority": "HIGH"},
+                        {"step_name": "Analyze Network Activity", "explanation": "Review network connections and traffic patterns", "priority": "MEDIUM"},
+                        {"step_name": "Document Findings", "explanation": "Document all investigation findings and recommendations", "priority": "MEDIUM"}
+                    ]
 
         # Convert to template rows
         template_rows = []
@@ -813,26 +850,37 @@ class ImprovedTemplateGenerator:
         return text
 
     def _quick_llm_call(self, prompt: str, max_tokens: int = 100) -> str:
-        """Make quick LLM call"""
+        """Make quick LLM call with retry logic"""
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            try:
+                agent = Agent(
+                    role="SOC Analyst",
+                    goal="Generate concise security content",
+                    backstory="Expert security analyst",
+                    llm=self.llm,
+                    verbose=False,
+                )
 
-        agent = Agent(
-            role="SOC Analyst",
-            goal="Generate concise security content",
-            backstory="Expert security analyst",
-            llm=self.llm,
-            verbose=False,
-        )
+                task = Task(
+                    description=prompt,
+                    expected_output="Concise answer",
+                    agent=agent,
+                )
 
-        task = Task(
-            description=prompt,
-            expected_output="Concise answer",
-            agent=agent,
-        )
+                crew = Crew(agents=[agent], tasks=[task], verbose=False)
+                result = crew.kickoff()
 
-        crew = Crew(agents=[agent], tasks=[task], verbose=False)
-        result = crew.kickoff()
-
-        return str(result)
+                return str(result)
+                
+            except Exception as e:
+                print(f"   ⚠️ LLM call attempt {attempt + 1} failed: {str(e)[:100]}")
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                else:
+                    print(f"   ❌ All LLM attempts failed, using fallback")
+                    return "Manual investigation required - LLM service unavailable"
 
     def _aggressive_clean(self, text: str) -> str:
         """Aggressively remove LLM artifacts"""

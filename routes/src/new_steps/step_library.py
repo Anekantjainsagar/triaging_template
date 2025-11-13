@@ -56,7 +56,7 @@ class InvestigationStepLibrary:
             print(f"   entities type: {type(entities)}")
             if isinstance(entities, dict):
                 print(f"   entities.entities count: {len(entities.get('entities', []))}")
-                
+
         print(f"\n{'='*80}")
         print(f"🤖 GENERATING MANUAL ALERT INVESTIGATION STEPS")
         print(f"Alert: {alert_name}")
@@ -114,7 +114,6 @@ class InvestigationStepLibrary:
         print(f"{'='*80}\n")
 
         return cleaned_steps
-
 
     def _remove_duplicate_vip_and_ip_steps(self, steps: List[Dict]) -> List[Dict]:
         """
@@ -216,14 +215,14 @@ class InvestigationStepLibrary:
             # ============================================================
             step_name_lower = step_name.lower()
             explanation = step.get("explanation", "").lower()
-            
+
             # VIP step detection (safety net)
             vip_keywords = ["vip", "high-priority", "privileged account", "executive", "account status"]
             if any(kw in step_name_lower or kw in explanation for kw in vip_keywords):
                 filtered_steps.append(step)
                 print(f"   ✅ Keeping VIP step (by keyword): {step_name[:60]}")
                 continue
-            
+
             # IP reputation detection (safety net)
             ip_keywords = ["ip reputation", "virustotal", "abuseipdb", "threat intelligence"]
             if any(kw in step_name_lower or kw in explanation for kw in ip_keywords):
@@ -249,7 +248,7 @@ class InvestigationStepLibrary:
         print(f"\n{'='*80}")
         print(f"🔍 VIP INJECTION DIAGNOSTIC")
         print(f"{'='*80}")
-        
+
         # DIAGNOSTIC 1: Check alert_data
         print(f"\n1️⃣ Checking alert_data:")
         if alert_data is None:
@@ -259,13 +258,13 @@ class InvestigationStepLibrary:
         else:
             print(f"   ✅ alert_data exists")
             print(f"   📊 alert_data keys: {list(alert_data.keys())}")
-        
+
         # DIAGNOSTIC 2: Check entities structure
         print(f"\n2️⃣ Checking entities structure:")
         entities = alert_data.get("entities", {})
         print(f"   📦 entities type: {type(entities)}")
         print(f"   📦 entities value: {entities if isinstance(entities, list) else 'dict with keys: ' + str(list(entities.keys()) if isinstance(entities, dict) else 'unknown')}")
-        
+
         # Extract entities list
         if isinstance(entities, dict):
             entities_list = entities.get("entities", [])
@@ -276,16 +275,16 @@ class InvestigationStepLibrary:
         else:
             entities_list = []
             print(f"   ⚠️  Unexpected entities type!")
-        
+
         # DIAGNOSTIC 3: Check for Account entities
         print(f"\n3️⃣ Searching for Account entities:")
         has_account_entities = False
         account_count = 0
-        
+
         for idx, entity in enumerate(entities_list):
             entity_kind = entity.get("kind", "").lower()
             print(f"   Entity {idx + 1}: kind='{entity_kind}'")
-            
+
             if entity_kind == "account":
                 has_account_entities = True
                 account_count += 1
@@ -293,12 +292,12 @@ class InvestigationStepLibrary:
                 account_name = props.get("accountName", "")
                 upn_suffix = props.get("upnSuffix", "")
                 print(f"      ✅ ACCOUNT FOUND: {account_name}@{upn_suffix}")
-        
+
         print(f"\n4️⃣ Account entities summary:")
         print(f"   Total entities: {len(entities_list)}")
         print(f"   Account entities: {account_count}")
         print(f"   Has accounts: {has_account_entities}")
-        
+
         # DIAGNOSTIC 4: Decision point
         print(f"\n5️⃣ Decision:")
         if not has_account_entities:
@@ -306,12 +305,12 @@ class InvestigationStepLibrary:
             print(f"   💡 VIP verification requires at least 1 Account entity")
             print(f"{'='*80}\n")
             return steps
-        
+
         print(f"   ✅ ACCOUNT ENTITIES FOUND → Injecting VIP step")
-        
+
         # DIAGNOSTIC 5: Create VIP step
         print(f"\n6️⃣ Creating VIP step:")
-        
+
         placeholder_vip_kql = """// VIP User Verification Query - PLACEHOLDER
     // This query will be dynamically generated during triaging with:
     //   - VIP user list (provided by analyst)
@@ -346,7 +345,7 @@ class InvestigationStepLibrary:
         )
     | project-reorder UserPrincipalName, UserDisplayName, IsVIP, AccountClassification, VIPRiskScore
     | order by VIPRiskScore desc"""
-        
+
         vip_step = {
             "step_name": "Verify User Account Status and Check if Account is VIP or High-Priority",
             "explanation": "This step analyzes the affected user account to determine their role, privileges, and organizational importance. You will be prompted to provide a list of known VIP users (executives, admins, high-value accounts). The KQL query will then check if the affected users are in the VIP list and assess their risk level based on sign-in patterns, geographic locations, and risk indicators.",
@@ -360,27 +359,26 @@ class InvestigationStepLibrary:
             "kql_query": placeholder_vip_kql,
             "kql_explanation": "Queries SigninLogs to check if affected users are VIP accounts and analyzes their activity patterns, risk levels, and geographic locations. The VIP user list and exact time ranges will be dynamically injected during triaging.",
         }
-        
+
         print(f"   ✅ VIP step created:")
         print(f"      step_name: {vip_step['step_name'][:60]}...")
         print(f"      input_required: '{vip_step['input_required']}'")
         print(f"      kql_query length: {len(vip_step['kql_query'])} chars")
         print(f"      Has placeholder: {'<VIP_USER_LIST_PLACEHOLDER>' in vip_step['kql_query']}")
-        
+
         # DIAGNOSTIC 6: Insert position
         insert_position = min(2, len(steps))
         print(f"\n7️⃣ Inserting VIP step:")
         print(f"   Current step count: {len(steps)}")
         print(f"   Insert position: {insert_position + 1}")
-        
+
         steps.insert(insert_position, vip_step)
-        
+
         print(f"   ✅ VIP step inserted successfully")
         print(f"   New step count: {len(steps)}")
         print(f"{'='*80}\n")
-        
-        return steps
 
+        return steps
 
     def _inject_ip_reputation_step(self, steps: List[Dict], rule_number: str, alert_data: dict = None) -> List[Dict]:
         """
@@ -389,7 +387,7 @@ class InvestigationStepLibrary:
         print(f"\n{'='*80}")
         print(f"🔍 IP INJECTION DIAGNOSTIC")
         print(f"{'='*80}")
-        
+
         # DIAGNOSTIC 1: Check alert_data
         print(f"\n1️⃣ Checking alert_data:")
         if alert_data is None:
@@ -398,54 +396,54 @@ class InvestigationStepLibrary:
             return steps
         else:
             print(f"   ✅ alert_data exists")
-        
+
         # DIAGNOSTIC 2: Check entities structure
         print(f"\n2️⃣ Checking entities structure:")
         entities = alert_data.get("entities", {})
-        
+
         if isinstance(entities, dict):
             entities_list = entities.get("entities", [])
         elif isinstance(entities, list):
             entities_list = entities
         else:
             entities_list = []
-        
+
         print(f"   📋 Total entities: {len(entities_list)}")
-        
+
         # DIAGNOSTIC 3: Check for IP entities
         print(f"\n3️⃣ Searching for IP entities:")
         has_ip_entities = False
         ip_count = 0
-        
+
         for idx, entity in enumerate(entities_list):
             entity_kind = entity.get("kind", "").lower()
             print(f"   Entity {idx + 1}: kind='{entity_kind}'")
-            
+
             if entity_kind == "ip":
                 has_ip_entities = True
                 ip_count += 1
                 props = entity.get("properties", {})
                 ip_address = props.get("address", "")
                 print(f"      ✅ IP FOUND: {ip_address}")
-        
+
         print(f"\n4️⃣ IP entities summary:")
         print(f"   IP entities: {ip_count}")
         print(f"   Has IPs: {has_ip_entities}")
-        
+
         # DIAGNOSTIC 4: Decision
         print(f"\n5️⃣ Decision:")
         if not has_ip_entities:
             print(f"   ❌ NO IP ENTITIES → Skipping IP step")
             print(f"{'='*80}\n")
             return steps
-        
+
         print(f"   ✅ IP ENTITIES FOUND → Injecting IP step")
-        
+
         # Create IP step
         ip_step = {
-            "step_name": "Check Source IP Reputation Using VirusTotal and AbuseIPDB",
-            "explanation": "This step validates the reputation of source IP addresses using external threat intelligence platforms (VirusTotal and AbuseIPDB) to identify if the IPs are associated with known malicious activity. IPs are automatically extracted from previous investigation steps. Look for high detection ratios (5+ vendors), recent abuse reports, or associations with known threat actors.",
-            "relevance": "IP reputation provides immediate validation of the threat level. A malicious source IP strongly indicates this is not a legitimate access attempt.",
+            "step_name": "Check Source IP Reputation & VPN/Proxy Detection Using VirusTotal, AbuseIPDB and Abstract API",
+            "explanation": "This step validates the reputation of source IP addresses using external threat intelligence platforms (VirusTotal, AbuseIPDB and Abstract API) and detects VPN/proxy/Tor usage to identify if the IPs are associated with known malicious activity or anonymization services. IPs are automatically extracted from alert entities. Look for high detection ratios (5+ vendors), recent abuse reports, VPN/proxy flags, Tor exit nodes, or associations with known threat actors.",
+            "relevance": "IP reputation and VPN detection provide immediate validation of the threat level. A malicious source IP or VPN/Tor usage strongly indicates suspicious activity that requires further investigation.",
             "data_source": "Manual",
             "priority": "CRITICAL",
             "tool": "virustotal",
@@ -453,15 +451,15 @@ class InvestigationStepLibrary:
             "source": "ai_generated",
             "confidence": "HIGH",
             "kql_query": "",
-            "kql_explanation": "Requires manual checking using external tools (VirusTotal, AbuseIPDB) or the integrated IP reputation checker in the triaging app.",
+            "kql_explanation": "Requires manual checking using external tools (VirusTotal, AbuseIPDB, Abstract API) or the integrated IP reputation & VPN detection checker in the triaging app.",
         }
-        
+
         insert_position = min(3, len(steps))
         print(f"\n6️⃣ Inserting IP step at position {insert_position + 1}")
         steps.insert(insert_position, ip_step)
         print(f"   ✅ IP step inserted")
         print(f"{'='*80}\n")
-        
+
         return steps
 
     def _add_kql_to_steps_enhanced(
