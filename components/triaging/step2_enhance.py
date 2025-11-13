@@ -7,9 +7,8 @@ import traceback
 import hashlib
 import pandas as pd
 from io import BytesIO
-from routes.src.virustotal_integration import VirusTotalChecker, IPReputationChecker
+from routes.src.virustotal_integration import IPReputationChecker
 from routes.src.template_generator import ImprovedTemplateGenerator
-from routes.src.template_parser import TemplateParser
 from components.triaging.kql_executor import KQLExecutor  # NEW IMPORT
 
 

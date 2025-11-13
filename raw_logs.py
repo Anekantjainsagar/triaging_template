@@ -155,7 +155,7 @@ def convert_raw_alert_to_soc_format(alert):
         ),
         "severity": severity_map.get(alert.get("severity", "MEDIUM").upper(), "Medium"),
         "status": "Active",
-        "source": "raw_logs_analysis",
+        "source": "alert_details",
         "rule_number": alert.get("alert_id", f"RAW_{id(alert)}"),
     }
 

@@ -44,8 +44,19 @@ class InvestigationStepLibrary:
             print(f"✅ Using {ollama_model} for step generation")
 
     def generate_steps_from_manual_analysis(
-        self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN", alert_data:dict=None
-    ) -> List[Dict]:
+    self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN", alert_data:dict=None
+) -> List[Dict]:
+        # ✅ ADD THIS DIAGNOSTIC
+        print(f"\n🔍 DIAGNOSTIC: generate_steps_from_manual_analysis()")
+        print(f"   alert_data type: {type(alert_data)}")
+        print(f"   alert_data is None: {alert_data is None}")
+        if alert_data:
+            print(f"   alert_data keys: {list(alert_data.keys())}")
+            entities = alert_data.get("entities", {})
+            print(f"   entities type: {type(entities)}")
+            if isinstance(entities, dict):
+                print(f"   entities.entities count: {len(entities.get('entities', []))}")
+                
         print(f"\n{'='*80}")
         print(f"🤖 GENERATING MANUAL ALERT INVESTIGATION STEPS")
         print(f"Alert: {alert_name}")

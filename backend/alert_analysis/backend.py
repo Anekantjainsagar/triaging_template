@@ -13,55 +13,35 @@ logger = logging.getLogger(__name__)
 # Configuration
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
-USE_OLLAMA = os.getenv("USE_OLLAMA", "false").lower() == "true"
-OLLAMA_CHAT = os.getenv("OLLAMA_CHAT", "qwen2.5:3b")
-MAX_RETRIES = int(os.getenv("MAX_RETRIES", "2"))
-RETRY_DELAY = int(os.getenv("RETRY_DELAY", "3"))
-ENABLE_FALLBACK = os.getenv("ENABLE_FALLBACK", "true").lower() == "true"
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "5"))  # Increased retries
+RETRY_DELAY = int(os.getenv("RETRY_DELAY", "5"))  # Increased delay
 
 
 class SecurityAlertAnalyzerCrew:
-    """Backend service for security alert analysis with robust output cleaning"""
+    """Backend service for security alert analysis using Gemini only"""
 
     def __init__(self):
-        """Initialize with resilient LLM configuration"""
+        """Initialize with Gemini LLM configuration"""
         self.primary_llm = None
-        self.fallback_llm = None
         self.search_tool = None
-        self.current_provider = None
         self._initialize_llms()
 
     def _initialize_llms(self):
-        """Initialize both Gemini and Ollama LLMs"""
+        """Initialize Gemini LLM only"""
         try:
-            if USE_OLLAMA:
-                logger.info("Primary: Ollama (as configured)")
-                self.primary_llm = self._create_ollama_llm()
-                self.current_provider = "ollama"
-                self.fallback_llm = None
-            else:
-                logger.info("Primary: Gemini, Fallback: Ollama")
-                self.primary_llm = self._create_gemini_llm()
-                self.current_provider = "gemini"
-
-                if ENABLE_FALLBACK:
-                    try:
-                        self.fallback_llm = self._create_ollama_llm()
-                        logger.info("✅ Fallback Ollama LLM initialized")
-                    except Exception as e:
-                        logger.warning(f"⚠️ Fallback Ollama not available: {str(e)}")
-                        self.fallback_llm = None
+            logger.info("Primary: Gemini only")
+            self.primary_llm = self._create_gemini_llm()
 
             if SERPER_API_KEY:
                 self.search_tool = SerperDevTool(api_key=SERPER_API_KEY)
                 logger.info("Search tool initialized")
 
         except Exception as e:
-            logger.error(f"Failed to initialize LLMs: {str(e)}")
+            logger.error(f"Failed to initialize LLM: {str(e)}")
             raise
 
     def _create_gemini_llm(self) -> LLM:
-        """Create Gemini LLM instance"""
+        """Create Gemini LLM instance with improved settings"""
         if not GOOGLE_API_KEY:
             raise ValueError("GOOGLE_API_KEY environment variable not set")
 
@@ -69,58 +49,25 @@ class SecurityAlertAnalyzerCrew:
             model="gemini/gemini-2.5-flash",
             temperature=0.7,
             api_key=GOOGLE_API_KEY,
-            timeout=90,
-            max_retries=1,
+            timeout=120,  # Increased timeout
+            max_retries=2,  # Built-in retries
         )
-
-    def _create_ollama_llm(self) -> LLM:
-        """Create Ollama LLM instance"""
-        return LLM(
-            model=f"ollama/{OLLAMA_CHAT}",
-            base_url="http://localhost:11434",
-            temperature=0.7,
-        )
-
-    def _is_gemini_error(self, error: Exception) -> bool:
-        """Detect if error is from Gemini API"""
-        error_str = str(error).lower()
-        gemini_indicators = [
-            "503",
-            "service unavailable",
-            "overloaded",
-            "vertex",
-            "gemini",
-            "generativelanguage",
-            "quota exceeded",
-            "rate limit",
-            "429",
-        ]
-        return any(indicator in error_str for indicator in gemini_indicators)
-
-    def _should_fallback(self, error: Exception, attempt: int) -> bool:
-        """Determine if we should fallback to Ollama"""
-        if not ENABLE_FALLBACK or self.fallback_llm is None:
-            return False
-        if self._is_gemini_error(error) and attempt >= 1:
-            return True
-        return False
 
     def _calculate_backoff(self, attempt: int) -> int:
-        """Calculate exponential backoff"""
+        """Calculate exponential backoff with jitter"""
+        import random
+
         base_delay = RETRY_DELAY
-        max_delay = 60
-        delay = min(base_delay * (2**attempt) + attempt, max_delay)
-        return delay
+        max_delay = 120  # Increased max delay
+        delay = min(base_delay * (2**attempt) + random.uniform(1, 5), max_delay)
+        return int(delay)
 
     def _normalize_final_output(self, text: str) -> str:
         """Final normalization pass to ensure perfect formatting"""
-        # Remove any remaining prefixes
         text = re.sub(r"^.*?(?=##|\d+\.)", "", text, flags=re.DOTALL).strip()
 
-        # Ensure consistent header format
         lines = []
         for line in text.split("\n"):
-            # Convert numbered sections to headers if not already
             if re.match(
                 r"^\s*\d+\.\s+[A-Z][A-Z\s&/()-]+", line
             ) and not line.startswith("##"):
@@ -130,15 +77,13 @@ class SecurityAlertAnalyzerCrew:
         return "\n".join(lines).strip()
 
     def _clean_output(self, text: str) -> str:
-        """
-        Aggressively clean LLM output to ensure consistent structure
-        """
+        """Aggressively clean LLM output to ensure consistent structure"""
         if not text or not text.strip():
             return ""
 
         original_text = text
 
-        # STEP 1: Find LAST occurrence of structured content
+        # Find structured content
         sections_pattern = r"((?:^|\n)\s*1\.\s+TECHNICAL OVERVIEW.*?)(?=\n\s*(?:Thought:|Action:|I now|Based on|$))"
         matches = list(re.finditer(sections_pattern, text, re.IGNORECASE | re.DOTALL))
 
@@ -149,7 +94,7 @@ class SecurityAlertAnalyzerCrew:
             logger.warning("⚠️ Using fallback extraction")
             text = self._extract_structured_content(original_text)
 
-        # STEP 2: Remove ALL agent metadata
+        # Remove agent metadata
         metadata_patterns = [
             r"Thought:.*?(?=\n|\Z)",
             r"Action:.*?(?=\n|\Z)",
@@ -170,7 +115,7 @@ class SecurityAlertAnalyzerCrew:
         for pattern in metadata_patterns:
             text = re.sub(pattern, "", text, flags=re.IGNORECASE | re.MULTILINE)
 
-        # STEP 3: Format section headers
+        # Format section headers
         text = re.sub(
             r"(?:^|\n)\s*(\d+)\.\s+(TECHNICAL OVERVIEW|MITRE ATT&CK TECHNIQUES?|THREAT ACTORS?|BUSINESS IMPACT ASSESSMENT)\s*:?\s*\n",
             r"\n## \1. \2\n\n",
@@ -178,14 +123,12 @@ class SecurityAlertAnalyzerCrew:
             flags=re.IGNORECASE | re.MULTILINE,
         )
 
-        # STEP 4: Standardize bullets
+        # Clean formatting
         text = re.sub(r"\n\s*[•●◦▪▫]\s+", "\n- ", text)
         text = re.sub(r"\n\s*[-*]\s+", "\n- ", text)
-
-        # STEP 5: Clean bold formatting
         text = re.sub(r"\n\s*\*\*([^*]+)\*\*\s*:\s*", r"\n**\1:** ", text)
 
-        # STEP 6: Remove duplicate lines
+        # Remove duplicates and clean whitespace
         lines = text.split("\n")
         seen = set()
         unique_lines = []
@@ -200,20 +143,13 @@ class SecurityAlertAnalyzerCrew:
                     unique_lines.append(line)
 
         text = "\n".join(unique_lines)
-
-        # STEP 7: Clean whitespace
         text = re.sub(r"\n{3,}", "\n\n", text)
         text = re.sub(r"[ \t]+", " ", text)
-        text = re.sub(r"\n\s+\n", "\n\n", text)
-
-        # STEP 8: Spacing after headers
         text = re.sub(r"(##[^\n]+)\n([^\n#])", r"\1\n\n\2", text)
 
-        # STEP 9: Final normalization
         text = text.strip()
         text = self._normalize_final_output(text)
 
-        # STEP 10: Validation
         if not self._validate_output_structure(text):
             logger.error("❌ Validation failed, using fallback")
             text = self._extract_structured_content(original_text)
@@ -254,24 +190,18 @@ class SecurityAlertAnalyzerCrew:
             section_content = text[start_pos:end_pos].strip()
 
             # Clean metadata from section
-            section_content = re.sub(
+            for clean_pattern in [
                 r"Thought:.*?(?=\n|\Z)",
-                "",
-                section_content,
-                flags=re.IGNORECASE | re.MULTILINE,
-            )
-            section_content = re.sub(
                 r"Action:.*?(?=\n|\Z)",
-                "",
-                section_content,
-                flags=re.IGNORECASE | re.MULTILINE,
-            )
-            section_content = re.sub(
                 r"(?:I now|Based on|Let me).*?(?=\n|\Z)",
-                "",
-                section_content,
-                flags=re.IGNORECASE | re.MULTILINE,
-            )
+            ]:
+                section_content = re.sub(
+                    clean_pattern,
+                    "",
+                    section_content,
+                    flags=re.IGNORECASE | re.MULTILINE,
+                )
+
             section_content = section_content.strip()
 
             if section_content and len(section_content) > 20:
@@ -306,7 +236,6 @@ class SecurityAlertAnalyzerCrew:
             1 for h in required_headers if re.search(h, text, re.IGNORECASE)
         )
 
-        # Check for metadata
         if re.search(r"(?:Thought|Action|Observation):", text, re.IGNORECASE):
             logger.warning("⚠️ Agent metadata still present")
             return False
@@ -327,7 +256,7 @@ class SecurityAlertAnalyzerCrew:
             clear, structured analysis without any meta-commentary or reasoning traces.""",
             tools=([self.search_tool] if self.search_tool else []),
             llm=llm,
-            verbose=False,  # Reduce output noise
+            verbose=False,
             allow_delegation=False,
             max_iter=3,
         )
@@ -369,11 +298,11 @@ RULES:
         return [threat_intel_task]
 
     def _analyze_with_llm(
-        self, alert_name: str, llm: LLM, provider_name: str
+        self, alert_name: str, llm: LLM
     ) -> Tuple[bool, Optional[str], Optional[Exception]]:
         """Execute analysis"""
         try:
-            logger.info(f"Analyzing with {provider_name}...")
+            logger.info("Analyzing with Gemini...")
 
             agents = self._create_agents(llm)
             tasks = self._create_tasks(alert_name, agents)
@@ -382,7 +311,7 @@ RULES:
                 agents=list(agents.values()),
                 tasks=tasks,
                 process=Process.sequential,
-                verbose=False,  # Disable verbose
+                verbose=False,
                 memory=False,
             )
 
@@ -416,7 +345,7 @@ RULES:
             return False, None, e
 
     def analyze_alert(self, alert_name: str) -> str:
-        """Main analysis method with fallback"""
+        """Main analysis method with improved retry logic"""
         if not alert_name or not alert_name.strip():
             raise ValueError("Alert name cannot be empty")
 
@@ -425,16 +354,16 @@ RULES:
         for attempt in range(MAX_RETRIES):
             try:
                 logger.info(
-                    f"🔍 Analyzing '{alert_name}' with {self.current_provider.upper()} "
+                    f"🔍 Analyzing '{alert_name}' with GEMINI "
                     f"(Attempt {attempt + 1}/{MAX_RETRIES})"
                 )
 
                 success, result, error = self._analyze_with_llm(
-                    alert_name, self.primary_llm, self.current_provider
+                    alert_name, self.primary_llm
                 )
 
                 if success and self._validate_output_structure(result):
-                    logger.info(f"✅ Success with {self.current_provider.upper()}")
+                    logger.info("✅ Success with GEMINI")
                     return result
 
                 if success:
@@ -443,43 +372,19 @@ RULES:
                 else:
                     last_error = error
 
-                if self._should_fallback(error if error else last_error, attempt):
-                    logger.info("🔄 Triggering fallback...")
-                    break
-
                 if attempt < MAX_RETRIES - 1:
                     backoff = self._calculate_backoff(attempt)
-                    logger.info(f"⏳ Waiting {backoff}s...")
+                    logger.info(f"⏳ Waiting {backoff}s before retry...")
                     time.sleep(backoff)
 
             except Exception as e:
                 last_error = e
                 logger.error(f"Attempt {attempt + 1} failed: {str(e)}")
 
-                if self._should_fallback(e, attempt):
-                    break
-
                 if attempt < MAX_RETRIES - 1:
-                    time.sleep(self._calculate_backoff(attempt))
-
-        # Fallback to Ollama
-        if self.fallback_llm:
-            logger.info("🔄 Falling back to Ollama...")
-            try:
-                success, result, error = self._analyze_with_llm(
-                    alert_name, self.fallback_llm, "ollama"
-                )
-
-                if success and self._validate_output_structure(result):
-                    logger.info("✅ Success with Ollama (fallback)")
-                    result = f"{result}\n\n*Note: Generated using Ollama fallback.*"
-                    return result
-
-                last_error = error or Exception("Ollama validation failed")
-
-            except Exception as e:
-                last_error = e
-                logger.error(f"❌ Ollama fallback failed: {str(e)}")
+                    backoff = self._calculate_backoff(attempt)
+                    logger.info(f"⏳ Waiting {backoff}s before retry...")
+                    time.sleep(backoff)
 
         # All attempts failed
         error_detail = str(last_error) if last_error else "Unknown error"

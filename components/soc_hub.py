@@ -225,9 +225,12 @@ def display_ai_analysis(alert_data):
         st.session_state[f"{analysis_key}_in_progress"] = False
 
     # Create tab structure
+    print(alert_data)
     source = alert_data.get("source", "unknown")
     is_manual = source == "alert_details"
     has_historical_data = alert_data.get("historical_data") is not None
+    print("I'm here till now")
+    print(is_manual, has_historical_data)
 
     # ✅ FIXED: Always show 4 tabs if triaging is complete OR if we have historical data
     predictions_enabled = st.session_state.get("triaging_complete", False)
@@ -299,6 +302,26 @@ def display_ai_analysis(alert_data):
                     f"📊 Passing to triaging: {len(enhanced_alert_data.get('entities', {}).get('entities', []))} entities"
                 )
 
+                # ✅ ADD THIS DIAGNOSTIC SECTION
+                print(f"\n🔍 PRE-TRIAGING DIAGNOSTIC:")
+                print(f"   rule_number: {rule_number}")
+                print(f"   enhanced_alert_data keys: {list(enhanced_alert_data.keys())}")
+                print(f"   Has entities: {'entities' in enhanced_alert_data}")
+
+                if 'entities' in enhanced_alert_data:
+                    entities = enhanced_alert_data['entities']
+                    print(f"   entities type: {type(entities)}")
+                    if isinstance(entities, dict):
+                        entities_list = entities.get('entities', [])
+                        print(f"   entities count: {len(entities_list)}")
+                        
+                        # Count entity types
+                        account_count = sum(1 for e in entities_list if e.get('kind', '').lower() == 'account')
+                        ip_count = sum(1 for e in entities_list if e.get('kind', '').lower() == 'ip')
+                        print(f"   Account entities: {account_count}")
+                        print(f"   IP entities: {ip_count}")
+
+                # Then call the function
                 display_triaging_workflow_cached(
                     rule_number,
                     alert_data=enhanced_alert_data,
@@ -312,6 +335,7 @@ def display_ai_analysis(alert_data):
                 display_predictions_tab_integrated()
 
     else:
+        print("I'm in else tab")
         # Has historical data - Always show 4 tabs if predictions enabled
         if predictions_enabled:
             tab1, tab2, tab3, tab4 = st.tabs(

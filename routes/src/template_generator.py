@@ -409,6 +409,8 @@ class ImprovedTemplateGenerator:
 
         step_library = InvestigationStepLibrary()
 
+        print("Alert data is coming here")
+        print(alert_data)
         # Generate 6-7 steps directly from analysis
         generated_steps = step_library.generate_steps_from_manual_analysis(
             alert_name=alert_name,

@@ -987,9 +987,9 @@ def display_interactive_steps(
                             st.text(existing_output)
                             st.markdown("</div>", unsafe_allow_html=True)
 
-                # IP Reputation section
+                # IP Reputation section with VPN detection
                 elif _is_ip_reputation_step(step):
-                    st.markdown("##### 🛡️ IP Reputation Check")
+                    st.markdown("##### 🛡️ IP Reputation & VPN Detection")
 
                     # Extract IPs directly from entities
                     entity_ips = (
@@ -1006,6 +1006,7 @@ def display_interactive_steps(
                                 st.code(ip)
 
                     st.markdown("##### 📝 Enter Additional IPs (optional)")
+                    st.caption("🔐 VPN, Proxy, and Tor detection included automatically")
 
                     default_text = "\n".join(entity_ips) if entity_ips else ""
 
@@ -1021,7 +1022,7 @@ def display_interactive_steps(
                     col1, col2, col3 = st.columns([2, 2, 1])
                     with col3:
                         check_button = st.button(
-                            "🔍 Check All IPs",
+                            "🔍 Check IPs + VPN",
                             key=f"vt_check_step_{step_num}",
                             type="primary",
                             width="stretch",
@@ -1143,7 +1144,7 @@ def display_interactive_steps(
 
 
 def _is_ip_reputation_step(step: dict) -> bool:
-    """Check if step is an IP reputation step"""
+    """Check if step is an IP reputation step (includes VPN detection)"""
     step_name_lower = step.get("step_name", "").lower()
     explanation_lower = step.get("explanation", "").lower()
 
@@ -1152,6 +1153,10 @@ def _is_ip_reputation_step(step: dict) -> bool:
         or ("virustotal" in explanation_lower)
         or ("virus total" in step_name_lower)
         or ("virus total" in explanation_lower)
+        or ("vpn" in step_name_lower)
+        or ("vpn" in explanation_lower)
+        or ("proxy" in step_name_lower)
+        or ("proxy" in explanation_lower)
         or (contains_ip_not_vip(step_name_lower) and "reputation" in step_name_lower)
     )
 
@@ -1159,7 +1164,7 @@ def _is_ip_reputation_step(step: dict) -> bool:
 def _process_ip_reputation_check(
     ip_input: str, step_num: int, rule_number: str, state_mgr: TriagingStateManager
 ):
-    """Process IP reputation check and display results"""
+    """Process IP reputation check and display results with VPN detection"""
     import re
 
     ip_list = re.split(r"[,\n\s]+", ip_input)
@@ -1169,7 +1174,7 @@ def _process_ip_reputation_check(
         st.error("❌ No valid IP addresses found.")
         return
 
-    st.info(f"🔍 Processing {len(ip_list)} IP address(es)...")
+    st.info(f"🔍 Processing {len(ip_list)} IP address(es) with VPN detection...")
 
     if "ip_checker" not in st.session_state:
         st.session_state.ip_checker = IPReputationChecker()
@@ -1181,6 +1186,16 @@ def _process_ip_reputation_check(
     progress_bar.progress(100)
     progress_bar.empty()
 
+    # Display detailed results for each IP
+    st.markdown("### 📊 Detailed Results")
+    for ip, result in results.items():
+        if result.get("formatted_output"):
+            with st.expander(f"🔍 {ip} - {result.get('risk_level', 'Unknown')}", expanded=True):
+                st.text(result["formatted_output"])
+        elif result.get("skip_check"):
+            with st.expander(f"ℹ️ {ip} - {result.get('ip_type', 'Skipped')}", expanded=False):
+                st.info(result.get("message", "No check needed"))
+
     # Aggregate output for Excel
     formatted_output_excel = ""
     for ip, result in results.items():
@@ -1190,16 +1205,24 @@ def _process_ip_reputation_check(
     # Save to state
     state_mgr.save_step_data(step_num, output=formatted_output_excel.strip())
 
+    st.success(f"✅ Completed checking {len(ip_list)} IP address(es) with VPN detection!")
     st.markdown("---")
-    st.success(f"✅ Completed checking {len(ip_list)} IP address(es)!")
 
-    # Display summary metrics
+    # Display summary metrics including VPN detection
     high_risk = sum(1 for r in results.values() if r.get("risk_level") == "HIGH")
     medium_risk = sum(1 for r in results.values() if r.get("risk_level") == "MEDIUM")
     low_risk = sum(
         1 for r in results.values() if r.get("risk_level") in ["LOW", "CLEAN"]
     )
     skipped = sum(1 for r in results.values() if r.get("skip_check", False))
+    
+    # VPN detection metrics
+    vpn_detected = sum(1 for r in results.values() 
+                      if r.get("vpn_detection", {}).get("is_vpn", False))
+    tor_detected = sum(1 for r in results.values() 
+                      if r.get("vpn_detection", {}).get("is_tor", False))
+    proxy_detected = sum(1 for r in results.values() 
+                        if r.get("vpn_detection", {}).get("is_proxy", False))
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -1210,8 +1233,20 @@ def _process_ip_reputation_check(
         st.metric("🟢 Clean", low_risk)
     with col4:
         st.metric("ℹ️ Skipped", skipped)
+    
+    # VPN metrics row (always show)
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("🔒 VPN Detected", vpn_detected)
+    with col2:
+        st.metric("🕵️ Tor Detected", tor_detected)
+    with col3:
+        st.metric("🌐 Proxy Detected", proxy_detected)
+    with col4:
+        total_anonymous = vpn_detected + tor_detected + proxy_detected
+        st.metric("⚠️ Total Anonymous", total_anonymous)
 
-    st.info("💾 All results have been saved to the Output field for Excel export.")
+    st.info("💾 All results including VPN detection have been saved to the Output field for Excel export.")
 
 
 def generate_final_excel(
