@@ -101,7 +101,7 @@ def run_query(table_name, limit=1000):
     if table_name == "SigninLogs":
         query = f"""
 {table_name}
-| where TimeGenerated >= ago(30d)
+| where TimeGenerated >= ago(7d)
 | where ResultType != "0"
 | order by TimeGenerated desc
 | take {limit}
@@ -110,7 +110,7 @@ def run_query(table_name, limit=1000):
     else:
         query = f"""
 {table_name}
-| where TimeGenerated >= ago(30d)
+| where TimeGenerated >= ago(7d)
 | order by TimeGenerated desc
 | take {limit}
 """

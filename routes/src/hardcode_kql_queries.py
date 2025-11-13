@@ -78,7 +78,7 @@ class HardcodedKQLQueries:
     # ==================== VIP / EXECUTIVE VERIFICATION ====================
 
     VIP_ACCOUNT_VERIFICATION = """SigninLogs
-| where TimeGenerated > ago(30d)
+| where TimeGenerated > ago(7d)
 | where UserPrincipalName == "<USER_EMAIL>"
 | summarize
     TotalSignIns = count(),
@@ -117,7 +117,7 @@ class HardcodedKQLQueries:
     # ==================== GEOGRAPHIC & IMPOSSIBLE TRAVEL ====================
 
     GEOGRAPHIC_IMPOSSIBLE_TRAVEL = """SigninLogs
-| where TimeGenerated > ago(30d)
+| where TimeGenerated > ago(7d)
 | where UserPrincipalName == "<USER_EMAIL>"
 | extend
     Country = tostring(LocationDetails.countryOrRegion),
@@ -219,7 +219,7 @@ class HardcodedKQLQueries:
     # ==================== BEHAVIORAL ANOMALY DETECTION ====================
 
     BEHAVIORAL_ANOMALY_DETECTION = """SigninLogs
-| where TimeGenerated > ago(14d)
+| where TimeGenerated > ago(7d)
 | where UserPrincipalName == "<USER_EMAIL>"
 | extend Hour = toint(datetime_part("Hour", TimeGenerated)), DayOfWeek = toint(dayofweek(TimeGenerated))
 | extend DayName = case(
@@ -386,7 +386,7 @@ TimeWindow = case(
     # ==================== ROLE & PERMISSION ANALYSIS ====================
 
     ROLE_PERMISSION_ANALYSIS = """SigninLogs
-| where TimeGenerated > ago(30d)
+| where TimeGenerated > ago(7d)
 | where UserPrincipalName == "<USER_EMAIL>"
 | extend AppCategory = case(
     AppDisplayName has "Admin" or AppDisplayName has "Center" or AppDisplayName has "Portal", "Administrative",

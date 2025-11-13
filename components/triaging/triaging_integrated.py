@@ -417,7 +417,7 @@ def _process_vip_user_check(
             """
         **Placeholders in template:**
         - `<USER_EMAIL>` → Will be replaced with alert entities
-        - `ago(30d)` → Will be converted to absolute date range based on alert time
+        - `ago(7d)` → Will be converted to absolute date range based on alert time
         - VIP users will be added as a datatable at the top
         """
         )
@@ -1006,7 +1006,9 @@ def display_interactive_steps(
                                 st.code(ip)
 
                     st.markdown("##### 📝 Enter Additional IPs (optional)")
-                    st.caption("🔐 VPN, Proxy, and Tor detection included automatically")
+                    st.caption(
+                        "🔐 VPN, Proxy, and Tor detection included automatically"
+                    )
 
                     default_text = "\n".join(entity_ips) if entity_ips else ""
 
@@ -1190,10 +1192,14 @@ def _process_ip_reputation_check(
     st.markdown("### 📊 Detailed Results")
     for ip, result in results.items():
         if result.get("formatted_output"):
-            with st.expander(f"🔍 {ip} - {result.get('risk_level', 'Unknown')}", expanded=True):
+            with st.expander(
+                f"🔍 {ip} - {result.get('risk_level', 'Unknown')}", expanded=True
+            ):
                 st.text(result["formatted_output"])
         elif result.get("skip_check"):
-            with st.expander(f"ℹ️ {ip} - {result.get('ip_type', 'Skipped')}", expanded=False):
+            with st.expander(
+                f"ℹ️ {ip} - {result.get('ip_type', 'Skipped')}", expanded=False
+            ):
                 st.info(result.get("message", "No check needed"))
 
     # Aggregate output for Excel
@@ -1205,7 +1211,9 @@ def _process_ip_reputation_check(
     # Save to state
     state_mgr.save_step_data(step_num, output=formatted_output_excel.strip())
 
-    st.success(f"✅ Completed checking {len(ip_list)} IP address(es) with VPN detection!")
+    st.success(
+        f"✅ Completed checking {len(ip_list)} IP address(es) with VPN detection!"
+    )
     st.markdown("---")
 
     # Display summary metrics including VPN detection
@@ -1215,14 +1223,17 @@ def _process_ip_reputation_check(
         1 for r in results.values() if r.get("risk_level") in ["LOW", "CLEAN"]
     )
     skipped = sum(1 for r in results.values() if r.get("skip_check", False))
-    
+
     # VPN detection metrics
-    vpn_detected = sum(1 for r in results.values() 
-                      if r.get("vpn_detection", {}).get("is_vpn", False))
-    tor_detected = sum(1 for r in results.values() 
-                      if r.get("vpn_detection", {}).get("is_tor", False))
-    proxy_detected = sum(1 for r in results.values() 
-                        if r.get("vpn_detection", {}).get("is_proxy", False))
+    vpn_detected = sum(
+        1 for r in results.values() if r.get("vpn_detection", {}).get("is_vpn", False)
+    )
+    tor_detected = sum(
+        1 for r in results.values() if r.get("vpn_detection", {}).get("is_tor", False)
+    )
+    proxy_detected = sum(
+        1 for r in results.values() if r.get("vpn_detection", {}).get("is_proxy", False)
+    )
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -1233,7 +1244,7 @@ def _process_ip_reputation_check(
         st.metric("🟢 Clean", low_risk)
     with col4:
         st.metric("ℹ️ Skipped", skipped)
-    
+
     # VPN metrics row (always show)
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -1246,7 +1257,9 @@ def _process_ip_reputation_check(
         total_anonymous = vpn_detected + tor_detected + proxy_detected
         st.metric("⚠️ Total Anonymous", total_anonymous)
 
-    st.info("💾 All results including VPN detection have been saved to the Output field for Excel export.")
+    st.info(
+        "💾 All results including VPN detection have been saved to the Output field for Excel export."
+    )
 
 
 def generate_final_excel(

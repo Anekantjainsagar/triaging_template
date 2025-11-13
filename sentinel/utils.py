@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 load_dotenv()
 
+
 def check_signin_logs_freshness():
     """Check if SigninLogs.json needs to be refreshed"""
     signin_logs_path = "sentinel_logs/SigninLogs.json"
@@ -77,7 +78,7 @@ def refresh_signin_logs():
 
         query = """
         SigninLogs
-        | where TimeGenerated >= ago(30d)
+        | where TimeGenerated >= ago(7d)
         | where ResultType != "0"
         | order by TimeGenerated desc
         | take 1000000

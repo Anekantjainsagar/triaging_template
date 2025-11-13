@@ -672,12 +672,16 @@ class KQLQueryStandardizer:
         return any(re.search(pattern, logic, re.IGNORECASE) for pattern in ip_patterns)
 
     def _build_time_filter(self, reference_datetime_obj: Optional[datetime]) -> str:
-        """Build standardized TimeGenerated filter"""
+        """Build standardized TimeGenerated filter with centered windowing"""
 
         if reference_datetime_obj:
-            start_dt = reference_datetime_obj - timedelta(days=7)
+            # Centered 7-day window around alert time
+            half_delta = timedelta(days=3.5)  # 7 days / 2
+            start_dt = reference_datetime_obj - half_delta
+            end_dt = reference_datetime_obj + half_delta
+            
             start_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
-            end_str = reference_datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+            end_str = end_dt.strftime("%Y-%m-%d %H:%M:%S")
 
             return (
                 f"| where TimeGenerated > datetime({start_str}Z) "

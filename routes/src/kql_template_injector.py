@@ -20,12 +20,12 @@ class AlertEntityExtractor:
         """Extract all entities from alert_data with comprehensive debug logging"""
 
         print(f"\n{'='*80}")
-        print(f"🔍 ENTITY EXTRACTION DEBUG")
+        print(f"ENTITY EXTRACTION DEBUG")
         print(f"{'='*80}\n")
 
         # ===== DATETIME EXTRACTION =====
         try:
-            print(f"📅 Extracting Reference DateTime...")
+            print(f"Extracting Reference DateTime...")
 
             # Try multiple paths to find timeGenerated
             full_alert = self.alert_data.get("full_alert", {})
@@ -36,7 +36,7 @@ class AlertEntityExtractor:
 
                 if time_str:
                     print(
-                        f"   ✅ Found timeGenerated in full_alert.properties: {time_str}"
+                        f"   [OK] Found timeGenerated in full_alert.properties: {time_str}"
                     )
                     self.reference_datetime_obj = datetime.fromisoformat(
                         time_str.replace("Z", "+00:00")
@@ -45,7 +45,7 @@ class AlertEntityExtractor:
                         "%Y-%m-%d %H:%M:%S"
                     )
                 else:
-                    print(f"   ⚠️ timeGenerated not found in full_alert.properties")
+                    print(f"   [WARN] timeGenerated not found in full_alert.properties")
 
             # Fallback: Check top-level
             if not self.reference_datetime:
@@ -53,7 +53,7 @@ class AlertEntityExtractor:
                     "time_generated"
                 )
                 if time_str:
-                    print(f"   ✅ Found timeGenerated at top level: {time_str}")
+                    print(f"   [OK] Found timeGenerated at top level: {time_str}")
                     self.reference_datetime_obj = datetime.fromisoformat(
                         time_str.replace("Z", "+00:00")
                     )
@@ -63,49 +63,49 @@ class AlertEntityExtractor:
 
             # Last fallback: Use current time
             if not self.reference_datetime:
-                print(f"   ⚠️ No timeGenerated found, using current UTC time")
+                print(f"   [WARN] No timeGenerated found, using current UTC time")
                 self.reference_datetime_obj = datetime.utcnow()
                 self.reference_datetime = self.reference_datetime_obj.strftime(
                     "%Y-%m-%d %H:%M:%S"
                 )
 
-            print(f"   📅 Reference DateTime: {self.reference_datetime}")
+            print(f"   Reference DateTime: {self.reference_datetime}")
 
         except Exception as e:
-            print(f"   ❌ Error parsing datetime: {e}")
+            print(f"   [ERROR] Error parsing datetime: {e}")
             self.reference_datetime_obj = datetime.utcnow()
             self.reference_datetime = self.reference_datetime_obj.strftime(
                 "%Y-%m-%d %H:%M:%S"
             )
-            print(f"   🔄 Fallback to current time: {self.reference_datetime}")
+            print(f"   [INFO] Fallback to current time: {self.reference_datetime}")
 
         # ===== ENTITY EXTRACTION =====
-        print(f"\n👥 Extracting Entities...")
+        print(f"\nExtracting Entities...")
 
         entities = self.alert_data.get("entities", {})
-        print(f"   📦 Entities container type: {type(entities)}")
+        print(f"   Entities container type: {type(entities)}")
 
         # Handle different entity structures
         if isinstance(entities, dict):
             entities_list = entities.get("entities", [])
-            print(f"   📋 Found entities.entities list: {len(entities_list)} items")
+            print(f"   Found entities.entities list: {len(entities_list)} items")
         elif isinstance(entities, list):
             entities_list = entities
-            print(f"   📋 Entities is already a list: {len(entities_list)} items")
+            print(f"   Entities is already a list: {len(entities_list)} items")
         else:
             entities_list = []
-            print(f"   ⚠️ Unexpected entities structure: {entities}")
+            print(f"   [WARN] Unexpected entities structure: {entities}")
 
         if not entities_list:
-            print(f"   ⚠️ No entities found in alert_data")
-            print(f"   🔍 Alert data keys: {list(self.alert_data.keys())}")
+            print(f"   [WARN] No entities found in alert_data")
+            print(f"   Alert data keys: {list(self.alert_data.keys())}")
 
         # Process each entity
         for idx, entity in enumerate(entities_list):
             kind = entity.get("kind", "").lower()
             props = entity.get("properties", {})
 
-            print(f"\n   🔹 Entity {idx + 1}: {kind.upper()}")
+            print(f"\n   Entity {idx + 1}: {kind.upper()}")
             print(f"      Properties keys: {list(props.keys())}")
 
             # ===== ACCOUNT ENTITIES =====
@@ -114,7 +114,7 @@ class AlertEntityExtractor:
                 upn_suffix = props.get("upnSuffix", "")
                 friendly_name = props.get("friendlyName", "")
 
-                print(f"      👤 Account Details:")
+                print(f"      Account Details:")
                 print(f"         accountName: {account_name}")
                 print(f"         upnSuffix: {upn_suffix}")
                 print(f"         friendlyName: {friendly_name}")
@@ -197,18 +197,17 @@ class TemplateKQLInjector:
 
     def _convert_ago_to_absolute_datetime(self, kql: str) -> str:
         """
-        Convert ago(Xd/h/m) to absolute datetime ranges with smart windowing around alert time
+        Convert ago(Xd/h/m) to absolute datetime ranges with centered windowing around alert time
         
-        For 7 days: Creates window from (alert_time - 4 days) to (alert_time + 3 days)
-        If alert is recent (within 3 days of now): Uses (alert_time - 7 days) to alert_time
+        For any period: Creates centered window around alert time
+        Example: 7 days with alert on 12th → 6th to 19th (3.5 days each side, rounded)
         """
         if not self.reference_datetime_obj:
             print(f"   ⚠️ No reference datetime available for ago() conversion")
             return kql
 
-        print(f"   🔄 Converting ago() patterns to smart datetime windows...")
+        print(f"   🔄 Converting ago() patterns to centered datetime windows...")
         conversion_count = 0
-        now = datetime.utcnow().replace(tzinfo=self.reference_datetime_obj.tzinfo)
 
         def replace_ago(match):
             nonlocal conversion_count
@@ -232,36 +231,18 @@ class TemplateKQLInjector:
                 print(f"      ⚠️ Unknown ago unit: {ago_unit}")
                 return match.group(0)
 
-            # Smart windowing logic
-            days_from_now = (now - self.reference_datetime_obj).days
+            # Centered windowing logic - always center around alert time
+            half_delta = delta / 2
+            start_dt = self.reference_datetime_obj - half_delta
+            end_dt = self.reference_datetime_obj + half_delta
             
-            if ago_unit == "d" and ago_value >= 7:
-                # For 7+ day queries, use smart windowing
-                if days_from_now <= 3:
-                    # Alert is recent - look back from alert time
-                    start_dt = self.reference_datetime_obj - delta
-                    end_dt = self.reference_datetime_obj
-                    window_type = "lookback"
-                else:
-                    # Alert is older - create window around alert time
-                    past_days = ago_value // 2 + 1  # 4 days for 7-day window
-                    future_days = ago_value - past_days  # 3 days for 7-day window
-                    start_dt = self.reference_datetime_obj - timedelta(days=past_days)
-                    end_dt = self.reference_datetime_obj + timedelta(days=future_days)
-                    window_type = "centered"
-            else:
-                # For shorter periods, use traditional lookback
-                start_dt = self.reference_datetime_obj - delta
-                end_dt = self.reference_datetime_obj
-                window_type = "lookback"
-
             start_dt_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
             end_dt_str = end_dt.strftime("%Y-%m-%d %H:%M:%S")
 
             conversion_count += 1
             print(f"      ✅ Converted ago({ago_value}{ago_unit}) → {start_dt_str} to {end_dt_str}")
-            print(f"         Window type: {window_type} ({ago_value} {unit_name})")
-            print(f"         Alert age: {days_from_now} days from now")
+            print(f"         Window: Centered around alert time ({ago_value} {unit_name} total)")
+            print(f"         Alert time: {self.reference_datetime_obj.strftime('%Y-%m-%d %H:%M:%S')}")
 
             return f"datetime({start_dt_str}Z) and TimeGenerated <= datetime({end_dt_str}Z)"
 
@@ -275,7 +256,7 @@ class TemplateKQLInjector:
         )
 
         if conversion_count > 0:
-            print(f"   ✅ Converted {conversion_count} ago() pattern(s) with smart windowing")
+            print(f"   ✅ Converted {conversion_count} ago() pattern(s) with centered windowing")
         else:
             print(f"   ℹ️ No ago() patterns found in query")
 
