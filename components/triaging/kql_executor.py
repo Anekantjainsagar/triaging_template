@@ -7,6 +7,7 @@ import os
 import json
 import requests
 import pandas as pd
+import streamlit as st
 from typing import Dict, Optional, Tuple
 from dotenv import load_dotenv
 from azure.identity import DefaultAzureCredential
@@ -36,7 +37,7 @@ class KQLExecutor:
 
     def execute_query(
         self, kql_query: str, timespan: str = "P7D"
-    ) -> Tuple[bool, Optional[str], Optional[Dict]]:
+    ) -> Tuple[bool, Optional[str], Optional[Dict], Optional[pd.DataFrame]]:
         """
         Execute KQL query and return formatted results
 
@@ -45,7 +46,7 @@ class KQLExecutor:
             timespan: Time range for the query (default: P7D = 7 days)
 
         Returns:
-            Tuple of (success: bool, formatted_output: str, raw_results: dict)
+            Tuple of (success: bool, formatted_output: str, raw_results: dict, dataframe: pd.DataFrame)
         """
         try:
             # Get authentication token
@@ -67,14 +68,15 @@ class KQLExecutor:
             if response.status_code == 200:
                 results = response.json()
                 formatted_output = self._format_results(results)
-                return True, formatted_output, results
+                dataframe = self.format_results_as_dataframe(results)
+                return True, formatted_output, results, dataframe
             else:
                 error_msg = f"Query failed: {response.status_code} - {response.text}"
-                return False, error_msg, None
+                return False, error_msg, None, None
 
         except Exception as e:
             error_msg = f"Execution error: {str(e)}"
-            return False, error_msg, None
+            return False, error_msg, None, None
 
     def _format_results(self, results: Dict) -> str:
         """
@@ -131,6 +133,32 @@ class KQLExecutor:
         output_lines.append(f"\nTotal Records: {len(rows)}")
 
         return "\n".join(output_lines)
+
+    def format_results_as_dataframe(self, results: Dict) -> pd.DataFrame:
+        """
+        Format query results as pandas DataFrame for better display
+
+        Args:
+            results: Raw API response
+
+        Returns:
+            pandas DataFrame
+        """
+        if not results.get("tables"):
+            return pd.DataFrame()
+
+        table = results["tables"][0]
+        columns = table["columns"]
+        rows = table["rows"]
+
+        if not rows:
+            return pd.DataFrame()
+
+        # Create DataFrame
+        headers = [col["name"] for col in columns]
+        df = pd.DataFrame(rows, columns=headers)
+        
+        return df
 
     def format_results_as_markdown(self, results: Dict) -> str:
         """
@@ -210,7 +238,7 @@ class KQLExecutor:
 # Convenience function for quick execution
 def execute_kql(
     query: str, timespan: str = "P7D"
-) -> Tuple[bool, Optional[str], Optional[Dict]]:
+) -> Tuple[bool, Optional[str], Optional[Dict], Optional[pd.DataFrame]]:
     """
     Quick function to execute a KQL query
 
@@ -219,7 +247,7 @@ def execute_kql(
         timespan: Time range (default: P7D)
 
     Returns:
-        Tuple of (success, formatted_output, raw_results)
+        Tuple of (success, formatted_output, raw_results, dataframe)
     """
     executor = KQLExecutor()
     return executor.execute_query(query, timespan)

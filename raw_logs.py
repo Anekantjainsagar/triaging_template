@@ -626,7 +626,7 @@ def show_alert_detail_modal(alert):
             "← Back to Dashboard",
             key="back_button_modal",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         ):
             st.session_state.show_overlay = False
             st.session_state.selected_alert = None
@@ -640,7 +640,7 @@ def show_alert_detail_modal(alert):
             "🚀 Analyze in SOC Hub",
             key="analyze_soc_sidebar",
             type="secondary",
-            use_container_width=True,
+            width="stretch",
             help="Open in SOC Hub for AI-powered analysis",
         ):
             # Convert raw alert to SOC format
@@ -676,7 +676,7 @@ def show_alert_detail_modal(alert):
             "🤖 Analyze in SOC Hub",
             key="analyze_soc_top",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             help="Open in SOC Hub for AI-powered analysis",
         ):
             # Convert raw alert to SOC format
@@ -751,12 +751,12 @@ def show_user_activity_detail(alert):
             cols.insert(0, "ipAddress")
             locations_df = locations_df[cols]
 
-        st.dataframe(locations_df, use_container_width=True)
+        st.dataframe(locations_df, width="stretch")
 
     if alert.get("applications"):
         st.markdown("### 📱 Applications Accessed")
         apps_df = pd.DataFrame(alert["applications"])
-        st.dataframe(apps_df, use_container_width=True)
+        st.dataframe(apps_df, width="stretch")
 
     if alert.get("timeline"):
         st.markdown("### 📅 Activity Timeline")
@@ -957,7 +957,7 @@ def show_fetch_panel():
     col_btn1, col_btn2 = st.columns([1, 4])
 
     with col_btn1:
-        if st.button("🚀 Fetch & Process", type="primary", use_container_width=True):
+        if st.button("🚀 Fetch & Process", type="primary", width="stretch"):
             base_dir = st.session_state.get("base_dir", "sentinel_logs1")
 
             # Validate dates
@@ -1040,7 +1040,7 @@ def show_fetch_panel():
                     st.exception(e)
 
     with col_btn2:
-        if st.button("Cancel", use_container_width=True):
+        if st.button("Cancel", width="stretch"):
             st.session_state.show_fetch_panel = False
             st.rerun()
 
@@ -1057,7 +1057,7 @@ def main():
                 "← Back to Alerts Dashboard",
                 key="back_to_dashboard",
                 type="primary",
-                use_container_width=True,
+                width="stretch",
             ):
                 st.session_state.show_soc_analysis = False
                 st.session_state.soc_analysis_data = None
@@ -1117,7 +1117,7 @@ def main():
             st.session_state.base_dir = base_dir
 
         # Fetch data button
-        if st.button("🔄 Fetch New Data", type="primary", use_container_width=True):
+        if st.button("🔄 Fetch New Data", type="primary", width="stretch"):
             st.session_state.show_fetch_panel = True
             st.rerun()
 
@@ -1133,7 +1133,7 @@ def main():
                 st.session_state.alerts = []
 
         # Manual reload button
-        if st.button("🔃 Reload Alerts", use_container_width=True):
+        if st.button("🔃 Reload Alerts", width="stretch"):
             if os.path.exists(base_dir):
                 with st.spinner("Reloading all alerts..."):
                     st.session_state.alerts = load_all_alerts(base_dir)
@@ -1364,7 +1364,7 @@ def main():
                     if st.button(
                         "👁️ View",
                         key=f"view_{global_idx}_{alert['alert_id']}_{st.session_state.current_page}",
-                        use_container_width=True,
+                        width="stretch",
                         type="secondary",
                     ):
                         st.session_state.selected_alert = alert
@@ -1376,7 +1376,7 @@ def main():
                     if st.button(
                         "🤖 Analyze",
                         key=f"analyze_{global_idx}_{alert['alert_id']}_{st.session_state.current_page}",
-                        use_container_width=True,
+                        width="stretch",
                         type="primary",
                         help="Open in SOC Hub for AI-powered analysis",
                     ):

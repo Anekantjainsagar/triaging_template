@@ -142,7 +142,7 @@ def contains_ip_not_vip(text):
 def _execute_kql_query(
     step_num: int, rule_number: str, kql_query: str, state_mgr: TriagingStateManager
 ):
-    """Execute KQL query and save results - FIXED"""
+    """Execute KQL query and save results with enhanced table display"""
     try:
         if "kql_executor" not in st.session_state:
             st.session_state.kql_executor = KQLExecutor()
@@ -150,18 +150,22 @@ def _execute_kql_query(
         executor = st.session_state.kql_executor
 
         with st.spinner("🔄 Executing KQL query..."):
-            success, formatted_output, raw_results = executor.execute_query(kql_query)
+            success, formatted_output, raw_results, dataframe = executor.execute_query(
+                kql_query
+            )
 
         if success:
             output_key = f"output_{rule_number}_{step_num}"
+            df_key = f"dataframe_{rule_number}_{step_num}"
 
-            # CRITICAL FIX 1: Save to state manager FIRST
+            # Save to state manager
             state_mgr.save_step_data(step_num, output=formatted_output)
 
-            # CRITICAL FIX 2: Also save to session state for immediate display
+            # Save to session state for immediate display
             st.session_state[output_key] = formatted_output
+            st.session_state[df_key] = dataframe
 
-            # CRITICAL FIX 3: Force state update to persist
+            # Force state update to persist
             st.session_state[state_mgr.state_key]["step_outputs"][
                 f"step_{step_num}"
             ] = formatted_output
@@ -171,14 +175,14 @@ def _execute_kql_query(
 
             print(f"✅ Output saved for step {step_num}: {len(formatted_output)} chars")
 
-            return True, formatted_output
+            return True, formatted_output, dataframe
         else:
             st.error(f"❌ Query execution failed: {formatted_output}")
-            return False, None
+            return False, None, None
 
     except Exception as e:
         st.error(f"❌ Execution error: {str(e)}")
-        return False, None
+        return False, None, None
 
 
 def _extract_users_from_entities(alert_data: dict) -> list:
@@ -467,53 +471,15 @@ def _process_vip_user_check(
             )
         else:
             # Execute the KQL query
-            success, output = _execute_kql_query(
+            success, output, dataframe = _execute_kql_query(
                 step_num, rule_number, kql_query, state_mgr
             )
 
             if success:
                 st.success("✅ VIP user verification query executed successfully!")
-
-                # ===================================================================
-                # STEP 9: Display Results in Highlighted Container
-                # ===================================================================
-                st.markdown("##### 📊 Query Results")
-                st.markdown(
-                    """
-                    <div style="
-                        background-color: #f0f7ff;
-                        border-left: 4px solid #1976d2;
-                        padding: 15px;
-                        border-radius: 5px;
-                        font-family: 'Courier New', monospace;
-                        font-size: 13px;
-                        max-height: 400px;
-                        overflow-y: auto;
-                        white-space: pre-wrap;
-                        word-wrap: break-word;
-                    ">""",
-                    unsafe_allow_html=True,
+                _display_query_results(
+                    output, dataframe, step_num, rule_number, state_mgr
                 )
-                st.text(output)
-                st.markdown("</div>", unsafe_allow_html=True)
-
-                # ===================================================================
-                # STEP 10: Provide Editable Text Area
-                # ===================================================================
-                st.markdown("##### ✏️ Edit Output (if needed)")
-                output_key = f"output_{rule_number}_{step_num}"
-                edited_output = st.text_area(
-                    "Modify results:",
-                    value=output,
-                    height=150,
-                    key=f"edit_{output_key}",
-                    label_visibility="collapsed",
-                )
-
-                # Save changes if user edits
-                if edited_output != output:
-                    state_mgr.save_step_data(step_num, output=edited_output)
-                    st.info("💾 Changes saved")
             else:
                 st.error("❌ Query execution failed. Check the error details above.")
 
@@ -526,26 +492,16 @@ def _process_vip_user_check(
         existing_output = step_data["output"]
 
         if existing_output:
-            st.markdown("##### 📊 Saved Results (from previous execution)")
-            st.markdown(
-                """
-                <div style="
-                    background-color: #f0f7ff;
-                    border-left: 4px solid #1976d2;
-                    padding: 15px;
-                    border-radius: 5px;
-                    font-family: 'Courier New', monospace;
-                    font-size: 13px;
-                    max-height: 400px;
-                    overflow-y: auto;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                ">""",
-                unsafe_allow_html=True,
+            df_key = f"dataframe_{rule_number}_{step_num}"
+            existing_df = st.session_state.get(df_key)
+            _display_query_results(
+                existing_output,
+                existing_df,
+                step_num,
+                rule_number,
+                state_mgr,
+                is_existing=True,
             )
-            st.text(existing_output)
-            st.markdown("</div>", unsafe_allow_html=True)
-
             st.info("💡 Click 'Execute Query' above to run again with updated data")
 
 
@@ -901,7 +857,21 @@ def display_interactive_steps(
                     if kql_explanation:
                         st.write(kql_explanation)
 
-                    st.code(kql_query, language="kql")
+                    # Editable KQL Query
+                    query_key = f"editable_kql_{rule_number}_{step_num}"
+                    if query_key not in st.session_state:
+                        st.session_state[query_key] = kql_query
+
+                    edited_query = st.text_area(
+                        "KQL Query (editable):",
+                        value=st.session_state[query_key],
+                        height=200,
+                        key=f"kql_editor_{step_num}",
+                        help="You can modify this query before execution",
+                    )
+
+                    # Update session state when query changes
+                    st.session_state[query_key] = edited_query
 
                     col1, col2, col3 = st.columns([2, 1, 2])
                     with col2:
@@ -916,76 +886,32 @@ def display_interactive_steps(
                         if not os.getenv("LOG_ANALYTICS_WORKSPACE_ID"):
                             st.error("❌ Log Analytics Workspace ID not configured.")
                         else:
-                            success, output = _execute_kql_query(
-                                step_num, rule_number, kql_query, state_mgr
+                            success, output, dataframe = _execute_kql_query(
+                                step_num, rule_number, edited_query, state_mgr
                             )
 
                             if success:
                                 st.success("✅ Query executed successfully!")
-
-                                # Display output in highlighted container
-                                st.markdown("##### 📊 Query Results")
-                                st.markdown(
-                                    """
-                                    <div style="
-                                        background-color: #f0f7ff;
-                                        border-left: 4px solid #1976d2;
-                                        padding: 15px;
-                                        border-radius: 5px;
-                                        font-family: 'Courier New', monospace;
-                                        font-size: 13px;
-                                        max-height: 400px;
-                                        overflow-y: auto;
-                                        white-space: pre-wrap;
-                                        word-wrap: break-word;
-                                    ">""",
-                                    unsafe_allow_html=True,
+                                _display_query_results(
+                                    output, dataframe, step_num, rule_number, state_mgr
                                 )
-                                st.text(output)
-                                st.markdown("</div>", unsafe_allow_html=True)
-
-                                # Provide editable text area below
-                                st.markdown("##### ✏️ Edit Output (if needed)")
-                                output_key = f"output_{rule_number}_{step_num}"
-                                edited_output = st.text_area(
-                                    "Modify results:",
-                                    value=output,
-                                    height=150,
-                                    key=f"edit_{output_key}",
-                                    label_visibility="collapsed",
-                                )
-
-                                if edited_output != output:
-                                    state_mgr.save_step_data(
-                                        step_num, output=edited_output
-                                    )
-                                    st.info("💾 Changes saved")
 
                     else:
                         # Show existing output if any
                         step_data = state_mgr.get_step_data(step_num)
                         existing_output = step_data["output"]
+                        df_key = f"dataframe_{rule_number}_{step_num}"
+                        existing_df = st.session_state.get(df_key)
 
                         if existing_output:
-                            st.markdown("##### 📊 Saved Results")
-                            st.markdown(
-                                """
-                                <div style="
-                                    background-color: #f0f7ff;
-                                    border-left: 4px solid #1976d2;
-                                    padding: 15px;
-                                    border-radius: 5px;
-                                    font-family: 'Courier New', monospace;
-                                    font-size: 13px;
-                                    max-height: 400px;
-                                    overflow-y: auto;
-                                    white-space: pre-wrap;
-                                    word-wrap: break-word;
-                                ">""",
-                                unsafe_allow_html=True,
+                            _display_query_results(
+                                existing_output,
+                                existing_df,
+                                step_num,
+                                rule_number,
+                                state_mgr,
+                                is_existing=True,
                             )
-                            st.text(existing_output)
-                            st.markdown("</div>", unsafe_allow_html=True)
 
                 # IP Reputation section with VPN detection
                 elif _is_ip_reputation_step(step):
@@ -1332,6 +1258,54 @@ def generate_final_excel(
     output.seek(0)
     print(f"\n✅ Excel generated with {len(outputs_list)} rows")
     return output.getvalue()
+
+
+def _display_query_results(
+    output: str,
+    dataframe: pd.DataFrame,
+    step_num: int,
+    rule_number: str,
+    state_mgr: TriagingStateManager,
+    is_existing: bool = False,
+):
+    """
+    Display query results in enhanced tabular format with editable output
+    """
+    if is_existing:
+        st.markdown("##### 📊 Saved Results (from previous execution)")
+    else:
+        st.markdown("##### 📊 Query Results")
+
+    # Display results count
+    if dataframe is not None and not dataframe.empty:
+        st.info(f"Results: {len(dataframe)} row(s) returned")
+
+        # Display as scrollable table
+        st.dataframe(dataframe, width="stretch", height=400, hide_index=True)
+
+        # Option to view raw text format
+        with st.expander("📄 View Raw Text Format", expanded=False):
+            st.text(output)
+    else:
+        # Fallback to text display if no dataframe
+        st.markdown(
+            """
+            <div style="
+                background-color: #f0f7ff;
+                border-left: 4px solid #1976d2;
+                padding: 15px;
+                border-radius: 5px;
+                font-family: 'Courier New', monospace;
+                font-size: 13px;
+                max-height: 400px;
+                overflow-y: auto;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            ">""",
+            unsafe_allow_html=True,
+        )
+        st.text(output)
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
