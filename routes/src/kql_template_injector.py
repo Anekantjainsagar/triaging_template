@@ -197,52 +197,73 @@ class TemplateKQLInjector:
 
     def _convert_ago_to_absolute_datetime(self, kql: str) -> str:
         """
-        Convert ago(Xd/h/m) to absolute datetime ranges based on reference_datetime
-
-        Examples:
-        - ago(7d) → reference_datetime - 7 days to reference_datetime
-        - ago(24h) → reference_datetime - 24 hours to reference_datetime
+        Convert ago(Xd/h/m) to absolute datetime ranges with smart windowing around alert time
+        
+        For 7 days: Creates window from (alert_time - 4 days) to (alert_time + 3 days)
+        If alert is recent (within 3 days of now): Uses (alert_time - 7 days) to alert_time
         """
         if not self.reference_datetime_obj:
             print(f"   ⚠️ No reference datetime available for ago() conversion")
             return kql
 
-        print(f"   🔄 Converting ago() patterns to absolute datetimes...")
+        print(f"   🔄 Converting ago() patterns to smart datetime windows...")
         conversion_count = 0
+        now = datetime.utcnow().replace(tzinfo=self.reference_datetime_obj.tzinfo)
 
-        # Find all ago() patterns and replace them
         def replace_ago(match):
             nonlocal conversion_count
             ago_value = int(match.group(1))
             ago_unit = match.group(2).lower()
 
-            # Calculate the start datetime
+            # Calculate time delta
             if ago_unit == "d":
-                start_dt = self.reference_datetime_obj - timedelta(days=ago_value)
+                delta = timedelta(days=ago_value)
                 unit_name = "days"
             elif ago_unit == "h":
-                start_dt = self.reference_datetime_obj - timedelta(hours=ago_value)
+                delta = timedelta(hours=ago_value)
                 unit_name = "hours"
             elif ago_unit == "m":
-                start_dt = self.reference_datetime_obj - timedelta(minutes=ago_value)
+                delta = timedelta(minutes=ago_value)
                 unit_name = "minutes"
             elif ago_unit == "s":
-                start_dt = self.reference_datetime_obj - timedelta(seconds=ago_value)
+                delta = timedelta(seconds=ago_value)
                 unit_name = "seconds"
             else:
                 print(f"      ⚠️ Unknown ago unit: {ago_unit}")
                 return match.group(0)
 
+            # Smart windowing logic
+            days_from_now = (now - self.reference_datetime_obj).days
+            
+            if ago_unit == "d" and ago_value >= 7:
+                # For 7+ day queries, use smart windowing
+                if days_from_now <= 3:
+                    # Alert is recent - look back from alert time
+                    start_dt = self.reference_datetime_obj - delta
+                    end_dt = self.reference_datetime_obj
+                    window_type = "lookback"
+                else:
+                    # Alert is older - create window around alert time
+                    past_days = ago_value // 2 + 1  # 4 days for 7-day window
+                    future_days = ago_value - past_days  # 3 days for 7-day window
+                    start_dt = self.reference_datetime_obj - timedelta(days=past_days)
+                    end_dt = self.reference_datetime_obj + timedelta(days=future_days)
+                    window_type = "centered"
+            else:
+                # For shorter periods, use traditional lookback
+                start_dt = self.reference_datetime_obj - delta
+                end_dt = self.reference_datetime_obj
+                window_type = "lookback"
+
             start_dt_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+            end_dt_str = end_dt.strftime("%Y-%m-%d %H:%M:%S")
 
             conversion_count += 1
-            print(
-                f"      ✅ Converted ago({ago_value}{ago_unit}) → {start_dt_str} to {self.reference_datetime}"
-            )
-            print(f"         (Looking back {ago_value} {unit_name} from alert time)")
+            print(f"      ✅ Converted ago({ago_value}{ago_unit}) → {start_dt_str} to {end_dt_str}")
+            print(f"         Window type: {window_type} ({ago_value} {unit_name})")
+            print(f"         Alert age: {days_from_now} days from now")
 
-            # Return the replacement: datetime(start) and TimeGenerated <= datetime(end)
-            return f"datetime({start_dt_str}Z) and TimeGenerated <= datetime({self.reference_datetime}Z)"
+            return f"datetime({start_dt_str}Z) and TimeGenerated <= datetime({end_dt_str}Z)"
 
         # Replace: TimeGenerated > ago(7d)
         ago_pattern = r"TimeGenerated\s*>\s*ago\((\d+)([dhms])\)"
@@ -254,7 +275,7 @@ class TemplateKQLInjector:
         )
 
         if conversion_count > 0:
-            print(f"   ✅ Converted {conversion_count} ago() pattern(s)")
+            print(f"   ✅ Converted {conversion_count} ago() pattern(s) with smart windowing")
         else:
             print(f"   ℹ️ No ago() patterns found in query")
 

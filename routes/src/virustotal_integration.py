@@ -8,7 +8,10 @@ class IPReputationChecker:
     def __init__(self):
         self.vt_api_key = os.getenv("VIRUSTOTAL_API_KEY")
         self.abuseipdb_key = os.getenv("ABUSE_DB_KEY")
-        self.abstract_api_key = os.getenv("ABSTRACT_API_KEY")
+        self.abstract_api_key = os.getenv("ABSTRACT_API_KEY", "b8935bde22bf4a48b8380065cfcef6e1")
+        print(self.vt_api_key)
+        print(self.abuseipdb_key)
+        print(self.abuseipdb_key)
 
         self.use_vt = bool(self.vt_api_key)
         self.use_abuseipdb = bool(self.abuseipdb_key)
