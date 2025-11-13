@@ -8,7 +8,7 @@ class IPReputationChecker:
     def __init__(self):
         self.vt_api_key = os.getenv("VIRUSTOTAL_API_KEY")
         self.abuseipdb_key = os.getenv("ABUSE_DB_KEY")
-        self.abstract_api_key = os.getenv("ABSTRACT_API_KEY", "b8935bde22bf4a48b8380065cfcef6e1")
+        self.abstract_api_key = os.getenv("ABSTRACT_API_KEY")
         print(self.vt_api_key)
         print(self.abuseipdb_key)
         print(self.abuseipdb_key)
@@ -38,7 +38,7 @@ class IPReputationChecker:
             return {"success": False, "error": "No API key configured"}
 
         try:
-            url = f"https://ipgeolocation.abstractapi.com/v1/?api_key={self.abstract_api_key}&ip_address={ip_address}"
+            url = f"https://ip-intelligence.abstractapi.com/v1/?api_key={self.abstract_api_key}&ip_address={ip_address}"
 
             response = requests.get(url, timeout=10)
 
