@@ -2,11 +2,14 @@ import json
 import streamlit as st
 from datetime import datetime
 from components.predictions.utils.mitre_utils import create_complete_mitre_matrix
-from utils.html_utils import clean_html_content, clean_dict_html_content
+from utils.html_utils import clean_html_content, clean_dict_html_content, decode_html_entities, clean_display_text
 
 
 def display_enhanced_analysis_results(analysis: dict, username: str):
     """Enhanced display with better structure and specific investigation details"""
+    
+    # Clean HTML entities from analysis data
+    analysis = clean_dict_html_content(analysis)
     
     initial = analysis.get("initial_analysis", {})
     
@@ -120,9 +123,9 @@ def display_enhanced_analysis_results(analysis: dict, username: str):
             severity = finding.get("severity", "Unknown").upper()
             category = finding.get("category", "Unknown Category")
             step_ref = finding.get("step_reference", "N/A")
-            details = finding.get("details", "No details provided")
-            evidence = finding.get("evidence", "No evidence provided")
-            impact = finding.get("impact", "No impact assessment")
+            details = clean_display_text(finding.get("details", "No details provided"))
+            evidence = clean_display_text(finding.get("evidence", "No evidence provided"))
+            impact = clean_display_text(finding.get("impact", "No impact assessment"))
             
             # Enhanced finding display with better structure
             if severity == "CRITICAL":
@@ -260,12 +263,13 @@ def display_enhanced_analysis_results(analysis: dict, username: str):
             if pattern.get(key):
                 target_col = col1 if idx % 2 == 0 else col2
                 with target_col:
+                    clean_pattern_text = clean_display_text(pattern[key])
                     st.markdown(
                         f"""
                         <div style="background: white; border: 2px solid {color}; 
                                    border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
                             <h4 style="color: {color}; margin: 0 0 0.5rem 0;">{title}</h4>
-                            <p style="color: #374151; margin: 0; line-height: 1.5;">{pattern[key]}</p>
+                            <p style="color: #374151; margin: 0; line-height: 1.5;">{clean_pattern_text}</p>
                         </div>
                         """,
                         unsafe_allow_html=True
@@ -276,12 +280,13 @@ def display_enhanced_analysis_results(analysis: dict, username: str):
     # Enhanced Executive Summary
     if "summary" in initial:
         st.markdown("### 📋 Executive Summary")
+        clean_summary = clean_display_text(initial["summary"])
         st.markdown(
             f"""
             <div style="background: #f8fafc; border: 2px solid #e2e8f0; 
                        border-radius: 8px; padding: 1.5rem; margin: 1rem 0;">
                 <p style="color: #374151; line-height: 1.6; margin: 0; font-size: 1.1rem;">
-                    {initial["summary"]}
+                    {clean_summary}
                 </p>
             </div>
             """,
@@ -294,13 +299,14 @@ def display_enhanced_analysis_results(analysis: dict, username: str):
         st.markdown("### ✅ Recommended Actions")
         
         for idx, rec in enumerate(initial["recommendations"], 1):
+            clean_rec = clean_display_text(rec)
             if idx == 1 and "TRUE POSITIVE" in initial.get("classification", ""):
                 st.markdown(
                     f"""
                     <div style="background: #fee2e2; border: 2px solid #dc2626; 
                                border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
                         <h4 style="color: #dc2626; margin: 0 0 0.5rem 0;">🚨 URGENT #{idx}</h4>
-                        <p style="color: #991b1b; margin: 0; font-weight: 500;">{rec}</p>
+                        <p style="color: #991b1b; margin: 0; font-weight: 500;">{clean_rec}</p>
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -311,7 +317,7 @@ def display_enhanced_analysis_results(analysis: dict, username: str):
                     <div style="background: #fed7aa; border: 2px solid #f59e0b; 
                                border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
                         <h4 style="color: #f59e0b; margin: 0 0 0.5rem 0;">⚠️ High Priority #{idx}</h4>
-                        <p style="color: #92400e; margin: 0; font-weight: 500;">{rec}</p>
+                        <p style="color: #92400e; margin: 0; font-weight: 500;">{clean_rec}</p>
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -322,7 +328,7 @@ def display_enhanced_analysis_results(analysis: dict, username: str):
                     <div style="background: #e0e7ff; border: 2px solid #6366f1; 
                                border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
                         <h4 style="color: #6366f1; margin: 0 0 0.5rem 0;">📋 #{idx}</h4>
-                        <p style="color: #4338ca; margin: 0; font-weight: 500;">{rec}</p>
+                        <p style="color: #4338ca; margin: 0; font-weight: 500;">{clean_rec}</p>
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -331,6 +337,9 @@ def display_enhanced_analysis_results(analysis: dict, username: str):
 
 def display_enhanced_mitre_analysis(mitre_data: dict, username: str):
     """Enhanced MITRE analysis with better structure and always visible matrix"""
+    
+    # Clean HTML entities from MITRE data
+    mitre_data = clean_dict_html_content(mitre_data)
     
     st.markdown("---")
     st.markdown(
@@ -408,7 +417,7 @@ def display_enhanced_mitre_analysis(mitre_data: dict, username: str):
     if mitre_data.get("attack_chain_narrative"):
         st.markdown("### 📖 Attack Chain Narrative")
         
-        narrative_text = mitre_data.get("attack_chain_narrative", "No narrative available")
+        narrative_text = clean_display_text(mitre_data.get("attack_chain_narrative", "No narrative available"))
         
         st.markdown(
             f"""
@@ -484,12 +493,12 @@ def display_enhanced_mitre_analysis(mitre_data: dict, username: str):
                     
                     <div style="background: white; padding: 0.8rem; border-radius: 5px; margin: 0.5rem 0;">
                         <strong style="color: #374151;">🔍 Evidence:</strong><br>
-                        <span style="color: #6b7280;">{technique.get('evidence', 'No evidence')}</span>
+                        <span style="color: #6b7280;">{clean_display_text(technique.get('evidence', 'No evidence'))}</span>
                     </div>
                     
                     <div style="background: white; padding: 0.8rem; border-radius: 5px; margin: 0.5rem 0;">
                         <strong style="color: #374151;">🏷️ Indicators:</strong><br>
-                        <span style="color: #6b7280;">{', '.join(technique.get('indicators', []))}</span>
+                        <span style="color: #6b7280;">{', '.join([clean_display_text(str(ind)) for ind in technique.get('indicators', [])])}</span>
                     </div>
                 </div>
                 """,
@@ -562,21 +571,21 @@ def display_enhanced_mitre_analysis(mitre_data: dict, username: str):
                             </div>
                             <div style="background: white; padding: 0.8rem; border-radius: 5px; margin: 0.5rem 0;">
                                 <strong style="color: #374151;">📝 Description:</strong><br>
-                                <span style="color: #6b7280;">{step.get('description', 'N/A')}</span>
+                                <span style="color: #6b7280;">{clean_display_text(step.get('description', 'N/A'))}</span>
                             </div>
                         </div>
                         <div>
                             <div style="background: white; padding: 0.8rem; border-radius: 5px; margin: 0.5rem 0;">
                                 <strong style="color: #374151;">🧠 Rationale:</strong><br>
-                                <span style="color: #6b7280;">{step.get('rationale', 'N/A')}</span>
+                                <span style="color: #6b7280;">{clean_display_text(step.get('rationale', 'N/A'))}</span>
                             </div>
                             <div style="background: white; padding: 0.8rem; border-radius: 5px; margin: 0.5rem 0;">
                                 <strong style="color: #374151;">👀 Indicators to Watch:</strong><br>
-                                <span style="color: #6b7280;">{', '.join(step.get('indicators_to_watch', []))}</span>
+                                <span style="color: #6b7280;">{', '.join([clean_display_text(str(ind)) for ind in step.get('indicators_to_watch', [])])}</span>
                             </div>
                             <div style="background: white; padding: 0.8rem; border-radius: 5px; margin: 0.5rem 0;">
                                 <strong style="color: #374151;">🛡️ Preventive Action:</strong><br>
-                                <span style="color: #6b7280;">{step.get('recommended_preventive_action', 'N/A')}</span>
+                                <span style="color: #6b7280;">{clean_display_text(step.get('recommended_preventive_action', 'N/A'))}</span>
                             </div>
                         </div>
                     </div>
@@ -616,7 +625,7 @@ def display_enhanced_mitre_analysis(mitre_data: dict, username: str):
                         {icon} {priority} #{idx}
                     </h4>
                     <p style="color: #374151; margin: 0; font-weight: 500;">
-                        {rec.get('recommendation', 'N/A')}
+                        {clean_display_text(rec.get('recommendation', 'N/A'))}
                     </p>
                 </div>
                 """,
@@ -628,6 +637,9 @@ def display_enhanced_mitre_analysis(mitre_data: dict, username: str):
 
 def display_enhanced_entity_analysis(username: str, complete_analysis: dict):
     """Enhanced entity analysis with closed accordion by default and better structure"""
+    
+    # Clean all HTML entities from the complete analysis data
+    complete_analysis = clean_dict_html_content(complete_analysis)
     
     initial = complete_analysis.get("initial_analysis", {})
     classification = initial.get("classification", "UNKNOWN")

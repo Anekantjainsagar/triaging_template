@@ -482,23 +482,31 @@ def _build_technique_cell(tech):
             cell += f'<div class="detail-row"><div class="detail-label">⏰ Timestamp</div><div class="detail-value">{tech["timestamp"]}</div></div>'
         
         if tech["description"]:
-            desc = tech["description"][:250] + "..." if len(tech["description"]) > 250 else tech["description"]
+            from utils.html_utils import clean_display_text
+            desc = clean_display_text(tech["description"])
+            desc = desc[:250] + "..." if len(desc) > 250 else desc
             cell += f'<div class="detail-row"><div class="detail-label">📝 Evidence</div><div class="detail-value">{desc}</div></div>'
         
         if tech.get("procedure"):
-            proc = tech["procedure"][:250] + "..." if len(tech["procedure"]) > 250 else tech["procedure"]
+            from utils.html_utils import clean_display_text
+            proc = clean_display_text(tech["procedure"])
+            proc = proc[:250] + "..." if len(proc) > 250 else proc
             cell += f'<div class="detail-row"><div class="detail-label">🔧 Procedure</div><div class="detail-value">{proc}</div></div>'
         
         if tech.get("rationale"):
-            cell += f'<div class="detail-row"><div class="detail-label">🧠 Prediction Rationale</div><div class="detail-value">{tech["rationale"][:200]}...</div></div>'
+            from utils.html_utils import clean_display_text
+            rationale = clean_display_text(tech["rationale"])
+            cell += f'<div class="detail-row"><div class="detail-label">🧠 Prediction Rationale</div><div class="detail-value">{rationale[:200]}...</div></div>'
         
         if tech["confidence"] > 0:
             cell += f'<div class="detail-row"><span class="confidence-badge">Confidence: {tech["confidence"]}%</span></div>'
         
         if tech.get("indicators"):
+            from utils.html_utils import clean_display_text
             cell += '<div class="detail-row"><div class="detail-label">🔍 Indicators</div><div>'
             for indicator in tech["indicators"][:5]:
-                cell += f'<span class="indicator-tag">{indicator}</span>'
+                clean_indicator = clean_display_text(str(indicator))
+                cell += f'<span class="indicator-tag">{clean_indicator}</span>'
             cell += '</div></div>'
         
         cell += '</div>'  # Close tooltip

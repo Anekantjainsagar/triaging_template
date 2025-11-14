@@ -471,7 +471,7 @@ def display_analysis_results(analysis: dict, username: str):
     # Executive Summary
     if "summary" in initial:
         st.subheader("📋 Executive Summary")
-        st.write(initial["summary"])
+        st.write(clean_display_text(str(initial["summary"])))
         st.markdown("---")
 
     # Pattern Analysis
@@ -501,7 +501,7 @@ def display_analysis_results(analysis: dict, username: str):
                 if pattern.get(key):
                     icon = pattern_icons.get(key, "📌")
                     st.markdown(f"**{icon} {key.replace('_', ' ').title()}:**")
-                    st.write(pattern[key])
+                    st.write(clean_display_text(str(pattern[key])))
                     st.markdown("")
 
         with col2:
@@ -513,7 +513,7 @@ def display_analysis_results(analysis: dict, username: str):
                 if pattern.get(key):
                     icon = pattern_icons.get(key, "📌")
                     st.markdown(f"**{icon} {key.replace('_', ' ').title()}:**")
-                    st.write(pattern[key])
+                    st.write(clean_display_text(str(pattern[key])))
                     st.markdown("")
 
         st.markdown("---")
@@ -541,21 +541,22 @@ def display_analysis_results(analysis: dict, username: str):
                     f"**🟢 Finding #{idx}: {finding.get('category', 'Unknown Category')} (LOW)**"
                 )
 
-            st.write(f"**🔍 Step Reference:** {clean_display_text(finding.get('step_reference', 'N/A'))}")
-            st.write(f"**📝 Details:** {clean_display_text(finding.get('details', 'No details provided'))}")
+            st.write(f"**🔍 Step Reference:** {clean_display_text(str(finding.get('step_reference', 'N/A')))}")
+            st.write(f"**📝 Details:** {clean_display_text(str(finding.get('details', 'No details provided')))}")
             st.write(
-                f"**🔬 Evidence:** {clean_display_text(finding.get('evidence', 'No evidence provided'))}"
+                f"**🔬 Evidence:** {clean_display_text(str(finding.get('evidence', 'No evidence provided')))}"
             )
-            st.write(f"**⚠️ Impact:** {clean_display_text(finding.get('impact', 'No impact assessment'))}")
+            st.write(f"**⚠️ Impact:** {clean_display_text(str(finding.get('impact', 'No impact assessment')))}")
             st.markdown("---")
 
     # Recommendations
     if "recommendations" in initial and initial["recommendations"]:
         st.subheader("✅ Recommended Actions")
         for idx, rec in enumerate(initial["recommendations"], 1):
+            clean_rec = clean_display_text(str(rec))
             if idx == 1 and "TRUE POSITIVE" in initial.get("classification", ""):
-                st.error(f"**🚨 URGENT #{idx}:** {rec}")
+                st.error(f"**🚨 URGENT #{idx}:** {clean_rec}")
             elif idx <= 3:
-                st.warning(f"**⚠️ High Priority #{idx}:** {rec}")
+                st.warning(f"**⚠️ High Priority #{idx}:** {clean_rec}")
             else:
-                st.info(f"**📋 #{idx}:** {rec}")
+                st.info(f"**📋 #{idx}:** {clean_rec}")

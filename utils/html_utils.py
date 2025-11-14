@@ -26,12 +26,24 @@ def decode_html_entities(text):
     # Decode common HTML entities
     text = html.unescape(text)
     
-    # Additional manual fixes for common cases
-    text = text.replace('&amp;', '&')
-    text = text.replace('&lt;', '<')
-    text = text.replace('&gt;', '>')
-    text = text.replace('&quot;', '"')
-    text = text.replace('&#39;', "'")
+    # Additional manual fixes for common cases that might not be caught
+    replacements = {
+        '&amp;': '&',
+        '&lt;': '<',
+        '&gt;': '>',
+        '&quot;': '"',
+        '&#39;': "'",
+        '&nbsp;': ' ',
+        '&ndash;': '–',
+        '&mdash;': '—',
+        '&hellip;': '…',
+        '&copy;': '©',
+        '&reg;': '®',
+        '&trade;': '™'
+    }
+    
+    for entity, replacement in replacements.items():
+        text = text.replace(entity, replacement)
     
     return text
 
@@ -142,6 +154,6 @@ def clean_dict_html_content(data):
     elif isinstance(data, list):
         return [clean_dict_html_content(item) for item in data]
     elif isinstance(data, str):
-        return clean_html_content(data)
+        return decode_html_entities(data)
     else:
         return data
