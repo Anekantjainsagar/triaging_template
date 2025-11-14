@@ -698,39 +698,73 @@ class InvestigationAnalyzer:
     ---
     """
 
-            # IMPROVED PROMPT with uniqueness enforcement
-            prompt = f"""You are a cybersecurity analyst. Analyze this investigation for user: {username}
+            # ENHANCED PROMPT with specific findings generation
+            prompt = f"""You are an elite cybersecurity analyst specializing in SOC investigations. Analyze this investigation for user: {username}
 
     INVESTIGATION DATA:
     {investigation_context}
 
-    Classify as TRUE POSITIVE or FALSE POSITIVE based on evidence.
+    Your task is to provide a comprehensive security assessment with HIGHLY SPECIFIC and ACTIONABLE findings.
 
     CLASSIFICATION RULES:
-    - TRUE POSITIVE: Clear malicious activity, multiple suspicious indicators, high-risk patterns
-    - FALSE POSITIVE: Normal business activity, legitimate user behavior, benign patterns
+    - TRUE POSITIVE: Clear malicious activity, security violations, compromise indicators, policy violations
+    - FALSE POSITIVE: Normal business activity, legitimate user behavior, expected patterns
 
-    CRITICAL INSTRUCTIONS:
-    1. **UNIQUE FINDINGS ONLY**: Each finding must be DISTINCT and SPECIFIC to different aspects of the investigation
-    2. **NO DUPLICATE CATEGORIES**: Do NOT create multiple findings with the same category (e.g., two "Geographic Anomaly" findings)
-    3. **SPECIFIC EVIDENCE**: Include EXACT data points from the investigation (IP addresses, locations, timestamps, counts)
-    4. **STEP REFERENCE**: Each finding must reference a DIFFERENT investigation step
+    CRITICAL REQUIREMENTS FOR FINDINGS:
+    
+    1. **EXTRACT SPECIFIC DATA POINTS**: 
+       - IP addresses with exact reputation scores
+       - Geographic locations with specific countries/cities
+       - Timestamps with exact times and dates
+       - Authentication counts (failed/successful attempts)
+       - Device information (managed/unmanaged status)
+       - Risk scores and percentages
+    
+    2. **CREATE UNIQUE, SPECIFIC CATEGORIES**:
+       - "Impossible Travel Detection" (not "Geographic Anomaly")
+       - "Malicious IP Reputation" (not "IP Issue")
+       - "Brute Force Attack Pattern" (not "Authentication Issue")
+       - "Unmanaged Device Access" (not "Device Problem")
+       - "High-Risk Geographic Access" (not "Location Issue")
+    
+    3. **PROVIDE ACTIONABLE EVIDENCE**:
+       - Include exact numbers, percentages, and metrics
+       - Reference specific investigation step outputs
+       - Mention specific security tools and their results
+       - Include risk assessment scores where available
+    
+    4. **BUSINESS IMPACT FOCUS**:
+       - Explain what this means for the organization
+       - Identify potential data at risk
+       - Assess compliance implications
+       - Suggest immediate containment actions
 
-    EXAMPLES OF GOOD vs BAD FINDINGS:
+    EXAMPLES OF EXCELLENT FINDINGS:
+    
+    ✅ EXCELLENT (Specific, actionable):
+    - Category: "Impossible Travel Detection"
+      Details: "User authenticated from Mumbai, India at 14:30 UTC, then from London, UK at 14:45 UTC - physically impossible 15-minute travel across 4,200 miles"
+      Evidence: "SigninLogs show successful authentication from IP 116.75.193.147 (Mumbai) followed by IP 203.0.113.45 (London) with 15-minute gap"
+      Impact: "Indicates credential compromise - attacker using stolen credentials from multiple geographic locations simultaneously"
+    
+    - Category: "Malicious IP Reputation Confirmed"
+      Details: "Source IP 116.75.193.147 flagged as malicious by 8 out of 95 security vendors on VirusTotal with 85% confidence score"
+      Evidence: "VirusTotal analysis: 8/95 detections, AbuseIPDB confidence: 85%, associated with botnet activity"
+      Impact: "High probability of compromised infrastructure - potential data exfiltration or command & control communication"
+    
+    - Category: "Brute Force Attack Pattern"
+      Details: "47 failed authentication attempts within 2-hour window, followed by successful login using same credentials"
+      Evidence: "AuditLogs: FailedLogons=47, TimeWindow=120min, FinalSuccess=True, SourceIP=116.75.193.147"
+      Impact: "Successful credential compromise after systematic password attack - immediate account lockdown required"
 
-    ❌ BAD (Generic, duplicate):
-    - Category: "Geographic Anomaly" - Details: "Multiple locations detected"
-    - Category: "Geographic Anomaly" - Details: "Unusual access patterns"
-
-    ✅ GOOD (Specific, unique):
-    - Category: "Impossible Travel Pattern" - Details: "User authenticated from Mumbai (10:30 AM) and then Delhi (10:45 AM) - only 15 minutes apart for 1,400 km distance"
-    - Category: "High-Risk IP Detection" - Details: "IP 116.75.193.147 flagged with 3/95 malicious detections on VirusTotal"
-
-    MANDATORY REQUIREMENTS:
-    - Each finding must have a UNIQUE category name
-    - Evidence must include SPECIFIC numbers, IPs, locations, or timestamps
-    - If multiple geographic anomalies exist, combine them into ONE finding with all details
-    - If VirusTotal detected malicious IP, that gets its OWN separate finding
+    MANDATORY ANALYSIS DEPTH:
+    - Extract ALL numerical data from investigation outputs
+    - Identify ALL IP addresses and their reputation status
+    - Note ALL geographic locations and travel patterns
+    - Count ALL authentication events (success/failure)
+    - Assess ALL device compliance and management status
+    - Evaluate ALL risk scores and confidence levels
+    - Reference ALL security tool outputs (VirusTotal, AbuseIPDB, etc.)
 
     Respond ONLY with valid JSON:
     {{
@@ -739,19 +773,19 @@ class InvestigationAnalyzer:
         "confidence_score": 0-100,
         "key_findings": [
             {{
-                "step_reference": "Step name (must be unique)",
-                "category": "Unique category name (NO duplicates allowed)",
-                "severity": "High/Medium/Low",
-                "details": "SPECIFIC finding with EXACT data points (IPs, locations, counts, timestamps)",
-                "evidence": "CONCRETE evidence with numbers and specifics (e.g., 'FailedSignIns: 5, SuccessRate: 40%, IP: 116.75.193.147')",
-                "impact": "Security impact"
+                "step_reference": "Exact step name from investigation",
+                "category": "Highly specific category (e.g., 'Impossible Travel Detection', 'Malicious IP Reputation', 'Brute Force Attack Pattern')",
+                "severity": "Critical/High/Medium/Low",
+                "details": "Extremely specific finding with EXACT data points - include all numbers, IPs, locations, timestamps, counts, percentages, and metrics from the investigation",
+                "evidence": "Concrete technical evidence with precise measurements (e.g., 'IP: 116.75.193.147, VirusTotal: 8/95 detections, Distance: 4,200 miles, Time: 15 minutes, Confidence: 85%')",
+                "impact": "Clear business and security impact with specific risks and recommended immediate actions"
             }}
         ],
         "risk_indicators": [
             {{
-                "indicator": "Unique risk indicator",
-                "severity": "High/Medium/Low",
-                "evidence": "Specific evidence"
+                "indicator": "Specific measurable risk indicator with exact values",
+                "severity": "Critical/High/Medium/Low",
+                "evidence": "Quantified evidence with numbers and metrics"
             }}
         ]
     }}"""
@@ -913,84 +947,147 @@ class InvestigationAnalyzer:
         has_virustotal_malicious = False
         malicious_ip_count = 0
 
-        # Existing fallback logic (keep as is, but deduplicate at the end)
+        # Enhanced fallback logic with specific findings extraction
         for step in investigation_steps:
-            output = str(step.get("output", "")).lower()
+            output = str(step.get("output", ""))
+            output_lower = output.lower()
+            step_name = step.get("step_name", "Unknown Step")
 
-            if "virustotal" in output:
+            # Extract IP addresses for analysis
+            ip_pattern = r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b"
+            ips_found = re.findall(ip_pattern, output)
+
+            # VirusTotal analysis with specific details
+            if "virustotal" in output_lower:
                 import re
 
-                match = re.search(r"malicious[:\s]+(\d+)/(\d+)", output, re.IGNORECASE)
-
-                if match:
-                    malicious_count = int(match.group(1))
-                    total_count = int(match.group(2))
-
-                    if malicious_count > 0:
-                        has_virustotal_malicious = True
-                        malicious_ip_count = malicious_count
-                        risk_score += 40
-
-                        findings.append(
-                            {
-                                "step_reference": step["step_name"],
-                                "category": "Malicious IP Detected",
-                                "severity": "High",
-                                "details": f"IP flagged as malicious by {malicious_count} VirusTotal vendor(s)",
-                                "evidence": f"Detection ratio: {malicious_count}/{total_count}",
-                                "impact": "Potential compromise or malicious activity from known bad IP",
-                            }
-                        )
-                    elif malicious_count == 0:
-                        risk_score -= 10
-
-            if any(
-                keyword in output
-                for keyword in [
-                    "impossible travel",
-                    "geographic",
-                    "location",
-                    "country",
+                # Look for malicious detection patterns
+                malicious_patterns = [
+                    r"malicious[:\s]+(\d+)/(\d+)",
+                    r"•\s*malicious[:\s]+(\d+)/(\d+)",
+                    r"detections?[:\s]+(\d+)\s*out\s*of\s*(\d+)",
+                    r"flagged[:\s]+(\d+)/(\d+)"
                 ]
-            ):
-                risk_score += 25
-                findings.append(
-                    {
-                        "step_reference": step["step_name"],
-                        "category": "Geographic Anomaly",
-                        "severity": "Medium",
-                        "details": "Unusual geographic access patterns detected",
-                        "evidence": output[:200],
-                        "impact": "Potential account compromise or unauthorized access",
-                    }
-                )
 
-            if "failed" in output:
+                for pattern in malicious_patterns:
+                    match = re.search(pattern, output, re.IGNORECASE)
+                    if match:
+                        malicious_count = int(match.group(1))
+                        total_count = int(match.group(2))
+                        detection_percentage = (malicious_count / total_count * 100) if total_count > 0 else 0
+
+                        if malicious_count > 0:
+                            has_virustotal_malicious = True
+                            malicious_ip_count = malicious_count
+                            risk_score += 40
+
+                            # Extract specific IP if available
+                            ip_detail = f" (IP: {ips_found[0]})" if ips_found else ""
+                            
+                            findings.append({
+                                "step_reference": step_name,
+                                "category": "Malicious IP Reputation Confirmed",
+                                "severity": "Critical" if malicious_count >= 5 else "High",
+                                "details": f"IP address{ip_detail} flagged as malicious by {malicious_count} out of {total_count} VirusTotal security vendors ({detection_percentage:.1f}% detection rate)",
+                                "evidence": f"VirusTotal analysis: {malicious_count}/{total_count} detections, Detection rate: {detection_percentage:.1f}%{ip_detail}",
+                                "impact": f"High-confidence malicious infrastructure detected - immediate blocking required. Risk of data exfiltration, command & control communication, or botnet activity",
+                            })
+                        elif malicious_count == 0:
+                            risk_score -= 10
+                        break
+
+            # Geographic anomaly analysis with specific details
+            if any(keyword in output_lower for keyword in ["impossible travel", "geographic", "location", "country"]):
+                risk_score += 25
+                
+                # Extract specific geographic details
+                countries = re.findall(r"\b(?:United States|India|China|Russia|Germany|France|United Kingdom|Canada|Australia|Japan|Brazil|Mexico)\b", output, re.IGNORECASE)
+                
+                # Check for impossible travel indicators
+                if "impossible travel" in output_lower:
+                    category = "Impossible Travel Detection"
+                    severity = "Critical"
+                    details = f"Impossible travel pattern detected between geographic locations"
+                    if countries and len(countries) >= 2:
+                        details += f" - access from {countries[0]} and {countries[1]}"
+                    impact = "Strong indicator of credential compromise - user cannot physically travel between locations in observed timeframe"
+                else:
+                    category = "Geographic Access Anomaly"
+                    severity = "Medium"
+                    details = f"Unusual geographic access patterns detected"
+                    if countries:
+                        details += f" - access from {', '.join(set(countries))}"
+                    if ips_found:
+                        details += f" via IP addresses: {', '.join(ips_found[:3])}"
+                    impact = "Potential account compromise or unauthorized access from unexpected geographic locations"
+                
+                findings.append({
+                    "step_reference": step_name,
+                    "category": category,
+                    "severity": severity,
+                    "details": details,
+                    "evidence": f"Geographic indicators: Countries={countries}, IPs={ips_found[:2]}",
+                    "impact": impact,
+                })
+
+            # Authentication failure analysis with specific counts
+            if "failed" in output_lower:
                 import re
 
-                failed_match = re.search(r"failed[^:]*:\s*(\d+)", output, re.IGNORECASE)
-                if failed_match:
-                    failed_count = int(failed_match.group(1))
-                    if failed_count > 5:
-                        risk_score += 20
-                    elif failed_count > 2:
-                        risk_score += 10
+                # Look for specific failure counts
+                failed_patterns = [
+                    r"failed[^:]*:\s*(\d+)",
+                    r"failures?[^:]*:\s*(\d+)",
+                    r"unsuccessful[^:]*:\s*(\d+)",
+                    r"(\d+)\s*failed"
+                ]
+                
+                failed_count = 0
+                for pattern in failed_patterns:
+                    failed_match = re.search(pattern, output, re.IGNORECASE)
+                    if failed_match:
+                        failed_count = int(failed_match.group(1))
+                        break
+                
+                if failed_count > 0:
+                    if failed_count >= 20:
+                        risk_score += 35
+                        severity = "Critical"
+                        category = "Brute Force Attack Pattern"
+                        impact = "High-volume brute force attack detected - immediate account lockdown required"
+                    elif failed_count >= 10:
+                        risk_score += 25
+                        severity = "High"
+                        category = "Credential Stuffing Attack"
+                        impact = "Systematic credential attack detected - password reset and MFA enforcement recommended"
+                    elif failed_count >= 5:
+                        risk_score += 15
+                        severity = "Medium"
+                        category = "Multiple Authentication Failures"
+                        impact = "Repeated authentication failures may indicate attack or user account issues"
+                    else:
+                        risk_score += 5
+                        severity = "Low"
+                        category = "Authentication Anomaly"
+                        impact = "Minor authentication issues detected - monitoring recommended"
+                    
+                    findings.append({
+                        "step_reference": step_name,
+                        "category": category,
+                        "severity": severity,
+                        "details": f"{failed_count} authentication failures detected",
+                        "evidence": f"Failed authentication count: {failed_count}",
+                        "impact": impact,
+                    })
                 else:
-                    risk_score += 15
+                    risk_score += 10
 
-            if "suspicious" in output:
+            # Suspicious activity indicators
+            if "suspicious" in output_lower:
                 risk_score += 20
 
-            if any(
-                keyword in output
-                for keyword in [
-                    "admin",
-                    "privilege",
-                    "escalation",
-                    "role",
-                    "global administrator",
-                ]
-            ):
+            # Privilege escalation indicators
+            if any(keyword in output_lower for keyword in ["admin", "privilege", "escalation", "role", "global administrator"]):
                 risk_score += 15
 
         # ✅ DEDUPLICATE FINDINGS
