@@ -5,6 +5,7 @@ import hashlib
 from datetime import datetime
 import os
 import re
+import time
 
 from components.triaging.kql_executor import KQLExecutor
 from routes.src.virustotal_integration import IPReputationChecker
@@ -672,6 +673,7 @@ def display_triaging_workflow_cached(
                 st.info("💡 Refresh the page to see the cached version")
 
 
+
 def display_interactive_steps(
     enhanced_steps: list,
     template_df: pd.DataFrame,
@@ -684,6 +686,107 @@ def display_interactive_steps(
 
     st.markdown("---")
     st.markdown(f"### 📋 {len(enhanced_steps)} Investigation Steps")
+    
+    # Enhanced header with better styling
+    st.markdown("""
+    <div style="background: linear-gradient(90deg, #1f4e79, #2d5aa0); padding: 15px; border-radius: 10px; margin: 10px 0;">
+        <h3 style="color: white; margin: 0; text-align: center;">🚀 One-Click Automated Investigation</h3>
+        <p style="color: #e6f3ff; margin: 5px 0 0 0; text-align: center; font-size: 14px;">Execute all KQL queries, VIP checks, and IP reputation analysis automatically</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button(
+            "⚡ AUTO-EXECUTE ALL STEPS",
+            type="primary",
+            help="Automatically execute all KQL queries, VIP checks, and IP reputation checks",
+            key=f"auto_execute_{rule_number}"
+        ):
+            # Execute all steps automatically
+            entity_users = _extract_users_from_entities(alert_data) if alert_data else []
+            entity_ips = _extract_ips_from_entities(alert_data) if alert_data else []
+            default_vip_users = ["ceo@company.com", "cfo@company.com", "admin@company.com"]
+            
+            # Create containers for progress display
+            progress_container = st.container()
+            status_container = st.container()
+            
+            with progress_container:
+                st.markdown("### 🚀 **Executing Investigation Steps**")
+                progress_bar = st.progress(0)
+                current_step_text = st.empty()
+            
+            with status_container:
+                step_status = st.empty()
+            
+            for idx, step in enumerate(enhanced_steps):
+                step_num = idx + 1
+                step_name = step.get("step_name", f"Step {step_num}")
+                
+                # Update progress
+                progress = idx / len(enhanced_steps)
+                progress_bar.progress(progress)
+                current_step_text.info(f"🔄 **Step {step_num}/{len(enhanced_steps)}:** {step_name}")
+                
+                # VIP check
+                if _is_vip_user_check_step(step) and entity_users:
+                    step_status.info("🔍 Checking VIP users...")
+                    kql_query = _generate_vip_kql_query(default_vip_users, entity_users, alert_data)
+                    success, output, dataframe = _execute_kql_query(step_num, rule_number, kql_query, state_mgr)
+                    if success:
+                        vip_matches = [user for user in entity_users if user in default_vip_users]
+                        vip_analysis = f"\nVIP Analysis: {len(vip_matches)} VIP matches found" if vip_matches else "\nVIP Analysis: No VIP users affected"
+                        combined_output = output + vip_analysis
+                        state_mgr.save_step_data(step_num, output=combined_output, remark="Auto-executed")
+                        st.session_state[f"dataframe_{rule_number}_{step_num}"] = dataframe
+                        step_status.success(f"✅ VIP check complete - {len(vip_matches)} matches found" if vip_matches else "✅ VIP check complete - No VIP users affected")
+                
+                # IP reputation check
+                elif _is_ip_reputation_step(step) and entity_ips:
+                    step_status.info(f"🔍 Checking {len(entity_ips)} IP addresses...")
+                    if "ip_checker" not in st.session_state:
+                        st.session_state.ip_checker = IPReputationChecker()
+                    results = st.session_state.ip_checker.check_multiple_ips(entity_ips, method="auto")
+                    output_excel = "\n\n".join([r.get("formatted_output_excel", "") for r in results.values() if r.get("formatted_output_excel")])
+                    state_mgr.save_step_data(step_num, output=output_excel, remark="Auto-executed")
+                    st.session_state[f"ip_results_{rule_number}_{step_num}"] = results
+                    
+                    high_risk = sum(1 for r in results.values() if r.get("risk_level") == "HIGH")
+                    vpn_count = sum(1 for r in results.values() if r.get("vpn_detection", {}).get("is_vpn", False))
+                    step_status.success(f"✅ IP check complete - {high_risk} high risk, {vpn_count} VPN detected")
+                
+                # KQL query steps
+                elif step.get("kql_query") and len(step.get("kql_query", "").strip()) > 10:
+                    step_status.info("🔍 Executing KQL query...")
+                    success, output, dataframe = _execute_kql_query(step_num, rule_number, step.get("kql_query"), state_mgr)
+                    if success:
+                        state_mgr.save_step_data(step_num, remark="Auto-executed")
+                        result_count = len(dataframe) if dataframe is not None and not dataframe.empty else 0
+                        step_status.success(f"✅ Query complete - {result_count} results")
+                    else:
+                        step_status.error("❌ Query failed")
+                
+                else:
+                    step_status.info("📝 Marking for manual review...")
+                    state_mgr.save_step_data(step_num, remark="Auto-reviewed - manual verification needed")
+                    step_status.success("✅ Marked for manual review")
+                
+                # Mark complete
+                state_mgr.mark_step_complete(step_num)
+                time.sleep(0.5)  # Brief pause to show progress
+            
+            # Final progress update
+            progress_bar.progress(1.0)
+            current_step_text.success(f"🎉 **All {len(enhanced_steps)} steps completed successfully!**")
+            step_status.success("✅ Investigation complete - All results saved to Excel template")
+            
+            time.sleep(2)
+            progress_container.empty()
+            status_container.empty()
+            st.rerun()
+    
+    st.markdown("---")
 
     tab1, tab2 = st.tabs(["📋 Triaging Steps", "📊 Excel Template"])
 
@@ -831,6 +934,21 @@ def display_interactive_steps(
                                     st.session_state[vip_processed_key] = False
                                     st.session_state[vip_input_key] = ""
                                     st.rerun()
+                    
+                    # Show auto-executed results if available
+                    step_data = state_mgr.get_step_data(step_num)
+                    if step_data["output"] and not st.session_state.get(vip_processed_key, False):
+                        st.markdown("##### 📊 Auto-Executed Results")
+                        df_key = f"dataframe_{rule_number}_{step_num}"
+                        existing_df = st.session_state.get(df_key)
+                        _display_query_results(
+                            step_data["output"],
+                            existing_df,
+                            step_num,
+                            rule_number,
+                            state_mgr,
+                            is_existing=True,
+                        )
 
                 # KQL Query section
                 elif kql_query and len(kql_query.strip()) > 10:
@@ -940,6 +1058,34 @@ def display_interactive_steps(
                         _process_ip_reputation_check(
                             ip_input, step_num, rule_number, state_mgr
                         )
+                    
+                    # Show auto-executed IP results if available
+                    step_data = state_mgr.get_step_data(step_num)
+                    ip_results_key = f"ip_results_{rule_number}_{step_num}"
+                    if step_data["output"] and ip_results_key in st.session_state:
+                        st.markdown("##### 📊 Auto-Executed IP Results")
+                        results = st.session_state[ip_results_key]
+                        
+                        # Display summary metrics
+                        high_risk = sum(1 for r in results.values() if r.get("risk_level") == "HIGH")
+                        medium_risk = sum(1 for r in results.values() if r.get("risk_level") == "MEDIUM")
+                        vpn_detected = sum(1 for r in results.values() if r.get("vpn_detection", {}).get("is_vpn", False))
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("🔴 High Risk", high_risk)
+                        with col2:
+                            st.metric("🟡 Medium Risk", medium_risk)
+                        with col3:
+                            st.metric("🔒 VPN Detected", vpn_detected)
+                        with col4:
+                            st.metric("📊 Total IPs", len(results))
+                        
+                        # Show detailed results in expanders
+                        for ip, result in results.items():
+                            if result.get("formatted_output"):
+                                with st.expander(f"🔍 {ip} - {result.get('risk_level', 'Unknown')}", expanded=False):
+                                    st.text(result["formatted_output"])
 
                 # Remarks section
                 st.markdown("##### 💬 Remarks/Comments")
