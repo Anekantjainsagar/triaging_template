@@ -402,33 +402,6 @@ def _process_vip_user_check(
     st.markdown("---")
 
     # ===================================================================
-    # STEP 4: Show Template Query FIRST (before customization)
-    # ===================================================================
-    st.info("📋 **Template KQL Query Structure**")
-    st.caption(
-        "This is the base query that will be customized with your VIP list and alert entities"
-    )
-
-    # Import the hardcoded VIP query template
-    from routes.src.hardcode_kql_queries import HardcodedKQLQueries
-
-    template_query = HardcodedKQLQueries.VIP_ACCOUNT_VERIFICATION
-
-    # Show the template in an expander
-    with st.expander("🔍 View Template Query (with placeholders)", expanded=False):
-        st.code(template_query, language="kql")
-        st.caption(
-            """
-        **Placeholders in template:**
-        - `<USER_EMAIL>` → Will be replaced with alert entities
-        - `ago(7d)` → Will be converted to absolute date range based on alert time
-        - VIP users will be added as a datatable at the top
-        """
-        )
-
-    st.markdown("---")
-
-    # ===================================================================
     # STEP 5: Generate Customized Query
     # ===================================================================
     st.info("🔨 Generating customized KQL query with your VIP list...")
@@ -436,22 +409,7 @@ def _process_vip_user_check(
     # Generate the customized query
     kql_query = _generate_vip_kql_query(vip_list, entity_users, alert_data)
 
-    # ===================================================================
-    # STEP 6: Display Customized Query
-    # ===================================================================
-    st.markdown("##### 📊 Customized KQL Query (Ready to Execute)")
-    st.caption(
-        "✅ VIP list injected | ✅ Alert entities injected | ✅ Date ranges converted"
-    )
-
-    st.code(kql_query, language="kql")
-
-    st.markdown("---")
-
-    # ===================================================================
-    # STEP 7.5: Make Query Editable (NEW FEATURE)
-    # ===================================================================
-    st.markdown("##### ✏️ Edit Query Before Execution (Optional)")
+    st.markdown("##### ✏️ Edit Query Before Execution")
     st.caption("You can modify the generated query if needed")
     
     # Make the KQL query editable
@@ -942,7 +900,6 @@ def display_interactive_steps(
 
                 # IP Reputation section with VPN detection
                 elif _is_ip_reputation_step(step):
-                    st.markdown("##### 🛡️ IP Reputation & VPN Detection")
 
                     # Extract IPs directly from entities
                     entity_ips = (
@@ -953,10 +910,6 @@ def display_interactive_steps(
                         st.success(
                             f"✅ Found {len(entity_ips)} IP address(es) from alert entities"
                         )
-
-                        with st.expander("🔍 View Detected IPs", expanded=False):  # CLOSED BY DEFAULT
-                            for ip in entity_ips:
-                                st.code(ip)
 
                     st.markdown("##### 📝 Enter Additional IPs (optional)")
                     st.caption(
@@ -997,7 +950,7 @@ def display_interactive_steps(
                 remark_text = st.text_area(
                     "Add remarks:",
                     value=step_data["remark"],
-                    height=120,
+                    height=70,
                     key=remark_key,
                     placeholder="Enter observations or comments...",
                     label_visibility="collapsed",

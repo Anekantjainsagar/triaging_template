@@ -12,6 +12,7 @@ from components.predictions.utils.display_utils import (
     display_mitre_analysis,
     display_analysis_results,
 )
+from components.predictions.enhanced_predictions_page import display_predictions_tab_enhanced
 
 
 def analyze_entities_parallel(account_entities: list, client):
@@ -268,136 +269,6 @@ SUMMARY:
 
 
 def display_predictions_tab_integrated():
-    """Display predictions analysis tab with parallel automated entity-level predictions"""
-
-    if not st.session_state.get("triaging_complete", False):
-        st.warning(
-            "⚠️ Complete the AI Triaging workflow first to unlock predictions analysis"
-        )
-        return
-
-    st.markdown("### 🔮 True/False Positive Analyzer with MITRE ATT&CK")
-
-    # Get alert data
-    alert_data = st.session_state.get("soc_analysis_data")
-    if not alert_data:
-        st.error("❌ No alert data found. Please run AI analysis first.")
-        return
-
-    # Verify triaging data is uploaded
-    excel_data = st.session_state.get("predictions_excel_data")
-    excel_filename = st.session_state.get("predictions_excel_filename")
-
-    if not excel_data:
-        st.error("❌ No triaging data found. Please complete triaging first.")
-        return
-
-    # Initialize API client
-    final_api_key = os.getenv("GOOGLE_API_KEY")
-    predictions_api_url = os.getenv("PREDICTIONS_API_URL", "http://localhost:8000")
-
-    try:
-        client = get_predictions_client(predictions_api_url, final_api_key)
-
-        # Upload data if not already uploaded
-        if not st.session_state.get("predictions_uploaded"):
-            st.info("📤 Uploading triaging template to analysis engine...")
-
-            with st.spinner("Uploading investigation data..."):
-                upload_success = _upload_to_predictions_api(excel_data, excel_filename)
-
-            if upload_success:
-                st.success("✅ Template uploaded successfully!")
-                st.session_state.predictions_uploaded = True
-            else:
-                st.error(
-                    f"❌ Upload failed: {st.session_state.get('predictions_upload_error', 'Unknown error')}"
-                )
-                return
-        else:
-            st.success("✅ Template already uploaded to predictions API")
-
-        # Verify upload
-        preview_result = client.get_upload_preview()
-        if preview_result.get("success"):
-            st.success(
-                f"✅ Data verified: {preview_result.get('total_rows', 0)} investigation steps loaded"
-            )
-
-        st.markdown("---")
-
-        # ✅ CHECK TESTING MODE
-        testing_mode = os.getenv("TESTING")
-        print("Testing Mode", testing_mode)
-
-        # Extract entities
-        entities = alert_data.get("entities", {})
-        entities_list = (
-            entities.get("entities", [])
-            if isinstance(entities, dict)
-            else (entities if isinstance(entities, list) else [])
-        )
-
-        # Separate Account and IP entities
-        account_entities = [e for e in entities_list if e.get("kind") == "Account"]
-        ip_entities = [e for e in entities_list if e.get("kind") == "Ip"]
-
-        # ✅ CONDITIONAL: If TESTING=true, skip tabs and show account analysis directly
-        if testing_mode:
-            # Only show account analysis (no tabs)
-            st.markdown("---")
-
-            if account_entities:
-                st.markdown(f"### 👤 Analyzing {len(account_entities)} Account(s)")
-                st.info("🤖 Running parallel analysis for all accounts...")
-                analyze_entities_parallel(account_entities, client)
-            else:
-                st.warning("⚠️ No account entities found in this alert")
-
-        else:
-            # ✅ PRODUCTION: Show all tabs
-            # Create tabs for different entity types
-            tab_list = ["📊 Summary"]
-            if account_entities:
-                tab_list.append("👤 Account Analysis")
-            if ip_entities:
-                tab_list.append("🌐 IP Analysis")
-
-            tabs = st.tabs(tab_list)
-
-            # Summary tab
-            with tabs[0]:
-                st.markdown("### 📊 Analysis Overview")
-
-                col1, col2 = st.columns(2)
-                with col1:
-                    if account_entities:
-                        st.metric("👤 Account Entities", len(account_entities))
-                with col2:
-                    if ip_entities:
-                        st.metric("🌐 IP Entities", len(ip_entities))
-
-                st.info("🤖 Running parallel analysis for all entities...")
-
-            # Account analysis tab
-            if account_entities and len(tabs) > 1:
-                with tabs[1]:
-                    st.markdown(f"### 👤 Analyzing {len(account_entities)} Account(s)")
-                    st.info("🤖 Running parallel analysis for all accounts...")
-                    analyze_entities_parallel(account_entities, client)
-
-            # IP analysis tab (NEW)
-            if ip_entities:
-                ip_tab_index = 2 if account_entities else 1
-                if len(tabs) > ip_tab_index:
-                    with tabs[ip_tab_index]:
-                        st.markdown(
-                            f"### 🌐 Analyzing {len(ip_entities)} IP Address(es)"
-                        )
-                        st.info("🤖 Running parallel analysis for all IPs...")
-                        analyze_ip_entities_parallel(ip_entities, client)
-
-    except Exception as e:
-        st.error(f"❌ Error: {str(e)}")
-        with st.expander("View Full Error"):
-            st.code(traceback.format_exc())
+    """Display predictions analysis tab with enhanced UI and better structure"""
+    # Use the enhanced version
+    display_predictions_tab_enhanced()
