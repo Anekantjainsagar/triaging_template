@@ -46,7 +46,7 @@ def clean_json_response(content: str) -> str:
 class MITREAttackAnalyzer:
     def __init__(self, api_key: str):
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+        self.model = genai.GenerativeModel("gemini-2.5-flash")
 
         # High-risk countries for geolocation analysis
         self.high_risk_countries = [
@@ -658,7 +658,7 @@ class InvestigationAnalyzer:
             logger.info("Configuring Gemini API...")
             genai.configure(api_key=api_key)
             logger.info("Initializing GenerativeModel...")
-            self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+            self.model = genai.GenerativeModel("gemini-2.5-flash")
             logger.info("✅ Investigation Analyzer initialized")
 
             self.mitre_analyzer = MITREAttackAnalyzer(api_key)
@@ -791,8 +791,30 @@ class InvestigationAnalyzer:
     }}"""
 
             logger.info("Sending prompt to Gemini...")
-            response = self.model.generate_content(prompt)
-            content = response.text.strip()
+            
+            # Retry mechanism for API quota issues
+            max_retries = 3
+            base_delay = 5
+            
+            for attempt in range(max_retries):
+                try:
+                    response = self.model.generate_content(prompt)
+                    content = response.text.strip()
+                    break  # Success, exit retry loop
+                except Exception as api_error:
+                    error_str = str(api_error)
+                    if "429" in error_str or "quota" in error_str.lower():
+                        if attempt < max_retries - 1:
+                            delay = base_delay * (2 ** attempt)  # Exponential backoff
+                            logger.warning(f"API quota exceeded, retrying in {delay}s (attempt {attempt + 1}/{max_retries})")
+                            import time
+                            time.sleep(delay)
+                            continue
+                        else:
+                            logger.error("API quota exceeded, max retries reached")
+                            raise
+                    else:
+                        raise  # Re-raise non-quota errors immediately
 
             logger.info(f"Gemini response length: {len(content)}")
 
@@ -931,7 +953,11 @@ class InvestigationAnalyzer:
                 return self._fallback_analysis(username, investigation_steps)
 
         except Exception as e:
-            logger.exception(f"Error in initial analysis: {str(e)}")
+            error_str = str(e)
+            if "429" in error_str or "quota" in error_str.lower() or "rate limit" in error_str.lower():
+                logger.warning(f"API quota exceeded after retries, using fallback analysis")
+            else:
+                logger.exception(f"Error in initial analysis: {error_str}")
             return self._fallback_analysis(username, investigation_steps)
 
     def _fallback_analysis(
@@ -940,6 +966,8 @@ class InvestigationAnalyzer:
         """
         FIXED: Fallback analysis with deduplication
         """
+        import re  # Ensure re is available in this scope
+        
         logger.info("Using fallback analysis")
 
         risk_score = 0
@@ -959,8 +987,6 @@ class InvestigationAnalyzer:
 
             # VirusTotal analysis with specific details
             if "virustotal" in output_lower:
-                import re
-
                 # Look for malicious detection patterns
                 malicious_patterns = [
                     r"malicious[:\s]+(\d+)/(\d+)",
@@ -1032,8 +1058,6 @@ class InvestigationAnalyzer:
 
             # Authentication failure analysis with specific counts
             if "failed" in output_lower:
-                import re
-
                 # Look for specific failure counts
                 failed_patterns = [
                     r"failed[^:]*:\s*(\d+)",

@@ -4,6 +4,11 @@ from components.soc_hub import display_ai_analysis
 from styles.soc_dashboard import SOC_DASHBOARD_STYLES
 from sentinel.frontend.dashboard import display_overview_page
 from sentinel.frontend.incident_details import display_incident_detail
+from fix_context_warnings import setup_streamlit_context_fixes, suppress_streamlit_warnings
+import threading
+
+# Apply all context fixes
+setup_streamlit_context_fixes()
 
 
 # Page configuration
@@ -56,13 +61,15 @@ def initialize_session_state():
         if key not in st.session_state:
             st.session_state[key] = value
 
-    # Auto-load incidents from file on first run
+    # Auto-load incidents from file on first run with proper context
     if not st.session_state.auto_loaded and not st.session_state.incidents:
         try:
-            incidents = load_incidents_from_file()
-            if incidents:
-                st.session_state.incidents = incidents
-                st.session_state.auto_loaded = True
+            # Use context manager to suppress warnings during loading
+            with suppress_streamlit_warnings():
+                incidents = load_incidents_from_file()
+                if incidents:
+                    st.session_state.incidents = incidents
+                    st.session_state.auto_loaded = True
         except Exception as e:
             pass
 
