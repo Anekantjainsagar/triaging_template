@@ -1308,7 +1308,7 @@ def _display_query_results(
         st.info(f"Results: {len(dataframe)} row(s) returned")
 
         # Display as scrollable table
-        st.dataframe(dataframe, width="stretch", height=400, hide_index=True)
+        st.dataframe(dataframe, width="stretch", height=200, hide_index=True)
 
         # Option to view raw text format
         with st.expander("📄 View Raw Text Format", expanded=False):
