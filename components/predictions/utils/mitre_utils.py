@@ -75,15 +75,18 @@ def get_mitre_technique_ids():
         "OS Credential Dumping": "T1003",
         "Steal Application Access Token": "T1528",
         "Adversary-in-the-Middle": "T1557",
+        # amazonq-ignore-next-line
         "Credentials from Password Stores": "T1555",
         "Exploitation for Credential Access": "T1212",
         "Forced Authentication": "T1187",
+        # amazonq-ignore-next-line
         "Forge Web Credentials": "T1606",
         "Input Capture": "T1056",
         "Network Sniffing": "T1040",
         "Steal or Forge Authentication Certificates": "T1649",
         "Steal or Forge Kerberos Tickets": "T1558",
         "Steal Web Session Cookie": "T1539",
+        # amazonq-ignore-next-line
         "Unsecured Credentials": "T1552",
         # Discovery
         "Account Discovery": "T1087",
@@ -101,6 +104,7 @@ def get_mitre_technique_ids():
         "Group Policy Discovery": "T1615",
         "Network Service Discovery": "T1046",
         "Network Share Discovery": "T1135",
+        # amazonq-ignore-next-line
         "Password Policy Discovery": "T1201",
         "Peripheral Device Discovery": "T1120",
         "Permission Groups Discovery": "T1069",
@@ -209,42 +213,18 @@ def get_mitre_subtechnique_ids():
     }
 
 
-def create_complete_mitre_matrix(
-    techniques_data: list, predicted_steps: list = None
-) -> str:
-    """
-    Create compact MITRE ATT&CK matrix showing only TIDs in blocks.
-    Full details appear on hover. All techniques shown in grey by default,
-    with observed and predicted techniques highlighted.
-    """
-    from backend.predictions.backend import MITREAttackAnalyzer
-
-    # Get the complete MITRE data structure
-    temp_analyzer = MITREAttackAnalyzer(api_key="dummy")
-    mitre_full_data = temp_analyzer.mitre_data
-
-    # Get technique ID mappings
-    technique_ids = get_mitre_technique_ids()
-
-    # Define all 14 MITRE ATT&CK tactics
-    tactics = [
-        "Reconnaissance",
-        "Resource Development",
-        "Initial Access",
-        "Execution",
-        "Persistence",
-        "Privilege Escalation",
-        "Defense Evasion",
-        "Credential Access",
-        "Discovery",
-        "Lateral Movement",
-        "Collection",
-        "Command and Control",
-        "Exfiltration",
-        "Impact",
+def _get_mitre_tactics():
+    """Get the 14 MITRE ATT&CK tactics"""
+    return [
+        "Reconnaissance", "Resource Development", "Initial Access", "Execution",
+        "Persistence", "Privilege Escalation", "Defense Evasion", "Credential Access",
+        "Discovery", "Lateral Movement", "Collection", "Command and Control",
+        "Exfiltration", "Impact"
     ]
 
-    # Create lookup for observed/predicted techniques by name
+
+def _build_technique_maps(techniques_data, predicted_steps):
+    """Build observed and predicted technique maps"""
     observed_map = {}
     for tech in techniques_data:
         key = f"{tech.get('tactic')}||{tech.get('technique')}"
@@ -274,8 +254,12 @@ def create_complete_mitre_matrix(
                 "rationale": pred.get("rationale", ""),
                 "likelihood": pred.get("likelihood", "Unknown"),
             }
+    
+    return observed_map, predicted_map
 
-    # Build complete technique list with ALL MITRE techniques
+
+def _build_tactic_techniques(mitre_full_data, tactics, observed_map, predicted_map, technique_ids):
+    """Build complete technique list with all MITRE techniques"""
     tactic_techniques = {tactic: [] for tactic in tactics}
 
     for tactic in tactics:
@@ -285,7 +269,6 @@ def create_complete_mitre_matrix(
         for technique_name, sub_techniques_list in mitre_full_data[tactic].items():
             lookup_key = f"{tactic}||{technique_name}"
 
-            # Check if observed or predicted
             if lookup_key in observed_map:
                 status = observed_map[lookup_key]
             elif lookup_key in predicted_map:
@@ -293,7 +276,6 @@ def create_complete_mitre_matrix(
             else:
                 status = {"severity": "GREY", "confidence": 0, "type": "default"}
 
-            # Get technique ID
             tech_id = technique_ids.get(technique_name, "T????")
 
             tech_data = {
@@ -315,9 +297,13 @@ def create_complete_mitre_matrix(
             }
 
             tactic_techniques[tactic].append(tech_data)
+    
+    return tactic_techniques
 
-    # Build compact HTML with hover functionality
-    html = """
+
+def _get_matrix_css():
+    """Get CSS styles for the MITRE matrix"""
+    return """
     <style>
     .mitre-matrix-container {
         overflow-x: auto;
@@ -369,8 +355,6 @@ def create_complete_mitre_matrix(
         z-index: 100;
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
-    
-    /* Severity colors */
     .severity-red {
         background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
         border: 2px solid #dc2626;
@@ -397,8 +381,6 @@ def create_complete_mitre_matrix(
         color: #6b7280;
         font-weight: 400;
     }
-    
-    /* Hover tooltip */
     .technique-block .hover-tooltip {
         display: none;
         position: absolute;
@@ -470,119 +452,64 @@ def create_complete_mitre_matrix(
     </style>
     """
 
-    html += '<div class="mitre-matrix-container">'
-    html += '<table class="mitre-matrix">'
 
-    # Header
-    html += "<tr>"
-    for tactic in tactics:
-        html += f"<th>{tactic}</th>"
-    html += "</tr>"
+def _build_technique_cell(tech):
+    """Build HTML cell for a technique"""
+    severity = tech["severity"].upper()
+    tech_type = tech["type"]
+    
+    if tech_type == "predicted":
+        color_class = "severity-blue"
+    elif severity == "RED":
+        color_class = "severity-red"
+    elif severity == "AMBER":
+        color_class = "severity-amber"
+    elif severity == "GREEN":
+        color_class = "severity-green"
+    else:
+        color_class = "severity-grey"
+    
+    cell = f'<div class="technique-block {color_class}">{tech["technique_id"]}'
+    
+    if tech["type"] != "default":
+        cell += '<div class="hover-tooltip">'
+        cell += f'<h4>{tech["technique"]} ({tech["technique_id"]})</h4>'
+        
+        if tech["sub_technique"]:
+            cell += f'<div class="detail-row"><div class="detail-label">🎯 Sub-Technique</div><div class="detail-value">{tech["sub_technique"]} ({tech["sub_technique_id"]})</div></div>'
+        
+        if tech["timestamp"]:
+            cell += f'<div class="detail-row"><div class="detail-label">⏰ Timestamp</div><div class="detail-value">{tech["timestamp"]}</div></div>'
+        
+        if tech["description"]:
+            desc = tech["description"][:250] + "..." if len(tech["description"]) > 250 else tech["description"]
+            cell += f'<div class="detail-row"><div class="detail-label">📝 Evidence</div><div class="detail-value">{desc}</div></div>'
+        
+        if tech.get("procedure"):
+            proc = tech["procedure"][:250] + "..." if len(tech["procedure"]) > 250 else tech["procedure"]
+            cell += f'<div class="detail-row"><div class="detail-label">🔧 Procedure</div><div class="detail-value">{proc}</div></div>'
+        
+        if tech.get("rationale"):
+            cell += f'<div class="detail-row"><div class="detail-label">🧠 Prediction Rationale</div><div class="detail-value">{tech["rationale"][:200]}...</div></div>'
+        
+        if tech["confidence"] > 0:
+            cell += f'<div class="detail-row"><span class="confidence-badge">Confidence: {tech["confidence"]}%</span></div>'
+        
+        if tech.get("indicators"):
+            cell += '<div class="detail-row"><div class="detail-label">🔍 Indicators</div><div>'
+            for indicator in tech["indicators"][:5]:
+                cell += f'<span class="indicator-tag">{indicator}</span>'
+            cell += '</div></div>'
+        
+        cell += '</div>'  # Close tooltip
+    
+    cell += '</div>'
+    return cell
 
-    # Find max techniques
-    max_techniques = max([len(techs) for techs in tactic_techniques.values()] or [1])
 
-    # Build rows
-    for row_idx in range(max_techniques):
-        html += "<tr>"
-        for tactic in tactics:
-            techniques = tactic_techniques[tactic]
-
-            if row_idx < len(techniques):
-                tech = techniques[row_idx]
-
-                # Determine color
-                severity = tech["severity"].upper()
-                tech_type = tech["type"]
-
-                if tech_type == "predicted":
-                    color_class = "severity-blue"
-                elif severity == "RED":
-                    color_class = "severity-red"
-                elif severity == "AMBER":
-                    color_class = "severity-amber"
-                elif severity == "GREEN":
-                    color_class = "severity-green"
-                else:
-                    color_class = "severity-grey"
-
-                # Build compact block showing only TID
-                cell = f'<div class="technique-block {color_class}">'
-                cell += f'{tech["technique_id"]}'
-
-                # Add tooltip for non-grey techniques
-                if tech["type"] != "default":
-                    cell += '<div class="hover-tooltip">'
-                    cell += f'<h4>{tech["technique"]} ({tech["technique_id"]})</h4>'
-
-                    if tech["sub_technique"]:
-                        cell += '<div class="detail-row">'
-                        cell += '<div class="detail-label">🎯 Sub-Technique</div>'
-                        cell += f'<div class="detail-value">{tech["sub_technique"]} ({tech["sub_technique_id"]})</div>'
-                        cell += "</div>"
-
-                    if tech["timestamp"]:
-                        cell += '<div class="detail-row">'
-                        cell += '<div class="detail-label">⏰ Timestamp</div>'
-                        cell += f'<div class="detail-value">{tech["timestamp"]}</div>'
-                        cell += "</div>"
-
-                    if tech["description"]:
-                        cell += '<div class="detail-row">'
-                        cell += '<div class="detail-label">📝 Evidence</div>'
-                        desc = (
-                            tech["description"][:250] + "..."
-                            if len(tech["description"]) > 250
-                            else tech["description"]
-                        )
-                        cell += f'<div class="detail-value">{desc}</div>'
-                        cell += "</div>"
-
-                    if tech.get("procedure"):
-                        cell += '<div class="detail-row">'
-                        cell += '<div class="detail-label">🔧 Procedure</div>'
-                        proc = (
-                            tech["procedure"][:250] + "..."
-                            if len(tech["procedure"]) > 250
-                            else tech["procedure"]
-                        )
-                        cell += f'<div class="detail-value">{proc}</div>'
-                        cell += "</div>"
-
-                    if tech.get("rationale"):
-                        cell += '<div class="detail-row">'
-                        cell += (
-                            '<div class="detail-label">🧠 Prediction Rationale</div>'
-                        )
-                        cell += f'<div class="detail-value">{tech["rationale"][:200]}...</div>'
-                        cell += "</div>"
-
-                    if tech["confidence"] > 0:
-                        cell += '<div class="detail-row">'
-                        cell += f'<span class="confidence-badge">Confidence: {tech["confidence"]}%</span>'
-                        cell += "</div>"
-
-                    if tech.get("indicators"):
-                        cell += '<div class="detail-row">'
-                        cell += '<div class="detail-label">🔍 Indicators</div>'
-                        cell += "<div>"
-                        for indicator in tech["indicators"][:5]:
-                            cell += f'<span class="indicator-tag">{indicator}</span>'
-                        cell += "</div></div>"
-
-                    cell += "</div>"  # Close tooltip
-
-                cell += "</div>"
-                html += f"<td>{cell}</td>"
-            else:
-                html += "<td></td>"
-
-        html += "</tr>"
-
-    html += "</table></div>"
-
-    # Legend
-    html += """
+def _get_matrix_legend():
+    """Get the matrix legend HTML"""
+    return """
     <div style="margin-top: 1rem; padding: 1rem; background-color: #f3f4f6; border-radius: 0.5rem;">
         <strong>🗺️ Compact MITRE ATT&CK Matrix - Legend:</strong>
         <div style="margin-top: 0.5rem;">
@@ -608,4 +535,41 @@ def create_complete_mitre_matrix(
     </div>
     """
 
+
+def create_complete_mitre_matrix(techniques_data: list, predicted_steps: list = None) -> str:
+    """Create compact MITRE ATT&CK matrix showing only TIDs in blocks"""
+    from backend.predictions.backend import MITREAttackAnalyzer
+    
+    temp_analyzer = MITREAttackAnalyzer(api_key="dummy")
+    mitre_full_data = temp_analyzer.mitre_data
+    technique_ids = get_mitre_technique_ids()
+    tactics = _get_mitre_tactics()
+    
+    observed_map, predicted_map = _build_technique_maps(techniques_data, predicted_steps)
+    tactic_techniques = _build_tactic_techniques(mitre_full_data, tactics, observed_map, predicted_map, technique_ids)
+    
+    html = _get_matrix_css()
+    html += '<div class="mitre-matrix-container"><table class="mitre-matrix">'
+    
+    # Header
+    html += "<tr>"
+    for tactic in tactics:
+        html += f"<th>{tactic}</th>"
+    html += "</tr>"
+    
+    # Build rows
+    max_techniques = max([len(techs) for techs in tactic_techniques.values()] or [1])
+    for row_idx in range(max_techniques):
+        html += "<tr>"
+        for tactic in tactics:
+            techniques = tactic_techniques[tactic]
+            if row_idx < len(techniques):
+                html += f"<td>{_build_technique_cell(techniques[row_idx])}</td>"
+            else:
+                html += "<td></td>"
+        html += "</tr>"
+    
+    html += "</table></div>"
+    html += _get_matrix_legend()
+    
     return html

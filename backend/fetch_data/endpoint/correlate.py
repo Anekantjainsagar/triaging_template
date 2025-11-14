@@ -434,9 +434,8 @@ if __name__ == "__main__":
     with open(json_file_path, "r", encoding="utf-8") as f:
         security_data = json.load(f)
 
-    print(
-        f"✓ Loaded {sum(len(v) if isinstance(v, list) else 0 for v in security_data.values())} total events"
-    )
+    total_events = sum(len(v) if isinstance(v, list) else 0 for v in security_data.values())
+    print(f"✓ Loaded {total_events} total events")
     print()
 
     # Generate complete report

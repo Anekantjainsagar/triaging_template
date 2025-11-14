@@ -107,8 +107,14 @@ class PredictionsAPIClient:
         Returns:
             Dict with upload status, total rows, columns, and preview
         """
+        import os
         try:
-            with open(file_path, "rb") as f:
+            # Validate and sanitize file path to prevent path traversal
+            normalized_path = os.path.normpath(file_path)
+            if os.path.isabs(normalized_path) or ".." in normalized_path:
+                return {"success": False, "error": "Invalid file path"}
+            
+            with open(normalized_path, "rb") as f:
                 files = {"file": f}
                 response = self.session.post(
                     f"{self.base_url}/upload/excel", files=files, timeout=30
@@ -423,7 +429,7 @@ def export_analysis_json(
 
     Args:
         analysis: Analysis data
-        filename: Output filename
+        filename: Output filename (not used for file operations)
 
     Returns:
         JSON string
