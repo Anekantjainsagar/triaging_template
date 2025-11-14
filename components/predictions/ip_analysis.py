@@ -126,10 +126,8 @@ def display_ip_analysis_full(ip_address: str, ip_analysis: dict):
     initial = ip_analysis.get("initial_analysis", {})
     classification = initial.get("classification", "UNKNOWN")
 
-    # Determine if expanded by default (True Positive)
-    is_expanded = (
-        "TRUE POSITIVE" in classification or "MALICIOUS" in classification.upper()
-    )
+    # IP reputation blocks should be closed by default
+    is_expanded = False
 
     # Accordion header
     if "TRUE POSITIVE" in classification or "MALICIOUS" in classification.upper():

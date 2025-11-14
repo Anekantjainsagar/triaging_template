@@ -449,6 +449,31 @@ def _process_vip_user_check(
     st.markdown("---")
 
     # ===================================================================
+    # STEP 7.5: Make Query Editable (NEW FEATURE)
+    # ===================================================================
+    st.markdown("##### ✏️ Edit Query Before Execution (Optional)")
+    st.caption("You can modify the generated query if needed")
+    
+    # Make the KQL query editable
+    query_edit_key = f"vip_editable_kql_{rule_number}_{step_num}"
+    if query_edit_key not in st.session_state:
+        st.session_state[query_edit_key] = kql_query
+    
+    edited_kql_query = st.text_area(
+        "Editable KQL Query:",
+        value=st.session_state[query_edit_key],
+        height=300,
+        key=f"vip_kql_editor_{step_num}",
+        help="✏️ Modify this query as needed before execution",
+        label_visibility="collapsed"
+    )
+    
+    # Update session state when query changes
+    st.session_state[query_edit_key] = edited_kql_query
+    
+    st.markdown("---")
+
+    # ===================================================================
     # STEP 7: Execute Button
     # ===================================================================
     col1, col2, col3 = st.columns([2, 1, 2])
@@ -470,9 +495,9 @@ def _process_vip_user_check(
                 "❌ Log Analytics Workspace ID not configured. Please check your environment variables."
             )
         else:
-            # Execute the KQL query
+            # Execute the EDITED KQL query (not the original)
             success, output, dataframe = _execute_kql_query(
-                step_num, rule_number, kql_query, state_mgr
+                step_num, rule_number, edited_kql_query, state_mgr
             )
 
             if success:
@@ -857,17 +882,19 @@ def display_interactive_steps(
                     if kql_explanation:
                         st.write(kql_explanation)
 
-                    # Editable KQL Query
+                    # Editable KQL Query - ALWAYS EDITABLE
                     query_key = f"editable_kql_{rule_number}_{step_num}"
                     if query_key not in st.session_state:
                         st.session_state[query_key] = kql_query
 
+                    # Make query editable for ALL steps including VIP
                     edited_query = st.text_area(
                         "KQL Query (editable):",
                         value=st.session_state[query_key],
                         height=200,
                         key=f"kql_editor_{step_num}",
-                        help="You can modify this query before execution",
+                        help="✏️ You can modify this query before execution",
+                        disabled=False  # Ensure it's always editable
                     )
 
                     # Update session state when query changes
@@ -927,7 +954,7 @@ def display_interactive_steps(
                             f"✅ Found {len(entity_ips)} IP address(es) from alert entities"
                         )
 
-                        with st.expander("🔍 View Detected IPs", expanded=True):
+                        with st.expander("🔍 View Detected IPs", expanded=False):  # CLOSED BY DEFAULT
                             for ip in entity_ips:
                                 st.code(ip)
 
@@ -1114,12 +1141,12 @@ def _process_ip_reputation_check(
     progress_bar.progress(100)
     progress_bar.empty()
 
-    # Display detailed results for each IP
+    # Display detailed results for each IP - CLOSED BY DEFAULT
     st.markdown("### 📊 Detailed Results")
     for ip, result in results.items():
         if result.get("formatted_output"):
             with st.expander(
-                f"🔍 {ip} - {result.get('risk_level', 'Unknown')}", expanded=True
+                f"🔍 {ip} - {result.get('risk_level', 'Unknown')}", expanded=False  # CLOSED BY DEFAULT
             ):
                 st.text(result["formatted_output"])
         elif result.get("skip_check"):
