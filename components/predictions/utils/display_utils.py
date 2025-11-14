@@ -1,7 +1,9 @@
 import json
+import os
 import streamlit as st
 from datetime import datetime
 from components.predictions.utils.mitre_utils import create_complete_mitre_matrix
+from utils.html_utils import decode_html_entities, clean_display_text
 
 
 def display_metric_with_info(label: str, value: str, info_text: str, col):
@@ -14,6 +16,13 @@ def display_metric_with_info(label: str, value: str, info_text: str, col):
 
 def display_mitre_analysis(mitre_data: dict, username: str):
     """Display comprehensive MITRE ATT&CK analysis with enhanced features"""
+    
+    # Check if TESTING is enabled
+    is_testing = os.getenv("TESTING", "false").lower() == "true"
+    
+    if not is_testing:
+        # In production, skip MITRE analysis display
+        return
 
     st.markdown("---")
     st.markdown(
@@ -131,7 +140,7 @@ def display_mitre_analysis(mitre_data: dict, username: str):
 
     # Enhanced Attack Chain Narrative
     st.markdown("### 📖 Attack Chain Narrative")
-    narrative_text = mitre_data.get("attack_chain_narrative", "No narrative available")
+    narrative_text = decode_html_entities(mitre_data.get("attack_chain_narrative", "No narrative available"))
 
     # Create timeline-based narrative
     attack_timeline = mitre_data.get("attack_timeline", [])
@@ -214,11 +223,11 @@ def display_mitre_analysis(mitre_data: dict, username: str):
                 st.metric("Confidence", f"{technique.get('confidence', 0)}%")
                 st.write(f"**Timestamp:** {technique.get('timestamp', 'N/A')}")
 
-            st.write(f"**Evidence:** {technique.get('evidence', 'No evidence')}")
-            st.write(f"**Indicators:** {', '.join(technique.get('indicators', []))}")
+            st.write(f"**Evidence:** {clean_display_text(technique.get('evidence', 'No evidence'))}")
+            st.write(f"**Indicators:** {', '.join([clean_display_text(str(ind)) for ind in technique.get('indicators', [])])}")
 
             # Add Procedure section
-            procedure = technique.get("procedure", "")
+            procedure = clean_display_text(technique.get("procedure", ""))
             if procedure:
                 st.markdown(
                     f"""
@@ -264,15 +273,15 @@ def display_mitre_analysis(mitre_data: dict, username: str):
                         f"**Sub-Technique:** {step.get('sub_technique', 'N/A')} ({step.get('sub_technique_id', 'N/A')})"
                     )
 
-                st.write(f"**Description:** {step.get('description', 'N/A')}")
+                st.write(f"**Description:** {clean_display_text(step.get('description', 'N/A'))}")
 
             with col2:
-                st.write(f"**Rationale:** {step.get('rationale', 'N/A')}")
+                st.write(f"**Rationale:** {clean_display_text(step.get('rationale', 'N/A'))}")
                 st.write(
-                    f"**Indicators to Watch:** {', '.join(step.get('indicators_to_watch', []))}"
+                    f"**Indicators to Watch:** {', '.join([clean_display_text(str(ind)) for ind in step.get('indicators_to_watch', [])])}"
                 )
                 st.write(
-                    f"**Preventive Action:** {step.get('recommended_preventive_action', 'N/A')}"
+                    f"**Preventive Action:** {clean_display_text(step.get('recommended_preventive_action', 'N/A'))}"
                 )
 
             st.markdown("---")
@@ -324,11 +333,11 @@ def display_mitre_analysis(mitre_data: dict, username: str):
             priority = rec.get("priority", "MEDIUM").upper()
 
             if priority == "CRITICAL":
-                st.error(f"**🚨 CRITICAL #{idx}:** {rec.get('recommendation', 'N/A')}")
+                st.error(f"**🚨 CRITICAL #{idx}:** {clean_display_text(rec.get('recommendation', 'N/A'))}")
             elif priority == "HIGH":
-                st.warning(f"**⚠️ HIGH #{idx}:** {rec.get('recommendation', 'N/A')}")
+                st.warning(f"**⚠️ HIGH #{idx}:** {clean_display_text(rec.get('recommendation', 'N/A'))}")
             else:
-                st.info(f"**📋 {priority} #{idx}:** {rec.get('recommendation', 'N/A')}")
+                st.info(f"**📋 {priority} #{idx}:** {clean_display_text(rec.get('recommendation', 'N/A'))}")
 
             with st.expander("View Details"):
                 st.write(f"**MITRE Mitigation:** {rec.get('mitre_mitigation', 'N/A')}")
@@ -532,12 +541,12 @@ def display_analysis_results(analysis: dict, username: str):
                     f"**🟢 Finding #{idx}: {finding.get('category', 'Unknown Category')} (LOW)**"
                 )
 
-            st.write(f"**🔍 Step Reference:** {finding.get('step_reference', 'N/A')}")
-            st.write(f"**📝 Details:** {finding.get('details', 'No details provided')}")
+            st.write(f"**🔍 Step Reference:** {clean_display_text(finding.get('step_reference', 'N/A'))}")
+            st.write(f"**📝 Details:** {clean_display_text(finding.get('details', 'No details provided'))}")
             st.write(
-                f"**🔬 Evidence:** {finding.get('evidence', 'No evidence provided')}"
+                f"**🔬 Evidence:** {clean_display_text(finding.get('evidence', 'No evidence provided'))}"
             )
-            st.write(f"**⚠️ Impact:** {finding.get('impact', 'No impact assessment')}")
+            st.write(f"**⚠️ Impact:** {clean_display_text(finding.get('impact', 'No impact assessment'))}")
             st.markdown("---")
 
     # Recommendations

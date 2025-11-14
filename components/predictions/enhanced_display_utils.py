@@ -2,6 +2,7 @@ import json
 import streamlit as st
 from datetime import datetime
 from components.predictions.utils.mitre_utils import create_complete_mitre_matrix
+from utils.html_utils import clean_html_content, clean_dict_html_content
 
 
 def display_enhanced_analysis_results(analysis: dict, username: str):

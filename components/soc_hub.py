@@ -2,6 +2,7 @@ import hashlib
 import streamlit as st
 from sentinel.backend import *
 from api_client.analyzer_api_client import get_analyzer_client
+from utils.html_utils import decode_html_entities, clean_display_text
 
 from components.alert_analysis.main import display_ai_threat_analysis_tab
 from components.alert_analysis.historical_analysis import (
@@ -183,8 +184,8 @@ def _display_alert_header(alert_data, alert_name):
     
     col1, col2 = st.columns([2, 1])
     with col1:
-        st.markdown(f"### {alert_name}")
-        description = alert_data.get("description", "No description available")
+        st.markdown(f"### {clean_display_text(alert_name)}")
+        description = clean_display_text(alert_data.get("description", "No description available"))
         st.markdown(f"**Description:** {description}")
     with col2:
         severity = alert_data.get("severity", "Unknown")
