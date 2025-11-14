@@ -277,13 +277,9 @@ class IntelligentSOCAnalyzer:
                         for r_num in rule_numbers:
                             if q_num.lower() == r_num.lower():
                                 rule_number_score = 1.0  # Perfect match
-                            elif (
-                                q_num.lower() in r_num.lower()
-                                or r_num.lower() in q_num.lower()
-                            ):
-                                rule_number_score = max(
-                                    rule_number_score, 0.8
-                                )  # Partial match
+                            elif (q_num.lower() in r_num.lower() or 
+                                  r_num.lower() in q_num.lower()):
+                                rule_number_score = max(rule_number_score, 0.8)
 
                 if rule_number_score > 0:
                     incident_count = len(self.df[self.df["RULE"] == rule])

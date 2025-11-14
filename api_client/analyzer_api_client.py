@@ -24,11 +24,25 @@ class AnalyzerAPIClient:
         self.max_retries = 3
         self.timeout = 30
 
+    def __enter__(self):
+        """Context manager entry"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensures session is closed"""
+        self.close()
+
+    def close(self):
+        """Close the session to prevent resource leaks"""
+        if hasattr(self, 'session') and self.session:
+            self.session.close()
+
     def _retry_request(
         self, method: str, url: str, **kwargs
     ) -> Optional[requests.Response]:
         """Execute request with retry logic"""
         for attempt in range(self.max_retries):
+            response = None
             try:
                 if method.upper() == "GET":
                     response = self.session.get(url, timeout=self.timeout, **kwargs)
@@ -41,12 +55,16 @@ class AnalyzerAPIClient:
                 return response
 
             except requests.exceptions.Timeout:
+                if response:
+                    response.close()
                 logger.warning(f"Timeout on attempt {attempt + 1}/{self.max_retries}")
                 if attempt < self.max_retries - 1:
                     time.sleep(2**attempt)
                 continue
 
             except requests.exceptions.ConnectionError:
+                if response:
+                    response.close()
                 logger.warning(
                     f"Connection error on attempt {attempt + 1}/{self.max_retries}"
                 )
@@ -55,6 +73,8 @@ class AnalyzerAPIClient:
                 continue
 
             except requests.exceptions.RequestException as e:
+                if response:
+                    response.close()
                 if attempt == self.max_retries - 1:
                     raise
                 time.sleep(2**attempt)
@@ -127,7 +147,7 @@ class AnalyzerAPIClient:
             }
         except Exception as e:
             logger.error(f"Analysis error: {str(e)}")
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": "Analysis failed due to an internal error"}
 
     def get_historical_data(self, rule_name: str) -> Dict[str, Any]:
         """Get historical data with fallback"""
@@ -152,7 +172,7 @@ class AnalyzerAPIClient:
 
         except Exception as e:
             logger.error(f"Historical data error: {str(e)}")
-            return {"success": False, "error": str(e), "data": []}
+            return {"success": False, "error": "Failed to retrieve historical data", "data": []}
 
     def load_data(self) -> Dict[str, Any]:
         """
@@ -200,11 +220,14 @@ class AnalyzerAPIClient:
         Returns:
             Dict with total_records, unique_rules, and data_sources
         """
+        response = None
         try:
             response = self.session.get(f"{self.base_url}/analyzer/stats", timeout=10)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
+            if response:
+                response.close()
             return {"success": False, "error": str(e)}
 
     def system_health(self) -> Dict[str, Any]:
@@ -214,11 +237,14 @@ class AnalyzerAPIClient:
         Returns:
             Dict with overall system health status
         """
+        response = None
         try:
             response = self.session.get(f"{self.base_url}/health", timeout=5)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
+            if response:
+                response.close()
             return {"status": "error", "error": str(e)}
 
 
