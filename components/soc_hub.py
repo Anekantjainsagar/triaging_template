@@ -1,8 +1,8 @@
 import hashlib
 import streamlit as st
 from sentinel.backend import *
+from utils.html_utils import clean_display_text
 from api_client.analyzer_api_client import get_analyzer_client
-from utils.html_utils import decode_html_entities, clean_display_text
 
 from components.alert_analysis.main import display_ai_threat_analysis_tab
 from components.alert_analysis.historical_analysis import (
