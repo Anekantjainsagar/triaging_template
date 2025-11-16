@@ -21,7 +21,21 @@ def display_mitre_analysis(mitre_data: dict, username: str):
     is_testing = os.getenv("TESTING", "false").lower() == "true"
     
     if not is_testing:
-        # In production, skip MITRE analysis display
+        # In production mode, show only defensive recommendations
+        st.markdown("---")
+        recommendations = mitre_data.get("defensive_recommendations", [])
+        if recommendations:
+            st.markdown("### 🛡️ Defensive Recommendations")
+            
+            for idx, rec in enumerate(recommendations, 1):
+                priority = rec.get("priority", "MEDIUM").upper()
+                
+                if priority == "CRITICAL":
+                    st.error(f"**🚨 CRITICAL #{idx}:** {clean_display_text(rec.get('recommendation', 'N/A'))}")
+                elif priority == "HIGH":
+                    st.warning(f"**⚠️ HIGH #{idx}:** {clean_display_text(rec.get('recommendation', 'N/A'))}")
+                else:
+                    st.info(f"**📋 {priority} #{idx}:** {clean_display_text(rec.get('recommendation', 'N/A'))}")
         return
 
     st.markdown("---")

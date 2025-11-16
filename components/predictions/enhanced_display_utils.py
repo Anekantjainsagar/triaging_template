@@ -1,3 +1,4 @@
+import os
 import json
 import streamlit as st
 from datetime import datetime
@@ -336,11 +337,62 @@ def display_enhanced_analysis_results(analysis: dict, username: str):
 
 
 def display_enhanced_mitre_analysis(mitre_data: dict, username: str):
-    """Enhanced MITRE analysis with better structure and always visible matrix"""
+    """Enhanced MITRE analysis with better structure and conditional display based on TESTING mode"""
+    
+    # Check testing mode
+    testing_mode = os.getenv("TESTING", "false").lower() == "true"
     
     # Clean HTML entities from MITRE data
     mitre_data = clean_dict_html_content(mitre_data)
     
+    if not mitre_data or not isinstance(mitre_data, dict):
+        st.error("❌ MITRE analysis data not available or invalid format")
+        st.info(
+            "💡 The initial analysis was successful, but MITRE mapping encountered an issue. Please review the initial assessment above."
+        )
+        return
+
+    # Only show detailed MITRE analysis if TESTING=true
+    if not testing_mode:
+        # Production mode: Show only basic defensive recommendations
+        st.markdown("---")
+        recommendations = mitre_data.get("defensive_recommendations", [])
+        if recommendations:
+            st.markdown("### 🛡️ Defensive Recommendations")
+            
+            for idx, rec in enumerate(recommendations, 1):
+                priority = rec.get("priority", "MEDIUM").upper()
+                
+                if priority == "CRITICAL":
+                    bg_color = "#fee2e2"
+                    border_color = "#dc2626"
+                    icon = "🚨"
+                elif priority == "HIGH":
+                    bg_color = "#fed7aa"
+                    border_color = "#f59e0b"
+                    icon = "⚠️"
+                else:
+                    bg_color = "#e0e7ff"
+                    border_color = "#6366f1"
+                    icon = "📋"
+                
+                st.markdown(
+                    f"""
+                    <div style="background: {bg_color}; border: 2px solid {border_color}; 
+                               border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
+                        <h4 style="color: {border_color}; margin: 0 0 0.5rem 0;">
+                            {icon} {priority} #{idx}
+                        </h4>
+                        <p style="color: #374151; margin: 0; font-weight: 500;">
+                            {clean_display_text(rec.get('recommendation', 'N/A'))}
+                        </p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+        return
+    
+    # Testing mode: Show full detailed analysis
     st.markdown("---")
     st.markdown(
         """
@@ -353,13 +405,6 @@ def display_enhanced_mitre_analysis(mitre_data: dict, username: str):
         """,
         unsafe_allow_html=True,
     )
-
-    if not mitre_data or not isinstance(mitre_data, dict):
-        st.error("❌ MITRE analysis data not available or invalid format")
-        st.info(
-            "💡 The initial analysis was successful, but MITRE mapping encountered an issue. Please review the initial assessment above."
-        )
-        return
 
     # Always show MITRE Matrix first (even if empty)
     st.markdown("### 🗺️ MITRE ATT&CK Matrix Visualization")
