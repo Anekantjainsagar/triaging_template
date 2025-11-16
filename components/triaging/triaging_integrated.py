@@ -651,6 +651,28 @@ def display_triaging_workflow_cached(
     # ✅ DEBUG: Show what we're passing to triaging
     st.info(f"🚀 Starting triaging for: {alert_data.get('title', 'Unknown Alert')}")
 
+    # ✅ ENHANCEMENT: Extract technical overview from alert analysis if available
+    if analysis_key in st.session_state and st.session_state[analysis_key]:
+        analysis_result = st.session_state[analysis_key]
+        if analysis_result.get("success") and analysis_result.get("analysis"):
+            analysis_text = analysis_result.get("analysis", "")
+            
+            # Extract technical overview section
+            technical_overview = ""
+            if "## 1. TECHNICAL OVERVIEW" in analysis_text:
+                sections = analysis_text.split("##")
+                for section in sections:
+                    if "1. TECHNICAL OVERVIEW" in section:
+                        # Clean up the technical overview
+                        technical_overview = section.replace("1. TECHNICAL OVERVIEW", "").strip()
+                        break
+            
+            # Add technical overview to alert_data
+            if technical_overview:
+                alert_data["technical_overview"] = technical_overview
+                alert_data["analysis_text"] = analysis_text
+                st.success(f"✅ Technical overview extracted ({len(technical_overview)} chars)")
+
     # Call the original triaging workflow with enhanced alert_data
     display_triaging_workflow(rule_number, alert_data=alert_data)
 

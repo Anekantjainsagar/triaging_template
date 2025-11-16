@@ -422,22 +422,45 @@ class ImprovedTemplateGenerator:
             except Exception as e:
                 print(f"WARNING: Could not extract reference datetime: {e}")
 
+        # Extract technical overview from analysis_text if available
+        technical_overview = ""
+        if analysis_text and "## 1. TECHNICAL OVERVIEW" in analysis_text:
+            sections = analysis_text.split("##")
+            for section in sections:
+                if "1. TECHNICAL OVERVIEW" in section:
+                    technical_overview = section.replace("1. TECHNICAL OVERVIEW", "").strip()
+                    break
+        elif alert_data and alert_data.get("technical_overview"):
+            technical_overview = alert_data.get("technical_overview")
+        
+        print(f"Technical overview extracted: {len(technical_overview)} chars" if technical_overview else "No technical overview found")
+
         # Use the updated step library to generate steps from analysis
         from routes.src.new_steps.step_library import InvestigationStepLibrary
 
         step_library = InvestigationStepLibrary()
 
-        # Generate 6-7 steps directly from analysis with retry
+        # Generate steps with enhanced context including technical overview
         max_retries = 3
         generated_steps = []
         
         for attempt in range(max_retries):
             try:
+                # Enhanced context for step generation
+                enhanced_context = {
+                    "alert_name": alert_name,
+                    "analysis_text": analysis_text,
+                    "technical_overview": technical_overview,
+                    "rule_number": rule_number,
+                    "alert_data": alert_data,
+                }
+                
                 generated_steps = step_library.generate_steps_from_manual_analysis(
                     alert_name=alert_name,
                     analysis_text=analysis_text,
                     rule_number=rule_number,
                     alert_data=alert_data,
+                    technical_overview=technical_overview,  # Pass technical overview
                 )
                 break
             except Exception as e:
@@ -446,13 +469,23 @@ class ImprovedTemplateGenerator:
                     time.sleep(2 ** attempt)
                 else:
                     print(f"   ❌ Using fallback steps due to LLM failure")
-                    # Create basic fallback steps based on alert name
-                    generated_steps = [
-                        {"step_name": "Verify Alert Details", "explanation": "Review and verify the alert details and affected systems", "priority": "HIGH"},
-                        {"step_name": "Check User Activity", "explanation": "Investigate user authentication and activity patterns", "priority": "HIGH"},
-                        {"step_name": "Analyze Network Activity", "explanation": "Review network connections and traffic patterns", "priority": "MEDIUM"},
-                        {"step_name": "Document Findings", "explanation": "Document all investigation findings and recommendations", "priority": "MEDIUM"}
-                    ]
+                    # Create enhanced fallback steps using technical overview if available
+                    if technical_overview:
+                        generated_steps = [
+                            {"step_name": "Verify Alert Details", "explanation": f"Review and verify the alert details based on: {technical_overview[:200]}...", "priority": "HIGH"},
+                            {"step_name": "Check User Activity", "explanation": "Investigate user authentication and activity patterns related to this security event", "priority": "HIGH"},
+                            {"step_name": "VIP User Verification", "explanation": "Check if any affected users are VIP or executive accounts requiring special handling", "priority": "HIGH", "input_required": "vip_user_list"},
+                            {"step_name": "IP Reputation Check", "explanation": "Verify reputation of source IP addresses using VirusTotal and check for VPN/proxy usage", "priority": "MEDIUM"},
+                            {"step_name": "Document Findings", "explanation": "Document all investigation findings and provide recommendations", "priority": "MEDIUM"}
+                        ]
+                    else:
+                        generated_steps = [
+                            {"step_name": "Verify Alert Details", "explanation": "Review and verify the alert details and affected systems", "priority": "HIGH"},
+                            {"step_name": "Check User Activity", "explanation": "Investigate user authentication and activity patterns", "priority": "HIGH"},
+                            {"step_name": "VIP User Verification", "explanation": "Check if any affected users are VIP or executive accounts", "priority": "HIGH", "input_required": "vip_user_list"},
+                            {"step_name": "IP Reputation Check", "explanation": "Verify reputation of source IP addresses", "priority": "MEDIUM"},
+                            {"step_name": "Document Findings", "explanation": "Document all investigation findings", "priority": "MEDIUM"}
+                        ]
 
         # Convert to template rows
         template_rows = []
@@ -471,11 +504,14 @@ class ImprovedTemplateGenerator:
             tool = step.get("tool", "")
             existing_kql = step.get("kql_query", "")
 
-            # Build enhanced explanation with relevance
+            # Build enhanced explanation with relevance and technical context
+            full_explanation = explanation
             if relevance:
-                full_explanation = f"{explanation}\n\nWHY THIS MATTERS: {relevance}"
-            else:
-                full_explanation = explanation
+                full_explanation += f"\n\nWHY THIS MATTERS: {relevance}"
+            
+            # Add technical context if this is a manual alert with technical overview
+            if technical_overview and idx <= 2:  # Only for first 2 steps to avoid repetition
+                full_explanation += f"\n\nTECHNICAL CONTEXT: {technical_overview[:300]}..."
 
             # UPDATED: Generate or enhance KQL if not already present
             # Pass reference_datetime_obj to ensure proper time windows
@@ -522,7 +558,7 @@ class ImprovedTemplateGenerator:
                 "KQL Explanation": kql_explanation,
                 "Execute": "",
                 "Output": "",
-                "Remarks/Comments": f"[MANUAL] {step.get('priority', 'MEDIUM')} | Tool: {tool if tool else 'KQL'}",
+                "Remarks/Comments": f"[MANUAL] {step.get('priority', 'MEDIUM')} | Tool: {tool if tool else 'KQL'} | Enhanced with AI analysis",
             }
 
             template_rows.append(row)

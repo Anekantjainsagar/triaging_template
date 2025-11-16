@@ -44,7 +44,7 @@ class InvestigationStepLibrary:
             print(f"✅ Using {ollama_model} for step generation")
 
     def generate_steps_from_manual_analysis(
-    self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN", alert_data:dict=None
+    self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN", alert_data:dict=None, technical_overview: str = ""
 ) -> List[Dict]:
         # ✅ ADD THIS DIAGNOSTIC
         print(f"\n🔍 DIAGNOSTIC: generate_steps_from_manual_analysis()")
@@ -67,6 +67,13 @@ class InvestigationStepLibrary:
         # STEP 1: Parse analysis to extract profile
         print("📊 PHASE 1: Analyzing alert structure...")
         profile = self._parse_alert_analysis(analysis_text, alert_name)
+        
+        # Add technical overview to profile if provided
+        if technical_overview:
+            profile['technical_overview'] = technical_overview
+            print(f"   ✅ Technical overview added to profile ({len(technical_overview)} chars)")
+        else:
+            print("   ⚠️ No technical overview provided")
 
         # STEP 2: Research investigation methodologies using web search
         print("\n🌐 PHASE 2: Researching investigation best practices...")
@@ -77,7 +84,7 @@ class InvestigationStepLibrary:
         # STEP 3: Generate 6-7 core investigation steps
         print("\n🧠 PHASE 3: Generating investigation steps...")
         generated_steps = self._generate_manual_investigation_steps(
-            alert_name, profile, investigation_guidance
+            alert_name, profile, investigation_guidance, technical_overview
         )
 
         # ✅ NEW: STEP 3.5 - Remove AI-generated VIP/IP steps BEFORE deduplication
@@ -796,17 +803,20 @@ Provide investigation procedures focusing on data sources and key indicators."""
             return ""
 
     def _generate_manual_investigation_steps(
-        self, alert_name: str, profile: Dict, guidance: str
+        self, alert_name: str, profile: Dict, guidance: str, technical_overview: str = ""
     ) -> List[Dict]:
         """Generate 6-7 investigation steps using LLM + profile + guidance"""
         print("   🧠 Generating investigation steps...")
 
+        # Use technical overview parameter first, then fall back to profile
+        tech_context = technical_overview or profile.get('technical_overview', '')
+        
         prompt = f"""Generate 6-7 UNIQUE investigation steps for this security alert.
 
 ALERT: {alert_name}
 
-TECHNICAL CONTEXT:
-{profile.get('technical_overview', '')[:600]}
+TECHNICAL CONTEXT FROM AI ANALYSIS:
+{tech_context[:800]}
 
 GENERATE 6-7 INVESTIGATION STEPS covering:
 1. Scope verification - how many users/systems affected
@@ -821,14 +831,15 @@ CRITICAL REQUIREMENTS:
 - Steps should require KQL queries (SigninLogs/AuditLogs/DeviceInfo)
 - Include geographic/location analysis step
 - Be specific about WHAT to examine and WHY
+- Use the technical context to make steps more relevant to this specific alert
 
 FORMAT EACH STEP AS:
-STEP: [Descriptive name]
-EXPLANATION: [What to examine, why it matters, what to find]
+STEP: [Descriptive name based on technical context]
+EXPLANATION: [What to examine, why it matters for THIS alert, what to find]
 DATA_SOURCE: [SigninLogs/AuditLogs/DeviceInfo]
 PRIORITY: [CRITICAL/HIGH/MEDIUM]
 TOOL: [None unless IP reputation check]
-RELEVANCE: [How this helps investigate THIS alert]
+RELEVANCE: [How this helps investigate THIS specific alert based on technical context]
 ---
 
 Generate NOW:"""
