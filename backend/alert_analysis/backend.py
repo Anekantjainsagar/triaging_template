@@ -19,7 +19,7 @@ RETRY_DELAY = int(os.getenv("RETRY_DELAY", "5"))
 
 
 class SecurityAlertAnalyzerCrew:
-    """Backend service for security alert analysis using Gemini only"""
+    """Backend service for security alert analysis using Gemini with Groq fallback"""
 
     def __init__(self):
         """Initialize with Gemini primary and Groq fallback"""
@@ -283,10 +283,16 @@ class SecurityAlertAnalyzerCrew:
         )
         return {"threat_intel": threat_intel_agent}
 
-    def _create_tasks(self, alert_name: str, agents: Dict[str, Agent]):
+    def _create_tasks(self, alert_name: str, alert_description: str, agents: Dict[str, Agent]):
         """Create task with strict template"""
-        threat_intel_task = Task(
-            description=f"""Analyze: '{alert_name}'
+        
+        # Build the analysis prompt with both title and description
+        analysis_prompt = f"""Analyze Alert: '{alert_name}'"""
+        
+        if alert_description:
+            analysis_prompt += f"\n\nAlert Description: {alert_description}"
+        
+        analysis_prompt += """
 
 STRICT FORMAT - Follow EXACTLY:
 
@@ -312,14 +318,17 @@ RULES:
 - NO "Thought:", "Action:", or meta-commentary
 - NO reasoning process or internal notes
 - ONLY provide the structured analysis above
-- Use exact section numbering and names""",
+- Use exact section numbering and names"""
+        
+        threat_intel_task = Task(
+            description=analysis_prompt,
             agent=agents["threat_intel"],
             expected_output="Structured 4-section analysis with headers: 1. TECHNICAL OVERVIEW, 2. MITRE ATT&CK TECHNIQUES, 3. THREAT ACTORS, 4. BUSINESS IMPACT ASSESSMENT",
         )
         return [threat_intel_task]
 
     def _analyze_with_llm(
-        self, alert_name: str, llm: LLM
+        self, alert_name: str, alert_description: str, llm: LLM
     ) -> Tuple[bool, Optional[str], Optional[Exception]]:
         """Execute analysis with specified LLM"""
         try:
@@ -327,7 +336,7 @@ RULES:
             logger.info(f"Analyzing with {model_name}...")
 
             agents = self._create_agents(llm)
-            tasks = self._create_tasks(alert_name, agents)
+            tasks = self._create_tasks(alert_name, alert_description, agents)
 
             crew = Crew(
                 agents=list(agents.values()),
@@ -366,7 +375,7 @@ RULES:
             logger.error(f"Analysis failed: {str(e)}")
             return False, None, e
 
-    def analyze_alert(self, alert_name: str) -> str:
+    def analyze_alert(self, alert_name: str, alert_description: str = None) -> str:
         """Main analysis method with Groq fallback"""
         if not alert_name or not alert_name.strip():
             raise ValueError("Alert name cannot be empty")
@@ -378,9 +387,11 @@ RULES:
                     f"🔍 Analyzing '{alert_name}' with GEMINI "
                     f"(Attempt {attempt + 1}/{MAX_RETRIES})"
                 )
+                if alert_description:
+                    logger.info(f"With description: {alert_description[:100]}...")
 
                 success, result, error = self._analyze_with_llm(
-                    alert_name, self.primary_llm
+                    alert_name, alert_description, self.primary_llm
                 )
 
                 if success and self._validate_output_structure(result):
@@ -402,7 +413,7 @@ RULES:
             logger.info("🔄 Falling back to GROQ...")
             try:
                 success, result, error = self._analyze_with_llm(
-                    alert_name, self.fallback_llm
+                    alert_name, alert_description, self.fallback_llm
                 )
                 
                 if success and self._validate_output_structure(result):

@@ -98,7 +98,7 @@ class AnalyzerAPIClient:
                 "alert_analyzer_loaded": False,
             }
 
-    def analyze_alert(self, alert_name: str) -> Dict[str, Any]:
+    def analyze_alert(self, alert_name: str, alert_description: Optional[str] = None) -> Dict[str, Any]:
         """Analyze alert with timeout handling and undefined check"""
 
         # HANDLE UNDEFINED/NULL VALUES
@@ -112,6 +112,7 @@ class AnalyzerAPIClient:
 
         # Ensure it's a string
         alert_name = str(alert_name).strip()
+        alert_description = str(alert_description).strip() if alert_description else None
 
         if not alert_name:
             return {
@@ -121,11 +122,18 @@ class AnalyzerAPIClient:
 
         try:
             logger.info(f"Analyzing alert: {alert_name}")
+            if alert_description:
+                logger.info(f"With description: {alert_description[:100]}...")
+
+            # Prepare payload with both title and description
+            payload = {"alert_name": alert_name}
+            if alert_description:
+                payload["alert_description"] = alert_description
 
             # Use longer timeout for analysis
             response = self.session.post(
                 f"{self.base_url}/analyzer/analyze",
-                json={"alert_name": alert_name},
+                json=payload,
                 timeout=180,  # 3 minutes
             )
             response.raise_for_status()
@@ -253,15 +261,14 @@ class AnalyzerAPIClient:
 # ============================================================================
 
 
-@st.cache_resource
 def get_analyzer_client(base_url: str = "http://localhost:8000") -> AnalyzerAPIClient:
     """
-    Get cached analyzer API client instance for Streamlit
+    Get analyzer API client instance for Streamlit
 
     Args:
         base_url: Base URL of the FastAPI server
 
     Returns:
-        Cached AnalyzerAPIClient instance
+        AnalyzerAPIClient instance
     """
     return AnalyzerAPIClient(base_url)

@@ -427,8 +427,6 @@ class ImprovedTemplateGenerator:
 
         step_library = InvestigationStepLibrary()
 
-        print("Alert data is coming here")
-        print(alert_data)
         # Generate 6-7 steps directly from analysis with retry
         max_retries = 3
         generated_steps = []

@@ -52,8 +52,11 @@ def display_ai_threat_analysis_tab(alert_name, api_client, analysis_key, alert_d
             status_text.text("🌐 Researching threat intelligence...")
             progress_bar.progress(75)
 
-            # Call API
-            result = api_client.analyze_alert(alert_name)
+            # Extract description from alert data
+            alert_description = alert_data.get("description") or alert_data.get("alert_description") or alert_data.get("alert_summary")
+            
+            # Call API with both title and description
+            result = api_client.analyze_alert(alert_name, alert_description)
 
             progress_bar.progress(95)
             status_text.text("📊 Finalizing analysis...")

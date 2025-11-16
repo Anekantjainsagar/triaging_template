@@ -54,6 +54,7 @@ class AnalyzeAlertRequest(BaseModel):
     """Request model for alert analysis"""
 
     alert_name: str = Field(..., description="Alert/Rule name to analyze", min_length=1)
+    alert_description: Optional[str] = Field(None, description="Optional alert description for enhanced analysis")
 
 
 class AnalyzeAlertResponse(BaseModel):
@@ -319,7 +320,7 @@ async def analyze_alert(request: AnalyzeAlertRequest):
     - Business impact assessment
 
     Args:
-        request: AnalyzeAlertRequest with alert_name
+        request: AnalyzeAlertRequest with alert_name and optional alert_description
 
     Returns:
         AnalyzeAlertResponse with generated analysis
@@ -331,8 +332,8 @@ async def analyze_alert(request: AnalyzeAlertRequest):
     _, alert_analyzer = get_analyzers()
 
     try:
-        # Generate analysis (this may take time due to LLM processing)
-        analysis = alert_analyzer.analyze_alert(request.alert_name)
+        # Generate analysis with both title and description (this may take time due to LLM processing)
+        analysis = alert_analyzer.analyze_alert(request.alert_name, request.alert_description)
 
         return AnalyzeAlertResponse(
             success=True,
