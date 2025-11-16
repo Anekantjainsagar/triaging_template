@@ -7,7 +7,7 @@ import pandas as pd
 import pytz
 
 # Import workflow orchestrator
-from main_workflow import SelectiveWorkflowOrchestrator
+from backend.fetch_data.workflow import SelectiveWorkflowOrchestrator
 
 # Import SOC Hub components
 from components.soc_hub import display_ai_analysis
