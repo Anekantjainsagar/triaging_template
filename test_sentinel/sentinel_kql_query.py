@@ -41,19 +41,9 @@ def main():
 
     workspace_id = os.getenv("LOG_ANALYTICS_WORKSPACE_ID")
 
-    kql_query = """SigninLogs
-| where TimeGenerated > ago(1d)
-| join kind=inner (
-    DeviceProcessEvents
-    | where TimeGenerated > ago(1d)
-) on $left.UserPrincipalName == $right.InitiatingProcessAccountUpn
-| where abs(datetime_diff('minute', SigninLogs.TimeGenerated, DeviceProcessEvents.TimeGenerated)) < 10
-| project 
-    SigninLogs.UserPrincipalName, 
-    SigninLogs.IPAddress, 
-    DeviceProcessEvents.ProcessCommandLine, 
-    SigninLogs.TimeGenerated, 
-    DeviceProcessEvents.TimeGenerated
+    kql_query = """IntuneDevices
+| where DeviceName contains "Wazuh1"
+| project DeviceName, DeviceType, ComplianceState, LastCheckInDate
 """
 
     credential = DefaultAzureCredential()
