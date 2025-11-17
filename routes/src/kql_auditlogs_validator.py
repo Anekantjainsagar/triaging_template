@@ -67,34 +67,34 @@ def validate_and_fix_api_query(
 
     # Check if query contains AuditLogs
     if not validator.contains_auditlogs(kql_query):
-        print(f"   ✅ Query validation passed - no AuditLogs detected")
+        print(f"   OK: Query validation passed - no AuditLogs detected")
         return kql_query, explanation, False
 
-    print(f"   ⚠️ Query contains AuditLogs - attempting to fix...")
+    print(f"   WARNING: Query contains AuditLogs - attempting to fix...")
 
     # Get primary table
     primary_table = validator.extract_primary_table(kql_query)
 
     if primary_table and primary_table.lower() == "auditlogs":
         # Primary table IS AuditLogs - need complete regeneration
-        print(f"   🔄 Primary table is AuditLogs - regenerating query...")
+        print(f"   INFO: Primary table is AuditLogs - regenerating query...")
         return _regenerate_query_without_auditlogs(
             step_name, explanation, reference_datetime_obj, max_retries
         )
 
     # AuditLogs is in a JOIN - try to remove it
-    print(f"   🔧 Removing AuditLogs join...")
+    print(f"   INFO: Removing AuditLogs join...")
     fixed_query = validator.remove_auditlogs_join(kql_query)
 
     # Verify the fix
     if validator.contains_auditlogs(fixed_query):
         # Still has AuditLogs - regenerate completely
-        print(f"   🔄 Could not remove AuditLogs - regenerating query...")
+        print(f"   INFO: Could not remove AuditLogs - regenerating query...")
         return _regenerate_query_without_auditlogs(
             step_name, explanation, reference_datetime_obj, max_retries
         )
 
-    print(f"   ✅ Successfully removed AuditLogs join")
+    print(f"   OK: Successfully removed AuditLogs join")
     return fixed_query, explanation, True
 
 
@@ -115,7 +115,7 @@ def _regenerate_query_without_auditlogs(
     )
 
     for attempt in range(max_retries):
-        print(f"   🔄 Regeneration attempt {attempt + 1}/{max_retries}...")
+        print(f"   INFO: Regeneration attempt {attempt + 1}/{max_retries}...")
 
         # Generate new query
         new_query, new_explanation = generator.generate_kql_query(
@@ -129,13 +129,13 @@ def _regenerate_query_without_auditlogs(
         validator = KQLAuditLogsValidator()
 
         if not validator.contains_auditlogs(new_query):
-            print(f"   ✅ Regenerated query is valid (no AuditLogs)")
+            print(f"   OK: Regenerated query is valid (no AuditLogs)")
             return new_query, new_explanation, True
 
-        print(f"   ⚠️ Regenerated query still contains AuditLogs - retrying...")
+        print(f"   WARNING: Regenerated query still contains AuditLogs - retrying...")
 
     # If all retries failed, return empty query
-    print(f"   ❌ Failed to regenerate valid query after {max_retries} attempts")
+    print(f"   ERROR: Failed to regenerate valid query after {max_retries} attempts")
     return "", "Query generation failed - manual investigation required", True
 
 
@@ -167,7 +167,7 @@ def enhanced_generate_kql_query_with_validation(
         )
 
         if is_api_generated:
-            print(f"   🔍 Validating API-generated query for AuditLogs usage...")
+            print(f"   INFO: Validating API-generated query for AuditLogs usage...")
 
             validated_query, validated_explanation, was_fixed = (
                 validate_and_fix_api_query(
@@ -179,7 +179,7 @@ def enhanced_generate_kql_query_with_validation(
             )
 
             if was_fixed:
-                print(f"   ✅ Query was validated and fixed")
+                print(f"   OK: Query was validated and fixed")
                 return validated_query, validated_explanation
 
     return kql_query, kql_explanation

@@ -34,8 +34,8 @@ class ImprovedTemplateGenerator:
             )
             print(f"✅ Using {ollama_model} for template generation")
 
-        # Initialize enhanced KQL generator
-        self.kql_generator = EnhancedKQLGenerator()
+        # Initialize enhanced KQL generator (will be updated with alert source type when needed)
+        self.kql_generator = None
 
         self.template_columns = [
             "Step",
@@ -56,7 +56,7 @@ class ImprovedTemplateGenerator:
             self.analyzer_client = None
 
     def generate_intelligent_template(
-        self, rule_number: str, original_steps: List[Dict], rule_context: str = ""
+        self, rule_number: str, original_steps: List[Dict], rule_context: str = "", alert_data: dict = None
     ) -> pd.DataFrame:
         """
         Generate intelligent template with support for manual alert analysis
@@ -66,6 +66,9 @@ class ImprovedTemplateGenerator:
         print(f"\n{'='*80}")
         print(f"🧠 INTELLIGENT TEMPLATE GENERATION")
         print(f"{'='*80}\n")
+        
+        # Store alert_data for profile building
+        self._current_alert_data = alert_data
 
         # ✅ CHECK IF THIS IS A MANUAL ALERT GENERATION
         if rule_number == "MANUAL_GEN" and not original_steps:
@@ -96,7 +99,11 @@ class ImprovedTemplateGenerator:
         )
 
         profile_builder = InvestigationProfileBuilder()
-        profile = profile_builder.build_profile(rule_number, rule_context)
+        # Pass alert_data to profile builder to extract alert_source_type
+        alert_data_for_profile = None
+        if hasattr(self, '_current_alert_data'):
+            alert_data_for_profile = self._current_alert_data
+        profile = profile_builder.build_profile(rule_number, rule_context, alert_data_for_profile)
 
         profile["existing_step_names"] = [
             s.get("step_name", "") for s in original_steps
@@ -151,7 +158,7 @@ class ImprovedTemplateGenerator:
 
         # STEP 4: ADD KQL & CONVERT TO TEMPLATE ROWS
         print(f"\n⚙️ PHASE 4: Generating KQL queries and finalizing...")
-
+        
         template_rows.extend(
             self._process_merged_steps_with_kql(merged_steps, rule_number, profile)
         )
@@ -181,6 +188,17 @@ class ImprovedTemplateGenerator:
         reference_datetime_obj = None
         if profile.get("reference_datetime_obj"):
             reference_datetime_obj = profile["reference_datetime_obj"]
+            
+        # Initialize KQL generator with alert source type if available
+        alert_source_type = profile.get("alert_source_type", "")
+        print(f"   🔍 DEBUG: profile alert_source_type: '{alert_source_type}'")
+        if not self.kql_generator:
+            print(f"   🔍 DEBUG: Creating new KQL generator with alert_source_type: '{alert_source_type}'")
+            self.kql_generator = EnhancedKQLGenerator(alert_source_type=alert_source_type)
+        else:
+            print(f"   🔍 DEBUG: Updating existing KQL generator with alert_source_type: '{alert_source_type}'")
+            # Update existing generator with alert source type
+            self.kql_generator.alert_source_type = alert_source_type
 
         # Separate original and AI-generated steps
         original_steps = []
@@ -435,6 +453,17 @@ class ImprovedTemplateGenerator:
         
         print(f"Technical overview extracted: {len(technical_overview)} chars" if technical_overview else "No technical overview found")
 
+        # Initialize KQL generator with alert source type for manual analysis
+        alert_source_type = alert_data.get("alert_source_type", "") if alert_data else ""
+        print(f"🔍 DEBUG: Manual analysis - alert_source_type: '{alert_source_type}'")
+        if not self.kql_generator:
+            print(f"🔍 DEBUG: Creating KQL generator for manual analysis with alert_source_type: '{alert_source_type}'")
+            self.kql_generator = EnhancedKQLGenerator(alert_source_type=alert_source_type)
+        else:
+            print(f"🔍 DEBUG: Updating KQL generator for manual analysis with alert_source_type: '{alert_source_type}'")
+            # Update existing generator with alert source type
+            self.kql_generator.alert_source_type = alert_source_type
+        
         # Use the updated step library to generate steps from analysis
         from routes.src.new_steps.step_library import InvestigationStepLibrary
 

@@ -40,17 +40,21 @@ class InvestigationProfileBuilder:
                 model=ollama_model, base_url="http://localhost:11434", temperature=0.2
             )
 
-    def build_profile(self, rule_number: str, rule_context: str = "") -> Dict:
+    def build_profile(self, rule_number: str, rule_context: str = "", alert_data: dict = None) -> Dict:
         """
         Build comprehensive investigation profile
         """
         print(f"\n Building Investigation Profile for {rule_number}")
 
         # Initialize profile with defaults
+        alert_source_type = alert_data.get("alert_source_type", "") if alert_data else ""
+        print(f"   🔍 DEBUG: Extracted alert_source_type from alert_data: '{alert_source_type}'")
+        
         profile = {
             "rule_number": rule_number,
             "alert_name": "",
             "alert_type": self._classify_alert_type(rule_number, rule_context),
+            "alert_source_type": alert_source_type,
             "technical_overview": "",
             "mitre_techniques": [],
             "mitre_details": {},

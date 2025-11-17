@@ -552,39 +552,39 @@ class KQLQueryStandardizer:
             return "", "Query too short to standardize"
 
         # STEP 1: Validate incoming query
-        print(f"\n🔍 KQL Validation & Standardization")
+        print(f"\nKQL Validation & Standardization")
         print(f"{'='*60}")
 
         is_valid, error_msg, issues = self.syntax_validator.validate_query(raw_kql)
 
         if not is_valid:
-            print(f"⚠️  Issues detected: {len(issues)}")
+            print(f"WARNING: Issues detected: {len(issues)}")
             for issue in issues[:3]:
                 print(f"   - {issue}")
 
-            print(f"\n🔧 Attempting automatic correction...")
+            print(f"\nAttempting automatic correction...")
             raw_kql, fixes = self.syntax_validator.fix_query(raw_kql)
 
             for fix in fixes:
-                print(f"   ✅ {fix}")
+                print(f"   FIXED: {fix}")
 
             is_valid, error_msg, issues = self.syntax_validator.validate_query(raw_kql)
 
             if not is_valid:
-                print(f"⚠️  Still has issues after auto-fix: {issues[0]}")
+                print(f"WARNING: Still has issues after auto-fix: {issues[0]}")
         else:
-            print(f"✅ Query passed validation")
+            print(f"OK: Query passed validation")
 
         # STEP 2: Identify primary table
         primary_table = self._identify_primary_table(raw_kql)
         if not primary_table:
             return "", "Could not identify primary table"
 
-        print(f"📊 Primary table: {primary_table}")
+        print(f"Primary table: {primary_table}")
 
         # STEP 2.5: ✅ Convert UserPrincipalName to AccountName for IdentityInfo
         if primary_table == "IdentityInfo":
-            print(f"🔄 Converting UserPrincipalName to AccountName for IdentityInfo...")
+            print(f"Converting UserPrincipalName to AccountName for IdentityInfo...")
             raw_kql = self._convert_userprincipalname_to_accountname(raw_kql)
 
         # STEP 3: Extract main logic
@@ -610,10 +610,10 @@ class KQLQueryStandardizer:
         )
 
         if not final_is_valid:
-            print(f"⚠️  Final query still has issues: {final_issues[0]}")
+            print(f"WARNING: Final query still has issues: {final_issues[0]}")
             standardized, _ = self.syntax_validator.fix_query(standardized)
 
-        print(f"✅ Query standardization complete\n")
+        print(f"OK: Query standardization complete\n")
 
         # STEP 7: Generate explanation
         explanation = self._generate_explanation(

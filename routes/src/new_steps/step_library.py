@@ -107,7 +107,7 @@ class InvestigationStepLibrary:
 
         # STEP 6: Generate KQL for each step
         print("\n⚙️ PHASE 6: Generating KQL queries...")
-        final_steps = self._add_kql_to_steps_enhanced(steps_with_ip, alert_name)
+        final_steps = self._add_kql_to_steps_enhanced(steps_with_ip, alert_name, alert_data)
 
         # STEP 7: FILTER STEPS - Keep only those with KQL OR external tools
         print("\n🔍 PHASE 7: Validating steps (keeping those with queries or tools)...")
@@ -470,15 +470,20 @@ class InvestigationStepLibrary:
         return steps
 
     def _add_kql_to_steps_enhanced(
-        self, steps: List[Dict], alert_name: str
+        self, steps: List[Dict], alert_name: str, alert_data: dict = None
     ) -> List[Dict]:
         """
         Generate KQL queries for each step
         ✅ FIXED: Preserve VIP placeholder query and prevent hardcoded query replacement
+        ✅ FIXED: Pass alert_source_type to KQL generator for endpoint security conditional logic
         """
         from routes.src.api_kql_generation import EnhancedKQLGenerator
 
-        kql_gen = EnhancedKQLGenerator()
+        # Extract alert_source_type from alert_data if available
+        alert_source_type = alert_data.get("alert_source_type", "") if alert_data else ""
+        print(f"   DEBUG: alert_data exists: {alert_data is not None}")
+        print(f"   DEBUG: alert_source_type: '{alert_source_type}'")
+        kql_gen = EnhancedKQLGenerator(alert_source_type=alert_source_type)
 
         for idx, step in enumerate(steps, 1):
             # ============================================================

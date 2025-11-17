@@ -141,17 +141,17 @@ def _validate_alert_data(alert_data):
     """Validate and extract alert name from alert data"""
     if not alert_data:
         return None, "❌ No alert data provided"
-    
+
     alert_name = (
         alert_data.get("title")
         or alert_data.get("alert_name")
         or alert_data.get("rule_name")
         or alert_data.get("name")
     )
-    
+
     if not alert_name or alert_name == "undefined":
         return None, "❌ Alert name is undefined or missing"
-    
+
     return alert_name, None
 
 
@@ -159,10 +159,10 @@ def _display_alert_header(alert_data, alert_name):
     """Display alert header with time and basic info"""
     st.markdown("---")
     st.title("🤖 SOC Hub - AI-Powered Analysis")
-    
+
     props = alert_data.get("full_alert", {}).get("properties", {})
     time_generated = props.get("timeGenerated")
-    
+
     if time_generated:
         st.markdown(
             f"""
@@ -181,11 +181,13 @@ def _display_alert_header(alert_data, alert_name):
             """,
             unsafe_allow_html=True,
         )
-    
+
     col1, col2 = st.columns([2, 1])
     with col1:
         st.markdown(f"### {clean_display_text(alert_name)}")
-        description = clean_display_text(alert_data.get("description", "No description available"))
+        description = clean_display_text(
+            alert_data.get("description", "No description available")
+        )
         st.markdown(f"**Description:** {description}")
     with col2:
         severity = alert_data.get("severity", "Unknown")
@@ -196,27 +198,31 @@ def _display_alert_header(alert_data, alert_name):
 
 def _setup_analysis_keys(alert_name, alert_data):
     """Setup analysis and cache keys"""
-    sanitized_name = alert_name.replace(" ", "_").replace("/", "_").replace("\\", "_").lower()
+    sanitized_name = (
+        alert_name.replace(" ", "_").replace("/", "_").replace("\\", "_").lower()
+    )
     analysis_key = f"analysis_{sanitized_name}_{hashlib.sha256(alert_name.encode()).hexdigest()[:16]}"
-    
+
     alert_cache_key = f"alert_data_{analysis_key}"
     if alert_cache_key not in st.session_state:
         st.session_state[alert_cache_key] = alert_data
-    
+
     if analysis_key not in st.session_state:
         st.session_state[f"{analysis_key}_in_progress"] = False
-    
+
     return analysis_key, alert_cache_key
 
 
-def _handle_triaging_tab(triaging_cache_key, analysis_key, alert_data, alert_name, alert_cache_key):
+def _handle_triaging_tab(
+    triaging_cache_key, analysis_key, alert_data, alert_name, alert_cache_key
+):
     """Handle triaging tab logic"""
     if triaging_cache_key in st.session_state:
         st.success("✅ Triaging already completed for this alert!")
-        
+
         cached_excel = st.session_state.get(f"excel_cache_{analysis_key}")
         cached_filename = st.session_state.get(f"excel_filename_{analysis_key}")
-        
+
         if cached_excel and cached_filename:
             st.info("📥 Download your completed template below:")
             st.download_button(
@@ -227,7 +233,9 @@ def _handle_triaging_tab(triaging_cache_key, analysis_key, alert_data, alert_nam
                 type="primary",
                 width="stretch",
             )
-            st.info("💡 Switch to the **🔮 Predictions & MITRE** tab to continue analysis")
+            st.info(
+                "💡 Switch to the **🔮 Predictions & MITRE** tab to continue analysis"
+            )
         else:
             st.warning("⚠️ Template data not found in cache. Please regenerate.")
     else:
@@ -235,7 +243,13 @@ def _handle_triaging_tab(triaging_cache_key, analysis_key, alert_data, alert_nam
         enhanced_alert_data = st.session_state.get(alert_cache_key, alert_data).copy()
         enhanced_alert_data["rule_number"] = rule_number
         enhanced_alert_data["alert_name"] = alert_name
-        
+
+        # Extract alert_source_type and pass it through
+        alert_source_type = alert_data.get("alert_source_type", "")
+        enhanced_alert_data["alert_source_type"] = alert_source_type
+
+        print(f"[DEBUG] SOC HUB alert_source_type: '{enhanced_alert_data.get('alert_source_type', 'NOT_FOUND')}'")
+        print(f"[DEBUG] SOC HUB source: '{enhanced_alert_data.get('source', 'NOT_FOUND')}'")
         display_triaging_workflow_cached(
             rule_number,
             alert_data=enhanced_alert_data,
@@ -250,69 +264,98 @@ def display_ai_analysis(alert_data):
     if error:
         st.error(error)
         return
+
+    # Extract and display alert source type information
+    alert_source_type = alert_data.get("alert_source_type", "Unknown")
+    print(f"[DEBUG] display_ai_analysis - alert_source_type: '{alert_source_type}'")
     
+    if alert_source_type == "Endpoint Security":
+        st.info(
+            "🔒 **Endpoint Security Alert** - Using API-based KQL generation (hardcoded queries disabled)"
+        )
+    elif alert_source_type == "User Data Correlation":
+        st.info(
+            "👤 **User Data Correlation Alert** - Using hardcoded KQL queries with API fallback"
+        )
+
     _display_alert_header(alert_data, alert_name)
     display_entities_summary(alert_data)
     st.markdown("---")
-    
+
     api_client = get_analyzer_client()
     is_healthy, health_data = check_api_status()
-    
+
     if not is_healthy:
         st.error("❌ SOC Analysis API Not Available")
         return
-    
+
     analysis_key, alert_cache_key = _setup_analysis_keys(alert_name, alert_data)
-    
+
     source = alert_data.get("source", "unknown")
     is_manual = source == "alert_details"
     has_historical_data = alert_data.get("historical_data") is not None
     predictions_enabled = st.session_state.get("triaging_complete", False)
     triaging_cache_key = f"triaging_done_{analysis_key}"
-    
+
     if is_manual or not has_historical_data:
         tabs = ["🤖 AI Threat Analysis", "📋 AI Triaging"]
         if predictions_enabled:
             tabs.append("🔮 Predictions & MITRE")
-        
+
         tab_objects = st.tabs(tabs)
-        
+
         with tab_objects[0]:
             display_ai_threat_analysis_tab(
-                alert_name, api_client, analysis_key,
-                st.session_state.get(alert_cache_key, alert_data)
+                alert_name,
+                api_client,
+                analysis_key,
+                st.session_state.get(alert_cache_key, alert_data),
             )
-        
+
         with tab_objects[1]:
-            _handle_triaging_tab(triaging_cache_key, analysis_key, alert_data, alert_name, alert_cache_key)
-        
+            _handle_triaging_tab(
+                triaging_cache_key,
+                analysis_key,
+                alert_data,
+                alert_name,
+                alert_cache_key,
+            )
+
         if predictions_enabled:
             with tab_objects[2]:
                 display_predictions_tab_integrated()
-    
+
     else:
         tabs = ["🤖 AI Threat Analysis", "📊 Historical Analysis", "📋 AI Triaging"]
         if predictions_enabled:
             tabs.append("🔮 Predictions & MITRE")
-        
+
         tab_objects = st.tabs(tabs)
-        
+
         with tab_objects[0]:
             display_ai_threat_analysis_tab(
-                alert_name, api_client, analysis_key,
-                st.session_state.get(alert_cache_key, alert_data)
+                alert_name,
+                api_client,
+                analysis_key,
+                st.session_state.get(alert_cache_key, alert_data),
             )
-        
+
         with tab_objects[1]:
             historical_data = alert_data.get("historical_data")
             if historical_data is not None and not historical_data.empty:
                 display_historical_analysis_tab(historical_data)
             else:
                 st.info("✅ No historical data available for this alert")
-        
+
         with tab_objects[2]:
-            _handle_triaging_tab(triaging_cache_key, analysis_key, alert_data, alert_name, alert_cache_key)
-        
+            _handle_triaging_tab(
+                triaging_cache_key,
+                analysis_key,
+                alert_data,
+                alert_name,
+                alert_cache_key,
+            )
+
         if predictions_enabled:
             with tab_objects[3]:
                 display_predictions_tab_integrated()

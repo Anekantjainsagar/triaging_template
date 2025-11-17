@@ -7,16 +7,21 @@ from routes.src.kql_auditlogs_validator import validate_and_fix_api_query
 
 
 class EnhancedKQLGenerator:
-    def __init__(self, enable_standardization: bool = True):
+    def __init__(self, enable_standardization: bool = True, alert_source_type: str = ""):
         # Initialize query manager with API fallback enabled
         self.query_manager = KQLQueryManager(enable_api_fallback=True)
-        print("✅ KQL Generator initialized with hardcoded queries + API fallback")
+        self.alert_source_type = alert_source_type
+        
+        if alert_source_type == "Endpoint Security":
+            print("[INFO] KQL Generator initialized for Endpoint Security - API-only mode (hardcoded queries disabled)")
+        else:
+            print("[INFO] KQL Generator initialized with hardcoded queries + API fallback")
 
         # Initialize standardizer (only for AI-generated queries)
         self.enable_standardization = enable_standardization
         if enable_standardization:
             self.standardizer = KQLQueryStandardizer()
-            print("✅ KQL Standardization enabled (for AI-generated queries only)")
+            print("[INFO] KQL Standardization enabled (for AI-generated queries only)")
 
     def _deduplicate_queries_in_template(self, template_rows: list) -> list:
         from difflib import SequenceMatcher
@@ -80,8 +85,35 @@ class EnhancedKQLGenerator:
         intent = self._extract_intent(step_name, explanation)
         focus = self._extract_focus(step_name, explanation)
 
-        print(f"   Query intent: {intent} | Focus: {focus}")
+        print(f"   Query intent: {intent} | Focus: {focus} | Alert Source: '{self.alert_source_type}'")
 
+
+        # =====================================================
+        # ENDPOINT SECURITY RESTRICTION: Skip hardcoded queries
+        # =====================================================
+        print(f"   DEBUG: Checking endpoint condition - alert_source_type: '{self.alert_source_type}'")
+        print(f"   DEBUG: Is endpoint security: {self.alert_source_type and self.alert_source_type.strip() == 'Endpoint Security'}")
+        if self.alert_source_type and self.alert_source_type.strip() == "Endpoint Security":
+            print(f"   [INFO] Endpoint Security alert - skipping hardcoded queries, using API only")
+            
+            # Go directly to API fallback for endpoint security
+            kql_query, source = self.query_manager.get_query(
+                query_type=intent, use_fallback=True
+            )
+            
+            if kql_query and len(kql_query.strip()) > 30:
+                # Skip all processing for endpoint security - return directly
+                print(f"   [INFO] Endpoint Security - returning API query without standardization")
+                explanation_text = self._generate_explanation(kql_query, step_name, source)
+                return kql_query, explanation_text
+            else:
+                print(f"   [WARN] No API query available for endpoint security alert: {step_name[:60]}")
+                return "", ""
+
+        # =====================================================
+        # NORMAL FLOW: Try hardcoded queries first (non-endpoint)
+        # =====================================================
+        
         # Try to get query from hardcoded manager first
         kql_query, source = self.query_manager.get_query(
             query_type=intent, use_fallback=False  # ⭐ Don't fallback yet
@@ -91,7 +123,7 @@ class EnhancedKQLGenerator:
         # CASE 1: Hardcoded query found
         # =====================================================
         if kql_query and len(kql_query.strip()) > 30 and source == "hardcoded":
-            print(f"   ✅ Using hardcoded query (NO standardization needed)")
+            print(f"   [INFO] Using hardcoded query (NO standardization needed)")
 
             # Return hardcoded query AS-IS with explanation
             explanation_text = self._generate_explanation(kql_query, step_name, source)
@@ -101,7 +133,7 @@ class EnhancedKQLGenerator:
         # CASE 2: No hardcoded query, try API fallback
         # =====================================================
 
-        print(f"   ℹ️  No hardcoded query, attempting API fallback...")
+        print(f"   [INFO] No hardcoded query, attempting API fallback...")
 
         kql_query, source = self.query_manager.get_query(
             query_type=intent, use_fallback=True
@@ -110,7 +142,7 @@ class EnhancedKQLGenerator:
         if kql_query and len(kql_query.strip()) > 30:
             # API-generated query - apply standardization
             if self.enable_standardization:
-                print(f"   🔧 Standardizing API-generated query...")
+                print(f"   [INFO] Standardizing API-generated query...")
 
                 kql_query, standardized_explanation = (
                     self.standardizer.standardize_query(
@@ -121,7 +153,7 @@ class EnhancedKQLGenerator:
                 )
 
                 # ✅ NEW: Validate for AuditLogs usage
-                print(f"   🔍 Validating for AuditLogs usage...")
+                print(f"   [INFO] Validating for AuditLogs usage...")
 
                 validated_query, validated_explanation, was_fixed = (
                     validate_and_fix_api_query(
@@ -136,7 +168,7 @@ class EnhancedKQLGenerator:
                 if was_fixed:
                     kql_query = validated_query
                     standardized_explanation = validated_explanation
-                    print(f"   ✅ Query corrected (AuditLogs removed/replaced)")
+                    print(f"   [INFO] Query corrected (AuditLogs removed/replaced)")
 
                 # Validate standardized query
                 is_valid, reason = KQLQueryStandardizer.validate_standardized_query(
@@ -144,10 +176,10 @@ class EnhancedKQLGenerator:
                 )
 
                 if is_valid:
-                    print(f"   ✅ Query standardized and validated")
+                    print(f"   [INFO] Query standardized and validated")
                     return kql_query, standardized_explanation
                 else:
-                    print(f"   ⚠️  Standardization validation failed: {reason}")
+                    print(f"   [WARN] Standardization validation failed: {reason}")
                     explanation_text = self._generate_explanation(
                         kql_query, step_name, source
                     )
@@ -162,7 +194,7 @@ class EnhancedKQLGenerator:
         # =====================================================
         # CASE 3: No query found at all
         # =====================================================
-        print(f"   ⚠️  No KQL query found for: {step_name[:60]}")
+        print(f"   [WARN] No KQL query found for: {step_name[:60]}")
         return "", ""
 
     def _extract_intent(self, step_name: str, explanation: str) -> str:
@@ -183,7 +215,7 @@ class EnhancedKQLGenerator:
         ]
 
         if any(kw in combined for kw in vip_keywords):
-            print(f"   ✅ VIP intent detected")
+            print(f"   [INFO] VIP intent detected")
             return "vip_verification"
 
         # 2. Geographic/Travel (HIGH PRIORITY)
@@ -345,7 +377,7 @@ class EnhancedKQLGenerator:
             return "initial_scope"
 
         # FALLBACK: Use step name for API fallback
-        print(f"   ⚠️  No specific intent match - using step name as fallback")
+        print(f"   [WARN] No specific intent match - using step name as fallback")
         return step_name
 
     def _extract_focus(self, step_name: str, explanation: str) -> str:

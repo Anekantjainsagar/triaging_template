@@ -576,6 +576,7 @@ def display_triaging_workflow(rule_number: str, alert_data: dict = None):
                         rule_number=rule_number,
                         original_steps=[],
                         rule_context=alert_name,
+                        alert_data=alert_data,
                     )
 
                     if alert_data:
