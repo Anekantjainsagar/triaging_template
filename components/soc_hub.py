@@ -269,14 +269,14 @@ def display_ai_analysis(alert_data):
     alert_source_type = alert_data.get("alert_source_type", "Unknown")
     print(f"[DEBUG] display_ai_analysis - alert_source_type: '{alert_source_type}'")
     
-    if alert_source_type == "Endpoint Security":
-        st.info(
-            "🔒 **Endpoint Security Alert** - Using API-based KQL generation (hardcoded queries disabled)"
-        )
-    elif alert_source_type == "User Data Correlation":
-        st.info(
-            "👤 **User Data Correlation Alert** - Using hardcoded KQL queries with API fallback"
-        )
+    # if alert_source_type == "Endpoint Security":
+    #     st.info(
+    #         "🔒 **Endpoint Security Alert** - Using API-based KQL generation (hardcoded queries disabled)"
+    #     )
+    # elif alert_source_type == "User Data Correlation":
+    #     st.info(
+    #         "👤 **User Data Correlation Alert** - Using hardcoded KQL queries with API fallback"
+    #     )
 
     _display_alert_header(alert_data, alert_name)
     display_entities_summary(alert_data)
