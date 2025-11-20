@@ -9,6 +9,12 @@ from routes.src.utils import _strip_step_number_prefix
 
 load_dotenv()
 
+# Disable verbose LiteLLM logging
+os.environ["LITELLM_LOG"] = "ERROR"
+import logging
+logging.getLogger("LiteLLM").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+
 
 class InvestigationStepLibrary:
     def __init__(self):
@@ -27,14 +33,24 @@ class InvestigationStepLibrary:
         print("✅ Dynamic Investigation Step Library initialized")
 
     def _init_llm(self):
-        """Initialize LLM for step generation"""
-        gemini_key = os.getenv("GOOGLE_API_KEY")
-        if gemini_key:
-            self.llm = LLM(
-                model="gemini/gemini-2.5-flash", api_key=gemini_key, temperature=0.3
-            )
-            print("✅ Using Gemini for step generation")
+        """Initialize LLM for step generation with multi-key rotation"""
+        self.api_keys = [
+            os.getenv("GOOGLE_API_KEY_1", os.getenv("GOOGLE_API_KEY")),
+            os.getenv("GOOGLE_API_KEY_2"),
+            os.getenv("GOOGLE_API_KEY_3"),
+            os.getenv("GOOGLE_API_KEY_4"),
+            os.getenv("GOOGLE_API_KEY_5"),
+            os.getenv("GOOGLE_API_KEY_6"),
+            os.getenv("GOOGLE_API_KEY_7")
+        ]
+        self.api_keys = [key for key in self.api_keys if key]
+        self.current_key_index = 0
+        
+        if self.api_keys:
+            print(f"✅ Using Gemini for step generation ({len(self.api_keys)} keys available)")
+            self.llm = self._create_llm_with_current_key()
         else:
+            self.api_keys = []
             ollama_model = os.getenv("OLLAMA_CHAT", "ollama/qwen2.5:3b")
             if not ollama_model.startswith("ollama/"):
                 ollama_model = f"ollama/{ollama_model}"
@@ -42,16 +58,47 @@ class InvestigationStepLibrary:
                 model=ollama_model, base_url="http://localhost:11434", temperature=0.3
             )
             print(f"✅ Using {ollama_model} for step generation")
+    
+    def _create_llm_with_current_key(self):
+        """Create LLM with current API key"""
+        if not self.api_keys:
+            return None
+        current_key = self.api_keys[self.current_key_index]
+        return LLM(
+            model="gemini/gemini-2.5-flash", 
+            api_key=current_key, 
+            temperature=0.3
+        )
+    
+    def _rotate_api_key(self):
+        """Rotate to next API key"""
+        if len(self.api_keys) > 1:
+            self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
+            self.llm = self._create_llm_with_current_key()
+            print(f"🔄 Rotated to API key {self.current_key_index + 1}/{len(self.api_keys)}")
+    
+    def _execute_with_retry(self, crew, max_retries=3):
+        """Execute crew with API key rotation on failures"""
+        for attempt in range(max_retries):
+            try:
+                result = crew.kickoff()
+                return str(result)
+            except Exception as e:
+                error_str = str(e).lower()
+                if ('503' in error_str or 'overloaded' in error_str or '429' in error_str) and self.api_keys and attempt < max_retries - 1:
+                    print(f"   ⚠️ Attempt {attempt + 1} failed, rotating key...")
+                    self._rotate_api_key()
+                    time.sleep(1)
+                else:
+                    raise e
+        raise Exception("All API keys failed")
 
     def generate_steps_from_manual_analysis(
     self, alert_name: str, analysis_text: str, rule_number: str = "MANUAL_GEN", alert_data:dict=None, technical_overview: str = ""
 ) -> List[Dict]:
         # ✅ ADD THIS DIAGNOSTIC
-        print(f"\n🔍 DIAGNOSTIC: generate_steps_from_manual_analysis()")
-        print(f"   alert_data type: {type(alert_data)}")
         print(f"   alert_data is None: {alert_data is None}")
         if alert_data:
-            print(f"   alert_data keys: {list(alert_data.keys())}")
             entities = alert_data.get("entities", {})
             print(f"   entities type: {type(entities)}")
             if isinstance(entities, dict):

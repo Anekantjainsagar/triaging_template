@@ -15,16 +15,34 @@ from routes.src.api_kql_generation import EnhancedKQLGenerator
 
 load_dotenv()
 
+# Disable verbose LiteLLM logging
+os.environ["LITELLM_LOG"] = "ERROR"
+import logging
+logging.getLogger("LiteLLM").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+
 
 class ImprovedTemplateGenerator:
     def __init__(self):
-        # Initialize LLM for non-KQL tasks
-        gemini_key = os.getenv("GOOGLE_API_KEY")
-        if gemini_key:
+        # Initialize LLM for non-KQL tasks with multi-key support
+        api_keys = [
+            os.getenv("GOOGLE_API_KEY_1", os.getenv("GOOGLE_API_KEY")),
+            os.getenv("GOOGLE_API_KEY_2"),
+            os.getenv("GOOGLE_API_KEY_3"),
+            os.getenv("GOOGLE_API_KEY_4"),
+            os.getenv("GOOGLE_API_KEY_5"),
+            os.getenv("GOOGLE_API_KEY_6"),
+            os.getenv("GOOGLE_API_KEY_7")
+        ]
+        api_keys = [key for key in api_keys if key]  # Filter out None values
+        
+        if api_keys:
+            # Use first available API key
+            gemini_key = api_keys[0]
             self.llm = LLM(
                 model="gemini/gemini-1.5-flash", api_key=gemini_key, temperature=0.3
             )
-            print("✅ Using Gemini for template generation")
+            print(f"✅ Using Gemini for template generation (key {1}/{len(api_keys)})")
         else:
             ollama_model = os.getenv("OLLAMA_CHAT", "ollama/qwen2.5:3b")
             if not ollama_model.startswith("ollama/"):

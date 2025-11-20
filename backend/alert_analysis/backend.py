@@ -6,6 +6,11 @@ from crewai_tools import SerperDevTool
 from typing import Dict, Optional, Tuple
 from crewai import Agent, Task, Crew, Process, LLM
 
+# Disable verbose LiteLLM logging
+os.environ["LITELLM_LOG"] = "ERROR"
+logging.getLogger("LiteLLM").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,7 +22,8 @@ GEMINI_API_KEYS = [
     os.getenv("GOOGLE_API_KEY_3"),
     os.getenv("GOOGLE_API_KEY_4"),
     os.getenv("GOOGLE_API_KEY_5"),
-    os.getenv("GOOGLE_API_KEY_6")
+    os.getenv("GOOGLE_API_KEY_6"),
+    os.getenv("GOOGLE_API_KEY_7")
 ]
 GEMINI_API_KEYS = [key for key in GEMINI_API_KEYS if key]  # Filter out None values
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -401,64 +407,52 @@ RULES:
         if not alert_name or not alert_name.strip():
             raise ValueError("Alert name cannot be empty")
 
-        # Try all Gemini keys with smart retry
+        # Try all Gemini keys - move to next key quickly on 503 errors
         for key_attempt in range(len(self.gemini_llms)):
             gemini_llm = self.gemini_llms[key_attempt]
             logger.info(f"🔍 Trying Gemini key {key_attempt + 1}/{len(self.gemini_llms)}")
             
-            # Try each key with retries for temporary errors
-            for retry in range(3):  # Max 3 retries per key
-                try:
-                    success, result, error = self._analyze_with_llm(
-                        alert_name, alert_description, gemini_llm
-                    )
+            try:
+                success, result, error = self._analyze_with_llm(
+                    alert_name, alert_description, gemini_llm
+                )
 
-                    if success and self._validate_output_structure(result):
-                        logger.info(f"✅ Success with Gemini key {key_attempt + 1}")
-                        return result
+                if success and self._validate_output_structure(result):
+                    logger.info(f"✅ Success with Gemini key {key_attempt + 1}")
+                    return result
+                    
+                # If analysis failed but no exception, try next key immediately
+                if error and self._is_quota_error(error):
+                    logger.warning(f"Key {key_attempt + 1} quota exceeded, trying next key")
+                    continue
                         
-                    # If analysis failed but no exception, try next key
-                    if error and self._is_quota_error(error):
-                        logger.warning(f"Key {key_attempt + 1} quota exceeded, trying next key")
-                        break  # Skip retries for this key
-                        
-                except Exception as e:
-                    if self._is_quota_error(e):
-                        logger.warning(f"Key {key_attempt + 1} quota exceeded")
-                        break  # Skip retries for this key
-                    elif self._is_retryable_error(e) and retry < 2:
-                        wait_time = (2 ** retry) + 1  # Exponential backoff: 3s, 5s
-                        logger.info(f"Retryable error, waiting {wait_time}s before retry {retry + 2}/3")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        logger.warning(f"Key {key_attempt + 1} failed: {str(e)}")
-                        break  # Try next key
-                
-                time.sleep(0.5)  # Brief pause between retries
+            except Exception as e:
+                if self._is_quota_error(e):
+                    logger.warning(f"Key {key_attempt + 1} quota exceeded")
+                    continue  # Try next key immediately
+                elif self._is_retryable_error(e):
+                    # For 503 errors, don't retry - just move to next key
+                    logger.warning(f"Key {key_attempt + 1} service overloaded, trying next key")
+                    continue
+                else:
+                    logger.warning(f"Key {key_attempt + 1} failed: {str(e)[:100]}")
+                    continue  # Try next key
 
         # Fallback to Groq if all Gemini keys fail
         if self.fallback_llm:
             logger.info("🔄 Falling back to GROQ...")
-            for retry in range(2):  # 2 attempts for Groq
-                try:
-                    success, result, error = self._analyze_with_llm(
-                        alert_name, alert_description, self.fallback_llm
-                    )
-                    
-                    if success and self._validate_output_structure(result):
-                        logger.info("✅ Success with GROQ fallback")
-                        return result
-                        
-                except Exception as e:
-                    if self._is_retryable_error(e) and retry < 1:
-                        wait_time = 5
-                        logger.info(f"Groq retryable error, waiting {wait_time}s")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        logger.error(f"Groq failed: {str(e)}")
-                        break
+            try:
+                success, result, error = self._analyze_with_llm(
+                    alert_name, alert_description, self.fallback_llm
+                )
+                
+                if success and self._validate_output_structure(result):
+                    logger.info("✅ Success with GROQ fallback")
+                    return result
+                else:
+                    logger.error(f"Groq failed: {error}")
+            except Exception as e:
+                logger.error(f"Groq failed: {str(e)}")
 
         # All methods failed
         logger.error("❌ All Gemini keys and Groq failed")

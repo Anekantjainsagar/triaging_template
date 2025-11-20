@@ -24,7 +24,18 @@ def _upload_to_predictions_api(excel_data: bytes, filename: str):
         import os
         from api_client.predictions_api_client import get_predictions_client
 
-        final_api_key = os.getenv("GOOGLE_API_KEY")
+        # Use first available API key from the multi-key system
+        api_keys = [
+            os.getenv("GOOGLE_API_KEY_1", os.getenv("GOOGLE_API_KEY")),
+            os.getenv("GOOGLE_API_KEY_2"),
+            os.getenv("GOOGLE_API_KEY_3"),
+            os.getenv("GOOGLE_API_KEY_4"),
+            os.getenv("GOOGLE_API_KEY_5"),
+            os.getenv("GOOGLE_API_KEY_6"),
+            os.getenv("GOOGLE_API_KEY_7"),
+        ]
+        api_keys = [key for key in api_keys if key]  # Filter out None values
+        final_api_key = api_keys[0] if api_keys else os.getenv("GOOGLE_API_KEY")
         predictions_api_url = os.getenv(
             "PREDICTIONS_API_URL", "http://localhost:8000/predictions"
         )
