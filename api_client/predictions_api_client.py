@@ -242,7 +242,7 @@ class PredictionsAPIClient:
                 f"{self.base_url}/analyze/mitre",
                 json={"username": username},
                 params={"api_key": self.api_key},
-                timeout=300,  # 5 minutes for LLM processing
+                timeout=600,  # 5 minutes for LLM processing
             )
             response.raise_for_status()
             return response.json()
@@ -270,7 +270,7 @@ class PredictionsAPIClient:
                 f"{self.base_url}/analyze/complete",
                 json={"username": username},
                 params={"api_key": self.api_key},
-                timeout=300,  # 5 minutes for complete analysis
+                timeout=600,  # 5 minutes for complete analysis
             )
             response.raise_for_status()
             return response.json()
@@ -323,7 +323,7 @@ class PredictionsAPIClient:
                 f"{self.base_url}/analyze/ip_batch",
                 json={"ip_addresses": ip_addresses},  # ✅ Send in body
                 params={"api_key": self.api_key},
-                timeout=300,
+                timeout=600,
             )
             response.raise_for_status()
             return response.json()

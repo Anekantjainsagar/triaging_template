@@ -1,15 +1,10 @@
+import threading
 import streamlit as st
 from sentinel.backend import *
 from components.soc_hub import display_ai_analysis
 from styles.soc_dashboard import SOC_DASHBOARD_STYLES
 from sentinel.frontend.dashboard import display_overview_page
 from sentinel.frontend.incident_details import display_incident_detail
-from fix_context_warnings import setup_streamlit_context_fixes, suppress_streamlit_warnings
-import threading
-
-# Apply all context fixes
-setup_streamlit_context_fixes()
-
 
 # Page configuration
 st.set_page_config(
@@ -65,11 +60,10 @@ def initialize_session_state():
     if not st.session_state.auto_loaded and not st.session_state.incidents:
         try:
             # Use context manager to suppress warnings during loading
-            with suppress_streamlit_warnings():
-                incidents = load_incidents_from_file()
-                if incidents:
-                    st.session_state.incidents = incidents
-                    st.session_state.auto_loaded = True
+            incidents = load_incidents_from_file()
+            if incidents:
+                st.session_state.incidents = incidents
+                st.session_state.auto_loaded = True
         except Exception as e:
             pass
 

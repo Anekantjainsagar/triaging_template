@@ -857,12 +857,9 @@ async def analyze_complete(request: AnalyzeInvestigationRequest, api_key: str = 
                 detail=f"No investigation data found for user: {request.username}",
             )
 
-        print(request.username, investigation_steps)
         complete_analysis = analyzer.perform_complete_analysis(
             request.username, investigation_steps
         )
-
-        print(complete_analysis)
         if complete_analysis.get("status") != "success":
             raise HTTPException(status_code=500, detail="Analysis failed")
 
