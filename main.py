@@ -1,5 +1,9 @@
 import threading
 import streamlit as st
+import logging
+
+# Suppress Streamlit thread warnings
+logging.getLogger('streamlit.runtime.scriptrunner.script_runner').setLevel(logging.ERROR)
 from sentinel.backend import *
 from components.soc_hub import display_ai_analysis
 from styles.soc_dashboard import SOC_DASHBOARD_STYLES
