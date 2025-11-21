@@ -159,24 +159,29 @@ def _execute_kql_query(
             output_key = f"output_{rule_number}_{step_num}"
             df_key = f"dataframe_{rule_number}_{step_num}"
 
-            # Save to state manager
-            state_mgr.save_step_data(step_num, output=formatted_output)
+            # 🔧 FIX: Add step name and query info to output for verification
+            step_header = f"Step {step_num} Results:\n" + "="*50 + "\n"
+            enhanced_output = step_header + formatted_output
+            
+            # Save to state manager with enhanced output
+            state_mgr.save_step_data(step_num, output=enhanced_output)
 
             # Save to session state for immediate display
-            st.session_state[output_key] = formatted_output
+            st.session_state[output_key] = enhanced_output
             st.session_state[df_key] = dataframe
 
-            # Force state update to persist
+            # Force state update to persist with correct step mapping
             st.session_state[state_mgr.state_key]["step_outputs"][
                 f"step_{step_num}"
-            ] = formatted_output
+            ] = enhanced_output
             st.session_state[state_mgr.state_key][
                 "last_updated"
             ] = datetime.now().isoformat()
 
-            print(f"✅ Output saved for step {step_num}: {len(formatted_output)} chars")
+            print(f"✅ Output saved for step {step_num}: {len(enhanced_output)} chars")
+            print(f"🔍 DEBUG: Step {step_num} output key: step_{step_num}")
 
-            return True, formatted_output, dataframe
+            return True, enhanced_output, dataframe
         else:
             st.error(f"❌ Query execution failed: {formatted_output}")
             return False, None, None
@@ -742,6 +747,9 @@ def display_interactive_steps(
             step_num = idx + 1
             step_name = step.get("step_name", f"Step {step_num}")
             
+            # 🔧 FIX: Add debug info to track step execution
+            print(f"🔍 AUTO-EXECUTE: Processing Step {step_num}: {step_name}")
+            
             # Update progress
             progress = idx / len(enhanced_steps)
             progress_bar.progress(progress)
@@ -750,25 +758,33 @@ def display_interactive_steps(
             # VIP check
             if _is_vip_user_check_step(step) and entity_users:
                 step_status.info("🔍 Checking VIP users...")
+                print(f"🔍 AUTO-EXECUTE: Step {step_num} - VIP Check")
                 kql_query = _generate_vip_kql_query(default_vip_users, entity_users, alert_data)
                 success, output, dataframe = _execute_kql_query(step_num, rule_number, kql_query, state_mgr)
                 if success:
                     vip_matches = [user for user in entity_users if user in default_vip_users]
                     vip_analysis = f"\nVIP Analysis: {len(vip_matches)} VIP matches found" if vip_matches else "\nVIP Analysis: No VIP users affected"
                     combined_output = output + vip_analysis
-                    state_mgr.save_step_data(step_num, output=combined_output, remark="Auto-executed")
+                    # 🔧 FIX: Ensure proper step mapping
+                    state_mgr.save_step_data(step_num, output=combined_output, remark=f"Auto-executed VIP check for step {step_num}")
                     st.session_state[f"dataframe_{rule_number}_{step_num}"] = dataframe
+                    print(f"✅ AUTO-EXECUTE: Step {step_num} VIP check saved")
                     step_status.success(f"✅ VIP check complete - {len(vip_matches)} matches found" if vip_matches else "✅ VIP check complete - No VIP users affected")
             
             # IP reputation check
             elif _is_ip_reputation_step(step) and entity_ips:
                 step_status.info(f"🔍 Checking {len(entity_ips)} IP addresses...")
+                print(f"🔍 AUTO-EXECUTE: Step {step_num} - IP Reputation Check")
                 if "ip_checker" not in st.session_state:
                     st.session_state.ip_checker = IPReputationChecker()
                 results = st.session_state.ip_checker.check_multiple_ips(entity_ips, method="auto")
                 output_excel = "\n\n".join([r.get("formatted_output_excel", "") for r in results.values() if r.get("formatted_output_excel")])
-                state_mgr.save_step_data(step_num, output=output_excel, remark="Auto-executed")
+                # 🔧 FIX: Add step header to IP results
+                step_header = f"Step {step_num} IP Reputation Results:\n" + "="*50 + "\n"
+                enhanced_ip_output = step_header + output_excel
+                state_mgr.save_step_data(step_num, output=enhanced_ip_output, remark=f"Auto-executed IP check for step {step_num}")
                 st.session_state[f"ip_results_{rule_number}_{step_num}"] = results
+                print(f"✅ AUTO-EXECUTE: Step {step_num} IP check saved")
                 
                 high_risk = sum(1 for r in results.values() if r.get("risk_level") == "HIGH")
                 vpn_count = sum(1 for r in results.values() if r.get("vpn_detection", {}).get("is_vpn", False))
@@ -777,21 +793,28 @@ def display_interactive_steps(
             # KQL query steps
             elif step.get("kql_query") and len(step.get("kql_query", "").strip()) > 10:
                 step_status.info("🔍 Executing KQL query...")
+                print(f"🔍 AUTO-EXECUTE: Step {step_num} - KQL Query")
                 success, output, dataframe = _execute_kql_query(step_num, rule_number, step.get("kql_query"), state_mgr)
                 if success:
-                    state_mgr.save_step_data(step_num, remark="Auto-executed")
+                    state_mgr.save_step_data(step_num, remark=f"Auto-executed KQL for step {step_num}")
                     result_count = len(dataframe) if dataframe is not None and not dataframe.empty else 0
+                    print(f"✅ AUTO-EXECUTE: Step {step_num} KQL saved - {result_count} results")
                     step_status.success(f"✅ Query complete - {result_count} results")
                 else:
+                    print(f"❌ AUTO-EXECUTE: Step {step_num} KQL failed")
                     step_status.error("❌ Query failed")
             
             else:
                 step_status.info("📝 Marking for manual review...")
-                state_mgr.save_step_data(step_num, remark="Auto-reviewed - manual verification needed")
+                print(f"🔍 AUTO-EXECUTE: Step {step_num} - Manual Review")
+                manual_output = f"Step {step_num} Manual Review:\n" + "="*50 + "\nThis step requires manual investigation and verification."
+                state_mgr.save_step_data(step_num, output=manual_output, remark=f"Auto-reviewed - manual verification needed for step {step_num}")
+                print(f"✅ AUTO-EXECUTE: Step {step_num} manual review saved")
                 step_status.success("✅ Marked for manual review")
             
             # Mark complete
             state_mgr.mark_step_complete(step_num)
+            print(f"✅ AUTO-EXECUTE: Step {step_num} marked complete")
             time.sleep(0.5)  # Brief pause to show progress
         
         # Final progress update
@@ -1178,11 +1201,19 @@ def display_interactive_steps(
 
             # Only show download button if report is prepared
             if st.session_state[report_prepared_key]:
+                # 🔧 FIX: Verify step mapping before generating Excel
+                all_outputs = state_mgr.get_all_outputs()
+                all_remarks = state_mgr.get_all_remarks()
+                
+                print(f"\n🔍 PRE-EXCEL VERIFICATION:")
+                print(f"Outputs available: {list(all_outputs.keys())}")
+                print(f"Remarks available: {list(all_remarks.keys())}")
+                
                 # Generate final Excel
                 final_excel = generate_final_excel(
                     template_df,
-                    state_mgr.get_all_remarks(),
-                    state_mgr.get_all_outputs(),
+                    all_remarks,
+                    all_outputs,
                     rule_number,
                 )
 
@@ -1338,7 +1369,7 @@ def generate_final_excel(
     """
     Generate final Excel with remarks and outputs
 
-    FIXED: Ensures all outputs including last step are saved correctly
+    🔧 FIXED: Proper step-to-output mapping using actual step numbers from DataFrame
     """
     from io import BytesIO
 
@@ -1347,18 +1378,25 @@ def generate_final_excel(
     remarks_list = []
     outputs_list = []
 
+    print(f"\n📊 EXCEL GENERATION DEBUG:")
+    print(f"Template rows: {len(export_df)}")
+    print(f"Available outputs: {list(outputs.keys())}")
+    print(f"Available remarks: {list(remarks.keys())}")
+
     # Process each row in the template
     for idx, row in export_df.iterrows():
         # Skip header rows (rows without a valid Step number)
         if pd.isna(row.get("Step")) or str(row.get("Step", "")).strip() == "":
             remarks_list.append("")
             outputs_list.append("")
+            print(f"   Row {idx}: HEADER - skipped")
         else:
-            step_num = idx + 1
-
-            # Retrieve remark and output from state
-            remark_key = f"step_{step_num}"
-            output_key = f"step_{step_num}"
+            # 🔧 FIX: Use actual step number from DataFrame, not row index
+            actual_step_num = str(row.get("Step", "")).strip()
+            
+            # Retrieve remark and output from state using actual step number
+            remark_key = f"step_{actual_step_num}"
+            output_key = f"step_{actual_step_num}"
 
             # Get remark (prioritize from remarks dict, fallback to existing in df)
             remark = remarks.get(remark_key, "")
@@ -1370,11 +1408,11 @@ def generate_final_excel(
             if not output and "Output" in row:
                 output = str(row.get("Output", ""))
 
-            # Debug print to verify data
+            # Debug print to verify data mapping
             if output:
-                print(f"   ✅ Step {step_num}: Output saved ({len(output)} chars)")
+                print(f"   Row {idx} -> Step {actual_step_num}: Output found ({len(output)} chars)")
             else:
-                print(f"   ⚠️ Step {step_num}: No output")
+                print(f"   Row {idx} -> Step {actual_step_num}: NO OUTPUT (key: {output_key})")
 
             remarks_list.append(remark)
             outputs_list.append(output)
@@ -1452,16 +1490,79 @@ def _display_query_results(
         st.markdown("</div>", unsafe_allow_html=True)
 
 
+def verify_step_output_mapping(rule_number: str) -> dict:
+    """
+    Verify that step outputs are correctly mapped
+    Returns mapping verification report
+    """
+    state_key = get_step_state_key(rule_number)
+    verification_report = {
+        "total_steps": 0,
+        "steps_with_output": 0,
+        "steps_without_output": 0,
+        "mapping_issues": [],
+        "step_details": {}
+    }
+    
+    if state_key in st.session_state:
+        state = st.session_state[state_key]
+        outputs = state.get("step_outputs", {})
+        remarks = state.get("step_remarks", {})
+        completed_steps = state.get("completed_steps", set())
+        
+        # Check each step
+        for step_key in outputs.keys():
+            step_num = step_key.replace("step_", "")
+            output = outputs.get(step_key, "")
+            remark = remarks.get(step_key, "")
+            is_completed = int(step_num) in completed_steps if step_num.isdigit() else False
+            
+            verification_report["step_details"][step_num] = {
+                "has_output": bool(output and len(output.strip()) > 0),
+                "has_remark": bool(remark and len(remark.strip()) > 0),
+                "is_completed": is_completed,
+                "output_length": len(output) if output else 0
+            }
+            
+            verification_report["total_steps"] += 1
+            if output and len(output.strip()) > 0:
+                verification_report["steps_with_output"] += 1
+            else:
+                verification_report["steps_without_output"] += 1
+                if is_completed:
+                    verification_report["mapping_issues"].append(f"Step {step_num} is completed but has no output")
+    
+    return verification_report
+
+
 def unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
     """
     Unlock predictions tab and upload data
 
-    FIXED: Ensures all step data is persisted before generating final Excel
+    🔧 ENHANCED: Added step-output mapping verification
     """
+    # 🔧 NEW: Verify step-output mapping before proceeding
+    verification_report = verify_step_output_mapping(rule_number)
+    
+    print(f"\n🔍 STEP-OUTPUT MAPPING VERIFICATION:")
+    print(f"Total steps: {verification_report['total_steps']}")
+    print(f"Steps with output: {verification_report['steps_with_output']}")
+    print(f"Steps without output: {verification_report['steps_without_output']}")
+    
+    if verification_report["mapping_issues"]:
+        print(f"\n⚠️ MAPPING ISSUES DETECTED:")
+        for issue in verification_report["mapping_issues"]:
+            print(f"   - {issue}")
+    
+    # Detailed step verification
+    for step_num, details in verification_report["step_details"].items():
+        status = "✅" if details["has_output"] else "❌"
+        print(f"   Step {step_num}: {status} Output ({details['output_length']} chars) | Completed: {details['is_completed']}")
+
     # Force save all pending state changes
     state_key = get_step_state_key(rule_number)
     if state_key in st.session_state:
-        print(f"📊 Final state verification:")
+        print(f"\n📊 Final state verification:")
         state = st.session_state[state_key]
 
         # Log all saved outputs
@@ -1477,6 +1578,7 @@ def unlock_predictions(excel_data: bytes, filename: str, rule_number: str):
     st.session_state.predictions_excel_data = excel_data
     st.session_state.predictions_excel_filename = filename
     st.session_state.predictions_rule_number = rule_number
+    st.session_state.step_verification_report = verification_report  # Store for debugging
 
     try:
         from api_client.predictions_api_client import get_predictions_client
